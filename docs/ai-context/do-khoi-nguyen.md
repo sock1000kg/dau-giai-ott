@@ -58,6 +58,8 @@ Bot phải hoạt động từ schema/fixtures của Long, không được impor
 
 Sau `P1-N01`, các task `P1-N02`–`P1-N05` độc lập về logic nhưng một người chỉ nên làm từng task/phiên để tránh trộn diff.
 
+Checkpoint liên quan: `P1-A` sau `P1-N01`; `P1-B` sau `P1-N06`. Bot của Nguyên được dùng trong `P1-D10` (E2E). Phase 2: `P2-N01` chặn sandbox `P2-D07` của Đạt và thuộc Checkpoint `P2-A`. Sơ đồ hai phase: `docs/team-assignment-phase-1-2.md` mục 4.2.
+
 ## 5. Tài liệu AI phải đọc
 
 1. `AGENTS.md` hoặc `CLAUDE.md`.

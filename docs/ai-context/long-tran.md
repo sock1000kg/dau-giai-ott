@@ -59,6 +59,8 @@ Long là owner duy nhất của:
 
 Mỗi phiên AI chỉ làm một task. Nguyên đã có thể làm `P1-N01` từ schema/fixtures khóa tại `P1-T01`; Đạt bắt đầu `P1-D02` khi `P1-L02` và `P1-L03` hoàn tất. `P1-L04` là executable validator baseline, không phải thời điểm phát hành contract lần đầu.
 
+Checkpoint liên quan: `P1-A` sau `P1-L01`–`P1-L04` (Đạt dựa vào public types để làm runner); `P1-B` sau `P1-L08`. Phase 2 hiện không có task của Long. Sơ đồ hai phase: `docs/team-assignment-phase-1-2.md` mục 4.2.
+
 ## 5. Tài liệu AI phải đọc
 
 1. `AGENTS.md` hoặc `CLAUDE.md`.
