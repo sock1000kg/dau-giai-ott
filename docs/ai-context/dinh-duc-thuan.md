@@ -66,10 +66,15 @@ Nếu có mâu thuẫn, AI phải nêu rõ hai nguồn và đề xuất lựa ch
 | `P1-T01` — khóa quyết định Phase 1 | Đã hoàn tất ngày 09/10/2026 |
 | `P1-T02` — gộp workspace chung (thay `P1-D01` đã hủy) | Checkpoint `P1-B` đã hoàn tất; làm trước `P1-D09` |
 | Duyệt Checkpoint `P1-A` | `P1-T01`, `P1-L01`–`P1-L04`, `P1-N01`, `P1-D02` đã hoàn tất |
+| Duyệt Checkpoint `P1-B` | Long xong `P1-L05`–`P1-L08`, Nguyên xong `P1-N01`–`P1-N06`, Đạt xong `P1-D02`–`P1-D08` |
 | Duyệt Checkpoint `P1-C` | `P1-D11` và full verification đã pass |
 | `P2-T01` — khóa quyết định Phase 2 | `P1-D11` hoàn tất |
-| Nhận bàn giao Phase 2 local | `P2-D13` và checkpoint `P2-B` đã pass |
+| Duyệt Checkpoint `P2-A` | `P2-T01`, `P2-D01`–`P2-D10` và `P2-N01` hoàn tất |
+| Duyệt Checkpoint `P2-B`, nhận bàn giao Phase 2 local | `P2-D13` và qualification E2E đã pass |
+| Deploy từ `develop` lên các môi trường | Sau Checkpoint `P2-B` |
 | Thiết kế CI/CD và cloud | Chỉ sau khi local contract/runbook được bàn giao |
+
+Sơ đồ hai phase: `docs/team-assignment-phase-1-2.md` mục 4.2. Sau khi duyệt task hoặc checkpoint, thêm `✅` vào node tương ứng trong sơ đồ.
 
 Các task DevOps/cloud chưa nằm trong checklist hiện tại. AI phải lập plan riêng trước khi triển khai, không tự thêm cloud vào task local.
 

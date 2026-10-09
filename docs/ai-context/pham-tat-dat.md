@@ -2,7 +2,7 @@
 
 > Trạng thái: **Đã tự động duyệt**
 > Mức khuyến nghị: **HIGH RECOMMEND**
-> Vai trò: workspace, MatchRunner/BotProcess/CLI/E2E và platform Phase 2 local
+> Vai trò: MatchRunner/BotProcess/CLI/E2E và platform Phase 2 local
 
 ## 1. Cách dùng ngay
 
@@ -36,7 +36,6 @@ Nếu `origin/develop` chưa có hoặc working tree chứa thay đổi của ng
 
 Phase 1:
 
-- Workspace Node.js 22/TypeScript/Vitest.
 - `GamePort`, `BotPort`, fakes và MatchRunner authoritative.
 - BotProcess giao tiếp NDJSON, timeout và cleanup an toàn.
 - Event log, replay verifier, CLI và E2E local.
@@ -65,6 +64,8 @@ Phase 2 local:
 ### Phase 2 local
 
 `P2-D01`–`P2-D13` theo đúng dependency trong `tasks/todo.md`. Không mở đồng thời nhiều task chạm cùng schema/module. `P2-D07` phải chờ `P2-N01` của Nguyên; các task policy-sensitive phải chờ `P2-T01` của Thuận.
+
+Checkpoint liên quan: Phase 1 có `P1-A` sau `P1-D02`, `P1-B` sau `P1-D08`, `P1-C` sau `P1-D11`. Phase 2 có `P2-A` sau `P2-D10` (backend), `P2-B` sau `P2-D13` (UI + E2E); sau `P2-B` Thuận mới deploy. Sơ đồ hai phase: `docs/team-assignment-phase-1-2.md` mục 4.2.
 
 Phase 2 đang dồn nhiều task cho Đạt; AI phải làm tuần tự từng task, không giả vờ tăng song song bằng nhiều branch trên cùng module.
 
