@@ -1,0 +1,98 @@
+{
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "name": "malformed-json",
+      "inputKind": "rawLine",
+      "rawLine": "{\"type\":\"ACTION\",",
+      "expectedError": "MALFORMED_JSON"
+    },
+    {
+      "name": "unknown-field",
+      "inputKind": "message",
+      "message": {
+        "type": "ACTION",
+        "protocolVersion": 1,
+        "matchId": "m-fixture-001",
+        "turnId": 17,
+        "action": {
+          "pieceId": "X-ROCK-1",
+          "to": { "col": 8, "row": 8 }
+        },
+        "debug": true
+      },
+      "expectedError": "SCHEMA_VIOLATION"
+    },
+    {
+      "name": "wrong-protocol-version",
+      "inputKind": "message",
+      "message": {
+        "type": "ACTION",
+        "protocolVersion": 2,
+        "matchId": "m-fixture-001",
+        "turnId": 17,
+        "action": {
+          "pieceId": "X-ROCK-1",
+          "to": { "col": 8, "row": 8 }
+        }
+      },
+      "expectedError": "SCHEMA_VIOLATION"
+    },
+    {
+      "name": "wrong-match-id",
+      "inputKind": "message",
+      "message": {
+        "type": "ACTION",
+        "protocolVersion": 1,
+        "matchId": "m-other",
+        "turnId": 17,
+        "action": {
+          "pieceId": "X-ROCK-1",
+          "to": { "col": 8, "row": 8 }
+        }
+      },
+      "expectedError": "MATCH_ID_MISMATCH"
+    },
+    {
+      "name": "stale-turn-id",
+      "inputKind": "message",
+      "message": {
+        "type": "ACTION",
+        "protocolVersion": 1,
+        "matchId": "m-fixture-001",
+        "turnId": 16,
+        "action": {
+          "pieceId": "X-ROCK-1",
+          "to": { "col": 8, "row": 8 }
+        }
+      },
+      "expectedError": "TURN_ID_MISMATCH"
+    },
+    {
+      "name": "illegal-action",
+      "inputKind": "message",
+      "message": {
+        "type": "ACTION",
+        "protocolVersion": 1,
+        "matchId": "m-fixture-001",
+        "turnId": 17,
+        "action": {
+          "pieceId": "X-ROCK-1",
+          "to": { "col": 0, "row": 0 }
+        }
+      },
+      "expectedError": "ILLEGAL_ACTION"
+    },
+    {
+      "name": "oversized-message",
+      "inputKind": "generatedRawLine",
+      "generator": {
+        "baseMessageType": "ACTION",
+        "appendField": "padding",
+        "repeatCharacter": "x",
+        "targetUtf8Bytes": 65537
+      },
+      "expectedError": "MESSAGE_TOO_LARGE"
+    }
+  ]
+}
