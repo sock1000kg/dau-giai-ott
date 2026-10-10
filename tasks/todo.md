@@ -143,7 +143,7 @@ Không triển khai ID này. Workspace chung chuyển cho Đinh Đức Thuận d
 **Files dự kiến:** `src/bots/python/first_legal_bot.py`, `src/bots/python/tests/test_first_legal_bot.py`
 **Ước lượng:** S (2 file)
 
-### [ ] P1-N03 — CaptureFirstBot
+### [x] P1-N03 — CaptureFirstBot
 
 **Owner:** Đỗ Khôi Nguyên
 **Mô tả:** Bot ưu tiên action bắt quân, fallback deterministic.
