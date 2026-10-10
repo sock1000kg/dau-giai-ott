@@ -21,9 +21,20 @@ hành động và Engine luôn validate lại.
 - Ăn quân Búa–Bao–Kéo; cùng loại chặn nhau; quân yếu không tự sát.
 - Hai điều kiện thắng: `REACHED_GOAL` (ưu tiên) và `ELIMINATED_ALL_PIECES`.
 
+## P1-L02 — Engine API đã khóa (domain + map types)
+
+- `types.ts` chứa toàn bộ domain types theo `docs/contracts/engine-api-v1.md`:
+  `PlayerSide`, `PieceType`, `GameStatus`, `Position`, `Piece`, `MapRef`,
+  `MapDefinition`, `GameConfig`, `GameAction`, `GameResultReason`, `GameOutcome`,
+  `GameResult`, `GameState`, `ActionErrorCode`, `SkipReason`, `ProcessFaultCode`,
+  `GameEvent`, `TransitionResult`.
+- `DEFAULT_MAP: MapDefinition` — map `default` v1, 9×9, obstacles rỗng, 18 spawns,
+  goals `X → i9`, `O → a1`.
+- `createGame(config): GameState` — khởi tạo deterministic, **deep-copy** spawns,
+  `map` chỉ giữ projection `MapRef` (mapId/version/checksum).
+
 Chưa có (các task sau):
 
-- `P1-L02`: domain types/`GameState`/`createGame` đã khóa và map types.
 - `P1-L05`: `listLegalActions`/`applyAction` theo `side`.
 - `P1-L06`: `skipTurn`, `maxTurns`, `GameResult` (`FORFEIT`/`TURN_LIMIT`).
 - `P1-L07`: transition event và `finalStateHash`.
