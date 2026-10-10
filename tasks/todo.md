@@ -123,7 +123,7 @@ Không triển khai ID này. Workspace chung chuyển cho Đinh Đức Thuận d
 
 ## Phase 1 — Lane Nguyên: bot Python kiểm thử
 
-### [ ] P1-N01 — Python Bot SDK tối thiểu
+### [x] P1-N01 — Python Bot SDK tối thiểu
 
 **Owner:** Đỗ Khôi Nguyên
 **Mô tả:** Tạo loop stdin/stdout xử lý protocol v1.
