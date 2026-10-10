@@ -82,35 +82,84 @@ Long Trần không làm bot Python, process runner, Fastify API, database, queue
 
 ### 4.2 Luồng phát triển và tích hợp
 
+Sơ đồ gồm hai phase nối tiếp. Mũi tên liền là dependency phải xong trước; mũi tên nét đứt trỏ vào checkpoint chỉ là mốc duyệt, không chặn task tiếp theo trong lane. Chi tiết dependency từng task nằm tại `tasks/todo.md`.
+
+#### Phase 1 — Hai bot chơi một trận trên localhost
+
 ```mermaid
 flowchart LR
-    C["✅ P1-T01 đã khóa<br/>Engine API + Bot Protocol v1"]
-    W["P1-T02 (Thuận)<br/>Gộp workspace chung"]
+    T01["✅ P1-T01 (Thuận)<br/>Khóa Engine API + Bot Protocol v1"]
 
-    subgraph LOCAL["Phát triển độc lập trên localhost"]
-        LO["longt/* — Long Trần<br/>Core + protocol implementation<br/>P1-L01…L08"]
-        NG["nguyendk/* — Đỗ Khôi Nguyên<br/>Bot từ schema/fixtures<br/>P1-N01…N06"]
-        DA["datpt/* — Phạm Tất Đạt<br/>MatchRunner qua ports/fakes<br/>P1-D02…D08"]
+    subgraph LANES["Phát triển độc lập trên localhost"]
+        L1["longt/* — Long Trần<br/>Baseline, Engine API, protocol, validator<br/>P1-L01…L04"]
+        L2["longt/* — Long Trần<br/>Action, lifecycle, hash, regression<br/>P1-L05…L08"]
+        N1["nguyendk/* — Đỗ Khôi Nguyên<br/>Python Bot SDK<br/>P1-N01"]
+        N2["nguyendk/* — Đỗ Khôi Nguyên<br/>Bot hợp lệ, bot lỗi, contract test<br/>P1-N02…N06"]
+        D1["datpt/* — Phạm Tất Đạt<br/>GamePort, BotPort, fakes<br/>P1-D02"]
+        D2["datpt/* — Phạm Tất Đạt<br/>MatchRunner, BotProcess, replay, CLI<br/>P1-D03…D08"]
     end
 
-    C --> NG
-    C --> LO
-    LO -->|L02/L03 public types| DA
+    PA["Checkpoint P1-A<br/>Contract chạy được"]
+    PB["Checkpoint P1-B<br/>Ba lane xong độc lập"]
+    T02["P1-T02 (Thuận)<br/>Gộp workspace chung"]
+    D9["P1-D09 (Đạt)<br/>Tích hợp core thật"]
+    D10["P1-D10 (Đạt)<br/>E2E hai bot + bot lỗi"]
+    D11["P1-D11 (Đạt)<br/>Runbook, bàn giao local"]
+    PC["Checkpoint P1-C<br/>Thuận duyệt Phase 1"]
 
-    LO --> B["Checkpoint P1-B"]
-    NG --> B
-    DA --> B
-    B --> W
-    W --> I["PR vào develop<br/>integration tests"]
-
-    I --> E["Hai bot chơi hết trận<br/>E2E local"]
-    E --> O["Checkpoint Thuận duyệt<br/>sau đó deploy từ develop"]
+    T01 --> L1
+    T01 --> N1
+    L1 -->|L02/L03 public types| D1
+    L1 --> L2
+    N1 --> N2
+    D1 --> D2
+    L1 & N1 & D1 -.-> PA
+    L2 & N2 & D2 --> PB
+    PB --> T02 --> D9 --> D10 --> D11 --> PC
 
     classDef done fill:#123d2a,stroke:#39d98a,color:#ffffff,stroke-width:2px;
-    class C done;
+    classDef gate stroke-width:3px;
+    class T01 done;
+    class PA,PB,PC gate;
 ```
 
-`✅` chỉ gắn cho node có task/checkpoint đã hoàn tất trong `tasks/todo.md` và có bằng chứng verification. Hiện tại chỉ `P1-T01` hoàn tất; `P1-T02` (Thuận, gộp sau Checkpoint `P1-B`) chưa có workspace artifact nên chưa được tick.
+#### Phase 2 — Nền tảng giải đấu local
+
+```mermaid
+flowchart LR
+    PC["Checkpoint P1-C<br/>Phase 1 hoàn tất"]
+    T21["P2-T01 (Thuận)<br/>Khóa auth, quota, Elo, series"]
+    I1["P2-D01 (Đạt)<br/>Docker: PostgreSQL, Redis, MinIO"]
+    CO["P2-N01 (Nguyên)<br/>Bot canary + security corpus"]
+
+    subgraph BE["Backend local — Đạt làm tuần tự"]
+        DB["P2-D02…D05<br/>Schema, auth/RBAC, team, upload bot"]
+        RUN["P2-D06…D08<br/>Queue, worker, sandbox, ghi kết quả"]
+        ELO["P2-D09…D10<br/>Lịch thi đấu, Elo, leaderboard API"]
+    end
+
+    PA2["Checkpoint P2-A<br/>Backend local"]
+    UI["P2-D11…D12 (Đạt)<br/>React/Vite: nộp bot, kết quả, leaderboard"]
+    E2E["P2-D13 (Đạt)<br/>Qualification E2E local"]
+    PB2["Checkpoint P2-B<br/>Phase 2 local hoàn tất"]
+    DEP["Thuận deploy từ develop<br/>lên các môi trường"]
+
+    PC --> T21
+    PC --> I1
+    T21 --> DB
+    I1 --> DB
+    T21 --> CO
+    DB --> RUN
+    CO --> RUN
+    RUN --> ELO
+    ELO -.-> PA2
+    ELO --> UI --> E2E --> PB2 --> DEP
+
+    classDef gate stroke-width:3px;
+    class PC,PA2,PB2 gate;
+```
+
+`✅` chỉ gắn cho node có task/checkpoint đã hoàn tất trong `tasks/todo.md` và có bằng chứng verification. Hiện tại chỉ `P1-T01` hoàn tất. Khi một task hoặc checkpoint được xác nhận, thêm `✅` vào đầu nhãn node và đưa node đó vào `class ... done`.
 
 Các điểm đồng bộ bắt buộc:
 
