@@ -133,7 +133,7 @@ Không triển khai ID này. Workspace chung chuyển cho Đinh Đức Thuận d
 **Files dự kiến:** `src/bots/python/sdk.py`, `src/bots/python/tests/test_sdk.py`, `src/bots/python/__init__.py`
 **Ước lượng:** M (3 file)
 
-### [ ] P1-N02 — FirstLegalBot
+### [x] P1-N02 — FirstLegalBot
 
 **Owner:** Đỗ Khôi Nguyên
 **Mô tả:** Bot deterministic chọn action đầu tiên từ `legalActions`.
