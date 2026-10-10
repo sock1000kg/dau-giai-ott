@@ -309,8 +309,8 @@ export interface ScriptedBotOptions {
  * (`timeoutMs` is recorded only) and no child processes.
  *
  * After `stop()`, `start` and `requestAction` return `{ ok: false, code: 'BOT_EOF' }` and
- * `sendTurnResult`/`finish` resolve as no-ops without recording; the bot is already gone
- * and the runner's `finally` may call them in any order.
+ * `notifyStateUpdate`/`sendTurnResult`/`finish` resolve as no-ops without recording; the bot is
+ * already gone and the runner's `finally` may call them in any order.
  */
 export class ScriptedBot implements BotPort {
   readonly #queue: ScriptedReply[];
@@ -366,6 +366,15 @@ export class ScriptedBot implements BotPort {
         action: cloneAction(reply.action),
       },
     };
+  }
+
+  /**
+   * Send-only STATE_UPDATE (Bot Protocol v1 §5.2/§8): records the update, consumes no
+   * scripted reply and records no timeout.
+   */
+  async notifyStateUpdate(update: StateUpdateMessage): Promise<void> {
+    if (this.#stopCalls > 0) return;
+    this.#received.push(update);
   }
 
   async sendTurnResult(message: TurnResultMessage): Promise<void> {

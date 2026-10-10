@@ -581,6 +581,39 @@ describe('ScriptedBot', () => {
     const healthy = new ScriptedBot({ replies: [] });
     expect(await healthy.start(makeInit())).toEqual({ ok: true });
   });
+  it('18. notifyStateUpdate records in order without consuming a reply or a timeout', async () => {
+    const state = new FakeGame().create(makeConfig());
+    const update = makeStateUpdate(state, 11);
+    const scripted: ActionMessage = {
+      type: 'ACTION',
+      protocolVersion: 1,
+      matchId: 'match-1',
+      turnId: 12,
+      action: DEFAULT_LEGAL_ACTIONS[0] as GameAction,
+    };
+    const bot = new ScriptedBot({ replies: [{ kind: 'raw', message: scripted }] });
+
+    await bot.start(makeInit());
+    await bot.notifyStateUpdate(update);
+    expect(bot.received).toEqual([makeInit(), update]);
+
+    const reply = await bot.requestAction(update, 3000);
+
+    // The reply queue is untouched, so requestAction still gets the first script …
+    expect(reply).toEqual({ ok: true, message: scripted });
+    // … and a send-only update records no timeout: only requestAction appends one.
+    expect(bot.requestedTimeouts).toEqual([3000]);
+  });
+
+  it('19. notifyStateUpdate records nothing after stop', async () => {
+    const state = new FakeGame().create(makeConfig());
+    const bot = new ScriptedBot({ replies: [] });
+
+    await bot.stop();
+    await bot.notifyStateUpdate(makeStateUpdate(state));
+
+    expect(bot.received).toEqual([]);
+  });
 });
 
 describe('boundaries', () => {

@@ -64,6 +64,11 @@ export type BotStartResult = { readonly ok: true } | { readonly ok: false; reado
 export interface BotPort {
   start(init: InitMessage): Promise<BotStartResult>;
   requestAction(update: StateUpdateMessage, timeoutMs: number): Promise<BotReply>;
+  /**
+   * Send-only STATE_UPDATE for a turn with no legal action (Bot Protocol v1 §5.2/§8):
+   * the bot gets the update but no ACTION is expected or waited for.
+   */
+  notifyStateUpdate(update: StateUpdateMessage): Promise<void>;
   sendTurnResult(message: TurnResultMessage): Promise<void>;
   finish(message: MatchResultMessage): Promise<void>;
   /** Idempotent; must be safe to call in `finally` after any failure. */
