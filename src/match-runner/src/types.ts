@@ -9,6 +9,7 @@
 import type { GameConfig, GameEvent, GameResult, GameState, PlayerSide } from '@ott/game-core';
 import type { FaultSummary, Limits } from '@ott/bot-protocol';
 
+import type { EventLogV1 } from './event-log.ts';
 import type { BotPort, GamePort } from './ports.ts';
 
 /** Everything one match needs; `matchId` is copied verbatim into every protocol message. */
@@ -36,6 +37,7 @@ export interface MatchReport {
   /** Every transition event, in emission order; `sequence` is strictly increasing. */
   readonly events: readonly GameEvent[];
   readonly faults: Readonly<Record<PlayerSide, FaultSummary>>;
+  readonly log: EventLogV1;
 }
 
 export type MatchRunnerErrorCode =

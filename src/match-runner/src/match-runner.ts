@@ -50,6 +50,8 @@ import {
   recordValidAction,
   zeroFaultSummary,
 } from './errors.ts';
+import { EVENT_LOG_FORMAT, EVENT_LOG_FORMAT_VERSION, cloneEvent } from './event-log.ts';
+import type { EventLogEntry, EventLogFooter, EventLogHeader, EventLogV1, TransitionInput } from './event-log.ts';
 import type { MatchConfig, MatchPorts, MatchReport } from './types.ts';
 
 const SIDES = ['X', 'O'] as const;
@@ -113,7 +115,23 @@ export async function runMatch(config: MatchConfig, ports: MatchPorts): Promise<
   const { game, bots } = ports;
   const { matchId } = config;
   const events: GameEvent[] = [];
+  const entries: EventLogEntry[] = [];
   let runtime = toRuntime();
+
+  const recordTransition = (
+    input: TransitionInput,
+    transitionEvents: readonly GameEvent[],
+    nextState: GameState,
+  ): void => {
+    entries.push({
+      index: entries.length + 1,
+      input,
+      events: transitionEvents.map(cloneEvent),
+      revision: nextState.revision,
+      stateHash: game.hash(nextState),
+    });
+    events.push(...transitionEvents);
+  };
 
   try {
     let state = game.create(config.game);
@@ -150,7 +168,7 @@ export async function runMatch(config: MatchConfig, ports: MatchPorts): Promise<
       // The contract has no "both failed" rule. Documented limitation: the first failed
       // side in X, O order is forfeited, so a double spawn failure still produces one
       // consistent result (a forfeit by X).
-      state = forfeit(game, state, firstFailed, runtime[firstFailed].summary.lastErrorCode, events);
+      state = forfeit(game, state, firstFailed, runtime[firstFailed].summary.lastErrorCode, recordTransition);
     }
 
     while (state.status === 'PLAYING') {
@@ -180,7 +198,7 @@ export async function runMatch(config: MatchConfig, ports: MatchPorts): Promise<
           state: toPublicState(state),
           legalActions: [],
         });
-        state = adjudicateSkip(game, state, side, turnId, 'NO_LEGAL_ACTION', events);
+        state = adjudicateSkip(game, state, side, turnId, 'NO_LEGAL_ACTION', recordTransition);
         outcome = 'SKIPPED';
         errorCode = 'NO_LEGAL_ACTION';
       } else {
@@ -203,12 +221,12 @@ export async function runMatch(config: MatchConfig, ports: MatchPorts): Promise<
               ...runtime,
               [side]: { alive: false, summary: recordProcessFault(runtime[side].summary, reply.code) },
             };
-            state = forfeit(game, state, side, reply.code, events);
+            state = forfeit(game, state, side, reply.code, recordTransition);
             break;
           }
           const recorded = recordRecoverable(runtime[side].summary, reply.code, config.limits);
           runtime = { ...runtime, [side]: { ...runtime[side], summary: recorded.summary } };
-          state = adjudicateSkip(game, state, side, turnId, reply.code, events);
+          state = adjudicateSkip(game, state, side, turnId, reply.code, recordTransition);
           outcome = 'SKIPPED';
           errorCode = reply.code;
           if (recorded.mustForfeit && state.status === 'PLAYING') forfeitAfterTurn = true;
@@ -227,7 +245,7 @@ export async function runMatch(config: MatchConfig, ports: MatchPorts): Promise<
           if (fault !== null) {
             const recorded = recordRecoverable(runtime[side].summary, fault, config.limits);
             runtime = { ...runtime, [side]: { ...runtime[side], summary: recorded.summary } };
-            state = adjudicateSkip(game, state, side, turnId, fault, events);
+            state = adjudicateSkip(game, state, side, turnId, fault, recordTransition);
             outcome = 'SKIPPED';
             errorCode = fault;
             if (recorded.mustForfeit && state.status === 'PLAYING') forfeitAfterTurn = true;
@@ -242,7 +260,7 @@ export async function runMatch(config: MatchConfig, ports: MatchPorts): Promise<
             applied = cloneAction(message.action);
             outcome = 'APPLIED';
             state = transition.state;
-            events.push(...transition.events);
+            recordTransition({ kind: 'apply', side, action: cloneAction(applied) }, transition.events, state);
             runtime = { ...runtime, [side]: { ...runtime[side], summary: recordValidAction(runtime[side].summary) } };
           }
         }
@@ -269,7 +287,7 @@ export async function runMatch(config: MatchConfig, ports: MatchPorts): Promise<
         // skip, so its TURN_RESULT goes out first; only then is the match forfeited. The
         // bot stays alive and still receives the MATCH_RESULT.
         const code = runtime[side].summary.lastErrorCode;
-        state = forfeit(game, state, side, code, events);
+        state = forfeit(game, state, side, code, recordTransition);
         break;
       }
     }
@@ -301,7 +319,33 @@ export async function runMatch(config: MatchConfig, ports: MatchPorts): Promise<
       if (runtime[side].alive) await bots[side].finish(structuredClone(matchResult));
     }
 
-    return { matchId, result, finalState: state, events, faults };
+    const header: EventLogHeader = {
+      format: EVENT_LOG_FORMAT,
+      formatVersion: EVENT_LOG_FORMAT_VERSION,
+      matchId,
+      protocolVersion: PROTOCOL_VERSION,
+      engineVersion: config.game.engineVersion,
+      seed: config.seed,
+      game: structuredClone(config.game),
+      limits: structuredClone(config.limits),
+    };
+
+    const footer: EventLogFooter = {
+      result: { ...result },
+      faults: {
+        X: { ...faults.X },
+        O: { ...faults.O },
+      },
+      entryCount: entries.length,
+    };
+
+    const log: EventLogV1 = {
+      header,
+      entries,
+      footer,
+    };
+
+    return { matchId, result, finalState: state, events, faults, log };
   } finally {
     // Cleanup always happens, X then O, and the second stop still runs if the first throws.
     try {
@@ -319,13 +363,13 @@ function adjudicateSkip(
   side: PlayerSide,
   turnId: number,
   reason: SkipReason,
-  events: GameEvent[],
+  record: (input: TransitionInput, events: readonly GameEvent[], next: GameState) => void,
 ): GameState {
   const transition: TransitionResult = game.skip(state, side, reason);
   if (!transition.ok) {
     throw new MatchRunnerError('ENGINE_REJECTED_ACTION', `skip rejected on turn ${turnId} (${transition.code})`);
   }
-  events.push(...transition.events);
+  record({ kind: 'skip', side, reason }, transition.events, transition.state);
   return transition.state;
 }
 
@@ -335,12 +379,13 @@ function forfeit(
   state: GameState,
   side: PlayerSide,
   code: ProcessFaultCode | SkipReason | null,
-  events: GameEvent[],
+  record: (input: TransitionInput, events: readonly GameEvent[], next: GameState) => void,
 ): GameState {
-  const transition = game.forfeit(state, side, code ?? 'SANDBOX_VIOLATION');
+  const fault = code ?? 'SANDBOX_VIOLATION';
+  const transition = game.forfeit(state, side, fault);
   if (!transition.ok) {
     throw new MatchRunnerError('ENGINE_REJECTED_ACTION', `forfeit rejected (${transition.code})`);
   }
-  events.push(...transition.events);
+  record({ kind: 'forfeit', side, fault }, transition.events, transition.state);
   return transition.state;
 }
