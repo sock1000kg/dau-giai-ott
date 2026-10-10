@@ -41,9 +41,7 @@ export interface MatchReport {
 export type MatchRunnerErrorCode =
   /** `game.maxTurns` disagrees with `limits.maxTurns`. */
   | 'INVALID_CONFIG'
-  /** Placeholder until P1-D04 gives bot failures their skip/forfeit policy. */
-  | 'UNHANDLED_BOT_FAILURE'
-  /** The GamePort rejected an action it had just listed as legal — engine invariant broken. */
+  /** The GamePort rejected an action or skip it had just listed as legal — engine invariant broken. */
   | 'ENGINE_REJECTED_ACTION'
   /** The state is FINISHED but `GamePort.result` returned null — engine invariant broken. */
   | 'ENGINE_NO_RESULT';

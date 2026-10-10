@@ -5,7 +5,8 @@
  * - `ports.ts`  — GamePort/BotPort boundary over Engine API v1 and Bot Protocol v1.
  * - `fakes.ts`  — deterministic in-memory doubles (FakeGame, ScriptedBot).
  * - `types.ts`  — MatchConfig/MatchPorts/MatchReport and MatchRunnerErrorCode (P1-D03).
- * - `match-runner.ts` — the turn loop `runMatch` plus MatchRunnerError (P1-D03).
+ * - `match-runner.ts` — the turn loop `runMatch`, with the P1-D04 fault policy.
+ * - `errors.ts` — MatchRunnerError and the pure fault-counter helpers (P1-D04).
  *
  * Boundary: this module contains no game rules and spawns no processes; the fakes
  * script lifecycle bookkeeping only and never copy the engine's behavior.
@@ -14,3 +15,4 @@ export * from './ports.ts';
 export * from './fakes.ts';
 export * from './types.ts';
 export * from './match-runner.ts';
+export * from './errors.ts';
