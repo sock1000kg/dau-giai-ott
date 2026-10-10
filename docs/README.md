@@ -27,7 +27,7 @@ Nếu hai nguồn sự thật khác loại mâu thuẫn nhau, AI phải dừng t
 - Bộ tài liệu khởi tạo được đưa vào `main`, sau đó Thuận tạo `develop` từ `main` mới; nhóm chỉ bắt đầu branch cá nhân sau khi `origin/develop` tồn tại.
 - Ngày 2026-10-09 owner đổi theo lane và task ID được đánh lại theo owner mới: Long Trần làm core/protocol (`P1-L*`), Đỗ Khôi Nguyên làm bot Python và sandbox corpus (`P1-N*`, `P2-N01`), Phạm Tất Đạt làm MatchRunner và platform (`P1-D*`, `P2-D*`). Bảng ID cũ → mới: [`tasks/plan.md` mục 2.2.1](../tasks/plan.md).
 - Workspace chung là `P1-T02` của Đinh Đức Thuận (thay `P1-D01` đã hủy), gộp sau Checkpoint `P1-B`; trước đó mỗi module tự khai báo dependency và chạy local.
-- `P1-D02` (GamePort, BotPort và fakes) đã merge vào `develop`; `P1-D03` (MatchRunner happy path) và `P1-D04` (error, skip và cleanup) của Đạt đã xong trên các branch riêng, chưa merge. Task tiếp theo của lane Đạt là `P1-D07` (event log và replay verifier).
+- `P1-D02` (GamePort, BotPort và fakes) đã merge vào `develop`; `P1-D03` (MatchRunner happy path), `P1-D04` (error, skip và cleanup) và `P1-D07` (event log và replay verifier) của Đạt đã xong trên các branch riêng, chưa merge. Các task `P1-D05`, `P1-D06` và `P1-D08` chờ `P1-L04` của Long.
 - Source root là [`src/`](../src/README.md); hiện mới có layout, chưa có implementation.
 - Kế hoạch GitNexus ngày 08/10 trong `docs/plans/` đã bị supersede; không dùng task ID hoặc owner trong tài liệu đó.
 

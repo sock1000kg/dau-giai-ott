@@ -238,7 +238,7 @@ Không triển khai ID này. Workspace chung chuyển cho Đinh Đức Thuận d
 **Files dự kiến:** `src/match-runner/src/bot-process.ts`, `src/match-runner/src/process-errors.ts`, `src/match-runner/tests/bot-process-lifecycle.test.ts`
 **Ước lượng:** M (3 file)
 
-### [ ] P1-D07 — Event log và replay verifier
+### [x] P1-D07 — Event log và replay verifier
 
 **Owner:** Phạm Tất Đạt
 **Mô tả:** Ghi event ổn định và xác minh replay qua GamePort.
@@ -247,6 +247,7 @@ Không triển khai ID này. Workspace chung chuyển cho Đinh Đức Thuận d
 **Dependencies:** `P1-D04`.
 **Files dự kiến:** `src/match-runner/src/event-log.ts`, `src/match-runner/src/replay.ts`, `src/match-runner/tests/event-log.test.ts`, `src/match-runner/tests/replay.test.ts`
 **Ước lượng:** M (4 file)
+**Hoàn tất:** 2026-10-10 — EventLogV1 (`ott.match-event-log` v1) được sinh trong bộ nhớ từ `runMatch` với `index` liên tục 1..n theo từng transition, header/footer đầy đủ config/limits/outcome/finalStateHash và bộ đếm lỗi thật, không lưu bot source/argv/env/stdout/stderr; ghi file atomic qua `.partial` và rename an toàn; `verifyReplay` xác minh thuần túy qua `GamePort` bắt đủ 9 mã lỗi thiếu/thừa/sai thứ tự/hash. 10 test mới (7 event-log + 3 replay); tổng 71 test pass, typecheck và build pass.
 
 ### [ ] P1-D08 — CLI chạy trận local
 

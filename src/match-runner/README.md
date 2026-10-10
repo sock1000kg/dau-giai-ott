@@ -7,8 +7,8 @@ MatchRunner — điều phối **Engine API v1** và **Bot Protocol v1**: mỗi 
 
 ## Phạm vi
 
-Module này đã có ranh giới (P1-D02), vòng lặp trận happy path (P1-D03) và policy lỗi/skip/
-cleanup (P1-D04).
+Module này đã có ranh giới (P1-D02), vòng lặp trận happy path (P1-D03), policy lỗi/skip/
+cleanup (P1-D04) và event log / replay verifier (P1-D07).
 
 ## Phạm vi P1-D02 — ports và fakes
 
@@ -115,6 +115,33 @@ Nguồn sự thật: Bot Protocol v1 §6 (mã lỗi và policy), ngưỡng lấy
    bằng `NO_LEGAL_ACTION` khi hết nước đi (không chờ bot), §5 yêu cầu process fault
    forfeit, và §8/verify D07 cần hash.
 
+## Phạm vi P1-D07 — event log và replay verifier
+
+`src/event-log.ts`: format artifact trận đấu của runner, serializer/parser, ghi file atomic:
+- Format: `format: 'ott.match-event-log'`, `formatVersion: 1`. (Parser xác minh chính xác giá trị này và `protocolVersion: 1`).
+- Helpers `cloneEvent` và `cloneEventLog` được export công khai (qua `index.ts`) hỗ trợ deep copy an toàn.
+- Cấu trúc:
+  - `header`: `format`, `formatVersion`, `matchId`, `protocolVersion`, `engineVersion`, `seed`, `game` (đầy đủ config và map spawns), `limits`.
+  - `entries`: mảng các `EventLogEntry`, mỗi entry đại diện cho **một transition** thành công: `index`, `input` (`TransitionInput`: `apply` / `skip` / `forfeit`), `events` (engine events nguyên bản), `revision` sau transition, `stateHash` sau transition (`game.hash(state)`).
+  - `footer`: `result` (`GameResult` gồm `finalStateHash`), `faults` (bộ đếm thật X và O), `entryCount` (số lượng entry).
+- **Tại sao log-owned `index`**: Engine API v1 không quy định `sequence` bắt đầu từ đâu hay có gap-free không (fake dùng revision/revision+1), nên tính liên tục `1..n` được bảo đảm bởi chính `index` của log; các field của engine được giữ nguyên để replay kiểm tra.
+- **Atomic write** (`writeEventLogFile`): ghi ra `${path}.partial` cùng thư mục rồi `rename` đè lên `path`. Nếu có lỗi, file `.partial` được xóa (best-effort) và ném lỗi ra; không bao giờ để lại file cụt ở `path`. Tên file tạm tất định, không chứa clock hay ngẫu nhiên.
+- **Không bao giờ log**: mã nguồn bot, argv, env, stderr hoặc raw stdout — chỉ lưu các kiểu dữ liệu khai báo trong contract.
+- **Ghi chú phạm vi §13.1**: §13.1 trong tài liệu yêu cầu mô tả tập event sản phẩm phong phú hơn (`MATCH_STARTED`, `TURN_STARTED`, `ACTION_RECEIVED`, `BOT_FAULT`, snapshot...). Những thứ đó thuộc sản phẩm replay Phase 2. Engine API v1 đã khóa chỉ phát ra `ACTION_APPLIED | TURN_SKIPPED | MATCH_FINISHED`. P1-D07 ghi đúng các engine events đó kèm runner inputs để replay tái hiện trọn vẹn, có version để Phase 2 mở rộng thành v2 mà không phá vỡ reader v1.
+
+`src/replay.ts`: hàm xác minh thuần trong bộ nhớ `verifyReplay(log, game): ReplayVerdict`:
+- Thuần túy, không I/O, không import runtime `@ott/game-core` hay `node:fs`, chỉ thao tác qua `GamePort`.
+- Mã lỗi verifier (`ReplayIssueCode`):
+  - `SEQUENCE_GAP`: `entry.index` không liên tục 1..n hoặc `footer.entryCount !== entries.length`.
+  - `ENGINE_REJECTED`: `GamePort` từ chối input đã ghi (`ok: false`).
+  - `EVENT_MISMATCH`: replayed events khác logged events (bắt được việc sửa/đổi thứ tự event).
+  - `REVISION_MISMATCH`: state revision sau transition khác revision đã ghi.
+  - `STATE_HASH_MISMATCH`: hash state tính lại khác `stateHash` đã ghi.
+  - `EXTRA_ENTRIES`: còn entries sau khi state đã `FINISHED`.
+  - `MISSING_ENTRIES`: log kết thúc khi state vẫn đang `PLAYING`.
+  - `RESULT_MISMATCH`: `footer.result` khác `game.result(finalState)`.
+  - `FINAL_HASH_MISMATCH`: `footer.result.finalStateHash` khác `game.hash(finalState)`.
+
 ## Lệnh
 
 ```bash
@@ -124,6 +151,7 @@ npm --prefix src/match-runner test
 npm --prefix src/match-runner test -- tests/ports.test.ts
 npm --prefix src/match-runner test -- tests/happy-path.test.ts
 npm --prefix src/match-runner test -- tests/error-paths.test.ts
+npm --prefix src/match-runner test -- tests/event-log.test.ts tests/replay.test.ts
 npm --prefix src/match-runner run build
 ```
 
