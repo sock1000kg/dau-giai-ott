@@ -185,7 +185,7 @@ Không triển khai ID này. Workspace chung chuyển cho Đinh Đức Thuận d
 
 ## Phase 1 — Lane Đạt: MatchRunner và local integration
 
-### [ ] P1-D02 — GamePort, BotPort và fakes
+### [x] P1-D02 — GamePort, BotPort và fakes
 
 **Owner:** Phạm Tất Đạt
 **Mô tả:** Định nghĩa ranh giới runner và doubles để code không chờ core/bot thật.
@@ -194,6 +194,7 @@ Không triển khai ID này. Workspace chung chuyển cho Đinh Đức Thuận d
 **Dependencies:** `P1-L02`, `P1-L03`.
 **Files dự kiến:** `src/match-runner/package.json`, `src/match-runner/src/ports.ts`, `src/match-runner/src/fakes.ts`, `src/match-runner/tests/ports.test.ts`
 **Ước lượng:** M (4 file)
+**Hoàn tất:** 2026-10-10 — `GamePort`/`BotPort` + `FakeGame`/`ScriptedBot` deterministic, 18 test pass, typecheck và build pass. Thêm `src/index.ts` (bắt buộc theo convention §1) và `README.md` (docs-as-code) nên 6 logical paths thay vì 4; thiếu `viewFor` so với sketch §8.2 và bổ sung `listLegalActions`/`forfeit`/`hash` theo Engine API §5/§8.
 
 ### [ ] P1-D03 — MatchRunner happy path
 
