@@ -17,6 +17,17 @@
  * framework access; inputs are never mutated.
  */
 
+import type {
+  ActionErrorCode,
+  GameConfig,
+  GameState,
+  MapDefinition,
+  Piece,
+  PieceType,
+  PlayerSide,
+  Position,
+} from './types.ts';
+
 export const BOARD_WIDTH = 9;
 export const BOARD_HEIGHT = 9;
 export const ENGINE_VERSION = '1.0.0';
@@ -24,47 +35,27 @@ export const DEFAULT_MAP_ID = 'default';
 export const DEFAULT_MAP_VERSION = 1;
 export const DEFAULT_MAP_CHECKSUM = 'a'.repeat(64);
 
-export type PlayerSide = 'X' | 'O';
-export type PieceType = 'ROCK' | 'PAPER' | 'SCISSORS';
-
-export interface Position {
-  readonly col: number; // integer 0..8
-  readonly row: number; // integer 0..8
-}
-
-export interface Piece {
-  readonly id: string;
-  readonly owner: PlayerSide;
-  readonly type: PieceType;
-  readonly position: Position;
-}
-
-export type GameResultReason = 'REACHED_GOAL' | 'ELIMINATED_ALL_PIECES';
-export type GameStatus = 'PLAYING' | 'FINISHED';
-
-export interface GameOutcome {
+/** Baseline win outcome (transitional; contract `GameOutcome` is used by `createGame`). */
+export interface BaselineOutcome {
   readonly winnerSide: PlayerSide;
-  readonly reason: GameResultReason;
+  readonly reason: 'REACHED_GOAL' | 'ELIMINATED_ALL_PIECES';
 }
 
-/** Baseline rule-state. The locked `GameState` (revision/turnCount/...) lands in P1-L02. */
+/**
+ * Baseline rule-state from P1-L01. Kept so the baseline tests stay green while the
+ * locked `GameState`/`createGame` land here (P1-L02) and `applyAction` plus the full
+ * lifecycle land in P1-L05..P1-L07.
+ */
 export interface BaselineState {
-  readonly status: GameStatus;
+  readonly status: 'PLAYING' | 'FINISHED';
   readonly turn: PlayerSide;
   readonly pieces: readonly Piece[];
-  readonly outcome: GameOutcome | null;
+  readonly outcome: BaselineOutcome | null;
 }
-
-export type MoveErrorCode =
-  | 'GAME_NOT_PLAYING'
-  | 'NOT_YOUR_TURN'
-  | 'PIECE_NOT_FOUND'
-  | 'NOT_YOUR_PIECE'
-  | 'ILLEGAL_MOVE';
 
 export type MoveResult =
   | { readonly ok: true; readonly state: BaselineState }
-  | { readonly ok: false; readonly state: BaselineState; readonly error: MoveErrorCode };
+  | { readonly ok: false; readonly state: BaselineState; readonly error: ActionErrorCode };
 
 /** X races to i9; O races to a1. */
 export const GOALS: Readonly<Record<PlayerSide, Position>> = {
@@ -159,6 +150,45 @@ export function beats(attacker: PieceType, defender: PieceType): boolean {
   return BEATS[attacker] === defender;
 }
 
+/**
+ * Locked default map for Phase 1: 9x9, no obstacles, 18 spawns, goals X->i9 / O->a1.
+ * `createGame` deep-copies `spawns`, so callers may pass this object directly.
+ */
+export const DEFAULT_MAP: MapDefinition = {
+  schemaVersion: 1,
+  mapId: DEFAULT_MAP_ID,
+  version: DEFAULT_MAP_VERSION,
+  checksum: DEFAULT_MAP_CHECKSUM,
+  width: 9,
+  height: 9,
+  obstacles: [],
+  spawns: SPAWN_LAYOUT.map((entry) => clonePiece(entry)),
+  goals: GOALS,
+};
+
+/**
+ * Locked Engine API v1 constructor: deterministic initial `GameState` with deep-copied
+ * spawns and `map` reduced to its `MapRef` projection. Never mutates `config`.
+ * Counters start at turnNumber 1, turnCount 0, revision 0 (Engine API v1 section 5).
+ */
+export function createGame(config: GameConfig): GameState {
+  const map = config.map;
+  return {
+    schemaVersion: 1,
+    engineVersion: config.engineVersion,
+    gameId: config.gameId,
+    map: { mapId: map.mapId, version: map.version, checksum: map.checksum },
+    status: 'PLAYING',
+    turn: 'X',
+    turnNumber: 1,
+    turnCount: 0,
+    revision: 0,
+    maxTurns: config.maxTurns,
+    pieces: map.spawns.map((entry) => clonePiece(entry)).sort(byId),
+    outcome: null,
+  };
+}
+
 /** Deterministic initial state: X to move, 18 deep-copied pieces, no outcome. */
 export function createInitialGame(): BaselineState {
   return {
@@ -188,7 +218,7 @@ export function getLegalMoves(state: BaselineState, pieceId: string): readonly P
   return destinations.sort(byRowThenCol);
 }
 
-function validateMove(state: BaselineState, side: PlayerSide, pieceId: string, to: Position): MoveErrorCode | null {
+function validateMove(state: BaselineState, side: PlayerSide, pieceId: string, to: Position): ActionErrorCode | null {
   if (state.status !== 'PLAYING') return 'GAME_NOT_PLAYING';
   if (state.turn !== side) return 'NOT_YOUR_TURN';
   const piece = state.pieces.find((candidate) => candidate.id === pieceId);
@@ -198,7 +228,7 @@ function validateMove(state: BaselineState, side: PlayerSide, pieceId: string, t
   return isLegal ? null : 'ILLEGAL_MOVE';
 }
 
-function resolveOutcome(pieces: readonly Piece[], side: PlayerSide): GameOutcome | null {
+function resolveOutcome(pieces: readonly Piece[], side: PlayerSide): BaselineOutcome | null {
   const goal = GOALS[side];
   if (pieces.some((piece) => piece.owner === side && samePosition(piece.position, goal))) {
     return { winnerSide: side, reason: 'REACHED_GOAL' };
