@@ -422,19 +422,22 @@ describe('P1-D03 MatchRunner happy path', () => {
     expect(o.received).toHaveLength(0);
   });
 
-  it('12. throws UNHANDLED_BOT_FAILURE for a bot error reply and still stops both bots', async () => {
+  it('12. a bot fault skips the turn and both bots are still stopped (policy lives in D04)', async () => {
     const game = new FakeGame();
-    const x = new ScriptedBot({ replies: [{ kind: 'error', code: 'BOT_TIMEOUT' }] });
+    const x = new ScriptedBot({
+      replies: [{ kind: 'error', code: 'BOT_TIMEOUT' }, ...actionReplies(3, 'X')],
+    });
     const o = new ScriptedBot({ replies: actionReplies(4, 'O') });
     const ports: MatchPorts = { game, bots: { X: x, O: o } };
 
-    await expectRunnerError(runMatch(makeConfig(4), ports), 'UNHANDLED_BOT_FAILURE');
+    // P1-D04 replaced the D03 throw: the fault becomes a skip, not a rejection.
+    const report = await runMatch(makeConfig(4), ports);
 
+    expect(report.result.reason).toBe('TURN_LIMIT');
+    expect(report.faults.X.recoverableTotal).toBe(1);
+    expect(ofType(x.received, 'TURN_RESULT')[0]?.errorCode).toBe('BOT_TIMEOUT');
     expect(x.stopCalls).toBe(1);
     expect(o.stopCalls).toBe(1);
-    // The failing turn produced no TURN_RESULT and no MATCH_RESULT.
-    expect(ofType(x.received, 'TURN_RESULT')).toHaveLength(0);
-    expect(ofType(o.received, 'MATCH_RESULT')).toHaveLength(0);
   });
 
   it('13. keeps the module boundary: type-only game imports, no process, clock or random', () => {

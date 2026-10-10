@@ -205,9 +205,9 @@ Không triển khai ID này. Workspace chung chuyển cho Đinh Đức Thuận d
 **Dependencies:** `P1-D02`.
 **Files dự kiến:** `src/match-runner/src/match-runner.ts`, `src/match-runner/src/types.ts`, `src/match-runner/tests/happy-path.test.ts`
 **Ước lượng:** M (3 file)
-**Hoàn tất:** 2026-10-10 — `runMatch(config, ports)` chạy vòng lặp happy path theo Bot Protocol §8: INIT một lần mỗi bot, chỉ hỏi bot của `state.turn` với `turnId = turnNumber`, `TURN_RESULT` broadcast cho X rồi O, một `MATCH_RESULT` nhất quán, `stop()` X rồi O trong `finally`; `legalActions` rỗng thì bot vẫn nhận `STATE_UPDATE` send-only qua `notifyStateUpdate` rồi runner skip `NO_LEGAL_ACTION` không chờ `ACTION` (§5.2/§8). Message outbound không chia sẻ reference mutable. 14 test mới + 21 test `ports.test.ts` pass, typecheck và build pass. Lỗi bot tạm throw `UNHANDLED_BOT_FAILURE` cho tới `P1-D04`.
+**Hoàn tất:** 2026-10-10 — `runMatch(config, ports)` chạy vòng lặp happy path theo Bot Protocol §8: INIT một lần mỗi bot, chỉ hỏi bot của `state.turn` với `turnId = turnNumber`, `TURN_RESULT` broadcast cho X rồi O, một `MATCH_RESULT` nhất quán, `stop()` X rồi O trong `finally`; `legalActions` rỗng thì bot vẫn nhận `STATE_UPDATE` send-only qua `notifyStateUpdate` rồi runner skip `NO_LEGAL_ACTION` không chờ `ACTION` (§5.2/§8). Message outbound không chia sẻ reference mutable. 14 test mới + 21 test `ports.test.ts` pass, typecheck và build pass. Throw tạm `UNHANDLED_BOT_FAILURE` đã được thay bằng policy thật trong `P1-D04`.
 
-### [ ] P1-D04 — MatchRunner error, skip và cleanup
+### [x] P1-D04 — MatchRunner error, skip và cleanup
 
 **Owner:** Phạm Tất Đạt
 **Mô tả:** Xử lý lỗi bot thành skip/forfeit và luôn cleanup.
@@ -216,6 +216,7 @@ Không triển khai ID này. Workspace chung chuyển cho Đinh Đức Thuận d
 **Dependencies:** `P1-D03`.
 **Files dự kiến:** `src/match-runner/src/match-runner.ts`, `src/match-runner/src/errors.ts`, `src/match-runner/tests/error-paths.test.ts`
 **Ước lượng:** M (3 file)
+**Hoàn tất:** 2026-10-10 — policy lỗi Bot Protocol §6 hiện thực trong `errors.ts` (helper thuần) và `match-runner.ts`: 7 mã lỗi lượt phục hồi skip đúng một lần và đếm bộ đếm, `NO_LEGAL_ACTION` không tính lỗi, action hợp lệ reset `consecutive`, ngưỡng 3 liên tiếp / 5 tổng thì forfeit, 6 process fault forfeit ngay và bot chết không nhận thêm message, `start` thất bại thì forfeit side đầu tiên theo X, O, `MATCH_RESULT` đúng một lần cho mỗi bot còn sống với bộ đếm thật, `stop()` X rồi O luôn chạy trong `finally`, exception lạ ném ra nguyên vẹn. Bỏ mã `UNHANDLED_BOT_FAILURE`. 26 test mới; tổng 61 test pass, typecheck và build pass.
 
 ### [ ] P1-D05 — BotProcess NDJSON adapter
 

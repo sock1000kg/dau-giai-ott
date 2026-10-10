@@ -7,7 +7,8 @@ MatchRunner — điều phối **Engine API v1** và **Bot Protocol v1**: mỗi 
 
 ## Phạm vi
 
-Module này đã có ranh giới (P1-D02) và vòng lặp trận happy path (P1-D03).
+Module này đã có ranh giới (P1-D02), vòng lặp trận happy path (P1-D03) và policy lỗi/skip/
+cleanup (P1-D04).
 
 ## Phạm vi P1-D02 — ports và fakes
 
@@ -38,8 +39,8 @@ INIT → X, rồi INIT → O
 loop khi state PLAYING:
   legalActions rỗng  → STATE_UPDATE (legalActions: []) → bot đó, KHÔNG chờ ACTION
   ngược lại          → STATE_UPDATE → bot của state.turn, ACTION ← bot đó
-  TURN_RESULT → X rồi O (cùng một object)
-MATCH_RESULT → X rồi O
+  TURN_RESULT → các bot còn sống (X rồi O)
+MATCH_RESULT → các bot còn sống (X rồi O)
 stop X rồi stop O (luôn chạy trong finally)
 ```
 
@@ -51,15 +52,47 @@ stop X rồi stop O (luôn chạy trong finally)
   không phải lỗi bot nên `TURN_RESULT.errorCode` là `NO_LEGAL_ACTION`, action `null`.
 - `STATE_UPDATE.state` là projection `PublicGameState`: không có `gameId`, `status` luôn
   `PLAYING`, `outcome` luôn `null`.
-- **Lỗi bot hiện throw `UNHANDLED_BOT_FAILURE`** (reply `ok:false`, sai `matchId`, sai
-  `turnId`, action không hợp lệ, `start` thất bại) — `P1-D04` sẽ thay bằng policy
-  skip/forfeit. Lỗi invariant của engine throw `ENGINE_REJECTED_ACTION` /
-  `ENGINE_NO_RESULT`; config lệch `maxTurns` giữa `game` và `limits` throw `INVALID_CONFIG`.
-- `faults` trong `MATCH_RESULT` và `MatchReport` luôn là số 0 ở D03; bộ đếm là của D04.
+- Lỗi bot do policy `P1-D04` xử lý (xem mục kế tiếp), không còn throw từ happy path.
+  Lỗi invariant của engine vẫn throw `ENGINE_REJECTED_ACTION` / `ENGINE_NO_RESULT`;
+  config lệch `maxTurns` giữa `game` và `limits` throw `INVALID_CONFIG`.
 - **Message outbound không chia sẻ reference mutable**: `INIT` deep-copy `map`/`limits` cho
   từng bot, `TURN_RESULT`/`MATCH_RESULT` mỗi bot nhận một bản `structuredClone` riêng, và
   `report.faults` là object graph độc lập với `MATCH_RESULT`. Một bot double sửa message của
   mình không ảnh hưởng bot kia, `config` của caller hay `MatchReport`.
+
+## Phạm vi P1-D04 — policy lỗi, skip và cleanup
+
+`src/errors.ts` (thuần, không side effect): `MatchRunnerError` (chuyển từ `match-runner.ts`,
+public API không đổi), `isProcessFault(code)` dựng từ `PROCESS_FAULT_CODES` của
+`@ott/bot-protocol`, `zeroFaultSummary()`, `zeroFaults()`, và các helper bộ đếm
+`recordRecoverable` / `recordValidAction` / `recordProcessFault` — mỗi cái nhận `FaultSummary`
+và trả về object mới, không mutate.
+
+Nguồn sự thật: Bot Protocol v1 §6 (mã lỗi và policy), ngưỡng lấy từ §3
+(`maxConsecutiveFaults`, `maxTotalFaults`), khớp ADR-0002 và `docs/tai-lieu-yeu-cau.md` §7.3.
+
+| Loại | Mã | Hành vi runner |
+| --- | --- | --- |
+| Lỗi lượt phục hồi | `MATCH_ID_MISMATCH`, `TURN_ID_MISMATCH`, `ILLEGAL_ACTION`, và reply `ok:false` với `BOT_TIMEOUT` \| `MALFORMED_JSON` \| `SCHEMA_VIOLATION` \| `MESSAGE_TOO_LARGE` | **không** gọi `apply`; `game.skip` đúng một lần; `total` và `consecutive` tăng đúng 1; broadcast `TURN_RESULT` (`SKIPPED`, `action null`, `errorCode` = mã lỗi) cho bot còn sống; khi chạm ngưỡng thì `game.forfeit` |
+| Action hợp lệ | — | chỉ reset `recoverableConsecutive` về 0; `total` và `lastErrorCode` giữ nguyên |
+| Không có nước đi | `NO_LEGAL_ACTION` | skip như trên nhưng **không** đổi bộ đếm nào, không tính là lỗi bot |
+| Process fault | `BOT_SPAWN_FAILED`, `BOT_CRASHED`, `BOT_EOF`, `STDERR_LIMIT_EXCEEDED`, `RESOURCE_LIMIT_EXCEEDED`, `SANDBOX_VIOLATION` | **không** skip, **không** `TURN_RESULT` cho lượt đó; `alive = false`, `lastErrorCode` = mã; `game.forfeit` ngay; `MATCH_RESULT` chỉ tới bot còn sống |
+
+- **Thứ tự phát hiện** (khớp §7 bước 4): `matchId` → `turnId` → legality. Reply sai cả ba thì
+  vẫn báo `MATCH_ID_MISMATCH`.
+- **Quy tắc "còn sống" (`alive`)**: bot chết không nhận thêm message nào (kể cả
+  `TURN_RESULT` lượt sau lẫn `MATCH_RESULT`), nhưng `stop()` vẫn luôn chạy trong `finally`.
+  Mỗi bot còn sống nhận **đúng một** `MATCH_RESULT` và không có message nào sau nó.
+- **Diễn giải 1 — lượt chạm ngưỡng**: contract không nói rõ có gửi `TURN_RESULT` cho lượt đó
+  hay không. Runner gửi `TURN_RESULT` của lượt skip trước, rồi mới `forfeit`, rồi
+  `MATCH_RESULT`. Bot vẫn sống nên vẫn nhận `MATCH_RESULT`.
+- **Diễn giải 2 — cả hai bot đều `start` thất bại**: contract không có quy tắc này. Runner
+  forfeit side thất bại **đầu tiên theo thứ tự X, O** (X thắng khi cả hai chết) để vẫn có một
+  kết quả nhất quán; khi đó không bot nào nhận `MATCH_RESULT`.
+- **Exception lạ**: exception từ port (vd. `ScriptedBot` `{kind:'throw'}`, `GamePort` ném) không
+  được phân xử — nó ném ra khỏi `runMatch` nguyên vẹn, `finally` vẫn stop cả hai bot.
+- `faults` trong `MATCH_RESULT` và trong `MatchReport` là **bộ đếm thật**, là hai object graph
+  độc lập.
 
 ## Quy tắc quan trọng
 
@@ -90,6 +123,7 @@ npm --prefix src/match-runner run typecheck
 npm --prefix src/match-runner test
 npm --prefix src/match-runner test -- tests/ports.test.ts
 npm --prefix src/match-runner test -- tests/happy-path.test.ts
+npm --prefix src/match-runner test -- tests/error-paths.test.ts
 npm --prefix src/match-runner run build
 ```
 
