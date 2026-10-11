@@ -173,7 +173,7 @@ Không triển khai ID này. Workspace chung chuyển cho Đinh Đức Thuận d
 **Files dự kiến:** `src/bots/python/process_fault_bot.py`, `src/bots/python/tests/test_process_fault_bots.py`
 **Ước lượng:** S (2 file)
 
-### [ ] P1-N06 — Contract test và README bot
+### [x] P1-N06 — Contract test và README bot
 
 **Owner:** Đỗ Khôi Nguyên
 **Mô tả:** Chứng minh bots tương thích fixtures mà không cần runner thật.
