@@ -251,7 +251,7 @@ Không triển khai ID này. Workspace chung chuyển cho Đinh Đức Thuận d
 **Ước lượng:** M (4 file)
 **Hoàn tất:** 2026-10-10 — EventLogV1 (`ott.match-event-log` v1) được sinh trong bộ nhớ từ `runMatch` với `index` liên tục 1..n theo từng transition, header/footer đầy đủ config/limits/outcome/finalStateHash và bộ đếm lỗi thật, không lưu bot source/argv/env/stdout/stderr; ghi file atomic qua `.partial` và rename an toàn; `verifyReplay` xác minh thuần túy qua `GamePort` bắt đủ 9 mã lỗi thiếu/thừa/sai thứ tự/hash. 10 test mới (7 event-log + 3 replay); tổng 71 test pass, typecheck và build pass.
 
-### [ ] P1-D08 — CLI chạy trận local
+### [x] P1-D08 — CLI chạy trận local
 
 **Owner:** Phạm Tất Đạt
 **Mô tả:** Composition root nhận hai bot, timeout, maxTurns và output path.
@@ -260,6 +260,7 @@ Không triển khai ID này. Workspace chung chuyển cho Đinh Đức Thuận d
 **Dependencies:** `P1-D06`, `P1-D07`.
 **Files dự kiến:** `src/match-runner/src/cli.ts`, `src/match-runner/src/config.ts`, `src/match-runner/src/index.ts`, `src/match-runner/tests/cli.test.ts`, `src/match-runner/package.json` (script `match`)
 **Ước lượng:** M (5 file)
+**Hoàn tất:** 2026-10-11 — Hoàn thành CLI chạy trận local và composition root (`src/config.ts`, `src/cli.ts`): nhận và validate nghiêm ngặt config qua `node:util` `parseArgs` (`strict: true`), nhận executable và argv tách bạch truyền nguyên văn không qua shell; stdout chỉ chứa đúng một dòng JSON kết quả trận đấu với thứ tự khóa cố định (hoặc usage khi --help), stderr dành riêng cho diagnostics, bot stderr (`[bot X]`/`[bot O]`) và tóm tắt; phân loại rõ ràng exit code (0 thành công kể cả bot forfeit/fault, 1 lỗi hạ tầng/runtime, 2 lỗi cú pháp/config); CLI inject ports/adapters (`createGame`, `createBot`, `readFile`, `writeEventLog`), sử dụng FakeGame tối thiểu 2-spawn chờ core P1-D09 và không chứa luật game, không import child_process trực tiếp. Thêm devDependency `tsx` (pin 4.23.15) và script `match`. 21 test mới trong `tests/cli.test.ts`; tổng 134 test pass (3x flakiness check đạt 100%), typecheck và build pass.
 
 ## Checkpoint P1-B — Ba lane độc lập hoàn tất
 

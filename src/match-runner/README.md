@@ -8,7 +8,8 @@ MatchRunner — điều phối **Engine API v1** và **Bot Protocol v1**: mỗi 
 ## Phạm vi
 
 Module này đã có ranh giới (P1-D02), vòng lặp trận happy path (P1-D03), policy lỗi/skip/
-cleanup (P1-D04), adapter bot process NDJSON (P1-D05) và event log / replay verifier (P1-D07).
+cleanup (P1-D04), adapter bot process NDJSON (P1-D05), timeout/cleanup (P1-D06),
+event log / replay verifier (P1-D07) và CLI chạy trận local (P1-D08).
 
 ## Phạm vi P1-D02 — ports và fakes
 
@@ -212,6 +213,54 @@ Nguồn sự thật: Bot Protocol v1 §6 (mã lỗi và policy), ngưỡng lấy
   - `RESULT_MISMATCH`: `footer.result` khác `game.result(finalState)`.
   - `FINAL_HASH_MISMATCH`: `footer.result.finalStateHash` khác `game.hash(finalState)`.
 
+## Phạm vi P1-D08 — CLI chạy trận local
+
+Composition root và command-line interface cho MatchRunner (`src/config.ts`, `src/cli.ts`):
+- **Phân tách argv và executable**: Nhận lệnh thực thi (`--bot-x`, `--bot-o`) và từng tham số dòng lệnh (`--bot-x-arg`, `--bot-o-arg`) riêng biệt qua `node:util` `parseArgs` (`strict: true`). Không sử dụng chuỗi shell; mọi đối số được truyền nguyên văn (verbatim), giữ nguyên thứ tự và không bị shell expansion hay split bởi khoảng trắng.
+- **Hợp đồng xuất nhập (stdout/stderr contract)**:
+  - `stdout`: Đúng **một dòng** JSON chứa kết quả trận đấu khi kết thúc với mã thoát 0 (hoặc in văn bản trợ giúp khi có `--help`). Định dạng JSON có thứ tự khóa cố định: `matchId`, `winnerSide`, `reason`, `turnCount`, `finalStateHash`, `forfeitedSide`, `faults` (bộ đếm thật X và O), `eventLog` (đường dẫn tuyệt đối).
+  - `stderr`: Dành riêng cho thông tin chẩn đoán, dòng lỗi cấu hình, `stderr` của từng bot chuyển tiếp với tiền tố `[bot X] ` / `[bot O] `, thông báo chẩn đoán bot (`[bot X] diagnostic: ...`), và dòng tóm tắt kết quả trận đấu cho người dùng.
+- **Mã thoát (Exit codes)**:
+  - `0`: Trận đấu hoàn tất và sinh kết quả hợp lệ (bao gồm cả trường hợp bot phạm lỗi bị skip hoặc forfeit).
+  - `1`: Lỗi hạ tầng hoặc lỗi runtime ngăn cản trận đấu hoàn tất (schema không đọc được, không ghi được event log, hoặc lỗi bất biến của game engine).
+  - `2`: Lỗi cú pháp dòng lệnh hoặc cấu hình không hợp lệ (thiếu cờ bắt buộc, cờ lạ, số nguyên không hợp lệ).
+- **Ranh giới và dependency injection**:
+  - `runCli` nhận `io: { stdout, stderr }` và `deps?: Partial<CliDeps>` (`createGame`, `createBot`, `readFile`, `writeEventLog`).
+  - Cho phép inject `ScriptedBot` và double trong unit test mà không spawn tiến trình con.
+  - `cli.ts` và `config.ts` chỉ import `@ott/game-core` qua `import type`, không chứa luật game và không import trực tiếp `node:child_process` (chỉ `bot-process.ts` quản lý tiến trình con).
+  - Import `cli.ts` không gây bất kỳ tác dụng phụ (side effect) nào; khối thực thi entrypoint chỉ kích hoạt khi tệp được chạy trực tiếp.
+- **Ghi chú FakeGame cho tới P1-D09**:
+  - CLI hiện tại khởi tạo `FakeGame` với cấu hình bàn cờ giả tối thiểu 2-spawn (có checksum 64-hex hợp lệ).
+  - Trận đấu giao tiếp với các bot tiến trình thật theo Bot Protocol v1 chuẩn, nhưng diễn ra trên bàn cờ giả cho tới khi `P1-D09` kết nối GamePort adapter cho core thật của Long (phụ thuộc `P1-T02`).
+  - Chưa hỗ trợ cờ `--map` (sẽ được đưa vào ở `P1-D09`).
+
+### Bảng cờ dòng lệnh CLI (Flags)
+
+| Cờ | Ý nghĩa | Quy tắc / Mặc định |
+| --- | --- | --- |
+| `--bot-x <executable>` | Lệnh thực thi bot X | Bắt buộc, không rỗng |
+| `--bot-o <executable>` | Lệnh thực thi bot O | Bắt buộc, không rỗng |
+| `--bot-x-arg <arg>` | Một đối số cho bot X (lặp lại được) | Không mặc định, giữ nguyên thứ tự và giá trị nguyên văn |
+| `--bot-o-arg <arg>` | Một đối số cho bot O (lặp lại được) | Không mặc định, giữ nguyên thứ tự và giá trị nguyên văn |
+| `--out <path>` | Đường dẫn tệp event log đầu ra | Bắt buộc, không rỗng |
+| `--match-id <id>` | Định danh trận đấu | Mặc định: `local-match`; mẫu `^[A-Za-z0-9][A-Za-z0-9._:-]*$`, 1–128 ký tự |
+| `--seed <s>` | Chuỗi seed gửi trong INIT | Mặc định: `'0'` |
+| `--max-turns <n>` | Số lượt tối đa trước khi hòa (áp dụng cho cả `game` và `limits`) | Mặc định: `200` (`DEFAULT_LIMITS.maxTurns`); số nguyên ≥ 1 |
+| `--turn-timeout-ms <n>` | Thời hạn phản hồi mỗi lượt (ms) | Mặc định: `3000` (`DEFAULT_LIMITS.turnTimeoutMs`); số nguyên ≥ 1 |
+| `--startup-timeout-ms <n>` | Thời hạn khởi động bot (ms) | Mặc định: `5000` (`DEFAULT_LIMITS.startupTimeoutMs`); số nguyên ≥ 1 |
+| `--schema <path>` | Đường dẫn tệp schema JSON của protocol | Mặc định: `docs/contracts/bot-protocol-v1.schema.json` giải quyết theo đường dẫn module |
+| `-h`, `--help` | Hướng dẫn sử dụng và thoát mã 0 | — |
+
+### Ví dụ chạy trận với bot Python của Nguyên
+
+```bash
+# Sử dụng --silent để npm không in banner lên stdout, giữ stdout sạch chỉ chứa JSON kết quả:
+npm --prefix src/match-runner run --silent match -- \
+  --bot-x python3 --bot-x-arg -I --bot-x-arg -u --bot-x-arg "$PWD/src/bots/python/first_legal_bot.py" \
+  --bot-o python3 --bot-o-arg -I --bot-o-arg -u --bot-o-arg "$PWD/src/bots/python/capture_first_bot.py" \
+  --max-turns 10 --out /tmp/match.json
+```
+
 ## Lệnh
 
 ```bash
@@ -222,6 +271,8 @@ npm --prefix src/match-runner test -- tests/ports.test.ts
 npm --prefix src/match-runner test -- tests/happy-path.test.ts
 npm --prefix src/match-runner test -- tests/error-paths.test.ts
 npm --prefix src/match-runner test -- tests/event-log.test.ts tests/replay.test.ts
+npm --prefix src/match-runner test -- tests/cli.test.ts
+npm --prefix src/match-runner run match -- --help
 npm --prefix src/match-runner run build
 ```
 
@@ -229,4 +280,4 @@ npm --prefix src/match-runner run build
 > `npm --prefix src/match-runner install --engine-strict=false`.
 
 Runtime dependency chỉ là hai module `file:` (`@ott/game-core`, `@ott/bot-protocol`); không
-có thư viện runtime nào khác.
+có thư viện runtime ngoài nào khác. Công cụ chạy dòng lệnh `tsx` (pin chính xác 4.23.15) được đặt trong `devDependencies` theo convention §2.
