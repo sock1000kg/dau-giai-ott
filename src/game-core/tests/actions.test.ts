@@ -90,7 +90,8 @@ describe('P1-L05 applyAction transitions', () => {
     expect(result.state.revision).toBe(1);
     expect(result.state.status).toBe('PLAYING');
     expect(result.state.pieces).toHaveLength(18);
-    expect(result.events).toEqual([]);
+    expect(result.events).toHaveLength(1);
+    expect(result.events[0]?.type).toBe('ACTION_APPLIED');
     expect(result.result).toBeNull();
     expect(state).toEqual(snapshot);
   });
