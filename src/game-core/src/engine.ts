@@ -1,5 +1,5 @@
 /**
- * @ott/game-core — baseline game behavior (P1-L01).
+ * @ott/game-core — Engine API v1 behavior (locked by `docs/contracts/engine-api-v1.md`).
  *
  * Rule source of truth: `docs/tai-lieu-yeu-cau.md` section 6 (`game-rules`).
  * Behavior reference: sock1000kg/rock-paper-scissor @
@@ -8,10 +8,9 @@
  * documented behavior only; no reference source is copied, vendored, submoduled
  * or packaged.
  *
- * Scope: the behavior baseline (spawn, move, combat, win). The locked Engine API
- * surface from `docs/contracts/engine-api-v1.md` (GameState, createGame,
- * listLegalActions, applyAction, skipTurn, forfeitGame, getGameResult,
- * hashGameState) is formalized in P1-L02 and later tasks.
+ * Implemented here: `createGame` (P1-L02), `listLegalActions` + `applyAction` (P1-L05).
+ * Still pending: `skipTurn`/`forfeitGame`/`getGameResult` + turn limit (P1-L06) and
+ * events + `hashGameState` (P1-L07).
  *
  * Purity: no process, timer, clock, environment, filesystem, network, random or
  * framework access; inputs are never mutated.
@@ -19,13 +18,16 @@
 
 import type {
   ActionErrorCode,
+  GameAction,
   GameConfig,
+  GameOutcome,
   GameState,
   MapDefinition,
   Piece,
   PieceType,
   PlayerSide,
   Position,
+  TransitionResult,
 } from './types.ts';
 
 export const BOARD_WIDTH = 9;
@@ -34,28 +36,6 @@ export const ENGINE_VERSION = '1.0.0';
 export const DEFAULT_MAP_ID = 'default';
 export const DEFAULT_MAP_VERSION = 1;
 export const DEFAULT_MAP_CHECKSUM = 'a'.repeat(64);
-
-/** Baseline win outcome (transitional; contract `GameOutcome` is used by `createGame`). */
-export interface BaselineOutcome {
-  readonly winnerSide: PlayerSide;
-  readonly reason: 'REACHED_GOAL' | 'ELIMINATED_ALL_PIECES';
-}
-
-/**
- * Baseline rule-state from P1-L01. Kept so the baseline tests stay green while the
- * locked `GameState`/`createGame` land here (P1-L02) and `applyAction` plus the full
- * lifecycle land in P1-L05..P1-L07.
- */
-export interface BaselineState {
-  readonly status: 'PLAYING' | 'FINISHED';
-  readonly turn: PlayerSide;
-  readonly pieces: readonly Piece[];
-  readonly outcome: BaselineOutcome | null;
-}
-
-export type MoveResult =
-  | { readonly ok: true; readonly state: BaselineState }
-  | { readonly ok: false; readonly state: BaselineState; readonly error: ActionErrorCode };
 
 /** X races to i9; O races to a1. */
 export const GOALS: Readonly<Record<PlayerSide, Position>> = {
@@ -189,26 +169,13 @@ export function createGame(config: GameConfig): GameState {
   };
 }
 
-/** Deterministic initial state: X to move, 18 deep-copied pieces, no outcome. */
-export function createInitialGame(): BaselineState {
-  return {
-    status: 'PLAYING',
-    turn: 'X',
-    pieces: SPAWN_LAYOUT.map((entry) => clonePiece(entry)).sort(byId),
-    outcome: null,
-  };
-}
-
 /** Legal destination squares for one piece: 8 king moves, ordered by row then col. */
-export function getLegalMoves(state: BaselineState, pieceId: string): readonly Position[] {
-  const piece = state.pieces.find((candidate) => candidate.id === pieceId);
-  if (piece === undefined) return [];
-
+function destinationsFor(pieces: readonly Piece[], piece: Piece): readonly Position[] {
   const destinations: Position[] = [];
   for (const direction of DIRECTIONS) {
     const to: Position = { col: piece.position.col + direction.dCol, row: piece.position.row + direction.dRow };
     if (!inBounds(to)) continue;
-    const occupant = occupantAt(state.pieces, to);
+    const occupant = occupantAt(pieces, to);
     if (occupant !== undefined) {
       if (occupant.owner === piece.owner) continue; // own piece blocks
       if (!beats(piece.type, occupant.type)) continue; // equal or weaker -> blocked
@@ -218,47 +185,94 @@ export function getLegalMoves(state: BaselineState, pieceId: string): readonly P
   return destinations.sort(byRowThenCol);
 }
 
-function validateMove(state: BaselineState, side: PlayerSide, pieceId: string, to: Position): ActionErrorCode | null {
+/**
+ * Legal actions for `side` (Engine API v1 sections 4 and 7). Empty when the game is
+ * not playing or `side` is not the side to move. Deterministic order:
+ * `pieceId`, then `to.row`, then `to.col`.
+ */
+export function listLegalActions(state: GameState, side: PlayerSide): readonly GameAction[] {
+  if (state.status !== 'PLAYING' || state.turn !== side) return [];
+
+  const actions: GameAction[] = [];
+  const ownPieces = state.pieces.filter((piece) => piece.owner === side).sort(byId);
+  for (const piece of ownPieces) {
+    for (const to of destinationsFor(state.pieces, piece)) {
+      actions.push({ pieceId: piece.id, to });
+    }
+  }
+  return actions;
+}
+
+/** First error per Engine API v1 section 6 (fixed precedence). */
+function firstActionError(state: GameState, side: PlayerSide, action: GameAction): ActionErrorCode | null {
   if (state.status !== 'PLAYING') return 'GAME_NOT_PLAYING';
   if (state.turn !== side) return 'NOT_YOUR_TURN';
-  const piece = state.pieces.find((candidate) => candidate.id === pieceId);
+  const piece = state.pieces.find((candidate) => candidate.id === action.pieceId);
   if (piece === undefined) return 'PIECE_NOT_FOUND';
   if (piece.owner !== side) return 'NOT_YOUR_PIECE';
-  const isLegal = getLegalMoves(state, pieceId).some((candidate) => samePosition(candidate, to));
+  const isLegal = destinationsFor(state.pieces, piece).some((candidate) => samePosition(candidate, action.to));
   return isLegal ? null : 'ILLEGAL_MOVE';
 }
 
-function resolveOutcome(pieces: readonly Piece[], side: PlayerSide): BaselineOutcome | null {
+/**
+ * Win/draw resolution after a completed turn (Engine API v1 section 5):
+ * `REACHED_GOAL` -> `ELIMINATED_ALL_PIECES` -> `TURN_LIMIT`.
+ */
+function resolveOutcome(
+  pieces: readonly Piece[],
+  side: PlayerSide,
+  turnCount: number,
+  maxTurns: number,
+): GameOutcome | null {
   const goal = GOALS[side];
   if (pieces.some((piece) => piece.owner === side && samePosition(piece.position, goal))) {
-    return { winnerSide: side, reason: 'REACHED_GOAL' };
+    return { winnerSide: side, reason: 'REACHED_GOAL', turnCount, forfeitedSide: null };
   }
   if (!pieces.some((piece) => piece.owner === opponent(side))) {
-    return { winnerSide: side, reason: 'ELIMINATED_ALL_PIECES' };
+    return { winnerSide: side, reason: 'ELIMINATED_ALL_PIECES', turnCount, forfeitedSide: null };
+  }
+  if (turnCount >= maxTurns) {
+    return { winnerSide: null, reason: 'TURN_LIMIT', turnCount, forfeitedSide: null };
   }
   return null;
 }
 
 /**
- * Apply one side's move. Never mutates `state`; a rejected move returns the same
- * state reference plus a stable error code (validation order per Engine API v1 §6).
+ * Apply one side's action (Engine API v1 sections 4-6). Never mutates `state`; a
+ * rejected action returns the first error code and leaves the state untouched.
+ * `events` and `result` are populated in P1-L06 / P1-L07.
  */
-export function applyMove(state: BaselineState, side: PlayerSide, pieceId: string, to: Position): MoveResult {
-  const error = validateMove(state, side, pieceId, to);
-  if (error !== null) return { ok: false, state, error };
+export function applyAction(state: GameState, side: PlayerSide, action: GameAction): TransitionResult {
+  const code = firstActionError(state, side, action);
+  if (code !== null) return { ok: false, code };
 
-  const moving = state.pieces.find((candidate) => candidate.id === pieceId);
-  if (moving === undefined) return { ok: false, state, error: 'PIECE_NOT_FOUND' };
+  const moving = state.pieces.find((candidate) => candidate.id === action.pieceId);
+  if (moving === undefined) return { ok: false, code: 'PIECE_NOT_FOUND' };
 
   const survivors = state.pieces.filter(
-    (candidate) => candidate.id !== pieceId && !samePosition(candidate.position, to),
+    (candidate) => candidate.id !== action.pieceId && !samePosition(candidate.position, action.to),
   );
-  const moved: Piece = { id: moving.id, owner: moving.owner, type: moving.type, position: clonePosition(to) };
+  const moved: Piece = { id: moving.id, owner: moving.owner, type: moving.type, position: clonePosition(action.to) };
   const pieces = [...survivors, moved].sort(byId);
 
-  const outcome = resolveOutcome(pieces, side);
-  if (outcome !== null) {
-    return { ok: true, state: { status: 'FINISHED', turn: side, pieces, outcome } };
-  }
-  return { ok: true, state: { status: 'PLAYING', turn: opponent(side), pieces, outcome: null } };
+  const turnCount = state.turnCount + 1;
+  const outcome = resolveOutcome(pieces, side, turnCount, state.maxTurns);
+  const finished = outcome !== null;
+
+  const nextState: GameState = {
+    schemaVersion: state.schemaVersion,
+    engineVersion: state.engineVersion,
+    gameId: state.gameId,
+    map: state.map,
+    status: finished ? 'FINISHED' : 'PLAYING',
+    turn: finished ? side : opponent(side),
+    turnNumber: finished ? state.turnNumber : state.turnNumber + 1,
+    turnCount,
+    revision: state.revision + 1,
+    maxTurns: state.maxTurns,
+    pieces,
+    outcome,
+  };
+
+  return { ok: true, state: nextState, events: [], result: null };
 }
