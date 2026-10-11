@@ -71,7 +71,8 @@ describe('P1-L02 contract: module boundaries', () => {
   it('game-core src imports no process, timers, network, fs or framework code', () => {
     const srcDir = new URL('../src/', import.meta.url);
     const forbidden: readonly RegExp[] = [
-      /from\s+['"]node:/,
+      // `node:crypto` is allowed (deterministic SHA-256 only); every other `node:` import is not.
+      /from\s+['"]node:(?!crypto['"])/,
       /from\s+['"](fs|net|http|https|child_process|worker_threads)['"]/,
       /\brequire\s*\(/,
       /\bsetTimeout\b/,

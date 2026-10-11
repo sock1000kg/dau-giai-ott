@@ -8,25 +8,30 @@
  * documented behavior only; no reference source is copied, vendored, submoduled
  * or packaged.
  *
- * Implemented here: `createGame` (P1-L02), `listLegalActions` + `applyAction` (P1-L05).
- * Still pending: `skipTurn`/`forfeitGame`/`getGameResult` + turn limit (P1-L06) and
- * events + `hashGameState` (P1-L07).
+ * Implemented here: `createGame` (P1-L02), `listLegalActions` + `applyAction` (P1-L05),
+ * `skipTurn` / `forfeitGame` / `getGameResult` and the turn limit (P1-L06).
+ * Still pending: transition events (P1-L07).
  *
  * Purity: no process, timer, clock, environment, filesystem, network, random or
  * framework access; inputs are never mutated.
  */
+
+import { hashGameState } from './hash.ts';
 
 import type {
   ActionErrorCode,
   GameAction,
   GameConfig,
   GameOutcome,
+  GameResult,
   GameState,
   MapDefinition,
   Piece,
   PieceType,
   PlayerSide,
   Position,
+  ProcessFaultCode,
+  SkipReason,
   TransitionResult,
 } from './types.ts';
 
@@ -275,4 +280,83 @@ export function applyAction(state: GameState, side: PlayerSide, action: GameActi
   };
 
   return { ok: true, state: nextState, events: [], result: null };
+}
+
+/**
+ * Skip the current turn (Engine API v1 section 5). Used for recoverable bot faults
+ * and for `NO_LEGAL_ACTION`. `reason` is recorded as a TURN_SKIPPED event in P1-L07;
+ * the board never changes, so only the turn limit can end the match here.
+ */
+export function skipTurn(state: GameState, side: PlayerSide, reason: SkipReason): TransitionResult {
+  void reason;
+  if (state.status !== 'PLAYING') return { ok: false, code: 'GAME_NOT_PLAYING' };
+  if (state.turn !== side) return { ok: false, code: 'NOT_YOUR_TURN' };
+
+  const turnCount = state.turnCount + 1;
+  const outcome = resolveOutcome(state.pieces, side, turnCount, state.maxTurns);
+  const finished = outcome !== null;
+
+  const nextState: GameState = {
+    schemaVersion: state.schemaVersion,
+    engineVersion: state.engineVersion,
+    gameId: state.gameId,
+    map: state.map,
+    status: finished ? 'FINISHED' : 'PLAYING',
+    turn: finished ? side : opponent(side),
+    turnNumber: finished ? state.turnNumber : state.turnNumber + 1,
+    turnCount,
+    revision: state.revision + 1,
+    maxTurns: state.maxTurns,
+    pieces: state.pieces,
+    outcome,
+  };
+
+  return { ok: true, state: nextState, events: [], result: null };
+}
+
+/**
+ * End the match immediately as a forfeit (Engine API v1 section 5). The current turn
+ * is NOT completed: `turnCount` is unchanged and only `revision` advances.
+ * `fault` is recorded as a MATCH_FINISHED event in P1-L07.
+ */
+export function forfeitGame(
+  state: GameState,
+  forfeitedSide: PlayerSide,
+  fault: ProcessFaultCode | SkipReason,
+): TransitionResult {
+  void fault;
+  if (state.status !== 'PLAYING') return { ok: false, code: 'GAME_NOT_PLAYING' };
+
+  const outcome: GameOutcome = {
+    winnerSide: opponent(forfeitedSide),
+    reason: 'FORFEIT',
+    turnCount: state.turnCount,
+    forfeitedSide,
+  };
+
+  const nextState: GameState = {
+    schemaVersion: state.schemaVersion,
+    engineVersion: state.engineVersion,
+    gameId: state.gameId,
+    map: state.map,
+    status: 'FINISHED',
+    turn: state.turn,
+    turnNumber: state.turnNumber,
+    turnCount: state.turnCount,
+    revision: state.revision + 1,
+    maxTurns: state.maxTurns,
+    pieces: state.pieces,
+    outcome,
+  };
+
+  return { ok: true, state: nextState, events: [], result: null };
+}
+
+/**
+ * Final result with its `finalStateHash` (Engine API v1 sections 4 and 8), or `null`
+ * while the match is still playing.
+ */
+export function getGameResult(state: GameState): GameResult | null {
+  if (state.outcome === null) return null;
+  return { ...state.outcome, finalStateHash: hashGameState(state) };
 }
