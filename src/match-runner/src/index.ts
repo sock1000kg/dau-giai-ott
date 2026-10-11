@@ -10,8 +10,14 @@
  * - `event-log.ts` — match event log format, serializer, parser, atomic file writer (P1-D07).
  * - `replay.ts` — pure in-memory replay verifier over GamePort (P1-D07).
  *
- * Boundary: this module contains no game rules and spawns no processes; the fakes
- * script lifecycle bookkeeping only and never copy the engine's behavior.
+ * - `line-buffer.ts` — pure NDJSON line buffer with byte limit (P1-D05).
+ * - `process-errors.ts` — process exit and error classifier (P1-D06).
+ * - `bot-process.ts` — child process BotPort adapter (P1-D05, P1-D06).
+ * - `config.ts` — pure argv parser and CLI configuration validator (P1-D08).
+ * - `cli.ts` — local match composition root and CLI runner (P1-D08).
+ *
+ * Boundary: this module contains no game rules and spawns no processes directly;
+ * the CLI injects ports and runs FakeGame until real core wiring in P1-D09.
  */
 export * from './ports.ts';
 export * from './fakes.ts';
@@ -23,3 +29,5 @@ export * from './replay.ts';
 export * from './line-buffer.ts';
 export * from './process-errors.ts';
 export * from './bot-process.ts';
+export * from './config.ts';
+export * from './cli.ts';
