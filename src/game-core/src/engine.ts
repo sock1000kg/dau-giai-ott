@@ -9,19 +9,21 @@
  * or packaged.
  *
  * Implemented here: `createGame` (P1-L02), `listLegalActions` + `applyAction` (P1-L05),
- * `skipTurn` / `forfeitGame` / `getGameResult` and the turn limit (P1-L06).
- * Still pending: transition events (P1-L07).
+ * `skipTurn` / `forfeitGame` / `getGameResult` and the turn limit (P1-L06), and the
+ * deterministic transition events (P1-L07).
  *
  * Purity: no process, timer, clock, environment, filesystem, network, random or
  * framework access; inputs are never mutated.
  */
 
+import { createEvent, eventSequence } from './events.ts';
 import { hashGameState } from './hash.ts';
 
 import type {
   ActionErrorCode,
   GameAction,
   GameConfig,
+  GameEvent,
   GameOutcome,
   GameResult,
   GameState,
@@ -242,10 +244,22 @@ function resolveOutcome(
   return null;
 }
 
+/** Deterministic MATCH_FINISHED event shared by the action/skip/forfeit transitions. */
+function finishEvent(state: GameState, nextState: GameState, side: PlayerSide, outcome: GameOutcome): GameEvent {
+  return createEvent({
+    sequence: eventSequence(state.revision, 1),
+    revision: nextState.revision,
+    turnId: state.turnNumber,
+    type: 'MATCH_FINISHED',
+    side,
+    action: null,
+    reason: outcome.reason,
+  });
+}
+
 /**
  * Apply one side's action (Engine API v1 sections 4-6). Never mutates `state`; a
  * rejected action returns the first error code and leaves the state untouched.
- * `events` and `result` are populated in P1-L06 / P1-L07.
  */
 export function applyAction(state: GameState, side: PlayerSide, action: GameAction): TransitionResult {
   const code = firstActionError(state, side, action);
@@ -279,16 +293,28 @@ export function applyAction(state: GameState, side: PlayerSide, action: GameActi
     outcome,
   };
 
-  return { ok: true, state: nextState, events: [], result: null };
+  const events: GameEvent[] = [
+    createEvent({
+      sequence: eventSequence(state.revision, 0),
+      revision: nextState.revision,
+      turnId: state.turnNumber,
+      type: 'ACTION_APPLIED',
+      side,
+      action: { pieceId: moved.id, to: clonePosition(action.to) },
+      reason: null,
+    }),
+  ];
+  if (finished) events.push(finishEvent(state, nextState, side, outcome));
+
+  return { ok: true, state: nextState, events, result: finished ? getGameResult(nextState) : null };
 }
 
 /**
  * Skip the current turn (Engine API v1 section 5). Used for recoverable bot faults
- * and for `NO_LEGAL_ACTION`. `reason` is recorded as a TURN_SKIPPED event in P1-L07;
- * the board never changes, so only the turn limit can end the match here.
+ * and for `NO_LEGAL_ACTION`. `reason` becomes the TURN_SKIPPED event reason; the board
+ * never changes, so only the turn limit can end the match here.
  */
 export function skipTurn(state: GameState, side: PlayerSide, reason: SkipReason): TransitionResult {
-  void reason;
   if (state.status !== 'PLAYING') return { ok: false, code: 'GAME_NOT_PLAYING' };
   if (state.turn !== side) return { ok: false, code: 'NOT_YOUR_TURN' };
 
@@ -311,13 +337,27 @@ export function skipTurn(state: GameState, side: PlayerSide, reason: SkipReason)
     outcome,
   };
 
-  return { ok: true, state: nextState, events: [], result: null };
+  const events: GameEvent[] = [
+    createEvent({
+      sequence: eventSequence(state.revision, 0),
+      revision: nextState.revision,
+      turnId: state.turnNumber,
+      type: 'TURN_SKIPPED',
+      side,
+      action: null,
+      reason,
+    }),
+  ];
+  if (finished) events.push(finishEvent(state, nextState, side, outcome));
+
+  return { ok: true, state: nextState, events, result: finished ? getGameResult(nextState) : null };
 }
 
 /**
  * End the match immediately as a forfeit (Engine API v1 section 5). The current turn
- * is NOT completed: `turnCount` is unchanged and only `revision` advances.
- * `fault` is recorded as a MATCH_FINISHED event in P1-L07.
+ * is NOT completed: `turnCount` is unchanged and only `revision` advances. The event
+ * records `FORFEIT`; the concrete `fault` code belongs to the runner's fault counters,
+ * which the core deliberately does not track.
  */
 export function forfeitGame(
   state: GameState,
@@ -349,7 +389,12 @@ export function forfeitGame(
     outcome,
   };
 
-  return { ok: true, state: nextState, events: [], result: null };
+  return {
+    ok: true,
+    state: nextState,
+    events: [finishEvent(state, nextState, forfeitedSide, outcome)],
+    result: getGameResult(nextState),
+  };
 }
 
 /**
