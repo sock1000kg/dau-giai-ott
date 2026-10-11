@@ -1,8 +1,19 @@
 import sys
 import json
+from pathlib import Path
 from typing import Dict, Any, Optional
 
-from src.bots.python.sdk import BotSDK
+# Thêm đường dẫn để hỗ trợ chạy trực tiếp script hoặc qua runner
+_current_dir = Path(__file__).resolve().parent
+_repo_root = _current_dir.parent.parent.parent
+for _p in [str(_current_dir), str(_repo_root)]:
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+
+try:
+    from src.bots.python.sdk import BotSDK
+except ModuleNotFoundError:
+    from sdk import BotSDK
 
 class InvalidBot:
     def __init__(self, mode: str):
@@ -70,3 +81,4 @@ if __name__ == "__main__":
     mode = parse_mode()
     bot = InvalidBot(mode=mode)
     bot.run()
+

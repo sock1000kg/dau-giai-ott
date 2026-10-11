@@ -1,9 +1,21 @@
 import unittest
 import io
 import json
+import sys
+from pathlib import Path
 from unittest.mock import patch
 
-from src.bots.python.invalid_bot import InvalidBot, parse_mode
+# Thêm đường dẫn để hỗ trợ chạy trực tiếp file test hoặc qua unittest discover
+_current_dir = Path(__file__).resolve().parent
+_repo_root = _current_dir.parent.parent.parent.parent
+for _p in [str(_current_dir.parent), str(_repo_root)]:
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+
+try:
+    from src.bots.python.invalid_bot import InvalidBot, parse_mode
+except ModuleNotFoundError:
+    from invalid_bot import InvalidBot, parse_mode
 
 class TestInvalidBots(unittest.TestCase):
     def test_malformed_mode(self):
@@ -90,3 +102,4 @@ class TestInvalidBots(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

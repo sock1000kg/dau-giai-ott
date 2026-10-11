@@ -1,8 +1,20 @@
 import unittest
 import io
 import json
+import sys
+from pathlib import Path
 from unittest.mock import patch
-from src.bots.python.capture_first_bot import CaptureFirstBot
+
+_current_dir = Path(__file__).resolve().parent
+_repo_root = _current_dir.parent.parent.parent.parent
+for _p in [str(_current_dir.parent), str(_repo_root)]:
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+
+try:
+    from src.bots.python.capture_first_bot import CaptureFirstBot
+except ModuleNotFoundError:
+    from capture_first_bot import CaptureFirstBot
 
 class TestCaptureFirstBot(unittest.TestCase):
     def test_capture_action_selected(self):
