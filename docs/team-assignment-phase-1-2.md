@@ -95,7 +95,7 @@ flowchart LR
         L2["longt/* — Long Trần<br/>Action, lifecycle, hash, regression<br/>P1-L05…L08"]
         N1["nguyendk/* — Đỗ Khôi Nguyên<br/>Python Bot SDK<br/>P1-N01"]
         N2["nguyendk/* — Đỗ Khôi Nguyên<br/>Bot hợp lệ, bot lỗi, contract test<br/>P1-N02…N06"]
-        D1["datpt/* — Phạm Tất Đạt<br/>GamePort, BotPort, fakes<br/>P1-D02"]
+        D1["✅ P1-D02 (Đạt)<br/>GamePort, BotPort, fakes"]
         D2["datpt/* — Phạm Tất Đạt<br/>MatchRunner, BotProcess, replay, CLI<br/>P1-D03…D08"]
     end
 
@@ -119,7 +119,7 @@ flowchart LR
 
     classDef done fill:#123d2a,stroke:#39d98a,color:#ffffff,stroke-width:2px;
     classDef gate stroke-width:3px;
-    class T01 done;
+    class T01,D1 done;
     class PA,PB,PC gate;
 ```
 

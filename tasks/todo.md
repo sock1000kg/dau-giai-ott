@@ -123,7 +123,7 @@ Không triển khai ID này. Workspace chung chuyển cho Đinh Đức Thuận d
 
 ## Phase 1 — Lane Nguyên: bot Python kiểm thử
 
-### [ ] P1-N01 — Python Bot SDK tối thiểu
+### [x] P1-N01 — Python Bot SDK tối thiểu
 
 **Owner:** Đỗ Khôi Nguyên
 **Mô tả:** Tạo loop stdin/stdout xử lý protocol v1.
@@ -133,7 +133,7 @@ Không triển khai ID này. Workspace chung chuyển cho Đinh Đức Thuận d
 **Files dự kiến:** `src/bots/python/sdk.py`, `src/bots/python/tests/test_sdk.py`, `src/bots/python/__init__.py`
 **Ước lượng:** M (3 file)
 
-### [ ] P1-N02 — FirstLegalBot
+### [x] P1-N02 — FirstLegalBot
 
 **Owner:** Đỗ Khôi Nguyên
 **Mô tả:** Bot deterministic chọn action đầu tiên từ `legalActions`.
@@ -143,7 +143,7 @@ Không triển khai ID này. Workspace chung chuyển cho Đinh Đức Thuận d
 **Files dự kiến:** `src/bots/python/first_legal_bot.py`, `src/bots/python/tests/test_first_legal_bot.py`
 **Ước lượng:** S (2 file)
 
-### [ ] P1-N03 — CaptureFirstBot
+### [x] P1-N03 — CaptureFirstBot
 
 **Owner:** Đỗ Khôi Nguyên
 **Mô tả:** Bot ưu tiên action bắt quân, fallback deterministic.
@@ -153,7 +153,7 @@ Không triển khai ID này. Workspace chung chuyển cho Đinh Đức Thuận d
 **Files dự kiến:** `src/bots/python/capture_first_bot.py`, `src/bots/python/tests/test_capture_first_bot.py`
 **Ước lượng:** S (2 file)
 
-### [ ] P1-N04 — Bot malformed JSON, illegal action và stale turnId
+### [x] P1-N04 — Bot malformed JSON, illegal action và stale turnId
 
 **Owner:** Đỗ Khôi Nguyên
 **Mô tả:** Tạo bot cố ý vi phạm protocol cho error-path tests.
@@ -185,7 +185,7 @@ Không triển khai ID này. Workspace chung chuyển cho Đinh Đức Thuận d
 
 ## Phase 1 — Lane Đạt: MatchRunner và local integration
 
-### [ ] P1-D02 — GamePort, BotPort và fakes
+### [x] P1-D02 — GamePort, BotPort và fakes
 
 **Owner:** Phạm Tất Đạt
 **Mô tả:** Định nghĩa ranh giới runner và doubles để code không chờ core/bot thật.
@@ -194,8 +194,9 @@ Không triển khai ID này. Workspace chung chuyển cho Đinh Đức Thuận d
 **Dependencies:** `P1-L02`, `P1-L03`.
 **Files dự kiến:** `src/match-runner/package.json`, `src/match-runner/src/ports.ts`, `src/match-runner/src/fakes.ts`, `src/match-runner/tests/ports.test.ts`
 **Ước lượng:** M (4 file)
+**Hoàn tất:** 2026-10-10 — `GamePort`/`BotPort` + `FakeGame`/`ScriptedBot` deterministic, 18 test pass, typecheck và build pass. Thêm `src/index.ts` (bắt buộc theo convention §1) và `README.md` (docs-as-code) nên 6 logical paths thay vì 4; thiếu `viewFor` so với sketch §8.2 và bổ sung `listLegalActions`/`forfeit`/`hash` theo Engine API §5/§8.
 
-### [ ] P1-D03 — MatchRunner happy path
+### [x] P1-D03 — MatchRunner happy path
 
 **Owner:** Phạm Tất Đạt
 **Mô tả:** Orchestrate hai BotPort theo lượt bằng FakeGame.
@@ -204,8 +205,9 @@ Không triển khai ID này. Workspace chung chuyển cho Đinh Đức Thuận d
 **Dependencies:** `P1-D02`.
 **Files dự kiến:** `src/match-runner/src/match-runner.ts`, `src/match-runner/src/types.ts`, `src/match-runner/tests/happy-path.test.ts`
 **Ước lượng:** M (3 file)
+**Hoàn tất:** 2026-10-10 — `runMatch(config, ports)` chạy vòng lặp happy path theo Bot Protocol §8: INIT một lần mỗi bot, chỉ hỏi bot của `state.turn` với `turnId = turnNumber`, `TURN_RESULT` broadcast cho X rồi O, một `MATCH_RESULT` nhất quán, `stop()` X rồi O trong `finally`; `legalActions` rỗng thì bot vẫn nhận `STATE_UPDATE` send-only qua `notifyStateUpdate` rồi runner skip `NO_LEGAL_ACTION` không chờ `ACTION` (§5.2/§8). Message outbound không chia sẻ reference mutable. 14 test mới + 21 test `ports.test.ts` pass, typecheck và build pass. Throw tạm `UNHANDLED_BOT_FAILURE` đã được thay bằng policy thật trong `P1-D04`.
 
-### [ ] P1-D04 — MatchRunner error, skip và cleanup
+### [x] P1-D04 — MatchRunner error, skip và cleanup
 
 **Owner:** Phạm Tất Đạt
 **Mô tả:** Xử lý lỗi bot thành skip/forfeit và luôn cleanup.
@@ -214,6 +216,7 @@ Không triển khai ID này. Workspace chung chuyển cho Đinh Đức Thuận d
 **Dependencies:** `P1-D03`.
 **Files dự kiến:** `src/match-runner/src/match-runner.ts`, `src/match-runner/src/errors.ts`, `src/match-runner/tests/error-paths.test.ts`
 **Ước lượng:** M (3 file)
+**Hoàn tất:** 2026-10-10 — policy lỗi Bot Protocol §6 hiện thực trong `errors.ts` (helper thuần) và `match-runner.ts`: 7 mã lỗi lượt phục hồi skip đúng một lần và đếm bộ đếm, `NO_LEGAL_ACTION` không tính lỗi, action hợp lệ reset `consecutive`, ngưỡng 3 liên tiếp / 5 tổng thì forfeit, 6 process fault forfeit ngay và bot chết không nhận thêm message, `start` thất bại thì forfeit side đầu tiên theo X, O, `MATCH_RESULT` đúng một lần cho mỗi bot còn sống với bộ đếm thật, `stop()` X rồi O luôn chạy trong `finally`, exception lạ ném ra nguyên vẹn. Bỏ mã `UNHANDLED_BOT_FAILURE`. 26 test mới; tổng 61 test pass, typecheck và build pass.
 
 ### [ ] P1-D05 — BotProcess NDJSON adapter
 
@@ -235,7 +238,7 @@ Không triển khai ID này. Workspace chung chuyển cho Đinh Đức Thuận d
 **Files dự kiến:** `src/match-runner/src/bot-process.ts`, `src/match-runner/src/process-errors.ts`, `src/match-runner/tests/bot-process-lifecycle.test.ts`
 **Ước lượng:** M (3 file)
 
-### [ ] P1-D07 — Event log và replay verifier
+### [x] P1-D07 — Event log và replay verifier
 
 **Owner:** Phạm Tất Đạt
 **Mô tả:** Ghi event ổn định và xác minh replay qua GamePort.
@@ -244,6 +247,7 @@ Không triển khai ID này. Workspace chung chuyển cho Đinh Đức Thuận d
 **Dependencies:** `P1-D04`.
 **Files dự kiến:** `src/match-runner/src/event-log.ts`, `src/match-runner/src/replay.ts`, `src/match-runner/tests/event-log.test.ts`, `src/match-runner/tests/replay.test.ts`
 **Ước lượng:** M (4 file)
+**Hoàn tất:** 2026-10-10 — EventLogV1 (`ott.match-event-log` v1) được sinh trong bộ nhớ từ `runMatch` với `index` liên tục 1..n theo từng transition, header/footer đầy đủ config/limits/outcome/finalStateHash và bộ đếm lỗi thật, không lưu bot source/argv/env/stdout/stderr; ghi file atomic qua `.partial` và rename an toàn; `verifyReplay` xác minh thuần túy qua `GamePort` bắt đủ 9 mã lỗi thiếu/thừa/sai thứ tự/hash. 10 test mới (7 event-log + 3 replay); tổng 71 test pass, typecheck và build pass.
 
 ### [ ] P1-D08 — CLI chạy trận local
 
