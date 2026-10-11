@@ -153,7 +153,7 @@ Không triển khai ID này. Workspace chung chuyển cho Đinh Đức Thuận d
 **Files dự kiến:** `src/bots/python/capture_first_bot.py`, `src/bots/python/tests/test_capture_first_bot.py`
 **Ước lượng:** S (2 file)
 
-### [ ] P1-N04 — Bot malformed JSON, illegal action và stale turnId
+### [x] P1-N04 — Bot malformed JSON, illegal action và stale turnId
 
 **Owner:** Đỗ Khôi Nguyên
 **Mô tả:** Tạo bot cố ý vi phạm protocol cho error-path tests.

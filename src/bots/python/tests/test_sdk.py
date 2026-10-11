@@ -2,8 +2,19 @@ import unittest
 import json
 import io
 import sys
+from pathlib import Path
 from unittest.mock import patch
-from src.bots.python.sdk import BotSDK
+
+_current_dir = Path(__file__).resolve().parent
+_repo_root = _current_dir.parent.parent.parent.parent
+for _p in [str(_current_dir.parent), str(_repo_root)]:
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+
+try:
+    from src.bots.python.sdk import BotSDK
+except ModuleNotFoundError:
+    from sdk import BotSDK
 
 class TestBotSDK(unittest.TestCase):
     def setUp(self):

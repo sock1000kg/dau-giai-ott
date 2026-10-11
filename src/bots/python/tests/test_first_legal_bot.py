@@ -1,8 +1,20 @@
 import unittest
 import io
 import json
+import sys
+from pathlib import Path
 from unittest.mock import patch
-from src.bots.python.first_legal_bot import FirstLegalBot
+
+_current_dir = Path(__file__).resolve().parent
+_repo_root = _current_dir.parent.parent.parent.parent
+for _p in [str(_current_dir.parent), str(_repo_root)]:
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+
+try:
+    from src.bots.python.first_legal_bot import FirstLegalBot
+except ModuleNotFoundError:
+    from first_legal_bot import FirstLegalBot
 
 class TestFirstLegalBot(unittest.TestCase):
     def test_first_legal_action_selected(self):
