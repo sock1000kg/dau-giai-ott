@@ -28,7 +28,20 @@ qua dependency `file:../game-core`; không copy type sang module này.
 - `TurnErrorCode` (= `SkipReason` của engine), `ProcessFaultCode`, `FaultCode` (13 giá trị).
 - Hằng mảng `TURN_ERROR_CODES`, `PROCESS_FAULT_CODES`, `FAULT_CODES`.
 
-Chưa có (task sau): `P1-L04` — runtime validator/parser đọc trực tiếp schema + fixtures.
+## Phạm vi P1-L04 (runtime validator)
+
+`validate.ts`:
+
+- `compileProtocolValidator(schema)` — biên dịch JSON Schema chuẩn (draft 2020-12) bằng **`ajv`**.
+- `validateBotMessage(input, options)` — pipeline đầy đủ theo Bot Protocol v1 §7:
+  size → parse → schema → `MATCH_ID_MISMATCH` → `TURN_ID_MISMATCH` → `ILLEGAL_ACTION`.
+- `utf8ByteLength(text)` — đếm byte UTF-8 (không tính LF).
+
+Schema **không** được sao chép vào module: caller nạp `docs/contracts/bot-protocol-v1.schema.json`
+và truyền vào `compileProtocolValidator`. Test đọc trực tiếp schema + fixtures trong `docs/contracts/`.
+
+Phụ thuộc runtime: `ajv@8.20.0` (lý do: validator JSON Schema chuẩn; convention module-package cho phép).
+
 
 Quy ước: mọi object protocol dùng `additionalProperties: false`; thêm/đổi/bớt field là
 **breaking change** và phải phát hành protocol v2.

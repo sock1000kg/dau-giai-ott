@@ -12,7 +12,8 @@
     "build": "tsc -p tsconfig.build.json"
   },
   "dependencies": {
-    "@ott/game-core": "file:../game-core"
+    "@ott/game-core": "file:../game-core",
+    "ajv": "8.20.0"
   },
   "devDependencies": {
     "@types/node": "22.20.5",
