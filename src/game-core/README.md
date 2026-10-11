@@ -33,32 +33,50 @@ hành động và Engine luôn validate lại.
 - `createGame(config): GameState` — khởi tạo deterministic, **deep-copy** spawns,
   `map` chỉ giữ projection `MapRef` (mapId/version/checksum).
 
-Chưa có (các task sau):
+## Phạm vi P1-L05–P1-L08 (Engine API đầy đủ)
 
-- `P1-L05`: `listLegalActions`/`applyAction` theo `side`.
-- `P1-L06`: `skipTurn`, `maxTurns`, `GameResult` (`FORFEIT`/`TURN_LIMIT`).
-- `P1-L07`: transition event và `finalStateHash`.
+- `P1-L05`: `listLegalActions`, `applyAction`.
+- `P1-L06`: `skipTurn`, `forfeitGame`, `getGameResult`, turn limit (`maxTurns`).
+- `P1-L07`: transition event (`events.ts`) và `finalStateHash` (`hash.ts`).
+- `P1-L08`: regression + invariants + tài liệu này.
 
-## API baseline
+## Public API
 
 | Export | Mô tả |
 | --- | --- |
-| `createInitialGame()` | State ban đầu: X đi trước, 18 quân deep-copy, `outcome = null`. |
-| `getLegalMoves(state, pieceId)` | Ô đích hợp lệ của một quân, sort theo `row` rồi `col`. |
-| `applyMove(state, side, pieceId, to)` | Áp dụng nước đi; không mutate input; trả `MoveResult`. |
-| `beats(attacker, defender)` | Quan hệ ăn quân Búa–Bao–Kéo. |
-| `samePosition(a, b)` | So sánh hai tọa độ. |
-| `GOALS`, `BEATS`, `BOARD_WIDTH`, `BOARD_HEIGHT`, `ENGINE_VERSION` | Hằng số luật/map. |
+| `createGame(config)` | State ban đầu deterministic: X đi trước, `turnNumber 1`, `turnCount 0`, `revision 0`, deep-copy spawns, `map` là `MapRef`. |
+| `listLegalActions(state, side)` | Action hợp lệ của `side`; rỗng nếu game kết thúc hoặc `side` không phải lượt. Order: `pieceId` → `to.row` → `to.col`. |
+| `applyAction(state, side, action)` | Áp dụng action; trả `TransitionResult`. Không mutate input. |
+| `skipTurn(state, side, reason)` | Bỏ lượt; `reason` thành `TURN_SKIPPED` event. |
+| `forfeitGame(state, forfeitedSide, fault)` | Kết thúc ngay bằng `FORFEIT`; **không** tăng `turnCount`, `revision` +1. |
+| `getGameResult(state)` | `GameResult` (winner/draw, reason, `turnCount`, `forfeitedSide`, `finalStateHash`) hoặc `null` khi đang chơi. |
+| `hashGameState(state)` | SHA-256 hex (lowercase) trên projection rule-state, canonical hoá theo RFC 8785. |
+| `canonicalSerialize(value)` | JSON canonical (sort key, không whitespace) cho integer/string/boolean/null/array/object. |
+| `isReplaySafeEvent(event)` | Kiểm tra event chỉ chứa field replay-safe (không clock/process). |
+| `beats(a, b)`, `samePosition(a, b)`, `GOALS`, `BEATS`, `DEFAULT_MAP`, `BOARD_WIDTH`, `BOARD_HEIGHT`, `ENGINE_VERSION` | Luật, map và hằng số. |
 
-`applyMove` trả mã lỗi theo đúng thứ tự Engine API v1 §6:
+`applyAction` trả mã lỗi đầu theo đúng thứ tự Engine API v1 §6:
 `GAME_NOT_PLAYING` → `NOT_YOUR_TURN` → `PIECE_NOT_FOUND` → `NOT_YOUR_PIECE` → `ILLEGAL_MOVE`.
-Nước đi bị từ chối trả đúng reference `state` ban đầu và không đổi bàn cờ.
 
-## Ranh giới
+## Invariants (test ở `tests/invariants.test.ts`)
 
-- Không import process, timer, clock, environment, filesystem, network, random, DB, UI hay framework.
-- Không mutate object đầu vào; mọi transition trả object mới.
-- Không chứa movement/combat/win ở nơi khác (adapter Human-vs-Human chỉ map `playerId → side`).
+1. **Không mutate input**: mọi API trả object mới; state gốc giữ nguyên.
+2. **Deterministic**: cùng input → cùng state, event sequence và hash.
+3. **Ordering**: `pieces` luôn sort theo `id`; `listLegalActions` sort theo `pieceId`/`row`/`col`.
+4. **Counters**: action/skip hợp lệ tăng `turnCount` và `revision` đúng 1; `forfeitGame` chỉ tăng `revision`.
+5. **Win priority**: `REACHED_GOAL` → `ELIMINATED_ALL_PIECES` → `TURN_LIMIT`.
+6. **Replay-safe events**: không timestamp, random hay metadata process.
+7. **Hash**: cùng rule-state (kể cả khác `gameId` hay thứ tự quân) → cùng hash.
+
+## Ranh giới — phần core KHÔNG chịu trách nhiệm
+
+- **Không** đọc thời gian, environment, filesystem, network hay random; chỉ dùng `node:crypto`
+  cho SHA-256 (deterministic, không I/O).
+- **Không** quản lý fault counter của bot và không biết bot là process nào (thuộc Runner).
+- **Không** chứa transport, timeout, process hay line-buffering (thuộc MatchRunner/BotProcess).
+- Không mutate input, không giữ state ẩn toàn cục; mọi transition là hàm thuần trên `GameState`.
+- Adapter Human-vs-Human chỉ map `playerId → side` rồi gọi `applyAction`; **không** chứa luật.
+
 
 ## Lệnh
 
