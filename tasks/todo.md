@@ -218,7 +218,7 @@ Không triển khai ID này. Workspace chung chuyển cho Đinh Đức Thuận d
 **Ước lượng:** M (3 file)
 **Hoàn tất:** 2026-10-10 — policy lỗi Bot Protocol §6 hiện thực trong `errors.ts` (helper thuần) và `match-runner.ts`: 7 mã lỗi lượt phục hồi skip đúng một lần và đếm bộ đếm, `NO_LEGAL_ACTION` không tính lỗi, action hợp lệ reset `consecutive`, ngưỡng 3 liên tiếp / 5 tổng thì forfeit, 6 process fault forfeit ngay và bot chết không nhận thêm message, `start` thất bại thì forfeit side đầu tiên theo X, O, `MATCH_RESULT` đúng một lần cho mỗi bot còn sống với bộ đếm thật, `stop()` X rồi O luôn chạy trong `finally`, exception lạ ném ra nguyên vẹn. Bỏ mã `UNHANDLED_BOT_FAILURE`. 26 test mới; tổng 61 test pass, typecheck và build pass.
 
-### [ ] P1-D05 — BotProcess NDJSON adapter
+### [x] P1-D05 — BotProcess NDJSON adapter
 
 **Owner:** Phạm Tất Đạt
 **Mô tả:** Spawn executable bằng argv và chuyển message qua stdin/stdout theo dòng.
@@ -227,6 +227,7 @@ Không triển khai ID này. Workspace chung chuyển cho Đinh Đức Thuận d
 **Dependencies:** `P1-D02`, `P1-L04`.
 **Files dự kiến:** `src/match-runner/src/bot-process.ts`, `src/match-runner/src/line-buffer.ts`, `src/match-runner/tests/bot-process-ndjson.test.ts`
 **Ước lượng:** M (3 file)
+**Hoàn tất:** 2026-10-11 — `BotProcess` và `LineBuffer` hoàn thành: spawn trực tiếp bằng argv với `shell: false`, framing LF chuẩn và xử lý chunking/split multi-byte UTF-8 chính xác, giới hạn `maxMessageBytes` được LineBuffer chặn ngay lập tức không giữ bộ nhớ dư thừa, validate JSON và schema injected trong request window, discard và đếm stdout ngoài window, tách bạch hoàn toàn stderr khỏi luồng giao thức. Adapter không kiểm tra matchId/turnId/legal (để runner kiểm tra). 18 test mới (5 line-buffer + 13 bot-process); tổng 89 test pass, typecheck và build pass.
 
 ### [ ] P1-D06 — BotProcess timeout và process cleanup
 

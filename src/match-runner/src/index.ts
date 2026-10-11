@@ -20,3 +20,5 @@ export * from './match-runner.ts';
 export * from './errors.ts';
 export * from './event-log.ts';
 export * from './replay.ts';
+export * from './line-buffer.ts';
+export * from './bot-process.ts';

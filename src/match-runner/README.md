@@ -8,7 +8,7 @@ MatchRunner — điều phối **Engine API v1** và **Bot Protocol v1**: mỗi 
 ## Phạm vi
 
 Module này đã có ranh giới (P1-D02), vòng lặp trận happy path (P1-D03), policy lỗi/skip/
-cleanup (P1-D04) và event log / replay verifier (P1-D07).
+cleanup (P1-D04), adapter bot process NDJSON (P1-D05) và event log / replay verifier (P1-D07).
 
 ## Phạm vi P1-D02 — ports và fakes
 
@@ -114,6 +114,36 @@ Nguồn sự thật: Bot Protocol v1 §6 (mã lỗi và policy), ngưỡng lấy
 2. **Có thêm `listLegalActions`, `forfeit`, `hash`.** Engine API §5 yêu cầu runner skip
    bằng `NO_LEGAL_ACTION` khi hết nước đi (không chờ bot), §5 yêu cầu process fault
    forfeit, và §8/verify D07 cần hash.
+
+## Phạm vi P1-D05 — BotProcess NDJSON adapter
+
+`src/line-buffer.ts`: bộ đệm dòng NDJSON thuần túy (`LineBuffer`, `createLineBuffer`), không I/O, không import process hay file system:
+- Tách dòng nghiêm ngặt theo LF (`0x0A`); không strip CR (JSON tự chấp nhận trailing whitespace).
+- Thao tác trực tiếp trên byte; chỉ giải mã UTF-8 khi đã đủ một dòng hoàn chỉnh (ký tự multi-byte split qua nhiều chunk giải mã chính xác).
+- Quản lý kích thước theo `maxLineBytes` (không tính LF): nếu dòng vượt giới hạn, byte đang chờ lập tức bị drop (bộ nhớ không vượt quá giới hạn, `pendingBytes` về 0), chuyển sang trạng thái discarding cho tới LF kế tiếp và phát ra đúng một event `oversize`. Dòng sau đó parse bình thường.
+- `flushOnEnd()` drop phần dòng chưa hoàn chỉnh khi stream đóng (giao thức bắt buộc LF).
+
+`src/bot-process.ts`: hiện thực `BotPort` điều phối child process qua stdin/stdout:
+- **Options (`BotProcessOptions`)**: `executable`, `args`, `cwd`, `env` (mặc định môi trường tối thiểu `PATH`, không kế thừa secrets mù quáng), `validator` (`ProtocolValidator` được inject từ caller; CLI tải schema từ đĩa trong D08), `maxMessageBytes`, `onStderr`, `onDiagnostic`.
+- **Quy tắc no-shell**: luôn dùng `spawn` với `shell: false` và mảng `args` nguyên bản, không dùng shell string, không import hay gọi `exec`/`execSync`.
+- **Request window & unexpected lines**:
+  - Ghi `STATE_UPDATE` qua stdin và await flush trước khi mở request window.
+  - Dòng hoàn chỉnh đầu tiên nhận được trong request window sẽ phân xử kết quả cho request đó và đóng window ngay lập tức.
+  - Các dòng stdout tới ngoài request window (hoặc đến trước khi window mở, hoặc dòng dư thừa trong cùng chunk) đều bị discard và ghi nhận qua counter `unexpectedLines` cùng callback `onDiagnostic({ kind: 'UNEXPECTED_MESSAGE' })`; chúng không bao giờ trả lời cho request kế tiếp.
+- **Bảng ánh xạ lỗi lượt**:
+  | Điều kiện | Kết quả adapter (`BotReply`) |
+  | --- | --- |
+  | Dòng vượt quá `maxMessageBytes` / `oversize` | `{ ok: false, code: 'MESSAGE_TOO_LARGE' }` |
+  | Không parse được JSON hoặc parse ra không phải plain object (vd: array, primitive, null) | `{ ok: false, code: 'MALFORMED_JSON' }` |
+  | Object không khớp schema (`!validator.isProtocolMessage(val)`) | `{ ok: false, code: 'SCHEMA_VIOLATION' }` |
+  | Message giao thức hợp lệ nhưng `type !== 'ACTION'` (vd: bot tự gửi `INIT`) | `{ ok: false, code: 'SCHEMA_VIOLATION' }` |
+  | Hợp lệ và `type === 'ACTION'` | `{ ok: true, message }` |
+- **Điều adapter KHÔNG kiểm tra**: adapter không kiểm tra `matchId`, `turnId` hay tính hợp lệ của action (`legalActions`). Những kiểm tra này thuộc về Runner (P1-D04) vì chỉ runner mới biết ID kỳ vọng và tập nước đi hợp lệ. Nếu bot gửi sai matchId/turnId/illegal action, adapter vẫn chuyển qua dạng `{ ok: true, message }`.
+- **Tách bạch stderr**: dữ liệu stderr không đi vào `LineBuffer`, chỉ chuyển tới `onStderr` và bộ đếm `stderrBytes`. Stderr có cấu trúc JSON cũng không bao giờ trở thành reply của giao thức.
+- **Phân định phạm vi D05 / D06**:
+  - D05 chịu trách nhiệm spawn bằng argv, framing dòng NDJSON, giới hạn kích thước, validate cú pháp/schema, request window, discard unsolicited lines, và tách biệt stderr.
+  - D06 chịu trách nhiệm timeout bằng monotonic server clock, late-reply discard sau timeout, mã lỗi thoát/EOF/crash/spawn failure đầy đủ, quota stderr (`STDERR_LIMIT_EXCEEDED`), và `stop()` hoàn chỉnh không để lại PID/timer/listener. Trong D05, các nhánh tiến trình đóng bất ngờ giải quyết tối thiểu bằng `{ ok: false, code: 'BOT_EOF' }` (`// P1-D06: refine`).
+- **Không thêm bất kỳ runtime dependency mới nào**: module tiếp tục chỉ phụ thuộc các package nội bộ và Node.js built-ins.
 
 ## Phạm vi P1-D07 — event log và replay verifier
 
