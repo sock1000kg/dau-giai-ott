@@ -142,7 +142,47 @@ Nguồn sự thật: Bot Protocol v1 §6 (mã lỗi và policy), ngưỡng lấy
 - **Tách bạch stderr**: dữ liệu stderr không đi vào `LineBuffer`, chỉ chuyển tới `onStderr` và bộ đếm `stderrBytes`. Stderr có cấu trúc JSON cũng không bao giờ trở thành reply của giao thức.
 - **Phân định phạm vi D05 / D06**:
   - D05 chịu trách nhiệm spawn bằng argv, framing dòng NDJSON, giới hạn kích thước, validate cú pháp/schema, request window, discard unsolicited lines, và tách biệt stderr.
-  - D06 chịu trách nhiệm timeout bằng monotonic server clock, late-reply discard sau timeout, mã lỗi thoát/EOF/crash/spawn failure đầy đủ, quota stderr (`STDERR_LIMIT_EXCEEDED`), và `stop()` hoàn chỉnh không để lại PID/timer/listener. Trong D05, các nhánh tiến trình đóng bất ngờ giải quyết tối thiểu bằng `{ ok: false, code: 'BOT_EOF' }` (`// P1-D06: refine`).
+  - D06 hoàn thiện timeout bằng monotonic clock, late-reply discard sau timeout, mã lỗi thoát/EOF/crash/spawn failure đầy đủ, quota stderr (`STDERR_LIMIT_EXCEEDED`), và `stop()` hoàn chỉnh không để lại PID/timer/listener.
+
+## Phạm vi P1-D06 — BotProcess timeout và process cleanup
+
+`src/process-errors.ts`: hàm thuần túy `classifyExit({ code, signal, phase })` phân loại lỗi tiến trình không I/O, không import `child_process`:
+- **Bảng phân loại thoát tiến trình**:
+  | Phase | Mã thoát / Tín hiệu / Kích hoạt | Kết quả (`ProcessFaultCode`) | Ghi chú |
+  | :--- | :--- | :--- | :--- |
+  | `starting` | spawn error (ENOENT...), exit/close trước/khi ghi INIT, startup timeout | `BOT_SPAWN_FAILED` | Forfeit ngay tại startup |
+  | `running` | exit non-zero (`code !== 0`) hoặc bị kill bởi tín hiệu (`signal !== null`) | `BOT_CRASHED` | Tiến trình crash bất thường |
+  | `running` | exit 0 (`code === 0`), stdout `end`, stdin `EPIPE`/`close` | `BOT_EOF` | Tiến trình đóng stream hoặc thoát sạch |
+  | `stopping` | Bất kỳ mã thoát hay tín hiệu nào sau khi gọi `stop()` | `null` | Dừng sạch có chủ đích bởi runner |
+
+- **Diễn giải contract**:
+  - Startup timeout (quá `startupTimeoutMs` mà INIT chưa ghi/flush xong) → ánh xạ thành `BOT_SPAWN_FAILED` (contract không có mã riêng cho startup timeout).
+  - Hủy lượt (abort) khi `stop()` được gọi lúc một request đang chờ → settle request dở dang với `BOT_EOF`.
+
+`src/bot-process.ts`: hoàn thiện quản lý vòng đời, timeout và cleanup cho `BotProcess`:
+- **Monotonic Timeouts sau khi write**:
+  - `startupTimeoutMs` (mặc định 5000 ms theo baseline §3): tính từ khi spawn tới khi `INIT` được ghi và flush xong. Quá hạn sẽ kill tiến trình và báo `BOT_SPAWN_FAILED`.
+  - `turnTimeoutMs`: được tính bằng monotonic clock (`now()`, mặc định `performance.now()`, có thể inject trong test). Deadline `now() + turnTimeoutMs` được chốt **sau** khi write callback của `STATE_UPDATE` hoàn tất; không trừ hao thời gian serialize/write của runner.
+  - Settle đúng một lần (`settlePendingRequest` guard) với kết quả đầu tiên xuất hiện: message hợp lệ từ stdout, `BOT_TIMEOUT`, process fault, hoặc abort qua `stop()`. Khi settle, timer của lượt được xóa ngay lập tức.
+  - Tuyệt đối không đọc bất kỳ clock, timestamp hay duration nào từ bot gửi lên.
+- **Quy tắc xử lý late reply**:
+  - Lưu tập các `turnId` đã timeout (`timedOutTurnIds`).
+  - Dòng hợp lệ kiểu `ACTION` gửi về muộn có `turnId` nằm trong tập đã timeout bị loại bỏ như `UNEXPECTED_MESSAGE` và request window cho lượt hiện tại vẫn mở — không làm settle sai lượt sau hay gây `TURN_ID_MISMATCH` oan uổng.
+  - Các `turnId` lạ khác không thuộc tập timeout vẫn được chuyển nguyên vẹn lên runner để phân xử.
+- **Sticky fault & send-only methods**:
+  - Lỗi tiến trình đầu tiên (`ProcessFaultCode`) được ghi nhận vĩnh viễn vào getter `fault`.
+  - Sau khi có fault, mọi `requestAction` kế tiếp trả ngay `{ ok: false, code: fault }`.
+  - Các phương thức một chiều (`notifyStateUpdate`, `sendTurnResult`, `finish`) không bao giờ ném lỗi và không cố ghi nếu tiến trình đã chết/fault — chúng luôn resolve an toàn. Lỗi ghi (`EPIPE`, stdin destroyed) chuyển thành sticky fault `BOT_EOF` thay vì reject.
+- **Hạn mức stderr (`STDERR_LIMIT_EXCEEDED`)**:
+  - Đo tổng số byte stderr (`stderrBytes`).
+  - Chỉ forward cho `onStderr` tối đa `maxStderrBytes` (mặc định 1 MB theo baseline §3).
+  - Khi vượt quota, đặt sticky fault `STDERR_LIMIT_EXCEEDED`, settle request đang chờ và kill tiến trình ngay.
+- **Quy trình `stop()` (close) idempotent & leo thang tuần tự**:
+  - Gọi đồng thời hoặc tuần tự nhiều lần đều an toàn và trả về cùng một Promise instance.
+  - Đặt `phase = 'stopping'`, settle request đang dở dang với `BOT_EOF`.
+  - Chuỗi ngắt tiến trình: `stdin.end()` → đợi `stopGraceMs` (mặc định 500 ms) → gửi `SIGTERM` → đợi tiếp `stopGraceMs` → gửi `SIGKILL`.
+  - Sau khi tiến trình kết thúc: xóa toàn bộ timers trong class, gỡ bỏ toàn bộ listeners trên child process và các stream stdio (`removeAllListeners`), destroy stdio streams.
+  - Không sử dụng `unref()` tricks để che giấu rò rỉ tài nguyên; cung cấp `debugHandles()` phục vụ kiểm thử assertion 0 listener / 0 timer.
 - **Không thêm bất kỳ runtime dependency mới nào**: module tiếp tục chỉ phụ thuộc các package nội bộ và Node.js built-ins.
 
 ## Phạm vi P1-D07 — event log và replay verifier

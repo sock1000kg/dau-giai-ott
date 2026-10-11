@@ -229,7 +229,7 @@ Không triển khai ID này. Workspace chung chuyển cho Đinh Đức Thuận d
 **Ước lượng:** M (3 file)
 **Hoàn tất:** 2026-10-11 — `BotProcess` và `LineBuffer` hoàn thành: spawn trực tiếp bằng argv với `shell: false`, framing LF chuẩn và xử lý chunking/split multi-byte UTF-8 chính xác, giới hạn `maxMessageBytes` được LineBuffer chặn ngay lập tức không giữ bộ nhớ dư thừa, validate JSON và schema injected trong request window, discard và đếm stdout ngoài window, tách bạch hoàn toàn stderr khỏi luồng giao thức. Adapter không kiểm tra matchId/turnId/legal (để runner kiểm tra). 18 test mới (5 line-buffer + 13 bot-process); tổng 89 test pass, typecheck và build pass.
 
-### [ ] P1-D06 — BotProcess timeout và process cleanup
+### [x] P1-D06 — BotProcess timeout và process cleanup
 
 **Owner:** Phạm Tất Đạt
 **Mô tả:** Timeout bằng server clock và đóng process an toàn.
@@ -238,6 +238,7 @@ Không triển khai ID này. Workspace chung chuyển cho Đinh Đức Thuận d
 **Dependencies:** `P1-D05`.
 **Files dự kiến:** `src/match-runner/src/bot-process.ts`, `src/match-runner/src/process-errors.ts`, `src/match-runner/tests/bot-process-lifecycle.test.ts`
 **Ước lượng:** M (3 file)
+**Hoàn tất:** 2026-10-11 — Hoàn thành lifecycle, timeout và process cleanup cho BotProcess: monotonic timeout (startup/turn) được kích hoạt nghiêm ngặt sau write callback, settle đúng một lần, không phụ thuộc clock bot; late reply của các lượt đã timeout được discard an toàn không gây mismatch lượt sau; sticky fault bảo đảm các phương thức send-only không bao giờ throw; classifyExit phân loại đầy đủ BOT_SPAWN_FAILED/BOT_CRASHED/BOT_EOF; quản lý quota stderr (STDERR_LIMIT_EXCEEDED); stop() idempotent với chuỗi leo thang stdin.end -> SIGTERM -> SIGKILL; gỡ bỏ hoàn toàn listener, timer và tiêu hủy stream stdio, không để lại PID sống hay rò rỉ tài nguyên sau mọi nhánh. 24 test mới trong bot-process-lifecycle.test.ts; tổng 113 test pass, typecheck và build pass.
 
 ### [x] P1-D07 — Event log và replay verifier
 

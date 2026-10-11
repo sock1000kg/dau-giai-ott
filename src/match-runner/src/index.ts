@@ -21,4 +21,5 @@ export * from './errors.ts';
 export * from './event-log.ts';
 export * from './replay.ts';
 export * from './line-buffer.ts';
+export * from './process-errors.ts';
 export * from './bot-process.ts';
