@@ -66,6 +66,14 @@ order, not an official contest tie-break. The requirement's BTC-decided match
 or seeded public draw remains a separate, auditable competition decision.
 Pagination is bounded to page 1–10000 and page size 1–100.
 
+`P2-T13C` exposes authenticated `GET /api/v1/results/matches` and
+`GET /api/v1/results/series`. Team accounts are always scoped server-side to
+their own team; attempting to filter another team returns 403. BTC accounts
+may browse all participating teams or filter by `teamId`. Both endpoints list
+terminal outcomes only, order newest terminal result first with UUID as a
+stable final key, validate bounded `page`/`pageSize`, and omit private seeds,
+storage object keys, event-log keys and submission archive references.
+
 Run rating logic and PostgreSQL integration tests against a disposable database
 with the API migrations applied:
 

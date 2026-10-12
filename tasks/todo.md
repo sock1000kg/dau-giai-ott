@@ -524,13 +524,14 @@ Các ID cũ bị hủy trước khi triển khai và không được tái sử d
 
 **Hoàn tất:** 2026-10-13 — Migration 0003 bổ sung round snapshot/idempotency, series BO2/score, unique participant per round, pairing reverse-pair guard, swapped game number và immutability triggers; `scheduleRound` đọc active submission/current rating từ DB, khóa đồng thời theo stage, greedy pairing band 200 +100 và tránh rematch trong 3 round gần nhất, ghi bye, 2 match X/O đảo phe và `MATCH_SCHEDULED` outbox atomically. Queue dispatcher validates payload và retry an toàn qua stable MatchQueue key; `settleSeries` đợi đủ hai terminal games, tính điểm theo side swap, retry idempotent, tie rõ ràng, hạ tầng failure/cancel không có score (bot FORFEIT vẫn là result chính thức). Mỗi stage chỉ có một round mở; round mới bị chặn đến khi mọi series FINALIZED ở round trước có đủ 2 rating ledger entries từ P2-T13; series CANCELLED không cần ledger. Test logic 9/9, PostgreSQL schema+scheduling integration 11/11, worker finalization integration 5/5; full test/typecheck/build pass, audit 0 vulnerabilities; docs SAD, API README và local runbook updated. DOCS UPDATED: Solution Architecture Phase 2, platform API README, Phase 2 local runbook, task graph.
 
-### [ ] P2-T13 — Match results, Elo ledger và leaderboard API (nhóm task)
+### [x] P2-T13 — Match results, Elo ledger và leaderboard API (nhóm task)
 
 **Owner:** Đinh Đức Thuận
 **Mô tả:** Hoàn thiện Elo ledger, leaderboard và API kết quả; được tách thành các PR nhỏ theo ranh giới triển khai.
 **Acceptance criteria:** (1) Mỗi series terminal tạo ledger entry đúng một lần từ snapshot đầu vòng; (2) rebuild/replay giữ nguyên rating hiện tại; (3) leaderboard và results có authorization, ordering, tie-break và pagination ổn định.
 **Dependencies:** `P2-T12`, `P2-T01`.
 **Ước lượng:** L (3 task con)
+**Hoàn tất:** 2026-10-13 — T13A Elo/ledger/rebuild, T13B public leaderboard và T13C authenticated match/series results hoàn thành. PostgreSQL integration của ba lát 8/8 pass, API suite/typecheck/build pass; exact leaderboard tie chờ BTC và results giới hạn theo session owner. DOCS UPDATED: API README, task graph/checklist.
 
 #### [x] P2-T13A — Elo calculation, round ledger và rebuild verification
 
@@ -552,14 +553,15 @@ Các ID cũ bị hủy trước khi triển khai và không được tái sử d
 **Files dự kiến:** `ratings/routes.ts`, repository/query, tests, API docs.
 **Hoàn tất:** 2026-10-13 — Public leaderboard query tổng hợp Elo/record, h2h, fault skip và forfeit, rank ổn định; exact ties giữ đồng hạng và đánh dấu `BTC_REQUIRED`, không tự biến UUID thành luật thi đấu. Route public đăng ký trong app, lọc stage, pagination có giới hạn. PostgreSQL integration 2/2 qua `createAuthApp` (ẩn danh), API typecheck/build pass; mutation validation đảo điều kiện làm test thất bại. GitNexus all/compare main HIGH do `createAuthApp` composition-root fan-out 10 flows; xác nhận route là đăng ký sibling và app-level integration pass. DOCS UPDATED: API README và task graph/checklist.
 
-#### [ ] P2-T13C — Match/series results API với RBAC
+#### [x] P2-T13C — Match/series results API với RBAC
 
 **Owner:** Đinh Đức Thuận
 **Mô tả:** Cung cấp kết quả trận/series cho BTC và giới hạn tài khoản đội vào dữ liệu được phép xem.
 **Acceptance criteria:** (1) Team account không thể đọc chéo team; BTC xem trong phạm vi giải; (2) response không lộ seed, object key hay artifact riêng tư; (3) ordering và pagination deterministic, có reason/terminal outcome.
-**Verification:** Results API integration tests gồm unauthenticated, team IDOR và BTC cases.
+**Verification:** `npm test --workspace @ott/platform-api -- --run tests/results.integration.test.ts`; gồm unauthenticated, team IDOR và BTC cases.
 **Dependencies:** `P2-T12`, `P2-T01`.
 **Files dự kiến:** `results/routes.ts`, app registration, tests, API docs.
+**Hoàn tất:** 2026-10-13 — `GET /api/v1/results/matches` và `/series` yêu cầu login, team account được scope bằng principal (IDOR trả 403), BTC xem/filter toàn giải; chỉ trả terminal results, order/pagination deterministic, không lộ seed/object/replay keys. PostgreSQL+Redis integration 2/2, API suite/typecheck/build pass; mutation bỏ scope làm test thấy 4 thay vì 2 kết quả rồi khôi phục. GitNexus all/compare main HIGH do app composition-root fan-out 15 flows; context xác nhận route mới là sibling registration, app-level auth/IDOR integration pass. DOCS UPDATED: API README, task graph/checklist.
 
 ### P2-D11 — Đã hủy, tách thành `P2-L02` và `P2-L03`
 
