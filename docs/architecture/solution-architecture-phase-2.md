@@ -91,6 +91,8 @@ Control plane và execution plane có thể cùng một máy trong local develop
 
 `P2-T11` claim khóa hàng `Match`, kiểm tra snapshot hai submission với payload, rồi append `MatchAttempt` có lease 15 phút. Match tối đa 200 turn với timeout 3 giây mỗi lượt nằm trong lease; DB trigger ngăn sửa execution snapshot sau khi tạo, lease hết hạn cho phép retry mới, attempt cũ không thể finalize. Infrastructure failure ghi stable error code và attempt retryable (lần cuối là terminal); bot fault là kết quả game hợp lệ. Worker xác minh event log bằng `verifyReplay`, upload JSON theo key chứa SHA-256, rồi transaction tạo `MatchResult`, `MatchEvent` rows, `MATCH_FINALIZED` outbox duy nhất và chuyển match sang `FINALIZED`. Redelivery sau commit trả official result hiện hữu mà không chạy bot lần nữa. Object upload trước DB commit có thể để lại object mồ côi nếu transaction lỗi; content-addressed key làm lần retry cùng bytes an toàn và outbox/DB mới là trạng thái chính thức.
 
+`P2-T12` đóng băng `Round` theo `(stage,idempotencyKey)`, gồm seed riêng do backend sinh và rating/submission snapshot lấy từ DB; advisory lock + unique key khiến retry/concurrent request trả lại đúng lịch cũ. Mỗi stage chỉ có một round đang mở và round kế tiếp bị chặn cho đến khi mọi series FINALIZED của round trước có đủ hai ledger entry; series CANCELLED không cần ledger. Pairing deterministic: bắt đầu band Elo 200, nới thêm 100 đến khi ghép được, ưu tiên tránh cặp trong ba vòng gần nhất; team lẻ nhận bye deterministic và được theo dõi để luân phiên. Mỗi cặp thành một series BO2 với cùng map/submission/policy, game thứ hai hoán đổi X/O; match ID/seed sinh một lần và `MATCH_SCHEDULED` outbox chứa job snapshot trong cùng transaction. Dispatcher publish queue trước rồi đánh dấu outbox; nếu crash giữa hai bước, BullMQ job key idempotent cho phép gửi lại. DB unique constraints/participant rows khóa mỗi team một lần trong round, immutable sau khi ghi và chống đảo thứ tự để tạo duplicate pairing.
+
 ```text
 schedule transaction
   -> tạo Match(SCHEDULED) + outbox row unique(matchId, kind)
@@ -119,6 +121,7 @@ Các invariant bắt buộc được enforce bằng database constraint/transact
 - `TEAM_ACCOUNT` 1:1 `Team`; username unique; session revocation đọc server-side.
 - `Submission.sha256` và object key bất biến sau VALID; mỗi team/stage chỉ một ACTIVE submission.
 - `MatchResult.matchId` unique; `Match` transition conditional theo status/lease; `MatchAttempt` append-only.
+- `Round` schedule/rating snapshot và `Series` pairing bất biến; round participant unique để mỗi team chỉ xuất hiện một lần.
 - `RatingLedger(teamId, seriesId)` unique; rating snapshot của round bất biến.
 - `Replay.matchId` unique; public read chỉ sau `PUBLISHED`.
 - `AuditEvent` append-only, có actor/action/target/reason/correlationId; không chứa secret.

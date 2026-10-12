@@ -512,7 +512,7 @@ Các ID cũ bị hủy trước khi triển khai và không được tái sử d
 
 **Hoàn tất:** 2026-10-13 — Worker claim match bằng row lock + 15 phút lease, so sánh immutable artifact refs với DB, SHA-256 archive, chạy `MatchRunner` qua OCI BotPort, verify event log/replay, upload theo content hash. Migration 0002 lưu execution snapshot/lease, giới hạn baseline 200 turns/3 giây và trigger DB từ chối sửa snapshot, cùng transactional outbox unique `(match_id,event_type)`. Finalize transaction ghi một `MatchResult`, event trail, `MATCH_FINALIZED`, thành công attempt và status `FINALIZED`; lỗi hạ tầng retryable/final attempt terminal, bot crash là FORFEIT chính thức. Integration PostgreSQL 5/5 pass (concurrent lease, redelivery, corrupt archive/retry, forfeit, immutable snapshot), worker/API typecheck pass; worker Redis retry integration 4/4 pass. DOCS UPDATED: Solution Architecture, worker README, Phase 2 runbook, task graph.
 
-### [ ] P2-T12 — Scheduling và series scoring
+### [x] P2-T12 — Scheduling và series scoring
 
 **Owner:** Đinh Đức Thuận
 **Mô tả:** Tạo series/match schedule và tổng hợp điểm Phase 2.
@@ -521,6 +521,8 @@ Các ID cũ bị hủy trước khi triển khai và không được tái sử d
 **Dependencies:** `P2-T11`, `P2-T01`.
 **Files dự kiến:** `src/platform/api/src/modules/scheduling/service.ts`, `src/platform/api/src/modules/scheduling/repository.ts`, `src/platform/api/src/modules/series/scoring.ts`, `src/platform/api/tests/scheduling.integration.test.ts`
 **Ước lượng:** M (4 file)
+
+**Hoàn tất:** 2026-10-13 — Migration 0003 bổ sung round snapshot/idempotency, series BO2/score, unique participant per round, pairing reverse-pair guard, swapped game number và immutability triggers; `scheduleRound` đọc active submission/current rating từ DB, khóa đồng thời theo stage, greedy pairing band 200 +100 và tránh rematch trong 3 round gần nhất, ghi bye, 2 match X/O đảo phe và `MATCH_SCHEDULED` outbox atomically. Queue dispatcher validates payload và retry an toàn qua stable MatchQueue key; `settleSeries` đợi đủ hai terminal games, tính điểm theo side swap, retry idempotent, tie rõ ràng, hạ tầng failure/cancel không có score (bot FORFEIT vẫn là result chính thức). Mỗi stage chỉ có một round mở; round mới bị chặn đến khi mọi series FINALIZED ở round trước có đủ 2 rating ledger entries từ P2-T13; series CANCELLED không cần ledger. Test logic 9/9, PostgreSQL schema+scheduling integration 11/11, worker finalization integration 5/5; full test/typecheck/build pass, audit 0 vulnerabilities; docs SAD, API README và local runbook updated. DOCS UPDATED: Solution Architecture Phase 2, platform API README, Phase 2 local runbook, task graph.
 
 ### [ ] P2-T13 — Match results, Elo ledger và leaderboard API
 

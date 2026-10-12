@@ -32,3 +32,25 @@ exponential backoff starting at one second; completed and failed jobs remain
 retained so a duplicate cannot silently replace pinned OCI references. See
 [`@ott/platform-worker`](../worker/README.md) for worker and Redis integration
 verification.
+
+## Qualification scheduling
+
+`P2-T12` snapshots active submissions and current ratings from PostgreSQL and
+generates/persists the private round seed server-side,
+creates each BO2 round/series and its two X/O-swapped matches transactionally,
+and stores validated `MatchJobV1` payloads in the `MATCH_SCHEDULED` outbox.
+Call `dispatchScheduledMatches` with a `MatchQueue`-compatible enqueuer to
+publish pending jobs; replay after a queue/DB interruption is idempotent.
+`settleSeries` waits for both matches to be terminal, records a draw/win score
+once, and cancels a series containing an infrastructure failure without
+assigning a result score. A later round is held until P2-T13 has applied both
+rating-ledger entries for every finalized prior series; cancelled series need
+no Elo entries. Only one round per stage may be open at a time.
+
+Run the scheduler integration test only against a disposable PostgreSQL DB
+with migrations applied; it creates and removes only its own unique fixture:
+
+```bash
+DATABASE_URL="$YOUR_DISPOSABLE_POSTGRES_URL" \
+  npm test --workspace @ott/platform-api -- --run tests/scheduling.logic.test.ts tests/scheduling.integration.test.ts
+```

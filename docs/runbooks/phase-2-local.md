@@ -43,3 +43,25 @@ same transaction. Object storage receives a content-addressed event-log object
 before that transaction; an unreferenced object after a DB failure is harmless
 and can be garbage-collected later. Unique match/result and outbox keys are the
 deduplication boundary for queue redelivery.
+
+## Qualification round scheduling
+
+`P2-T12` requires a disposable PostgreSQL database with migrations applied; the
+scheduling integration fixture uses unique teams/stage and removes only its
+own rows. It does not reset or drop the schema.
+
+```bash
+DATABASE_URL="$YOUR_DISPOSABLE_POSTGRES_URL" \
+  npm test --workspace @ott/platform-api -- --run tests/scheduling.logic.test.ts tests/scheduling.integration.test.ts
+```
+
+BTC scheduling calls use a stable stage/idempotency key; the API generates and
+persists the private round seed. Retry with the same key to retrieve the frozen
+schedule. The API
+transaction writes two swapped-side matches per pairing and queue outbox rows;
+dispatch can be retried safely if Redis is unavailable. A series settles only
+after both games are terminal. Infrastructure failure/cancellation cancels the
+series with no score; a finalized bot forfeit remains an official game result.
+The next round remains blocked until P2-T13 writes both Elo ledger entries for
+each finalized series in the previous round; the API also rejects overlapping
+open rounds in the same stage.
