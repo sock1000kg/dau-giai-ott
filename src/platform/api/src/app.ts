@@ -5,6 +5,8 @@ import type { Database } from './db/client.ts';
 import { AuthorizationError } from './modules/auth/authorize.ts';
 import { registerAuthPlugin } from './modules/auth/plugin.ts';
 import { registerTeamRoutes } from './modules/teams/routes.ts';
+import { registerSubmissionRoutes } from './modules/submissions/routes.ts';
+import type { ObjectStorage } from './storage/s3.ts';
 import { createPasswordHasher, type PasswordHashPolicy } from './modules/auth/passwords.ts';
 import { createRedisAuthStore, type RedisAuthCommands } from './modules/auth/sessions.ts';
 import type { AuthRateLimit, PasswordHasher } from './modules/auth/types.ts';
@@ -16,6 +18,7 @@ export interface CreateAuthAppOptions {
   readonly passwordHashPolicy?: PasswordHashPolicy;
   readonly secureCookies?: boolean;
   readonly rateLimit?: AuthRateLimit;
+  readonly storage?: ObjectStorage;
 }
 
 export function createAuthApp(options: CreateAuthAppOptions): FastifyInstance {
@@ -39,5 +42,6 @@ export function createAuthApp(options: CreateAuthAppOptions): FastifyInstance {
     secureCookies: options.secureCookies ?? true,
   });
   registerTeamRoutes(application, { database: options.database, passwordHasher, sessionStore: authStore });
+  if (options.storage !== undefined) registerSubmissionRoutes(application, { database: options.database, storage: options.storage });
   return application;
 }

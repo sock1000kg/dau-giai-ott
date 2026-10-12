@@ -424,15 +424,16 @@ Các ID cũ bị hủy trước khi triển khai và không được tái sử d
 **Ước lượng:** M (5 file)
 **Hoàn tất:** 2026-10-12 — BTC-only API tạo/list/đổi tên/reset credential team; credential plaintext chỉ trong response, password hash Argon2id, audit không chứa secret và reset revoke toàn bộ Redis session account. Integration PostgreSQL+Redis pass 3 test; API suite 9 test pass trên main.
 
-### [ ] P2-T07 — OCI submission upload và S3-compatible storage vertical slice
+### [x] P2-T07 — OCI submission upload và S3-compatible storage vertical slice
 
 **Owner:** Đinh Đức Thuận
 **Mô tả:** Nhận OCI image archive, quarantine/promote object storage và ghi metadata identity bất biến.
-**Acceptance criteria:** (1) Chỉ `TEAM_ACCOUNT` sở hữu team được upload đúng contract `P2-T14`; API không nhận language, command, tag, registry URL hoặc Dockerfile; (2) stream sang quarantine, verify archive SHA-256 + OCI manifest/config digest rồi promote bằng server-generated key, lỗi cleanup đúng; (3) submission ACTIVE pin identity OCI/policy version, download nội bộ verify checksum và không traversal/overwrite.
+**Acceptance criteria:** (1) Chỉ `TEAM_ACCOUNT` sở hữu team được upload đúng contract `P2-T14`; API không nhận language, command, tag, registry URL hoặc Dockerfile; (2) stream sang quarantine, verify archive SHA-256 + OCI manifest/config digest rồi promote bằng server-generated key, lỗi cleanup đúng; (3) submission `PREFLIGHT` pin identity OCI/policy version; P2-T10 mới chuyển `VALID`/`ACTIVE` sau sandbox preflight, download nội bộ verify checksum và không traversal/overwrite.
 **Verification:** `npm test -- src/platform/api/tests/submissions.integration.test.ts` với PostgreSQL/SeaweedFS local.
 **Dependencies:** `P2-T06`, `P2-T14`.
 **Files dự kiến:** `src/platform/api/src/modules/submissions/routes.ts`, `src/platform/api/src/modules/submissions/service.ts`, `src/platform/api/src/storage/s3.ts`, `src/platform/api/tests/submissions.integration.test.ts`, `docs/contracts/oci-submission-v1.md`
 **Ước lượng:** M (4 file)
+**Hoàn tất:** 2026-10-13 — TEAM_ACCOUNT upload OCI archive qua quarantine/promote SeaweedFS, identity immutable `PREFLIGHT` và internal checksum verification; PostgreSQL+Redis+SeaweedFS integration pass.
 
 ### [ ] P2-N14 — BTC team-account provisioning console
 

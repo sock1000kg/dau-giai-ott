@@ -6,3 +6,5 @@ export { requireAuthenticated, requireRole, requireTeamAccess, AuthorizationErro
 export { createPasswordHasher, type PasswordHashPolicy } from './modules/auth/passwords.ts';
 export { createRedisAuthStore, RedisAuthStore, type LoginRateLimiter, type RedisAuthCommands, type SessionStore } from './modules/auth/sessions.ts';
 export { type AccountRole, type AuthRateLimit, type PasswordHasher, type SessionPrincipal } from './modules/auth/types.ts';
+export { readSubmissionArchive } from './modules/submissions/service.ts';
+export { createS3Storage, type ObjectStorage, type S3StorageOptions } from './storage/s3.ts';
