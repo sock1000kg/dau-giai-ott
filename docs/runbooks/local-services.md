@@ -39,6 +39,29 @@ Expected services:
 SeaweedFS creates `${S3_BUCKET}` idempotently at startup. It publishes only the
 S3 endpoint; management endpoints remain inside the Compose network.
 
+## Local BTC bootstrap configuration
+
+Set both `OTT_BOOTSTRAP_BTC_USERNAME` and `OTT_BOOTSTRAP_BTC_PASSWORD` in the
+uncommitted `.env` only. They are consumed when the API host calls
+`bootstrapBtcAdmin` before accepting requests; PostgreSQL stores only an
+Argon2id hash. Do not place the resulting plaintext password in a command
+history, issue tracker, audit record or repository file.
+
+The bootstrap is idempotent for an existing BTC username. Leave both variables
+absent to skip it. Setting only one variable is a configuration error and must
+stop startup. Team credentials are not created here: they are created/reset by
+the BTC-only team API in `P2-T06`.
+
+The Phase 2 auth integration test needs explicit local connection URLs and
+resets the selected PostgreSQL `public` schema and Redis database:
+
+```bash
+DATABASE_URL=postgresql://... REDIS_URL=redis://:...@127.0.0.1:6379 \
+  npm test --workspace @ott/platform-api -- --run tests/auth.integration.test.ts
+```
+
+Never point that command at shared or production services.
+
 ## Lifecycle
 
 ```bash

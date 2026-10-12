@@ -13,7 +13,7 @@ Không dùng một thứ tự ưu tiên duy nhất cho mọi vấn đề. Mỗi 
 | Cách AI/Git làm việc | `AGENTS.md`, `CLAUDE.md` | Chỉ giải thích thêm, không nới lỏng rules |
 | Nghiệp vụ, luật game, phạm vi sản phẩm | [Đặc tả yêu cầu](tai-lieu-yeu-cau.md) | Plan/task chỉ triển khai một phần đã nêu |
 | Quyết định kiến trúc đã chấp nhận | [ADRs](decisions/) | Tài liệu khác phải dẫn link, không quyết định lại |
-| Engine API và Bot Protocol v1 | [Engine API](contracts/engine-api-v1.md), [Bot Protocol](contracts/bot-protocol-v1.md), [JSON Schema](contracts/bot-protocol-v1.schema.json) | Phần tóm tắt không được thay đổi field/semantics |
+| Engine API, Bot Protocol và Platform Auth v1 | [Engine API](contracts/engine-api-v1.md), [Bot Protocol](contracts/bot-protocol-v1.md), [JSON Schema](contracts/bot-protocol-v1.schema.json), [Platform Auth](contracts/platform-auth-v1.md) | Phần tóm tắt không được thay đổi field/semantics |
 | Owner và ranh giới module | [Phân công Phase 1–2](team-assignment-phase-1-2.md) | AI context chỉ lọc phần liên quan cho từng người |
 | Package, phiên bản công cụ, liên kết module và lệnh chạy | [Convention package module](conventions/module-package.md) | Task card chỉ dẫn lệnh theo convention, không pin phiên bản riêng |
 | Dependency, checkpoint và trạng thái task | [Task checklist](../tasks/todo.md) | [Implementation plan](../tasks/plan.md) chỉ cung cấp bức tranh tổng thể |
@@ -84,6 +84,7 @@ Quy tắc:
 - [ADR-0007 — SeaweedFS S3-compatible cho local Phase 2](decisions/0007-seaweedfs-local-s3-compatible-storage.md).
 - [Engine API v1](contracts/engine-api-v1.md).
 - [Bot Protocol v1](contracts/bot-protocol-v1.md), [JSON Schema](contracts/bot-protocol-v1.schema.json) và [fixtures](contracts/fixtures/).
+- [Platform Authentication Contract v1](contracts/platform-auth-v1.md).
 
 ## 6. Kiến trúc
 
