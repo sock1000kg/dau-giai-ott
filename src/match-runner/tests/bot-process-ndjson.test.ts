@@ -104,6 +104,16 @@ function createBot(scriptPath: string, args: string[] = [], overrides: Partial<B
   });
 }
 
+async function waitFor(condition: () => boolean, description: string, timeoutMs = 1_000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (!condition()) {
+    if (Date.now() >= deadline) {
+      throw new Error(`Timed out waiting for ${description}`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  }
+}
+
 describe('BotProcess NDJSON adapter (P1-D05)', () => {
   let activeBots: BotProcess[] = [];
 
@@ -134,8 +144,10 @@ describe('BotProcess NDJSON adapter (P1-D05)', () => {
     const startRes = await bot.start(sampleInit);
     expect(startRes.ok).toBe(true);
 
-    // Wait for the fixture to echo argv on startup
-    await new Promise((r) => setTimeout(r, 50));
+    await waitFor(
+      () => capturedStderr.includes(`ARGV:${JSON.stringify(['--echo-argv', rawMetaString])}`),
+      'fixture argv diagnostic',
+    );
     expect(capturedStderr).toContain(`ARGV:${JSON.stringify(['--echo-argv', rawMetaString])}`);
 
     // Boundary check on source text of bot-process.ts
@@ -294,8 +306,7 @@ describe('BotProcess NDJSON adapter (P1-D05)', () => {
     const startRes = await bot.start(sampleInit);
     expect(startRes.ok).toBe(true);
 
-    // Wait for the unsolicited line emitted on startup to arrive
-    await new Promise((r) => setTimeout(r, 40));
+    await waitFor(() => bot.unexpectedLines === 1, 'startup unsolicited line');
     expect(bot.unexpectedLines).toBe(1);
 
     const reply = await bot.requestAction(sampleUpdate, 1000);
