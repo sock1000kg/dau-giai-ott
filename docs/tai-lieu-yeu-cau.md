@@ -2,7 +2,7 @@
 
 > Trạng thái: **Bản làm việc đã duyệt cho Phase 1–2; các quyết định OPEN tại mục 20 chưa được duyệt**
 >
-> Phiên bản: **0.4.2**
+> Phiên bản: **0.4.4**
 >
 > Ngày cập nhật: **12/10/2026**
 >
@@ -35,7 +35,7 @@ Phần tóm tắt của một contract phải nhường cho contract/schema chí
 ### 1.2 Giả định đang dùng trong bản nháp
 
 - Giải có vòng xếp hạng định kỳ bằng Elo, sau đó chốt Top 8 hoặc Top 16 để đấu loại trực tiếp.
-- Mỗi đội có một bot Python đang hoạt động tại mỗi thời điểm chốt vòng.
+- Mỗi đội có một bot đang hoạt động tại mỗi thời điểm chốt vòng; bot chính thức Phase 2 được đóng gói thành OCI image độc lập ngôn ngữ.
 - Bot chạy hoàn toàn trong hạ tầng BTC, không có Internet và không giữ trạng thái bền vững giữa các trận.
 - Game Engine là nguồn sự thật duy nhất; bot chỉ đề xuất hành động.
 - Vận chuyển mặc định giữa Engine và bot là STDIO dùng NDJSON. Local WebSocket chỉ được bổ sung nếu có nhu cầu đã được chứng minh.
@@ -285,10 +285,9 @@ Transcript đầy đủ có thể chạy bằng máy nằm tại
 
 ### 8.2 Gói nộp
 
-- Hệ thống nhận một file `bot.py` hoặc archive theo định dạng BTC công bố.
-- Nếu dùng archive, entrypoint bắt buộc là `bot.py`; cấm path traversal, symlink và file đặc biệt.
-- Python version, base image, thư viện cài sẵn, giới hạn dung lượng và cách đóng gói model PHẢI được công bố trước vòng đăng ký.
-- Không cài dependency từ Internet khi chạy trận. Dependency bổ sung phải nằm trong gói nộp hoặc whitelist của image.
+- Hệ thống nhận đúng một OCI Image Layout v1.1 archive không nén cho `linux/amd64`; không nhận `bot.py`, source archive, Dockerfile, registry URL hoặc image tag làm submission chính thức Phase 2.
+- Image phải có OCI `Entrypoint` không rỗng. BTC không nhận language, command hay runtime do client khai báo; worker derive entrypoint/digest từ OCI config và override sandbox policy.
+- Định dạng OCI, giới hạn archive/layer, quota và cách đóng gói local model PHẢI được công bố trước vòng đăng ký. Dependency và model cần thiết phải nằm trong image; không cài từ Internet khi chạy trận.
 - Mỗi lần nộp tạo một submission bất biến với `submissionId`, SHA-256, thời gian, chủ sở hữu và trạng thái.
 
 ### 8.3 Vòng đời submission
@@ -299,7 +298,7 @@ UPLOADED → VALIDATING → VALID ──→ ACTIVE
 VALID/ACTIVE ───────────────────────→ REVOKED
 ```
 
-- Validation gồm kiểm tra archive, entrypoint, protocol smoke test, thời gian khởi động và giới hạn an toàn.
+- Validation gồm kiểm tra tar/OCI layout/digest/platform/entrypoint, protocol smoke test trong sandbox, thời gian khởi động và giới hạn an toàn.
 - `INVALID` phải có mã lỗi và thông báo đủ để đội sửa nhưng không lộ cấu hình bảo mật nhạy cảm.
 - Mỗi đội chỉ có một submission `ACTIVE` cho một stage.
 - Cutoff của vòng sẽ pin đúng `submissionId`/hash; upload sau cutoff không thay đổi các trận đã xếp.
@@ -477,7 +476,7 @@ Audit log PHẢI append-only ở cấp ứng dụng và ghi actor, action, targe
 | `Account` | `id`, `username`, password hash, loại account, `teamId` nullable, status |
 | `Session` | `id`, account, opaque token hash, expiry, revoked time |
 | `Team` | `id`, tên, trạng thái, `TEAM_ACCOUNT` 1:1 |
-| `Submission` | `id`, `teamId`, hash, runtime, status, artifact URI |
+| `Submission` | `id`, `teamId`, archive hash, OCI manifest/config digest, platform, derived entrypoint, policy version, status, artifact URI |
 | `MapVersion` | `mapId`, version, checksum, visibility |
 | `Round` | `id`, stage, cutoff, rating snapshot, schedule seed |
 | `Series` | `id`, hai team, format, status, winner |
@@ -523,17 +522,19 @@ Quyết định và hệ quả triển khai được ghi tại [ADR-0001](decisi
 - API của Control Plane ở Phase 2: **Fastify**.
 - Dữ liệu giao dịch và metadata: **PostgreSQL**.
 - Queue và điều phối job: **Redis** với **BullMQ**.
-- Artifact storage: API **S3-compatible**; môi trường phát triển dùng **MinIO**.
+- Artifact storage: API **S3-compatible**; môi trường phát triển dùng **SeaweedFS** và production có thể dùng AWS S3 theo ADR-0007.
 - Portal Phase 2: **React** và **Vite**.
 
 ### 16.2 Môi trường phát triển cục bộ
 
-- PostgreSQL, Redis và MinIO PHẢI chạy bằng container Docker và được khởi động bằng một Docker Compose project của repository.
+- PostgreSQL, Redis và SeaweedFS PHẢI chạy bằng container Docker và được khởi động bằng một Docker Compose project của repository.
 - Các dịch vụ trên chỉ được publish lên loopback (`localhost`) trong môi trường phát triển; ứng dụng đọc endpoint và credential từ biến môi trường, không hard-code trong source.
 - Compose PHẢI có health check cho cả ba dịch vụ để API/worker và integration test chỉ bắt đầu sau khi dependency sẵn sàng.
 - Repository PHẢI cung cấp `.env.example` không chứa secret thật và một lệnh thống nhất để dựng, kiểm tra trạng thái và hạ local stack.
-- PostgreSQL và MinIO dùng volume cục bộ để giữ dữ liệu qua lần restart thông thường; phải có lệnh reset rõ ràng cho môi trường kiểm thử sạch.
+- PostgreSQL và SeaweedFS dùng volume cục bộ để giữ dữ liệu qua lần restart thông thường; phải có lệnh reset rõ ràng cho môi trường kiểm thử sạch.
 - Cổng host cụ thể được quản lý trong file môi trường và có thể override để tránh xung đột trên máy thành viên; giao tiếp production không được suy ra từ cấu hình localhost.
+
+Ranh giới module, transaction/outbox, contract job, trust boundary và thứ tự delivery Phase 2 được cụ thể hóa tại [Solution Architecture Phase 2](architecture/solution-architecture-phase-2.md). Kiến trúc này tuân theo ADR-0005; requirement hiện hành vẫn là nguồn nghiệp vụ ưu tiên.
 
 ## 17. Yêu cầu phi chức năng
 
@@ -639,14 +640,14 @@ Không bắt đầu code giai đoạn kế tiếp trước khi yêu cầu và c�
 | --- | --- | --- | --- | --- | --- | --- |
 | D-01 | Số đội chung kết | 8 nếu quy mô nhỏ, 16 nếu đủ lịch | OPEN | — | — | Trước mở đăng ký |
 | D-02 | Loại bracket | Single-elimination để vận hành đơn giản | OPEN | — | — | Trước mở đăng ký |
-| D-03 | Rating khởi tạo và K-factor | 1000 và K=32 | OPEN | — | — | Trước vòng loại |
+| D-03 | Rating khởi tạo và K-factor | 1000 và K=32; cập nhật một lần cho mỗi series terminal | ACCEPTED | 12/10/2026 | Đinh Đức Thuận | Đã chốt cho Phase 2 local |
 | D-04 | Chính sách forfeit do lỗi bot | Process fault: ngay; turn fault: 3 liên tiếp hoặc 5 tổng | ACCEPTED | 09/10/2026 | Đinh Đức Thuận | Đã chốt |
 | D-05 | Xử lý hòa ở finals | Draw không tính; chơi game bổ sung với map/side mới | OPEN | — | — | Trước finals |
 | D-06 | Turn limit | 200 cho Phase 1/vòng loại; finals chốt riêng | ACCEPTED-PHASE-1 | 09/10/2026 | Đinh Đức Thuận | Finals còn mở |
-| D-07 | Python/image/thư viện | Python 3.12.x, `bot.py`; image digest chốt ở Phase 2 | ACCEPTED-PHASE-1 | 09/10/2026 | Đinh Đức Thuận | Image còn mở |
-| D-08 | CPU/RAM/startup/log quota | Startup 5 s, message 64 KiB, stderr 1 MiB; CPU/RAM/PID benchmark sau | PARTIAL | 09/10/2026 | Đinh Đức Thuận | Trước nhận submission |
-| D-09 | Kích thước dải Elo và số series/vòng | Xác định theo số đội và quỹ máy | OPEN | — | — | Trước vòng loại |
-| D-10 | Single game hay cặp game đổi phía | Cặp hai game đổi X/O | OPEN | — | — | Trước công bố thể thức |
+| D-07 | Runtime/image/thư viện | OCI Image Layout v1.1 `linux/amd64`, OCI Entrypoint; worker pin manifest/config digest và policy version, từ chối Dockerfile/registry URL/tag/client command | ACCEPTED | 12/10/2026 | Đinh Đức Thuận | Xem ADR-0006 và SAD OCI |
+| D-08 | CPU/RAM/startup/log quota | Baseline implementation: startup 5 s, turn 3 s, message 64 KiB, stderr 1 MiB, 1 vCPU, 256 MiB RAM, 64 PID, tmpfs 64 MiB, no egress; chỉ mở nhận submission đội thi sau corpus benchmark xác nhận/chỉnh profile | ACCEPTED-BASELINE | 12/10/2026 | Đinh Đức Thuận | P2-T15 chốt profile phát hành từ evidence P2-T08/P2-T10 |
+| D-09 | Kích thước dải Elo và số series/vòng | 1 series/team/round; dải Elo 200, mở rộng +100 deterministic đến khi ghép được; capacity controller giới hạn theo quota worker | ACCEPTED | 12/10/2026 | Đinh Đức Thuận | Đã chốt cho Phase 2 local |
+| D-10 | Single game hay cặp game đổi phía | Vòng loại dùng cặp 2 game cùng map/submission, đổi X/O; tổng điểm hòa thì series hòa | ACCEPTED | 12/10/2026 | Đinh Đức Thuận | Đã chốt cho Phase 2 local |
 | D-11 | Phát hành replay | Chỉ replay sau trận terminal/integrity check; BTC stage/publish, không live stream | ACCEPTED | 12/10/2026 | Đinh Đức Thuận | Đã chốt |
 | D-12 | Quyền dùng code repo tham chiếu | Chỉ đặc tả lại behavior; không copy source khi chưa có LICENSE | ACCEPTED | 09/10/2026 | Đinh Đức Thuận | Đã chốt |
 | D-13 | Authentication/RBAC cho Phase 2 | Username/password nội bộ; bootstrap BTC qua env local; `BTC_ADMIN` provision/reset một `TEAM_ACCOUNT`/team; Argon2id + Redis cookie session; không self-register | ACCEPTED | 12/10/2026 | Đinh Đức Thuận | Đã chốt |

@@ -60,9 +60,9 @@ Phase 2 local:
 
 ### Phase 2 local
 
-Chỉ làm `P2-D14`–`P2-D16` và `P2-D13` theo đúng dependency trong `tasks/todo.md`; `P2-D01`–`P2-D10`, `P2-D17` và `P2-N01` đã hủy trước khi triển khai và phát hành lại thành `P2-T02`–`P2-T13` cho Thuận. `P2-D14` chỉ xử lý replay terminal đã qua integrity check; `P2-D15` và `P2-D16` không được tạo live stream hoặc điều khiển trận đang chạy.
+Chỉ làm `P2-D14`–`P2-D16` và `P2-D13` theo đúng dependency trong `tasks/todo.md`; `P2-D01`–`P2-D10`, `P2-D17` và `P2-N01` đã hủy trước khi triển khai và phát hành lại thành `P2-T02`–`P2-T13` cho Thuận; `P2-T14` mới khóa OCI submission contract. `P2-D14` chỉ xử lý replay terminal đã qua integrity check; `P2-D15` và `P2-D16` không được tạo live stream hoặc điều khiển trận đang chạy.
 
-Checkpoint liên quan: Phase 1 có `P1-A` sau `P1-D02`, `P1-B` sau `P1-D08`, `P1-C` sau `P1-D11`. Phase 2 có `P2-A` sau `P2-T01`–`P2-T13` (backend của Thuận), `P2-B` sau `P2-L02`, `P2-L03`, `P2-N14`, `P2-N15`, `P2-D14`–`P2-D16` và `P2-D13`; sau `P2-B` Thuận mới deploy. Sơ đồ hai phase: `docs/team-assignment-phase-1-2.md` mục 4.2.
+Checkpoint liên quan: Phase 1 có `P1-A` sau `P1-D02`, `P1-B` sau `P1-D08`, `P1-C` sau `P1-D11`. Phase 2 có `P2-A` sau `P2-T01`–`P2-T15` (backend của Thuận), `P2-B` sau `P2-L02`, `P2-L03`, `P2-N14`, `P2-N15`, `P2-D14`–`P2-D16` và `P2-D13`; sau `P2-B` Thuận mới deploy. Sơ đồ hai phase: `docs/team-assignment-phase-1-2.md` mục 4.2.
 
 Đạt làm tuần tự replay API → replay UI → qualification E2E; Long/Nguyên chỉ làm UI trên ranh giới file/API đã giao, không mở nhiều branch chạm cùng module.
 

@@ -118,6 +118,7 @@ flowchart LR
     PB --> T02 --> D9 --> D10 --> D11 --> PC
 
     classDef done fill:#123d2a,stroke:#39d98a,color:#ffffff,stroke-width:2px;
+    classDef done fill:#123d2a,stroke:#39d98a,color:#ffffff,stroke-width:2px;
     classDef gate stroke-width:3px;
     class T01,L1,L2,N1,N2,D1,D2,PA,PB,T02,D9,D10,D11,PC done;
     class PA,PB,PC gate;
@@ -125,19 +126,24 @@ flowchart LR
 
 #### Phase 2 — Nền tảng giải đấu local
 
+Solution Architecture/ranh giới control plane–execution plane: [Phase 2 local](architecture/solution-architecture-phase-2.md). Submission đa ngôn ngữ/SAD OCI: [OCI bot submission](architecture/sad-oci-bot-submissions.md). Resource profile chỉ là baseline cho đến khi corpus sandbox benchmark pass.
+
 ```mermaid
 flowchart LR
     PC["Checkpoint P1-C<br/>Phase 1 hoàn tất"]
-    T21["P2-T01 (Thuận)<br/>Khóa quota, Elo, series<br/>auth/replay đã khóa"]
-    I1["P2-T02 (Thuận)<br/>Docker: PostgreSQL, Redis, MinIO"]
-    CO["P2-T08 (Thuận)<br/>Bot canary + security corpus"]
+    T21["✅ P2-T01 (Thuận)<br/>Khóa baseline quota, Elo, series, OCI<br/>auth/replay đã khóa"]
+    I1["✅ P2-T02 (Thuận)<br/>Docker: PostgreSQL, Redis, SeaweedFS"]
+    OCI["✅ P2-T14 (Thuận)<br/>OCI contract + layout validator"]
+    CO["P2-T08 (Thuận)<br/>OCI canary + security corpus"]
 
     subgraph BE["Backend local — Thuận làm tuần tự"]
         DB["P2-T03…T04<br/>Schema, auth/RBAC"]
         AUTHC["P2-T05<br/>Auth HTTP contract + bootstrap config"]
-        TEAM["P2-T06…T07<br/>Team + upload bot"]
+        TEAM["P2-T06<br/>Team + credential API"]
+        SUBAPI["P2-T07<br/>OCI upload bot"]
         WORKER["P2-T09<br/>Queue + worker"]
         RUN["P2-T10…T11<br/>Sandbox + ghi kết quả"]
+        BENCH["P2-T15<br/>Benchmark quota / gate đăng ký"]
         ELO["P2-T12…T13<br/>Lịch thi đấu, Elo, leaderboard API"]
     end
 
@@ -154,20 +160,25 @@ flowchart LR
     PC --> T21
     PC --> I1
     I1 --> DB
-    T21 --> CO
+    T21 --> OCI --> CO
     DB --> AUTHC --> PORTAL
-    DB --> TEAM --> SUB["P2-L03 team submission"]
+    DB --> TEAM --> SUBAPI --> SUB["P2-L03 team submission"]
+    OCI --> SUBAPI
     PORTAL & TEAM --> ADMIN
-    T21 & I1 --> WORKER
-    CO & TEAM & WORKER --> RUN
+    T21 & I1 & OCI & SUBAPI --> WORKER
+    CO & SUBAPI & WORKER --> RUN
+    CO & RUN --> BENCH
     RUN --> ELO
     ELO -.-> PA2
+    BENCH -.-> PA2
     RUN --> REP
     ELO --> RESULTS
     PORTAL & REP --> VIEW
     SUB & ADMIN & RESULTS & VIEW --> E2E --> PB2 --> DEP
 
+    classDef done fill:#123d2a,stroke:#39d98a,color:#ffffff,stroke-width:2px;
     classDef gate stroke-width:3px;
+    class T21,I1,OCI done;
     class PC,PA2,PB2 gate;
 ```
 
@@ -594,14 +605,14 @@ Như vậy Đạt không bị block toàn bộ. Chỉ E2E cuối cùng phụ thu
 ### Phạm Tất Đạt
 
 - Sở hữu replay publication API (`P2-D14`), BTC replay console (`P2-D15`), spectator replay UI (`P2-D16`) và qualification E2E (`P2-D13`).
-- Không sở hữu Docker, database, Fastify API, MinIO, queue/worker, sandbox, scheduling hoặc Elo Phase 2; các phần đó thuộc lane `P2-T02`–`P2-T13` của Thuận.
+- Không sở hữu Docker, database, Fastify API, object storage, queue/worker, sandbox, scheduling hoặc Elo Phase 2; các phần đó thuộc lane `P2-T02`–`P2-T15` của Thuận.
 
 ### Phân công tải công việc Phase 2
 
-Thuận sở hữu backend local theo một chuỗi `P2-T02`–`P2-T13`, sau decision gate `P2-T01`:
+Thuận sở hữu backend local theo một chuỗi `P2-T02`–`P2-T15`, sau decision gate `P2-T01`:
 
 1. Local Docker Compose.
-2. Data model, authentication/RBAC, Team/Submission API và MinIO.
+2. Data model, authentication/RBAC, Team/Submission API và S3-compatible storage.
 3. Queue/worker và sandbox.
 4. Match finalization, scheduling và Elo.
 
@@ -611,7 +622,7 @@ Phần Thuận có thể làm độc lập ngay ở Phase 2:
 
 - Local Docker Compose.
 - Team/Submission schema và CRUD.
-- Upload artifact vào MinIO.
+- Upload artifact qua S3-compatible storage.
 - Contract/API documentation cho UI dùng mock API.
 
 Phần Thuận phải chờ contract:

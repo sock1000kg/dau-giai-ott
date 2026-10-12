@@ -45,7 +45,7 @@ Có thể bổ sung sau bằng ADR mới mà không thay đổi authorization th
 
 ## Consequences
 
-- `P2-D03` cung cấp login/session/RBAC; `P2-D04` provision/reset team credential server-side.
+- `P2-T04` cung cấp login/session/RBAC; `P2-T06` provision/reset team credential server-side.
 - Portal của đội chỉ có đăng nhập và submission; BTC console hiển thị credential một lần để gửi ngoài hệ thống.
 - Cần integration tests cho brute-force/rate-limit, generic login failure, one-time secret response,
   session revocation và cross-team authorization.

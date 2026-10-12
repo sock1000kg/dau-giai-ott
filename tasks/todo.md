@@ -331,15 +331,15 @@ Không triển khai ID này. Workspace chung chuyển cho Đinh Đức Thuận d
 
 ## Phase 2 — Local platform
 
-### [ ] P2-T01 — Khóa quyết định triển khai Phase 2 local
+### [x] P2-T01 — Khóa quyết định triển khai Phase 2 local
 
 **Owner:** Đinh Đức Thuận
 **Mô tả:** Chốt các giá trị còn mở ảnh hưởng trực tiếp database, API, sandbox, scheduling và Elo trước khi các module đó được triển khai.
-**Acceptance criteria:** (1) Chốt auth/RBAC local, K-factor/rating khởi tạo và series đổi phía; (2) chốt artifact/image policy cùng CPU/RAM/PID quota sau benchmark; (3) chốt replay chỉ phát sau terminal/integrity check, với BTC stage/publish và không live stream; (4) cập nhật mục 20 của yêu cầu và ADR mới nếu quyết định mang tính kiến trúc.
-**Verification:** Không còn quyết định Phase 2 liên quan trong trạng thái `OPEN/PARTIAL` mà task `P2-T03`–`P2-T13` cần để code; owner bị ảnh hưởng review.
+**Acceptance criteria:** (1) Chốt auth/RBAC local, K-factor/rating khởi tạo và series đổi phía; (2) chốt OCI artifact/image policy và baseline CPU/RAM/PID để implementation có thể bắt đầu; profile công bố chính thức được khóa riêng ở `P2-T15` sau benchmark; (3) chốt replay chỉ phát sau terminal/integrity check, với BTC stage/publish và không live stream; (4) cập nhật mục 20 của yêu cầu và ADR mới nếu quyết định mang tính kiến trúc.
+**Verification:** Không còn quyết định `OPEN/PARTIAL` cản trở implementation `P2-T03`–`P2-T14`; baseline quota, tiêu chí benchmark và cổng mở nhận submission được ghi rõ tại `P2-T15`; owner bị ảnh hưởng review.
 **Dependencies:** `P1-D11`.
-**Tiến độ:** D-11 (replay) và D-13 (auth/RBAC) đã được khóa bằng ADR-0003/0004; quota, Elo và series vẫn còn mở nên task chưa hoàn tất.
-**Files dự kiến:** `docs/tai-lieu-yeu-cau.md`, `docs/decisions/0003-replay-publication-after-match.md`, `docs/decisions/0004-phase-2-team-account-authentication.md`, `tasks/plan.md`, `tasks/todo.md`
+**Hoàn tất:** 2026-10-12. D-03 (rating 1000/K=32), D-07 (OCI image submission), D-08 (baseline quota), D-09 (1 series/team/round, dải Elo 200 mở rộng +100), D-10 (2 game đổi X/O), D-11 (replay sau terminal) và D-13 (team-account username/password, không self-register) đã được khóa tại Solution Architecture, SAD OCI và ADR-0003 đến ADR-0006. `P2-T15` là evidence gate riêng trước khi đăng ký bot đa ngôn ngữ.
+**Files dự kiến:** `docs/architecture/solution-architecture-phase-2.md`, `docs/architecture/sad-oci-bot-submissions.md`, `docs/decisions/0003-replay-publication-after-match.md`, `docs/decisions/0004-phase-2-team-account-authentication.md`, `docs/decisions/0005-phase-2-modular-monolith-and-execution-boundary.md`, `docs/decisions/0006-oci-image-submissions-for-language-neutral-bots.md`, `docs/tai-lieu-yeu-cau.md`, `tasks/plan.md`, `tasks/todo.md`
 **Ước lượng:** M (5 file)
 
 ### Điều chỉnh owner ngày 2026-10-12 — ID cũ không tái sử dụng
@@ -348,25 +348,37 @@ Không triển khai ID này. Workspace chung chuyển cho Đinh Đức Thuận d
 
 Các ID cũ bị hủy trước khi triển khai và không được tái sử dụng. Công việc tương ứng được phát hành lại với ID `P2-Txx` để khớp owner Đinh Đức Thuận. Các UI/replay/E2E `P2-D13`–`P2-D16`, `P2-L02`–`P2-L03`, `P2-N14`–`P2-N15` không đổi owner.
 
-### [ ] P2-T02 — Docker Compose PostgreSQL, Redis và MinIO
+### [x] P2-T02 — Docker Compose PostgreSQL, Redis và SeaweedFS
 
 **Owner:** Đinh Đức Thuận
 **Mô tả:** Môi trường dependency local có healthcheck và version pin.
-**Acceptance criteria:** (1) Ba service chạy localhost; (2) có healthcheck, volume, port/env, bucket init idempotent; (3) không commit secret, có hướng dẫn reset/start/stop.
+**Acceptance criteria:** (1) Ba service chạy localhost; (2) có healthcheck, volume, port/env, bucket init idempotent; (3) SeaweedFS chỉ được dùng qua S3 endpoint/key-secret local, không commit secret; (4) có hướng dẫn reset/start/stop và config AWS S3 migration boundary.
 **Verification:** `docker compose -f infra/local/compose.yaml up -d --wait && docker compose -f infra/local/compose.yaml ps`.
 **Dependencies:** `P1-D11`.
-**Files dự kiến:** `infra/local/compose.yaml`, `infra/local/minio-init.sh`, `.env.example`, `docs/runbooks/local-services.md`
+**Files dự kiến:** `infra/local/compose.yaml`, `.env.example`, `docs/runbooks/local-services.md`, `docs/decisions/0007-seaweedfs-local-s3-compatible-storage.md`
 **Ước lượng:** M (4 file)
+**Hoàn tất:** 2026-10-12 — Docker Compose xác nhận PostgreSQL, Redis và SeaweedFS đều healthy trên loopback; S3 `HeadBucket`, put/head/delete object dùng credential đúng pass và credential sai bị từ chối `403`.
 
 ### [ ] P2-T03 — Database schema và migration foundation
 
 **Owner:** Đinh Đức Thuận
-**Mô tả:** Schema cho account/session/team, submission, match, event/result và rating ledger.
-**Acceptance criteria:** (1) PK/FK/unique/index và trạng thái đầy đủ, gồm invariant một `TEAM_ACCOUNT`/team; (2) migrate được từ DB rỗng, có reset strategy; (3) integration test dùng PostgreSQL thật.
+**Mô tả:** Schema cho account/session/team, OCI submission identity, match, event/result và rating ledger.
+**Acceptance criteria:** (1) PK/FK/unique/index và trạng thái đầy đủ, gồm invariant một `TEAM_ACCOUNT`/team, immutable OCI manifest/config digest và một official result/match; (2) migrate được từ DB rỗng, có reset strategy; (3) integration test dùng PostgreSQL thật.
 **Verification:** `npm run db:migrate && npm test -- src/platform/api/tests/db`.
 **Dependencies:** `P2-T02`.
 **Files dự kiến:** `src/platform/api/src/db/schema.ts`, `src/platform/api/src/db/client.ts`, `src/platform/api/migrations/0001_initial.sql`, `src/platform/api/tests/db/schema.test.ts`
 **Ước lượng:** M (4 file)
+
+### [x] P2-T14 — OCI submission contract và layout validator
+
+**Owner:** Đinh Đức Thuận
+**Mô tả:** Khóa contract `OCI Image Layout v1.1` cho bot đa ngôn ngữ, cùng parser/validator thuần không chạy Docker hoặc build source từ upload.
+**Acceptance criteria:** (1) Contract chỉ nhận một archive OCI không nén `linux/amd64`, derive manifest/config digest và OCI Entrypoint; không có language/runtime/tag/command/Dockerfile/registry URL do client khai báo; (2) validator chặn path traversal, link/device file, digest/layout sai, multi-platform/foreign layer, image quá quota và entrypoint rỗng bằng stable error code; (3) fixture gồm OCI image từ Python bot hiện có và fixture invalid, cùng test deterministic không cần Docker daemon.
+**Verification:** `npm test --workspace @ott/job-contract -- oci-submission`.
+**Dependencies:** `P2-T01`, `P1-D11`.
+**Files dự kiến:** `docs/contracts/oci-submission-v1.md`, `src/platform/job-contract/package.json`, `src/platform/job-contract/src/oci-submission.ts`, `src/platform/job-contract/tests/oci-submission.test.ts`, `src/bots/oci-fixtures/README.md`
+**Ước lượng:** M (5 file)
+**Hoàn tất:** 2026-10-12 — validator thuần kiểm tra tar/path/link/duplicate, OCI layout/index/sha256/platform/Entrypoint và layer foreign; 4 test không cần Docker daemon, typecheck/build module và full workspace suite pass.
 
 ### [ ] P2-T04 — Authentication và RBAC foundation
 
@@ -408,14 +420,14 @@ Các ID cũ bị hủy trước khi triển khai và không được tái sử d
 **Files dự kiến:** `src/platform/api/src/modules/teams/routes.ts`, `src/platform/api/src/modules/teams/service.ts`, `src/platform/api/src/modules/teams/repository.ts`, `src/platform/api/src/modules/teams/credentials.ts`, `src/platform/api/tests/teams.integration.test.ts`
 **Ước lượng:** M (5 file)
 
-### [ ] P2-T07 — Submission upload và MinIO vertical slice
+### [ ] P2-T07 — OCI submission upload và S3-compatible storage vertical slice
 
 **Owner:** Đinh Đức Thuận
-**Mô tả:** Nhận artifact, lưu S3-compatible storage và metadata/checksum.
-**Acceptance criteria:** (1) Enforce owner/type/size/checksum và server-generated key; (2) metadata commit sau object hợp lệ, lỗi có cleanup; (3) download nội bộ chống traversal/overwrite và verify checksum.
-**Verification:** `npm test -- src/platform/api/tests/submissions.integration.test.ts` với PostgreSQL/MinIO local.
-**Dependencies:** `P2-T06`.
-**Files dự kiến:** `src/platform/api/src/modules/submissions/routes.ts`, `src/platform/api/src/modules/submissions/service.ts`, `src/platform/api/src/storage/s3.ts`, `src/platform/api/tests/submissions.integration.test.ts`
+**Mô tả:** Nhận OCI image archive, quarantine/promote object storage và ghi metadata identity bất biến.
+**Acceptance criteria:** (1) Chỉ `TEAM_ACCOUNT` sở hữu team được upload đúng contract `P2-T14`; API không nhận language, command, tag, registry URL hoặc Dockerfile; (2) stream sang quarantine, verify archive SHA-256 + OCI manifest/config digest rồi promote bằng server-generated key, lỗi cleanup đúng; (3) submission ACTIVE pin identity OCI/policy version, download nội bộ verify checksum và không traversal/overwrite.
+**Verification:** `npm test -- src/platform/api/tests/submissions.integration.test.ts` với PostgreSQL/SeaweedFS local.
+**Dependencies:** `P2-T06`, `P2-T14`.
+**Files dự kiến:** `src/platform/api/src/modules/submissions/routes.ts`, `src/platform/api/src/modules/submissions/service.ts`, `src/platform/api/src/storage/s3.ts`, `src/platform/api/tests/submissions.integration.test.ts`, `docs/contracts/oci-submission-v1.md`
 **Ước lượng:** M (4 file)
 
 ### [ ] P2-N14 — BTC team-account provisioning console
@@ -438,35 +450,45 @@ Các ID cũ bị hủy trước khi triển khai và không được tái sử d
 **Files dự kiến:** `src/platform/web/src/features/submissions/SubmissionForm.tsx`, `src/platform/web/src/features/submissions/api.ts`, `src/platform/web/src/features/submissions/SubmissionStatus.tsx`, `src/platform/web/src/features/submissions/SubmissionForm.test.tsx`
 **Ước lượng:** M (4 file)
 
-### [ ] P2-T08 — Canary bot và sandbox security corpus
+### [ ] P2-T08 — OCI canary bot và sandbox security corpus
 
 **Owner:** Đinh Đức Thuận
-**Mô tả:** Artifact bot tốt/xấu để kiểm thử sandbox/worker.
-**Acceptance criteria:** (1) Có canary và timeout/fork/write/network/output/memory/CPU cases; (2) mỗi artifact có expected outcome, chỉ chạy qua harness giới hạn; (3) manifest/version/checksum deterministic.
-**Verification:** `python3 -m unittest discover -s src/bots/sandbox-corpus/tests`.
-**Dependencies:** `P1-D11`, `P2-T01`.
-**Files dự kiến:** `src/bots/sandbox-corpus/manifest.json`, `src/bots/sandbox-corpus/canary_bot.py`, `src/bots/sandbox-corpus/fault_bot.py`, `src/bots/sandbox-corpus/tests/test_manifest.py`, `src/bots/sandbox-corpus/README.md`
+**Mô tả:** OCI images tốt/xấu để kiểm thử worker/sandbox; bắt đầu bằng các Python bot Phase 1 được đóng image, sau đó thêm fixture đa ngôn ngữ.
+**Acceptance criteria:** (1) Có OCI canary từ FirstLegal/CaptureFirst và timeout/fork/write/network/output/memory/CPU cases; (2) mỗi image có expected outcome, manifest/config digest và chỉ chạy qua harness giới hạn; (3) có ít nhất một fixture Node.js và một native fixture trước khi mở nhận bot đa ngôn ngữ.
+**Verification:** `npm test --workspace @ott/sandbox-corpus`.
+**Dependencies:** `P1-D11`, `P2-T14`.
+**Files dự kiến:** `src/bots/oci-fixtures/first-legal/`, `src/bots/oci-fixtures/capture-first/`, `src/bots/sandbox-corpus/package.json`, `src/bots/sandbox-corpus/manifest.json`, `src/bots/sandbox-corpus/tests/oci-corpus.test.ts`, `src/bots/sandbox-corpus/README.md`
 **Ước lượng:** M (5 file)
 
 ### [ ] P2-T09 — MatchJob contract và BullMQ worker
 
 **Owner:** Đinh Đức Thuận
 **Mô tả:** Queue yêu cầu chạy trận và worker nhận job version hóa.
-**Acceptance criteria:** (1) Job schema/version/idempotency key và artifact reference hợp lệ; (2) retry/backoff/dead-letter, duplicate không tạo hai match; (3) structured log và graceful shutdown.
+**Acceptance criteria:** (1) Job schema/version/idempotency key và pinned OCI submission/manifest/config/policy reference hợp lệ, không có tag/command mutable; (2) retry/backoff/dead-letter, duplicate không tạo hai match hoặc thay image; (3) structured log và graceful shutdown.
 **Verification:** `npm test -- src/platform/worker/tests/match-job.integration.test.ts` với Redis local.
-**Dependencies:** `P2-T02`, `P2-T01`, `P1-D11`.
-**Files dự kiến:** `src/platform/job-contract/src/match-job.ts`, `src/platform/api/src/queue/match-queue.ts`, `src/platform/worker/src/worker.ts`, `src/platform/worker/src/config.ts`, `src/platform/worker/tests/match-job.integration.test.ts`
+**Dependencies:** `P2-T02`, `P2-T07`, `P2-T14`, `P2-T01`, `P1-D11`.
+**Files dự kiến:** `src/platform/job-contract/src/match-job.ts`, `src/platform/job-contract/src/oci-reference.ts`, `src/platform/api/src/queue/match-queue.ts`, `src/platform/worker/src/worker.ts`, `src/platform/worker/tests/match-job.integration.test.ts`
 **Ước lượng:** M (5 file)
 
 ### [ ] P2-T10 — Sandbox adapter và artifact validation
 
 **Owner:** Đinh Đức Thuận
-**Mô tả:** Xác minh artifact và chạy bot trong giới hạn tài nguyên/network.
-**Acceptance criteria:** (1) Check permission/checksum/entrypoint, workdir cô lập; (2) enforce time/CPU/memory/process/output/network/filesystem; (3) canary pass, corpus xấu bị chặn với reason ổn định.
+**Mô tả:** Dùng Docker Engine local qua `SandboxOciBotPort` để xác minh OCI artifact và chạy bot qua BotPort trong giới hạn tài nguyên/network.
+**Acceptance criteria:** (1) Check pinned OCI manifest/config digest và derived entrypoint; không shell-string, không Dockerfile/build/tag/client command; (2) worker override non-root, no-network, read-only rootfs, no Docker socket/mount/capability, CPU/RAM/PID/tmp/output/time limit và cleanup container idempotent; (3) Python fixture Phase 1 chạy qua MatchRunner không đổi protocol, corpus xấu và fixture Node/native bị chặn/chạy đúng expected reason.
 **Verification:** `npm test -- src/platform/worker/tests/sandbox.integration.test.ts` trên Docker local.
 **Dependencies:** `P2-T07`, `P2-T09`, `P2-T08`.
-**Files dự kiến:** `src/platform/worker/src/sandbox/adapter.ts`, `src/platform/worker/src/sandbox/policy.ts`, `src/platform/worker/src/artifacts.ts`, `src/platform/worker/tests/sandbox.integration.test.ts`
+**Files dự kiến:** `src/platform/worker/src/sandbox/oci-runtime.ts`, `src/platform/worker/src/sandbox/oci-bot-port.ts`, `src/platform/worker/src/sandbox/policy.ts`, `src/platform/worker/src/artifacts.ts`, `src/platform/worker/tests/sandbox.integration.test.ts`
 **Ước lượng:** M (4 file)
+
+### [ ] P2-T15 — Benchmark quota OCI và gate mở nhận bot đa ngôn ngữ
+
+**Owner:** Đinh Đức Thuận
+**Mô tả:** Đo sandbox thực trên Docker local bằng corpus OCI, xác nhận hoặc điều chỉnh profile tài nguyên công bố; đây là cổng bắt buộc trước khi BTC nhận submission từ đội thi ngoài các fixture nội bộ.
+**Acceptance criteria:** (1) Chạy có bằng chứng FirstLegal/CaptureFirst, Node.js, native và các case timeout/fork/write/network/output/memory/CPU qua `SandboxOciBotPort`; (2) ghi kết quả benchmark, host specification, policy version và lý do mọi thay đổi quota; (3) cập nhật D-08/SAD/runbook với profile phát hành, hoặc dừng mở đăng ký nếu không có profile thỏa fairness và isolation.
+**Verification:** `npm test --workspace @ott/sandbox-corpus && npm test -- src/platform/worker/tests/sandbox.integration.test.ts`; report benchmark được version-control cùng policy.
+**Dependencies:** `P2-T08`, `P2-T10`.
+**Files dự kiến:** `src/bots/sandbox-corpus/results/`, `src/platform/worker/tests/sandbox.integration.test.ts`, `docs/architecture/sad-oci-bot-submissions.md`, `docs/tai-lieu-yeu-cau.md`, `docs/runbooks/phase-2-local.md`
+**Ước lượng:** S (3 file)
 
 ### [ ] P2-T11 — MatchResult finalization idempotent
 
@@ -521,7 +543,7 @@ Không triển khai ID này. Results/leaderboard UI được chuyển cho Nguyê
 **Owner:** Phạm Tất Đạt
 **Mô tả:** Cung cấp API server-side để BTC liệt kê các trận terminal, stage/publish replay integrity-checked và để spectator chỉ đọc replay đã publish.
 **Acceptance criteria:** (1) Chỉ terminal match có event log/checksum hợp lệ mới chuyển `STAGED`/`PUBLISHED`; transition idempotent và audit được actor/lý do; (2) endpoint public theo `matchId` từ chối replay chưa publish và loại dữ liệu nhạy cảm; (3) API trả schema/version/checksum đủ để client kiểm tra artifact và từ chối artifact bị sửa một byte.
-**Verification:** `npm test -- src/platform/api/tests/replays.integration.test.ts` với PostgreSQL/MinIO local.
+**Verification:** `npm test -- src/platform/api/tests/replays.integration.test.ts` với PostgreSQL/SeaweedFS local.
 **Dependencies:** `P2-T04`, `P2-T11`.
 **Files dự kiến:** `src/platform/api/src/modules/replays/routes.ts`, `src/platform/api/src/modules/replays/service.ts`, `src/platform/api/src/modules/replays/repository.ts`, `src/platform/api/tests/replays.integration.test.ts`
 **Ước lượng:** M (4 file)
@@ -558,7 +580,7 @@ Không triển khai ID này. Results/leaderboard UI được chuyển cho Nguyê
 
 ## Checkpoint P2-A — Backend local
 
-- [ ] `P2-T01`–`P2-T13` hoàn tất; API/worker tests pass với Docker services.
+- [ ] `P2-T01`–`P2-T15` hoàn tất; API/worker tests pass với Docker services và OCI corpus benchmark.
 - [ ] Queue retry, sandbox, finalization idempotency và rating rebuild có automated evidence.
 - [ ] Chạy GitNexus `detect-changes` và xử lý mọi HIGH/CRITICAL risk.
 

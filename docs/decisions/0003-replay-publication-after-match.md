@@ -25,7 +25,7 @@ artifact bất biến của một trận terminal.
   đọc replay `PUBLISHED` bằng `matchId` qua control plane.
 - Spectator UI dựng trạng thái từ event index/snapshot và event log đã phát hành; không tự
   tính kết quả và không đọc source bot, seed chưa công bố, stderr riêng tư hay worker log.
-- Authorization và audit cụ thể dùng policy của P2-T01/P2-D03; mỗi transition publication
+- Authorization và audit cụ thể dùng policy của P2-T01/P2-T04; mỗi transition publication
   phải server-side và ghi audit.
 
 ## Alternatives considered
@@ -43,6 +43,6 @@ artifact bất biến của một trận terminal.
 
 ## Consequences
 
-- Thêm API publication, console BTC và spectator replay UI sau P2-D08.
+- Thêm API publication, console BTC và spectator replay UI sau P2-T11.
 - Qualification E2E phải xác minh terminal match → stage/publish → spectator replay.
 - Không thêm websocket, live-feed endpoint hoặc control action giữa trận trong Phase 2.
