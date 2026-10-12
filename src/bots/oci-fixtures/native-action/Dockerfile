@@ -1,0 +1,7 @@
+FROM golang:1.24-alpine AS build
+WORKDIR /src
+COPY src/bots/oci-fixtures/native-action/bot.go ./bot.go
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o /bot ./bot.go
+FROM scratch
+COPY --from=build /bot /bot
+ENTRYPOINT ["/bot"]

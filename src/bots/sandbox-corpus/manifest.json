@@ -1,0 +1,162 @@
+{
+  "version": 1,
+  "fixtures": [
+    {
+      "id": "first-legal-python",
+      "language": "python",
+      "expected": "ACTION",
+      "archive": "oci-fixtures/first-legal.oci.tar",
+      "dockerfile": "src/bots/oci-fixtures/first-legal/Dockerfile",
+      "archiveSha256": "sha256:60b14b1f574d80f8ca3a2efe79dbd9597a11382aa865c582a5251078d948ca08",
+      "imageId": "sha256:bb1dd56bf273d46297c1fd363a75fdb8181e54976f727b50f41690473d2d3d3d",
+      "ociManifestDigest": "sha256:93eb01eaabc956b87a4d33bee29850c41405070d71a3bc6972bd16c18f7da238",
+      "ociConfigDigest": "sha256:844a1b008468464dfb32a7b91847e84b1a2b7612d9d194698d39953204811291",
+      "entrypoint": [
+        "python3",
+        "/app/bot.py"
+      ]
+    },
+    {
+      "id": "capture-first-python",
+      "language": "python",
+      "expected": "ACTION",
+      "archive": "oci-fixtures/capture-first.oci.tar",
+      "dockerfile": "src/bots/oci-fixtures/capture-first/Dockerfile",
+      "archiveSha256": "sha256:eaf2d794ba39565a9c6caeb43282e3b48fd89e8052ced67709d1894dee6603a3",
+      "imageId": "sha256:6f61aac9aa3f88298d1c5454265285bf1186f6b47fd73f0fc806e56a663877c0",
+      "ociManifestDigest": "sha256:fe78aada4c3ed93f8bb79fe89fa936318cbdf23128f786e71d877bbe2ae8a075",
+      "ociConfigDigest": "sha256:0cb79bb941207c598fbc0c1f88a66015e5257131fe0b3567097a7f52dda60132",
+      "entrypoint": [
+        "python3",
+        "/app/bot.py"
+      ]
+    },
+    {
+      "id": "node-action",
+      "language": "node",
+      "expected": "ACTION",
+      "archive": "oci-fixtures/node-action.oci.tar",
+      "dockerfile": "src/bots/oci-fixtures/node-action/Dockerfile",
+      "archiveSha256": "sha256:944acef63ad03dd9b4c40723c53428ddb6bdbc6982994560b47defe6e9da5a43",
+      "imageId": "sha256:97ca99003c02213abc767c1ef4a2ab91d2c23cc1834d65370176965dc0ec97f1",
+      "ociManifestDigest": "sha256:abaa1895806d9b9c7aaeec678ee21dda2f5f8884cb4dcfe2af91fffff9e98d0d",
+      "ociConfigDigest": "sha256:8114fa73344bdfe98aaae8c6ed15d85f35ff4372ef9b2ca3438608a4187e27a2",
+      "entrypoint": [
+        "node",
+        "/app/bot.mjs"
+      ]
+    },
+    {
+      "id": "native-action",
+      "language": "native",
+      "expected": "ACTION",
+      "archive": "oci-fixtures/native-action.oci.tar",
+      "dockerfile": "src/bots/oci-fixtures/native-action/Dockerfile",
+      "archiveSha256": "sha256:621c9fe9b2702edede2a1ead34dea02922b3732faa7a2cc6bc3385f901e0354d",
+      "imageId": "sha256:503fa5fa954e7bd3b0a1d45359e5c69831e919b9208425d72d24d240fd021cf6",
+      "ociManifestDigest": "sha256:1b8e1ccd64730caa3e38a68568a8f6b6b97a6b65601cff1c4c2bc5a4307aefea",
+      "ociConfigDigest": "sha256:a08974d70404cdbdf057ef638d0c0f0fd564c48b89a50a6e8d168e14bd8fef1d",
+      "entrypoint": [
+        "/bot"
+      ]
+    },
+    {
+      "id": "timeout",
+      "expected": "TIMEOUT",
+      "archive": "oci-fixtures/timeout.oci.tar",
+      "dockerfile": "src/bots/oci-fixtures/fault/Dockerfile",
+      "buildArg": "MODE=timeout",
+      "archiveSha256": "sha256:309e2e0a319110efc44fab4aff8b485798831419cc7f062547d8388e6524d521",
+      "imageId": "sha256:0a01a9b42347407f60045ce52feb4a2f1c59cf188b1caaeba01e1cbf7354a213",
+      "ociManifestDigest": "sha256:64d4287b7f329358b7008de71a0b7c262955d61a3291962a4a322c9c3cd58d70",
+      "ociConfigDigest": "sha256:91c55e987b352fb0f098a608960800dd2f29ea82473e5b6694173497d2406ec2",
+      "entrypoint": [
+        "/app/bot"
+      ]
+    },
+    {
+      "id": "fork",
+      "expected": "PID_LIMIT",
+      "archive": "oci-fixtures/fork.oci.tar",
+      "dockerfile": "src/bots/oci-fixtures/fault/Dockerfile",
+      "buildArg": "MODE=fork",
+      "archiveSha256": "sha256:8a98a29c9d588b770cb37a7183b1ea7e9f1f594b42744bd09371437585b92c18",
+      "imageId": "sha256:05ff61ddf287a73bec8a2bc0b150e9fc5e0e9b566a54d5d5172a6bc3acea54b3",
+      "ociManifestDigest": "sha256:c3a6c92e07b4b78dd2e41b3ffb6185445d089a736603a6e34a6277d57a3834e2",
+      "ociConfigDigest": "sha256:4ed746782225ff7706b736ea8ba37fb88bf538faf50258d583ddb80c8cb90d44",
+      "entrypoint": [
+        "/app/bot"
+      ]
+    },
+    {
+      "id": "write",
+      "expected": "READ_ONLY_FILESYSTEM",
+      "archive": "oci-fixtures/write.oci.tar",
+      "dockerfile": "src/bots/oci-fixtures/fault/Dockerfile",
+      "buildArg": "MODE=write",
+      "archiveSha256": "sha256:0998f07ddd2ae1e953fac72a0633cc189cdeef119fffea48c80db8484256f9de",
+      "imageId": "sha256:049f414f6432bdfd167ed7f3b46a6b6d086ea4f42fc2b56c850cfd0335653411",
+      "ociManifestDigest": "sha256:ad921ab938e22cfd19dce8486ca57f3bf6921aa13eaf8ba98aa68fdd65ba5d7a",
+      "ociConfigDigest": "sha256:d17b10a15a82b885af380f08d86026f8ab28de481aa43151edfd82030b656eba",
+      "entrypoint": [
+        "/app/bot"
+      ]
+    },
+    {
+      "id": "network",
+      "expected": "NETWORK_DENIED",
+      "archive": "oci-fixtures/network.oci.tar",
+      "dockerfile": "src/bots/oci-fixtures/fault/Dockerfile",
+      "buildArg": "MODE=network",
+      "archiveSha256": "sha256:a80219762a8c93681185174466199d04bea4c74da86e7d3d94314882ffcd73bf",
+      "imageId": "sha256:a816aca30085fb8b2caedff7b6d6e1da30ab172ddbae03755e4f22b5a2bedcce",
+      "ociManifestDigest": "sha256:60a7936556eeb02d7d27b81bf24fb8dfb9e0fff29b2235386df95d85305a3ad1",
+      "ociConfigDigest": "sha256:d5e7d0f6f55f12115cf0a2e5310be47d37cdc68f276348eb6c7a35f2c6142933",
+      "entrypoint": [
+        "/app/bot"
+      ]
+    },
+    {
+      "id": "output",
+      "expected": "STDOUT_LIMIT_EXCEEDED",
+      "archive": "oci-fixtures/output.oci.tar",
+      "dockerfile": "src/bots/oci-fixtures/fault/Dockerfile",
+      "buildArg": "MODE=output",
+      "archiveSha256": "sha256:747d10c349dbae8513b5086d44017a7a1a77765e1b37a3c867d6d1614188c855",
+      "imageId": "sha256:a35eef889a836171e3d61a59e0a8279c54a36141be131ec2d044076ed5db4d5d",
+      "ociManifestDigest": "sha256:a2818038d11f28256c097ee45e81b04443931b226074ad34ca0b660180dbabb1",
+      "ociConfigDigest": "sha256:a0d54f0c34949d42579e524b85a73f0a4d44dfcabdfef0affdadf0292b6645cf",
+      "entrypoint": [
+        "/app/bot"
+      ]
+    },
+    {
+      "id": "memory",
+      "expected": "MEMORY_LIMIT",
+      "archive": "oci-fixtures/memory.oci.tar",
+      "dockerfile": "src/bots/oci-fixtures/fault/Dockerfile",
+      "buildArg": "MODE=memory",
+      "archiveSha256": "sha256:41fa213ed91c72b9aa67338a2e45f07f4c6ecb874b52f033c5e00801d5187146",
+      "imageId": "sha256:53ff4451cee787e93031a0f513f29ce9290591af9addbe5e2ec61caae45022a4",
+      "ociManifestDigest": "sha256:1d2e78d46c7429d4ddc288006b75e47901ca0ce33ed84d550b8ab6dcba204a88",
+      "ociConfigDigest": "sha256:c6533ed294d0f721ff50446495405a6ea1f74cb5472ec5b1989b4883a1e11d74",
+      "entrypoint": [
+        "/app/bot"
+      ]
+    },
+    {
+      "id": "cpu",
+      "expected": "CPU_LIMIT",
+      "archive": "oci-fixtures/cpu.oci.tar",
+      "dockerfile": "src/bots/oci-fixtures/fault/Dockerfile",
+      "buildArg": "MODE=cpu",
+      "archiveSha256": "sha256:0a049dfabf90a1321cd38f43f085b44827c071f06f59bb160f72e1024eabec76",
+      "imageId": "sha256:ef222658353ea59a18b2b1f87e337e48b52ed61a71a01f2bd6367386577ad5db",
+      "ociManifestDigest": "sha256:fdcc094fb32610367079ede3decb7a73b99ddf111bf59ca6695fdf0195b46a72",
+      "ociConfigDigest": "sha256:50e4b8860e899fdfa9cdd213758c3a8b316723f8ccec846ee23ac6b69746a248",
+      "entrypoint": [
+        "/app/bot"
+      ]
+    }
+  ]
+}

@@ -74,7 +74,7 @@ async function validArchive(options: {
   const descriptor = { mediaType: 'application/vnd.oci.image.manifest.v1+json', digest: digest(manifest), size: manifest.byteLength, platform: { os: 'linux', architecture: 'amd64' } };
   const index = encoder.encode(JSON.stringify({ schemaVersion: 2, manifests: Array.from({ length: options.indexManifests ?? 1 }, () => descriptor) }));
   return tar([
-    { name: 'oci-layout', body: encoder.encode('{"imageLayoutVersion":"1.1.0"}') },
+    { name: 'oci-layout', body: encoder.encode('{"imageLayoutVersion":"1.0.0"}') },
     { name: 'index.json', body: index },
     { name: `blobs/sha256/${digest(manifest).slice(7)}`, body: manifest },
     { name: `blobs/sha256/${digest(config).slice(7)}`, body: config },

@@ -1,5 +1,6 @@
 node_modules/
 dist/
 coverage/
+src/bots/sandbox-corpus/artifacts/
 *.tsbuildinfo
 /.env

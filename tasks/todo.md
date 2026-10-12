@@ -373,7 +373,7 @@ Các ID cũ bị hủy trước khi triển khai và không được tái sử d
 ### [x] P2-T14 — OCI submission contract và layout validator
 
 **Owner:** Đinh Đức Thuận
-**Mô tả:** Khóa contract `OCI Image Layout v1.1` cho bot đa ngôn ngữ, cùng parser/validator thuần không chạy Docker hoặc build source từ upload.
+**Mô tả:** Khóa contract OCI Image Spec 1.1 trong OCI Image Layout (`imageLayoutVersion: 1.0.0`) cho bot đa ngôn ngữ, cùng parser/validator thuần không chạy Docker hoặc build source từ upload.
 **Acceptance criteria:** (1) Contract chỉ nhận một archive OCI không nén `linux/amd64`, derive manifest/config digest và OCI Entrypoint; không có language/runtime/tag/command/Dockerfile/registry URL do client khai báo; (2) validator chặn path traversal, link/device file, digest/layout sai, multi-platform/foreign layer, image quá quota và entrypoint rỗng bằng stable error code; (3) fixture gồm OCI image từ Python bot hiện có và fixture invalid, cùng test deterministic không cần Docker daemon.
 **Verification:** `npm test --workspace @ott/job-contract -- oci-submission`.
 **Dependencies:** `P2-T01`, `P1-D11`.
@@ -455,15 +455,16 @@ Các ID cũ bị hủy trước khi triển khai và không được tái sử d
 **Files dự kiến:** `src/platform/web/src/features/submissions/SubmissionForm.tsx`, `src/platform/web/src/features/submissions/api.ts`, `src/platform/web/src/features/submissions/SubmissionStatus.tsx`, `src/platform/web/src/features/submissions/SubmissionForm.test.tsx`
 **Ước lượng:** M (4 file)
 
-### [ ] P2-T08 — OCI canary bot và sandbox security corpus
+### [x] P2-T08 — OCI canary bot và sandbox security corpus
 
 **Owner:** Đinh Đức Thuận
 **Mô tả:** OCI images tốt/xấu để kiểm thử worker/sandbox; bắt đầu bằng các Python bot Phase 1 được đóng image, sau đó thêm fixture đa ngôn ngữ.
 **Acceptance criteria:** (1) Có OCI canary từ FirstLegal/CaptureFirst và timeout/fork/write/network/output/memory/CPU cases; (2) mỗi image có expected outcome, manifest/config digest và chỉ chạy qua harness giới hạn; (3) có ít nhất một fixture Node.js và một native fixture trước khi mở nhận bot đa ngôn ngữ.
-**Verification:** `npm test --workspace @ott/sandbox-corpus`.
+**Verification:** `npm --workspace @ott/sandbox-corpus run build:corpus && npm test --workspace @ott/sandbox-corpus`.
 **Dependencies:** `P1-D11`, `P2-T14`.
 **Files dự kiến:** `src/bots/oci-fixtures/first-legal/`, `src/bots/oci-fixtures/capture-first/`, `src/bots/sandbox-corpus/package.json`, `src/bots/sandbox-corpus/manifest.json`, `src/bots/sandbox-corpus/tests/oci-corpus.test.ts`, `src/bots/sandbox-corpus/README.md`
 **Ước lượng:** M (5 file)
+**Hoàn tất:** 2026-10-13 — 11 OCI archives (2 Python, Node, Go native, 7 fault scenarios) build được; manifest lưu archive SHA-256, manifest/config digest, entrypoint và expected outcome. Build lại xác nhận SHA ổn định; validator OCI chấp nhận archive; fault images chỉ dành cho sandbox harness. `sandbox-corpus` tests/typecheck và OCI validator 4 tests pass.
 
 ### [ ] P2-T09 — MatchJob contract và BullMQ worker
 

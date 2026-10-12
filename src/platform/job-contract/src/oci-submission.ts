@@ -237,7 +237,7 @@ export function validateOciSubmission(archive: Uint8Array, limits: OciSubmission
       fail('OCI_LAYOUT_INVALID');
     }
     const layoutJson = parseJson(layout, 'OCI_LAYOUT_INVALID');
-    if (layoutJson.imageLayoutVersion !== '1.1.0') {
+    if (layoutJson.imageLayoutVersion !== '1.0.0') {
       fail('OCI_LAYOUT_INVALID');
     }
     const index = parseJson(indexEntry, 'OCI_INDEX_INVALID');

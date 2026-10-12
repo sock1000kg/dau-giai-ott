@@ -10,7 +10,7 @@
 
 BTC must execute a bot written in any language without inspecting its source, choosing a language-specific launcher, or exposing a network service for the bot. The existing Bot Protocol v1 already meets this at the interaction boundary: the runner writes NDJSON to stdin and reads NDJSON from stdout. The missing boundary is a language-neutral, reproducible submission artifact.
 
-Phase 2 local therefore accepts exactly one executable submission format: an **OCI Image Layout v1.1 archive** for `linux/amd64`. The archive contains the team’s runtime, dependency and optional local AI/model. Its configured OCI `Entrypoint` starts the bot. No source-language field, user-supplied shell command, HTTP port, Dockerfile or build-on-upload path is accepted.
+Phase 2 local therefore accepts exactly one executable submission format: an **OCI Image Spec 1.1 image in an OCI Image Layout archive** for `linux/amd64`. The layout marker remains `imageLayoutVersion: 1.0.0` as defined by the [OCI Image Layout specification](https://github.com/opencontainers/image-spec/blob/main/image-layout.md). The archive contains the team’s runtime, dependency and optional local AI/model. Its configured OCI `Entrypoint` starts the bot. No source-language field, user-supplied shell command, HTTP port, Dockerfile or build-on-upload path is accepted.
 
 Goals:
 
@@ -28,7 +28,7 @@ Non-goals: receiving a Dockerfile, building from source on BTC infrastructure, c
 
 The multipart submission request contains one file: `bot.oci.tar`.
 
-It is an uncompressed tar containing OCI Image Layout v1.1 files (`oci-layout`, `index.json`, `blobs/sha256/...`). The image must resolve to exactly one manifest for `linux/amd64` and one config with a non-empty `Entrypoint`. The team chooses implementation language only inside that image.
+It is an uncompressed tar containing OCI Image Layout files (`oci-layout`, `index.json`, `blobs/sha256/...`) with marker `imageLayoutVersion: 1.0.0`. The image must resolve to exactly one manifest for `linux/amd64` and one config with a non-empty `Entrypoint`. The team chooses implementation language only inside that image.
 
 The API does not accept or trust:
 
@@ -136,7 +136,7 @@ The archive and every event log use server-generated content-addressed object ke
 
 The repository provides **trusted test fixture Dockerfiles** only for developers to build OCI test archives; teams do not upload Dockerfiles. Initial fixtures package the existing deterministic Python `first_legal_bot` and `capture_first_bot` unchanged. They establish that the old AI/strategy bot continues to operate through the OCI adapter.
 
-The minimum corpus then adds images for malformed NDJSON, timeout, crash, output flood, fork/PID pressure, write/tmpfs pressure and attempted network access. A later cross-language suite contributes at least one Node.js and one native Go/Rust fixture; all must pass the same NDJSON transcript. Any language-specific failure is a runtime/image concern, never a protocol fork.
+The corpus includes good images for both Python bots plus Node.js and native shell canaries, and fault images for timeout, fork/PID pressure, read-only filesystem write, attempted network access, output flood, memory pressure and CPU pressure. `npm --workspace @ott/sandbox-corpus run build:corpus` exports reproducible OCI archives to the ignored `artifacts/` directory and records archive SHA-256, manifest/config digest, entrypoint and expected outcome in the checked-in manifest. Fault images must only be imported and executed by the limited sandbox harness in `P2-T10`/`P2-T15`.
 
 ## 8. Delivery tasks and acceptance gates
 

@@ -81,7 +81,7 @@ Control plane và execution plane có thể cùng một máy trong local develop
 
 ### 4.2 Artifact và submission
 
-1. Team upload đúng một OCI Image Layout v1.1 archive `linux/amd64`; API không nhận language, command, runtime, Dockerfile hay tag.
+1. Team upload một OCI Image Spec 1.1 image trong OCI Image Layout archive `linux/amd64` (layout marker `1.0.0`); API không nhận language, command, runtime, Dockerfile hay tag.
 2. `P2-T14` kiểm tra layout, digest, non-empty OCI `Entrypoint`, size/platform/path safety trước khi archive được promote từ quarantine sang object storage. Object chỉ là `VALID` sau protocol preflight trong sandbox.
 3. Worker tải archive theo immutable manifest/config digest được pin trong `Match`, tạo container từ OCI `Entrypoint` và luôn override policy. Worker không tin filename, user command hay image tag.
 
@@ -140,7 +140,7 @@ The worker is trusted and may use the host container runtime; **a bot container 
 | Rating | initial rating `1000`; `K = 32`; ledger per terminal series | `P2-T03`, `P2-T12`, `P2-T13` |
 | Qualification series | exactly 2 games, same map/checksum and pinned submissions; X/O swap; score 1/0.5/0; equal aggregate = draw | `P2-T12`, `P2-T13` |
 | Round schedule | one series/team/round; Elo band starts at 200 and expands 100 deterministically until paired; seed/snapshot freeze before enqueue | `P2-T12` |
-| Runtime artifact | OCI Image Layout v1.1 `linux/amd64`, non-empty image Entrypoint; platform derives/pins manifest+config digest and rejects Dockerfile, registry URL, tag or client command. | `P2-T03`, `P2-T14`, `P2-T07`, `P2-T10` |
+| Runtime artifact | OCI Image Spec 1.1 in OCI Image Layout (`imageLayoutVersion: 1.0.0`), `linux/amd64`, non-empty image Entrypoint; platform derives/pins manifest+config digest and rejects Dockerfile, registry URL, tag or client command. | `P2-T03`, `P2-T14`, `P2-T07`, `P2-T10` |
 | Baseline resource profile | startup 5 s, turn 3 s, message 64 KiB, stderr 1 MiB, 1 vCPU, 256 MiB RAM, 64 PIDs, 64 MiB writable tmpfs, no egress | `P2-T08`, `P2-T10`, `P2-T09` capacity controller |
 | Replay | only terminal + integrity-verified artifact; BTC `STAGED` → `PUBLISHED`; no live stream/control | `P2-D14`–`P2-D16` |
 | Authentication | internal username/password, BTC provisioning, opaque Redis session, `BTC_ADMIN`/`TEAM_ACCOUNT` | `P2-T04`–`P2-T07`, UI tasks |

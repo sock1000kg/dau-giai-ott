@@ -15,7 +15,7 @@ Bot Protocol v1 dùng STDIO/NDJSON nên không phụ thuộc ngôn ngữ, nhưng
 ## Decision
 
 - Phase 1 không đổi: CLI/demo Python và contract v1 hiện có tiếp tục là baseline regression.
-- Submission chính thức Phase 2 là một OCI Image Layout v1.1 archive không nén, đúng platform `linux/amd64`, có OCI `Entrypoint` không rỗng. BTC không nhận Dockerfile, source build context, registry URL, image tag hay command do client khai báo.
+- Submission chính thức Phase 2 là một OCI Image Spec 1.1 image trong OCI Image Layout archive không nén (layout marker `imageLayoutVersion: 1.0.0`), đúng platform `linux/amd64`, có OCI `Entrypoint` không rỗng. BTC không nhận Dockerfile, source build context, registry URL, image tag hay command do client khai báo.
 - Worker lấy OCI manifest/config digest đã derive và image entrypoint để tạo hai container sandbox. MatchRunner tiếp tục giao tiếp qua `BotPort`; không đổi game core, Bot Protocol hay turn loop.
 - Worker là trusted runtime adapter duy nhất có quyền dùng Docker Engine ở local. Bot container chạy non-root, no-network, read-only rootfs, không Docker socket/mount/capability; CPU/RAM/PID/tmp/output/time được worker override từ stage policy versioned.
 - Archive được validate cấu trúc trước khi import/chạy và preflight bằng NDJSON v1. Chỉ image VALID mới ACTIVE; `Match` pin identity digest + policy version.

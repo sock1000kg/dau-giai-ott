@@ -285,7 +285,7 @@ Transcript đầy đủ có thể chạy bằng máy nằm tại
 
 ### 8.2 Gói nộp
 
-- Hệ thống nhận đúng một OCI Image Layout v1.1 archive không nén cho `linux/amd64`; không nhận `bot.py`, source archive, Dockerfile, registry URL hoặc image tag làm submission chính thức Phase 2.
+- Hệ thống nhận OCI Image Spec 1.1 trong một OCI Image Layout archive không nén (`imageLayoutVersion: 1.0.0`) cho `linux/amd64`; không nhận `bot.py`, source archive, Dockerfile, registry URL hoặc image tag làm submission chính thức Phase 2.
 - Image phải có OCI `Entrypoint` không rỗng. BTC không nhận language, command hay runtime do client khai báo; worker derive entrypoint/digest từ OCI config và override sandbox policy.
 - Định dạng OCI, giới hạn archive/layer, quota và cách đóng gói local model PHẢI được công bố trước vòng đăng ký. Dependency và model cần thiết phải nằm trong image; không cài từ Internet khi chạy trận.
 - Mỗi lần nộp tạo một submission bất biến với `submissionId`, SHA-256, thời gian, chủ sở hữu và trạng thái.
@@ -644,7 +644,7 @@ Không bắt đầu code giai đoạn kế tiếp trước khi yêu cầu và c�
 | D-04 | Chính sách forfeit do lỗi bot | Process fault: ngay; turn fault: 3 liên tiếp hoặc 5 tổng | ACCEPTED | 09/10/2026 | Đinh Đức Thuận | Đã chốt |
 | D-05 | Xử lý hòa ở finals | Draw không tính; chơi game bổ sung với map/side mới | OPEN | — | — | Trước finals |
 | D-06 | Turn limit | 200 cho Phase 1/vòng loại; finals chốt riêng | ACCEPTED-PHASE-1 | 09/10/2026 | Đinh Đức Thuận | Finals còn mở |
-| D-07 | Runtime/image/thư viện | OCI Image Layout v1.1 `linux/amd64`, OCI Entrypoint; worker pin manifest/config digest và policy version, từ chối Dockerfile/registry URL/tag/client command | ACCEPTED | 12/10/2026 | Đinh Đức Thuận | Xem ADR-0006 và SAD OCI |
+| D-07 | Runtime/image/thư viện | OCI Image Spec 1.1 in OCI Image Layout (`imageLayoutVersion: 1.0.0`), `linux/amd64`, OCI Entrypoint; worker pin manifest/config digest và policy version, từ chối Dockerfile/registry URL/tag/client command | ACCEPTED | 12/10/2026 | Đinh Đức Thuận | Xem ADR-0006 và SAD OCI |
 | D-08 | CPU/RAM/startup/log quota | Baseline implementation: startup 5 s, turn 3 s, message 64 KiB, stderr 1 MiB, 1 vCPU, 256 MiB RAM, 64 PID, tmpfs 64 MiB, no egress; chỉ mở nhận submission đội thi sau corpus benchmark xác nhận/chỉnh profile | ACCEPTED-BASELINE | 12/10/2026 | Đinh Đức Thuận | P2-T15 chốt profile phát hành từ evidence P2-T08/P2-T10 |
 | D-09 | Kích thước dải Elo và số series/vòng | 1 series/team/round; dải Elo 200, mở rộng +100 deterministic đến khi ghép được; capacity controller giới hạn theo quota worker | ACCEPTED | 12/10/2026 | Đinh Đức Thuận | Đã chốt cho Phase 2 local |
 | D-10 | Single game hay cặp game đổi phía | Vòng loại dùng cặp 2 game cùng map/submission, đổi X/O; tổng điểm hòa thì series hòa | ACCEPTED | 12/10/2026 | Đinh Đức Thuận | Đã chốt cho Phase 2 local |
