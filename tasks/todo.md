@@ -542,14 +542,15 @@ Các ID cũ bị hủy trước khi triển khai và không được tái sử d
 **Files dự kiến:** migration, `ratings/elo.ts`, `ratings/service.ts`, tests.
 **Hoàn tất:** 2026-10-13 — Migration 0004 thêm marker `rating_applied_at`; rating Elo K=32 dùng round snapshot và delta integer zero-sum. `settleSeries` tự áp dụng rating sau khi round terminal; thao tác transaction/idempotent và không ghi series hủy. `rebuildRatingLedger` phục hồi entry thiếu từ snapshot/kết quả bất biến và từ chối mismatch. PostgreSQL rating + scheduling integration 4/4; API unit suite 13 passed/13 DB tests skipped; typecheck/build pass. GitNexus all/compare main: HIGH, 10 execution flows; review xác nhận wiring settlement có integration evidence, apply service impact LOW. Mutation check đảo nhánh kết quả làm PostgreSQL test thất bại như kỳ vọng. DOCS UPDATED: API README, task graph/checklist.
 
-#### [ ] P2-T13B — Leaderboard API và tie-break
+#### [x] P2-T13B — Leaderboard API và tie-break
 
 **Owner:** Đinh Đức Thuận
 **Mô tả:** Cung cấp leaderboard ổn định với thứ tự theo Elo, điểm đối đầu, win-rate, lỗi kỹ thuật/forfeit và khóa cuối xác định.
-**Acceptance criteria:** (1) Public response chỉ gồm field được phép; (2) thứ tự tie-break đầy đủ deterministic; (3) pagination validate/bounded và ổn định khi khóa sort trùng.
-**Verification:** Leaderboard API integration tests.
+**Acceptance criteria:** (1) Public response chỉ gồm field được phép; (2) xếp Elo, head-to-head trong cùng Elo cohort, win rate, faults/forfeit; exact ties cùng rank và báo BTC cần tie-break, team ID chỉ ổn định thứ tự trình bày; (3) pagination validate/bounded, ổn định.
+**Verification:** `npm test --workspace @ott/platform-api -- --run tests/leaderboard.integration.test.ts`.
 **Dependencies:** `P2-T13A`.
 **Files dự kiến:** `ratings/routes.ts`, repository/query, tests, API docs.
+**Hoàn tất:** 2026-10-13 — Public leaderboard query tổng hợp Elo/record, h2h, fault skip và forfeit, rank ổn định; exact ties giữ đồng hạng và đánh dấu `BTC_REQUIRED`, không tự biến UUID thành luật thi đấu. Route public đăng ký trong app, lọc stage, pagination có giới hạn. PostgreSQL integration 2/2 qua `createAuthApp` (ẩn danh), API typecheck/build pass; mutation validation đảo điều kiện làm test thất bại. GitNexus all/compare main HIGH do `createAuthApp` composition-root fan-out 10 flows; xác nhận route là đăng ký sibling và app-level integration pass. DOCS UPDATED: API README và task graph/checklist.
 
 #### [ ] P2-T13C — Match/series results API với RBAC
 

@@ -233,7 +233,7 @@ Phase 1 complete
 - [x] `P2-T12` — Deterministic round pairing, swapped BO2 matches, outbox dispatch và terminal series scoring; PostgreSQL integration + logic 11/11 pass (2026-10-13).
 - [ ] `P2-T13` — Nhóm Elo ledger, results và leaderboard API:
   - [x] `P2-T13A` — Elo calculation, round ledger và rebuild verification; PostgreSQL rating/scheduling integration 4/4 pass.
-  - [ ] `P2-T13B` — Leaderboard API và tie-break (phụ thuộc T13A).
+  - [x] `P2-T13B` — Leaderboard API; PostgreSQL integration 2/2, exact ties được giữ đồng hạng đến khi BTC xử lý (phụ thuộc T13A).
   - [ ] `P2-T13C` — Match/series results API với RBAC.
 - `P2-D11` — Đã hủy, tách thành `P2-L02` và `P2-L03`.
 - `P2-D12` — Đã hủy, tách thành `P2-N15`.

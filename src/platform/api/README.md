@@ -55,6 +55,17 @@ rows from immutable round snapshots and terminal series results without
 rewriting existing history. Migration `0004_round_rating_application` records
 the atomic round-application marker.
 
+The public `GET /api/v1/leaderboard?stage=QUALIFICATION&page=1&pageSize=25`
+returns only participating teams and public standings: rank, team ID/name,
+rating, series W/D/L, win rate, head-to-head points, technical-fault/forfeit
+counts and update time. Ordering is Elo descending, head-to-head points among
+the same-Elo cohort descending, win rate descending, then combined technical
+faults/forfeits ascending. Teams still tied share the same rank and return
+`tieBreakStatus: "BTC_REQUIRED"`; UUID is only a stable display/pagination
+order, not an official contest tie-break. The requirement's BTC-decided match
+or seeded public draw remains a separate, auditable competition decision.
+Pagination is bounded to page 1–10000 and page size 1–100.
+
 Run rating logic and PostgreSQL integration tests against a disposable database
 with the API migrations applied:
 

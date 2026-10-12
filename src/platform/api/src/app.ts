@@ -6,6 +6,7 @@ import { AuthorizationError } from './modules/auth/authorize.ts';
 import { registerAuthPlugin } from './modules/auth/plugin.ts';
 import { registerTeamRoutes } from './modules/teams/routes.ts';
 import { registerSubmissionRoutes } from './modules/submissions/routes.ts';
+import { registerLeaderboardRoutes } from './modules/ratings/routes.ts';
 import type { ObjectStorage } from './storage/s3.ts';
 import { createPasswordHasher, type PasswordHashPolicy } from './modules/auth/passwords.ts';
 import { createRedisAuthStore, type RedisAuthCommands } from './modules/auth/sessions.ts';
@@ -42,6 +43,7 @@ export function createAuthApp(options: CreateAuthAppOptions): FastifyInstance {
     secureCookies: options.secureCookies ?? true,
   });
   registerTeamRoutes(application, { database: options.database, passwordHasher, sessionStore: authStore });
+  registerLeaderboardRoutes(application, { database: options.database });
   if (options.storage !== undefined) registerSubmissionRoutes(application, { database: options.database, storage: options.storage });
   return application;
 }
