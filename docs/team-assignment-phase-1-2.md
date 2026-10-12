@@ -139,7 +139,7 @@ flowchart LR
         DB["✅ P2-T03 (Thuận)<br/>PostgreSQL schema + migration"]
         RBAC["✅ P2-T04 (Thuận)<br/>Authentication, RBAC"]
         AUTHC["✅ P2-T05<br/>Auth HTTP contract + bootstrap config"]
-        TEAM["P2-T06<br/>Team + credential API"]
+        TEAM["✅ P2-T06<br/>Team + credential API"]
         SUBAPI["P2-T07<br/>OCI upload bot"]
         WORKER["P2-T09<br/>Queue + worker"]
         RUN["P2-T10…T11<br/>Sandbox + ghi kết quả"]
@@ -178,7 +178,7 @@ flowchart LR
 
     classDef done fill:#123d2a,stroke:#39d98a,color:#ffffff,stroke-width:2px;
     classDef gate stroke-width:3px;
-    class T21,I1,OCI,DB,RBAC,AUTHC done;
+    class T21,I1,OCI,DB,RBAC,AUTHC,TEAM done;
     class PC,PA2,PB2 gate;
 ```
 

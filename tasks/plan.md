@@ -220,7 +220,7 @@ Phase 1 complete
 - [x] `P2-T04` — Authentication và RBAC foundation.
 - [x] `P2-T05` — Auth HTTP contract và local bootstrap config.
 - [ ] `P2-L02` — Web shell và team portal login.
-- [ ] `P2-T06` — Team management vertical slice.
+- [x] `P2-T06` — Team management vertical slice.
 - [ ] `P2-T07` — OCI submission upload và S3-compatible storage vertical slice.
 - [ ] `P2-N14` — BTC team-account provisioning console.
 - [ ] `P2-L03` — Team portal submission UI.
