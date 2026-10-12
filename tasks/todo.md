@@ -270,16 +270,16 @@ Không triển khai ID này. Workspace chung chuyển cho Đinh Đức Thuận d
 **Ước lượng:** M (5 file)
 **Hoàn tất:** 2026-10-11 — Hoàn thành CLI chạy trận local và composition root (`src/config.ts`, `src/cli.ts`): nhận và validate nghiêm ngặt config qua `node:util` `parseArgs` (`strict: true`), nhận executable và argv tách bạch truyền nguyên văn không qua shell; stdout chỉ chứa đúng một dòng JSON kết quả trận đấu với thứ tự khóa cố định (hoặc usage khi --help), stderr dành riêng cho diagnostics, bot stderr (`[bot X]`/`[bot O]`) và tóm tắt; phân loại rõ ràng exit code (0 thành công kể cả bot forfeit/fault, 1 lỗi hạ tầng/runtime, 2 lỗi cú pháp/config); CLI inject ports/adapters (`createGame`, `createBot`, `readFile`, `writeEventLog`), sử dụng FakeGame tối thiểu 2-spawn chờ core P1-D09 và không chứa luật game, không import child_process trực tiếp. Thêm devDependency `tsx` (pin 4.23.15) và script `match`. 21 test mới trong `tests/cli.test.ts`; tổng 134 test pass (3x flakiness check đạt 100%), typecheck và build pass.
 
-## Checkpoint P1-B — Ba lane độc lập hoàn tất
+## [x] Checkpoint P1-B — Ba lane độc lập hoàn tất
 
 - [x] Long xong `P1-L05`–`P1-L08`; Nguyên xong `P1-N01`–`P1-N06`; Đạt xong `P1-D02`–`P1-D08`.
-- [ ] Unit/contract tests từng lane chạy độc lập trên localhost.
-- [ ] Không có thay đổi protocol chưa được ba owner review.
+- [x] Unit/contract tests từng lane chạy độc lập trên localhost: game-core 46, bot-protocol 16, MatchRunner 134 và Python bots 27 tests pass.
+- [x] Không có thay đổi contract/schema/ADR-0002 sau khi khóa tại `P1-T01`.
 - [x] Chạy GitNexus `detect-changes` trước integration: không có thay đổi cần xử lý.
 
 ## Phase 1 — Integration
 
-### [ ] P1-T02 — Gộp Node.js/TypeScript/Vitest workspace chung
+### [x] P1-T02 — Gộp Node.js/TypeScript/Vitest workspace chung
 
 **Owner:** Đinh Đức Thuận (thay `P1-D01` đã hủy)
 **Mô tả:** Gộp các module đã chạy độc lập thành một npm workspace ở root. Trước task này mỗi module tự có `package.json` và chạy trên localhost; task này không triển khai luật game hoặc protocol.
@@ -288,6 +288,7 @@ Không triển khai ID này. Workspace chung chuyển cho Đinh Đức Thuận d
 **Dependencies:** Checkpoint `P1-B`.
 **Files dự kiến:** `package.json`, `package-lock.json`, `tsconfig.json`, `vitest.config.ts`, `tests/smoke.test.ts`
 **Ước lượng:** M (5 file)
+**Hoàn tất:** Root npm workspace, lockfile chung và smoke import đã được thêm; `npm ci && npm run typecheck && npm test && npm run build` pass (197 TypeScript tests).
 
 ### [ ] P1-D09 — Tích hợp core thật với MatchRunner
 

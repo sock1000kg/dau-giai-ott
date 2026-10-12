@@ -1,0 +1,20 @@
+{
+  "name": "ott-tournament",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": "^22.12.0" },
+  "workspaces": ["src/game-core", "src/bot-protocol", "src/match-runner"],
+  "scripts": {
+    "typecheck": "npm run typecheck --workspaces && tsc -p tsconfig.json",
+    "test": "npm run test --workspaces && vitest run",
+    "build": "npm run build --workspaces"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5",
+    "@vitest/coverage-v8": "5.0.3",
+    "tsx": "4.23.15",
+    "typescript": "7.0.2",
+    "vitest": "5.0.3"
+  }
+}

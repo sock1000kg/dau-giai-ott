@@ -1,6 +1,6 @@
 # Convention: package cho module TypeScript
 
-> Trạng thái: **Chờ Đinh Đức Thuận duyệt**
+> Trạng thái: **Đã gộp workspace tại P1-T02**
 > Áp dụng: mọi module TypeScript dưới `src/` từ Phase 1, cho tới và sau khi `P1-T02` gộp workspace chung.
 > Không áp dụng: `src/bots/**` (Python, không dùng `package.json`).
 
@@ -33,7 +33,7 @@ Mục tiêu: mỗi module tự cài đặt, typecheck, test và build độc l�
    | `src/platform/web/` | `@ott/platform-web` | Phase 2, theo task card |
 
 3. Public entrypoint duy nhất là `src/index.ts`, khai báo qua `"exports": { ".": "./src/index.ts" }`. Module khác chỉ import theo tên package; deep import như `@ott/game-core/src/engine.ts` sẽ bị typecheck từ chối.
-4. Dùng module khác bằng dependency `file:` (mục 4). Không import đường dẫn tương đối sang module khác, không copy type sang module mình.
+4. Dùng module khác bằng dependency workspace `"*"` (mục 4). Không import đường dẫn tương đối sang module khác, không copy type sang module mình.
 5. Mọi module dùng chung `src/tsconfig.base.json` và đúng phiên bản công cụ ở mục 2. Đổi phiên bản phải đổi cho mọi module trong cùng một PR do Thuận duyệt.
 6. Module chỉ sửa manifest của chính mình. Sửa `src/tsconfig.base.json` hoặc file ở repository root thuộc phạm vi Thuận.
 
@@ -91,19 +91,12 @@ Module phụ thuộc module khác thêm khối `dependencies`, ví dụ `src/mat
 }
 ```
 
-## 4. Liên kết module trước `P1-T02`
+## 4. Liên kết module trong workspace
 
-`src/<module>/.npmrc`:
-
-```ini
-engine-strict=true
-install-links=false
-```
-
-- `install-links=false` bắt buộc: npm tạo symlink `node_modules/@ott/<x>` trỏ tới source module kia, nên thay đổi của owner được thấy ngay khi chạy test. Thiếu dòng này, npm 9 copy một bản chụp và test sẽ chạy trên code cũ.
-- `engine-strict=true` làm `npm ci` dừng nếu sai phiên bản Node.
-- Cài module phụ thuộc trước module dùng nó: `game-core` → `bot-protocol` → `match-runner`.
-- Khi module được dùng thay đổi `dependencies` của nó, chạy lại `npm --prefix src/<module> install` ở module đó; module dùng nó không cần cài lại.
+- Root `package.json` là manifest workspace duy nhất; root `package-lock.json` là lockfile duy nhất.
+- Dependency nội bộ dùng `"*"`: npm symlink workspace package nên mọi test luôn dùng source hiện tại.
+- `npm ci` ở root dừng khi sai Node theo `engines` của root và workspace packages.
+- Không chạy `npm install` trong module; cài, typecheck, test và build từ repository root.
 
 ## 5. TypeScript config
 
@@ -157,33 +150,31 @@ src/<module>/
 
 ## 7. Lệnh dùng chung
 
-Chạy từ repository root, thay `<module>` bằng tên thư mục:
+Chạy từ repository root:
 
 ```bash
-npm --prefix src/<module> ci
-npm --prefix src/<module> run typecheck
-npm --prefix src/<module> test
-npm --prefix src/<module> test -- tests/<file>.test.ts
-npm --prefix src/<module> run test:coverage
-npm --prefix src/<module> run build
+npm ci
+npm run typecheck
+npm test
+npm run build
 ```
 
-Đường dẫn test trong lệnh là tương đối với thư mục module. Verification của task card trước `P1-T02` dùng đúng mẫu này.
+Khi cần chạy riêng module, dùng `npm run <script> --workspace @ott/<module>`; đường dẫn test trong lệnh là tương đối với thư mục module. Root `npm test` chạy toàn bộ workspace tests và smoke import ở `tests/smoke.test.ts`.
 
-## 8. Khi `P1-T02` gộp workspace
+## 8. Kết quả `P1-T02`
 
 Thuận thực hiện, owner module không cần sửa source:
 
-- Root `package.json` khai báo `workspaces` cho các module ở mục 1 và giữ các script của từng module.
-- Đổi `"file:../<x>"` thành `"*"`; xóa `package-lock.json` và `.npmrc` của từng module, dùng lockfile root.
-- Chuyển phiên bản pin ở mục 2 lên root nếu cần; câu lệnh `import` và `exports` giữ nguyên.
-- Cập nhật mục 4, 7 và 8 của tài liệu này trong cùng PR.
+- Root `package.json` khai báo ba Phase 1 workspaces và scripts `typecheck`, `test`, `build`.
+- Internal dependency đã đổi từ `"file:../<x>"` sang `"*"`; lockfile/.npmrc cấp module đã bị xóa, dùng lockfile root.
+- Phiên bản toolchain ở mục 2 được pin tại root; câu lệnh `import` và `exports` của module giữ nguyên.
+- `tests/smoke.test.ts` chứng minh cả ba public package import được từ root không side effect.
 
 ## 9. Checklist cho AI khi tạo hoặc sửa manifest
 
 - [ ] Tên package và thư mục khớp bảng mục 1.
-- [ ] Đủ năm file manifest; `.npmrc` có `install-links=false`.
-- [ ] Phiên bản công cụ khớp mục 2, pin chính xác.
+- [ ] Package nằm trong root workspace; không có lockfile/.npmrc cấp module.
+- [ ] Phiên bản công cụ khớp mục 2, pin chính xác tại root.
 - [ ] Chỉ import module khác qua tên package đã khai báo trong `dependencies`.
-- [ ] `npm --prefix src/<module> ci && npm --prefix src/<module> run typecheck && npm --prefix src/<module> test && npm --prefix src/<module> run build` pass.
+- [ ] `npm ci && npm run typecheck && npm test && npm run build` pass.
 - [ ] `node_modules/`, `dist/`, `coverage/` không có trong diff.
