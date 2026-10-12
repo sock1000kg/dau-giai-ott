@@ -11,11 +11,12 @@ import type { GameAction, GameState, PlayerSide } from '@ott/game-core';
 import { BotProcess } from '../src/bot-process.ts';
 import { runCli, type CliDeps } from '../src/cli.ts';
 import {
-  DEFAULT_FAKE_MAP,
+  DEFAULT_MAP,
   DEFAULT_SCHEMA_PATH,
   parseCliArgs,
   type CliConfig,
 } from '../src/config.ts';
+import { CoreGameAdapter } from '../src/core-adapter.ts';
 import { readEventLogFile } from '../src/event-log.ts';
 import { FakeGame, ScriptedBot } from '../src/fakes.ts';
 import { verifyReplay } from '../src/replay.ts';
@@ -87,7 +88,7 @@ describe('P1-D08 CLI and Config', () => {
       expect(config.game.gameId).toBe('local-match');
       expect(config.game.maxTurns).toBe(200);
       expect(config.game.engineVersion).toBe('1.0.0');
-      expect(config.game.map).toEqual(DEFAULT_FAKE_MAP);
+      expect(config.game.map).toEqual(DEFAULT_MAP);
 
       expect(config.limits.maxTurns).toBe(200);
       expect(config.limits.turnTimeoutMs).toBe(DEFAULT_LIMITS.turnTimeoutMs);
@@ -164,14 +165,13 @@ describe('P1-D08 CLI and Config', () => {
   });
 
   describe('CLI (runCli)', () => {
-    it('5. --help -> exit 0, usage on stdout, mentions fake board until D09', async () => {
+    it('5. --help -> exit 0 and usage on stdout', async () => {
       const mem = createMemoryIo();
       const code = await runCli(['--help'], mem.io);
 
       expect(code).toBe(0);
       expect(mem.stdout).toContain('Usage:');
-      expect(mem.stdout).toContain('FakeGame');
-      expect(mem.stdout).toContain('D09');
+      expect(mem.stdout).toContain('game-core');
       expect(mem.stdout).toContain('Exit codes:');
       expect(mem.stderr).toBe('');
     });
@@ -244,7 +244,7 @@ describe('P1-D08 CLI and Config', () => {
       // Event log exists and replay passes
       expect(existsSync(outPath)).toBe(true);
       const log = await readEventLogFile(outPath);
-      const replay = verifyReplay(log, new FakeGame());
+      const replay = verifyReplay(log, new CoreGameAdapter());
       expect(replay.ok).toBe(true);
 
       // Result fields equal log footer

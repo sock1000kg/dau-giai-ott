@@ -2,7 +2,7 @@
  * Composition root and local match runner CLI (P1-D08).
  *
  * Wires together configuration, protocol schema validation, BotProcess child processes,
- * the game engine port (FakeGame until P1-D09), MatchRunner turn loop, and atomic event logging.
+ * the real game-core adapter, MatchRunner turn loop, and atomic event logging.
  *
  * Contracts:
  * - Exit codes: 0 (completed), 1 (infrastructure/runtime failure), 2 (usage/config error).
@@ -21,7 +21,7 @@ import type { PlayerSide } from '@ott/game-core';
 import { BotProcess, type BotProcessOptions } from './bot-process.ts';
 import { parseCliArgs } from './config.ts';
 import { writeEventLogFile, type EventLogV1 } from './event-log.ts';
-import { FakeGame } from './fakes.ts';
+import { CoreGameAdapter } from './core-adapter.ts';
 import { runMatch } from './match-runner.ts';
 import type { BotPort, GamePort } from './ports.ts';
 import type { MatchReport } from './types.ts';
@@ -43,7 +43,7 @@ export function formatHelpText(): string {
     'Usage: run-match --bot-x <executable> --bot-o <executable> --out <path> [options]',
     '',
     'Run a local match between two bots using Bot Protocol v1.',
-    'NOTE: This CLI currently runs FakeGame (scripted fake board) until real core wiring in P1-D09.',
+    'The CLI uses the locked game-core Phase 1 map and rules.',
     '',
     'Required options:',
     '  --bot-x <executable>        Executable command for bot X',
@@ -139,7 +139,7 @@ export async function runCli(
   }
 
   // 3. Create ports
-  const createGame = deps?.createGame ?? (() => new FakeGame());
+  const createGame = deps?.createGame ?? (() => new CoreGameAdapter());
   const createBot = deps?.createBot ?? ((_side, options) => new BotProcess(options));
 
   function forwardStderr(side: PlayerSide, chunk: Uint8Array): void {

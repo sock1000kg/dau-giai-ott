@@ -102,7 +102,7 @@ flowchart LR
     PA["✅ Checkpoint P1-A<br/>Contract chạy được"]
     PB["✅ Checkpoint P1-B<br/>Ba lane xong độc lập"]
     T02["✅ P1-T02 (Thuận)<br/>Gộp workspace chung"]
-    D9["P1-D09 (Đạt)<br/>Tích hợp core thật"]
+    D9["✅ P1-D09 (Đạt)<br/>Tích hợp core thật"]
     D10["P1-D10 (Đạt)<br/>E2E hai bot + bot lỗi"]
     D11["P1-D11 (Đạt)<br/>Runbook, bàn giao local"]
     PC["Checkpoint P1-C<br/>Thuận duyệt Phase 1"]
@@ -119,7 +119,7 @@ flowchart LR
 
     classDef done fill:#123d2a,stroke:#39d98a,color:#ffffff,stroke-width:2px;
     classDef gate stroke-width:3px;
-    class T01,L1,L2,N1,N2,D1,D2,PA,PB,T02 done;
+    class T01,L1,L2,N1,N2,D1,D2,PA,PB,T02,D9 done;
     class PA,PB,PC gate;
 ```
 
@@ -159,7 +159,7 @@ flowchart LR
     class PC,PA2,PB2 gate;
 ```
 
-`✅` chỉ gắn cho node có task/checkpoint đã hoàn tất trong `tasks/todo.md` và có bằng chứng verification. Hiện tại `P1-T01`, `P1-L01`–`P1-L08`, `P1-N01`–`P1-N06`, `P1-D02`–`P1-D08`, Checkpoint `P1-A`, Checkpoint `P1-B` và `P1-T02` đã hoàn tất. Khi một task hoặc checkpoint được xác nhận, thêm `✅` vào đầu nhãn node và đưa node đó vào `class ... done`.
+`✅` chỉ gắn cho node có task/checkpoint đã hoàn tất trong `tasks/todo.md` và có bằng chứng verification. Hiện tại `P1-T01`, `P1-L01`–`P1-L08`, `P1-N01`–`P1-N06`, `P1-D02`–`P1-D09`, Checkpoint `P1-A`, Checkpoint `P1-B` và `P1-T02` đã hoàn tất. Khi một task hoặc checkpoint được xác nhận, thêm `✅` vào đầu nhãn node và đưa node đó vào `class ... done`.
 
 Các điểm đồng bộ bắt buộc:
 

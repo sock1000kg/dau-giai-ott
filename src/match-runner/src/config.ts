@@ -14,32 +14,15 @@ import { parseArgs } from 'node:util';
 import { DEFAULT_LIMITS, type Limits } from '@ott/bot-protocol';
 import type { GameConfig, MapDefinition, PlayerSide } from '@ott/game-core';
 
+import { DEFAULT_CORE_MAP } from './core-adapter.ts';
+
 /** Canonical Bot Protocol JSON Schema path resolved relative to module location. */
 export const DEFAULT_SCHEMA_PATH = fileURLToPath(
   new URL('../../../docs/contracts/bot-protocol-v1.schema.json', import.meta.url),
 );
 
-/** 64-hex SHA-256 checksum for the minimal fake map. */
-export const DEFAULT_MAP_CHECKSUM = '0'.repeat(64);
-
-/** Minimal 2-spawn map definition used with FakeGame until P1-D09. */
-export const DEFAULT_FAKE_MAP: MapDefinition = {
-  schemaVersion: 1,
-  mapId: 'fake-map',
-  version: 1,
-  checksum: DEFAULT_MAP_CHECKSUM,
-  width: 9,
-  height: 9,
-  obstacles: [],
-  spawns: [
-    { id: 'X1', owner: 'X', type: 'ROCK', position: { col: 0, row: 0 } },
-    { id: 'O1', owner: 'O', type: 'PAPER', position: { col: 8, row: 8 } },
-  ],
-  goals: {
-    X: { col: 8, row: 8 },
-    O: { col: 0, row: 0 },
-  },
-};
+/** Locked 18-spawn Phase 1 map, supplied by game-core through the adapter. */
+export const DEFAULT_MAP: MapDefinition = DEFAULT_CORE_MAP;
 
 export interface BotCliConfig {
   readonly executable: string;
@@ -198,7 +181,7 @@ export function parseCliArgs(argv: readonly string[]): ParseCliArgsResult {
     game: {
       gameId: matchId,
       engineVersion: '1.0.0',
-      map: DEFAULT_FAKE_MAP,
+      map: DEFAULT_MAP,
       maxTurns,
     },
     limits: {

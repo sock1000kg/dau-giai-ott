@@ -290,15 +290,16 @@ Không triển khai ID này. Workspace chung chuyển cho Đinh Đức Thuận d
 **Ước lượng:** M (5 file)
 **Hoàn tất:** Root npm workspace, lockfile chung và smoke import đã được thêm; `npm ci && npm run typecheck && npm test && npm run build` pass (197 TypeScript tests).
 
-### [ ] P1-D09 — Tích hợp core thật với MatchRunner
+### [x] P1-D09 — Tích hợp core thật với MatchRunner
 
 **Owner:** Phạm Tất Đạt
 **Mô tả:** Viết GamePort adapter cho core của Long và thay FakeGame tại composition root.
 **Acceptance criteria:** (1) Map state/action/result/error không đổi semantics; (2) có integration test core thật + ScriptedBot; (3) chỉ import public package API.
-**Verification:** `npm test -- src/match-runner/tests/core-adapter.integration.test.ts && npm run typecheck`.
+**Verification:** `npm --workspace @ott/match-runner test -- tests/core-adapter.integration.test.ts && npm run typecheck`.
 **Dependencies:** `P1-L08`, `P1-D08`, `P1-T02`.
 **Files dự kiến:** `src/match-runner/src/core-adapter.ts`, `src/match-runner/src/index.ts`, `src/match-runner/tests/core-adapter.integration.test.ts`
 **Ước lượng:** M (3 file)
+**Hoàn tất:** `CoreGameAdapter` forward nguyên vẹn các API công khai của `@ott/game-core`; CLI dùng map chuẩn 18 quân và adapter này thay vì `FakeGame`. Integration test chạy core thật với `ScriptedBot`, kiểm tra `TURN_LIMIT`, event log và final hash; typecheck/build pass.
 
 ### [ ] P1-D10 — E2E hai bot và bot lỗi
 

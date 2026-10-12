@@ -9,7 +9,8 @@ MatchRunner — điều phối **Engine API v1** và **Bot Protocol v1**: mỗi 
 
 Module này đã có ranh giới (P1-D02), vòng lặp trận happy path (P1-D03), policy lỗi/skip/
 cleanup (P1-D04), adapter bot process NDJSON (P1-D05), timeout/cleanup (P1-D06),
-event log / replay verifier (P1-D07) và CLI chạy trận local (P1-D08).
+event log / replay verifier (P1-D07), CLI chạy trận local (P1-D08) và adapter core thật
+(P1-D09).
 
 ## Phạm vi P1-D02 — ports và fakes
 
@@ -227,12 +228,12 @@ Composition root và command-line interface cho MatchRunner (`src/config.ts`, `s
 - **Ranh giới và dependency injection**:
   - `runCli` nhận `io: { stdout, stderr }` và `deps?: Partial<CliDeps>` (`createGame`, `createBot`, `readFile`, `writeEventLog`).
   - Cho phép inject `ScriptedBot` và double trong unit test mà không spawn tiến trình con.
-  - `cli.ts` và `config.ts` chỉ import `@ott/game-core` qua `import type`, không chứa luật game và không import trực tiếp `node:child_process` (chỉ `bot-process.ts` quản lý tiến trình con).
+  - `core-adapter.ts` là module duy nhất import runtime từ public API `@ott/game-core`; `cli.ts`/`config.ts` không chứa luật game và không import trực tiếp `node:child_process` (chỉ `bot-process.ts` quản lý tiến trình con).
   - Import `cli.ts` không gây bất kỳ tác dụng phụ (side effect) nào; khối thực thi entrypoint chỉ kích hoạt khi tệp được chạy trực tiếp.
-- **Ghi chú FakeGame cho tới P1-D09**:
-  - CLI hiện tại khởi tạo `FakeGame` với cấu hình bàn cờ giả tối thiểu 2-spawn (có checksum 64-hex hợp lệ).
-  - Trận đấu giao tiếp với các bot tiến trình thật theo Bot Protocol v1 chuẩn, nhưng diễn ra trên bàn cờ giả cho tới khi `P1-D09` kết nối GamePort adapter cho core thật của Long (phụ thuộc `P1-T02`).
-  - Chưa hỗ trợ cờ `--map` (sẽ được đưa vào ở `P1-D09`).
+- **P1-D09 — adapter core thật**:
+  - `core-adapter.ts` forward trực tiếp `createGame`, `listLegalActions`, `applyAction`, `skipTurn`, `forfeitGame`, `getGameResult` và `hashGameState` từ public API `@ott/game-core`; MatchRunner không có bản sao luật game.
+  - CLI dùng `CoreGameAdapter` cùng `DEFAULT_MAP` 18 quân của game-core. `FakeGame` chỉ còn là double cho unit test.
+  - `tests/core-adapter.integration.test.ts` chạy một trận qua core thật và `ScriptedBot`, kiểm tra kết quả, event log và final hash.
 
 ### Bảng cờ dòng lệnh CLI (Flags)
 
@@ -264,20 +265,17 @@ npm --prefix src/match-runner run --silent match -- \
 ## Lệnh
 
 ```bash
-npm --prefix src/match-runner ci
-npm --prefix src/match-runner run typecheck
-npm --prefix src/match-runner test
-npm --prefix src/match-runner test -- tests/ports.test.ts
-npm --prefix src/match-runner test -- tests/happy-path.test.ts
-npm --prefix src/match-runner test -- tests/error-paths.test.ts
-npm --prefix src/match-runner test -- tests/event-log.test.ts tests/replay.test.ts
-npm --prefix src/match-runner test -- tests/cli.test.ts
-npm --prefix src/match-runner run match -- --help
-npm --prefix src/match-runner run build
+npm ci
+npm run typecheck
+npm test
+npm --workspace @ott/match-runner test -- tests/core-adapter.integration.test.ts
+npm --workspace @ott/match-runner run match -- --help
+npm run build
 ```
 
-> Máy có Node khác `^22.12.0` (ví dụ Node 24): cài bằng
-> `npm --prefix src/match-runner install --engine-strict=false`.
+> Dùng Node `^22.12.0` theo workspace root; `engine-strict=true` nên không bỏ qua
+> kiểm tra engine khi cài dependency.
 
-Runtime dependency chỉ là hai module `file:` (`@ott/game-core`, `@ott/bot-protocol`); không
-có thư viện runtime ngoài nào khác. Công cụ chạy dòng lệnh `tsx` (pin chính xác 4.23.15) được đặt trong `devDependencies` theo convention §2.
+Runtime dependency chỉ là hai package workspace nội bộ (`@ott/game-core`, `@ott/bot-protocol`);
+không có thư viện runtime ngoài nào khác. Công cụ chạy dòng lệnh `tsx` (pin chính xác 4.23.15)
+được đặt trong root `devDependencies` theo convention §2.

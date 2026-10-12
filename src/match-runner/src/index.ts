@@ -14,10 +14,11 @@
  * - `process-errors.ts` — process exit and error classifier (P1-D06).
  * - `bot-process.ts` — child process BotPort adapter (P1-D05, P1-D06).
  * - `config.ts` — pure argv parser and CLI configuration validator (P1-D08).
- * - `cli.ts` — local match composition root and CLI runner (P1-D08).
+ * - `core-adapter.ts` — real game-core GamePort adapter (P1-D09).
+ * - `cli.ts` — local match composition root and CLI runner (P1-D08/P1-D09).
  *
  * Boundary: this module contains no game rules and spawns no processes directly;
- * the CLI injects ports and runs FakeGame until real core wiring in P1-D09.
+ * the CLI injects ports and delegates rules exclusively to the game-core adapter.
  */
 export * from './ports.ts';
 export * from './fakes.ts';
@@ -29,5 +30,6 @@ export * from './replay.ts';
 export * from './line-buffer.ts';
 export * from './process-errors.ts';
 export * from './bot-process.ts';
+export * from './core-adapter.ts';
 export * from './config.ts';
 export * from './cli.ts';
