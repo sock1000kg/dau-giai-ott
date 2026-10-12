@@ -469,6 +469,10 @@ describe('BotProcess lifecycle and timeouts (P1-D06)', () => {
     const bot = createBot(ignoreSigtermBotPath, [], { stopGraceMs });
     await bot.start(sampleInit);
 
+    // The fixture's ready line is emitted after it has installed its SIGTERM
+    // handler. BotProcess treats it as intentionally out-of-window input.
+    await vi.waitFor(() => expect(bot.unexpectedLines).toBe(1));
+
     const pid = bot.pid;
     expect(isAlive(pid)).toBe(true);
 
