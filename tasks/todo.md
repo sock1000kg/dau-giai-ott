@@ -532,7 +532,7 @@ Các ID cũ bị hủy trước khi triển khai và không được tái sử d
 **Dependencies:** `P2-T12`, `P2-T01`.
 **Ước lượng:** L (3 task con)
 
-#### [ ] P2-T13A — Elo calculation, round ledger và rebuild verification
+#### [x] P2-T13A — Elo calculation, round ledger và rebuild verification
 
 **Owner:** Đinh Đức Thuận
 **Mô tả:** Áp dụng Elo cho toàn bộ series hợp lệ sau khi vòng terminal, ghi ledger nguyên tử/idempotent và cung cấp phép rebuild đối chiếu.
@@ -540,6 +540,7 @@ Các ID cũ bị hủy trước khi triển khai và không được tái sử d
 **Verification:** API rating unit/integration tests với PostgreSQL.
 **Dependencies:** `P2-T12`, `P2-T01`.
 **Files dự kiến:** migration, `ratings/elo.ts`, `ratings/service.ts`, tests.
+**Hoàn tất:** 2026-10-13 — Migration 0004 thêm marker `rating_applied_at`; rating Elo K=32 dùng round snapshot và delta integer zero-sum. `settleSeries` tự áp dụng rating sau khi round terminal; thao tác transaction/idempotent và không ghi series hủy. `rebuildRatingLedger` phục hồi entry thiếu từ snapshot/kết quả bất biến và từ chối mismatch. PostgreSQL rating + scheduling integration 4/4; API unit suite 13 passed/13 DB tests skipped; typecheck/build pass. GitNexus all/compare main: HIGH, 10 execution flows; review xác nhận wiring settlement có integration evidence, apply service impact LOW. Mutation check đảo nhánh kết quả làm PostgreSQL test thất bại như kỳ vọng. DOCS UPDATED: API README, task graph/checklist.
 
 #### [ ] P2-T13B — Leaderboard API và tie-break
 

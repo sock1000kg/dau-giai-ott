@@ -47,6 +47,22 @@ assigning a result score. A later round is held until P2-T13 has applied both
 rating-ledger entries for every finalized prior series; cancelled series need
 no Elo entries. Only one round per stage may be open at a time.
 
+`P2-T13A` applies Elo only after the entire round is terminal. Every finalized
+series uses that round's frozen rating snapshot, K=32, and integer zero-sum
+rounding; infrastructure-cancelled series are skipped. `applyRoundRatings` is
+transactional and retry-safe, while `rebuildRatingLedger` reconstructs missing
+rows from immutable round snapshots and terminal series results without
+rewriting existing history. Migration `0004_round_rating_application` records
+the atomic round-application marker.
+
+Run rating logic and PostgreSQL integration tests against a disposable database
+with the API migrations applied:
+
+```bash
+DATABASE_URL="$YOUR_DISPOSABLE_POSTGRES_URL" \
+  npm test --workspace @ott/platform-api -- --run tests/ratings.test.ts
+```
+
 Run the scheduler integration test only against a disposable PostgreSQL DB
 with migrations applied; it creates and removes only its own unique fixture:
 

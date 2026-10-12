@@ -201,8 +201,8 @@ Phase 1 complete
                                          └──► P2-T05 Auth contract → P2-L02 Web shell + login
                      P2-T06 + P2-L02 ──► P2-N14 BTC credential UI
     P2-T14 → P2-T08 OCI canary/security corpus ──┐
-    P2-T07 → P2-T09 Worker ──────────────────────┴──► P2-T10 OCI sandbox ✅ → P2-T11 Finalization → P2-T12 Scheduling → P2-T13A Elo ledger → ┬─► P2-T13B Leaderboard API ─┐
-                                                                                                                            └─► P2-T13C Results API ─────┴─► P2-N15 Results UI
+    P2-T07 → P2-T09 Worker ──────────────────────┴──► P2-T10 OCI sandbox ✅ → P2-T11 Finalization → P2-T12 Scheduling ─┬─► P2-T13A Elo ledger → P2-T13B Leaderboard API ─┐
+                                                                                                                      └─► P2-T13C Results API ─────────────────────┴─► P2-N15 Results UI
     P2-T08 + P2-T10 ✅ ───────────────────────────────► P2-T15 Quota benchmark / registration gate
 
     P2-T11 ──► P2-D14 Replay publication API ──┬──► P2-D15 BTC replay console
@@ -232,7 +232,7 @@ Phase 1 complete
 - [x] `P2-T11` — MatchResult finalization idempotent; PostgreSQL integration 5/5 and worker retry integration 4/4 pass, execution snapshot immutable and results/events/outbox commit idempotently (2026-10-13).
 - [x] `P2-T12` — Deterministic round pairing, swapped BO2 matches, outbox dispatch và terminal series scoring; PostgreSQL integration + logic 11/11 pass (2026-10-13).
 - [ ] `P2-T13` — Nhóm Elo ledger, results và leaderboard API:
-  - [ ] `P2-T13A` — Elo calculation, round ledger và rebuild verification.
+  - [x] `P2-T13A` — Elo calculation, round ledger và rebuild verification; PostgreSQL rating/scheduling integration 4/4 pass.
   - [ ] `P2-T13B` — Leaderboard API và tie-break (phụ thuộc T13A).
   - [ ] `P2-T13C` — Match/series results API với RBAC.
 - `P2-D11` — Đã hủy, tách thành `P2-L02` và `P2-L03`.

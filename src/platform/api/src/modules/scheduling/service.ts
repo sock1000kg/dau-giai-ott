@@ -3,6 +3,7 @@ import { validateMatchJob, type MatchJobV1 } from '@ott/job-contract';
 import type { Database } from '../../db/client.ts';
 import { createPairingPlan, pairKey, type PairingParticipant } from './pairing.ts';
 import { scoreQualificationSeries, type SeriesMatchInput } from '../series/scoring.ts';
+import { applyRoundRatings } from '../ratings/service.ts';
 
 const INITIAL_RATING_BAND = 200;
 const RATING_BAND_STEP = 100;
@@ -291,7 +292,7 @@ async function finalizeRoundIfTerminal(transaction: Database, roundId: string): 
 
 /** Settle exactly once only after both games become terminal; cancellation never earns score. */
 export async function settleSeries(database: Database, seriesId: string): Promise<SeriesSettlement> {
-  return database.transaction(async (transaction) => {
+  const settlement = await database.transaction<SeriesSettlement>(async (transaction) => {
     const selected = await transaction.query<SeriesRow>('SELECT * FROM series WHERE id = $1 FOR UPDATE', [seriesId]);
     const series = selected.rows[0];
     if (series === undefined) throw new Error('SERIES_NOT_FOUND');
@@ -339,4 +340,9 @@ export async function settleSeries(database: Database, seriesId: string): Promis
     await finalizeRoundIfTerminal(transaction, series.round_id);
     return { state: 'FINALIZED', teamAScore: scored.xScore, teamBScore: scored.oScore, winnerTeamId };
   });
+  const round = await database.query<{ readonly round_id: string; readonly status: string }>(
+    'SELECT r.id AS round_id, r.status FROM series s JOIN rounds r ON r.id = s.round_id WHERE s.id = $1', [seriesId],
+  );
+  if (round.rows[0]?.status === 'FINALIZED') await applyRoundRatings(database, round.rows[0].round_id);
+  return settlement;
 }

@@ -16,5 +16,7 @@ export {
   type SeriesSettlement,
   type MatchJobEnqueuer,
 } from './modules/scheduling/service.ts';
+export { calculateEloDelta, expectedScore } from './modules/ratings/elo.ts';
+export { applyRoundRatings, rebuildRatingLedger } from './modules/ratings/service.ts';
 export { createS3Storage, type ObjectStorage, type S3StorageOptions } from './storage/s3.ts';
 export { MatchQueue, MATCH_QUEUE_NAME, type MatchQueueOptions, type EnqueuedMatch } from './queue/match-queue.ts';

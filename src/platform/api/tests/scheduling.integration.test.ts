@@ -133,15 +133,8 @@ integration('P2-T12 PostgreSQL scheduling', () => {
     expect(await settleSeries(database, cancelledSeries)).toEqual({ state: 'CANCELLED', reason: 'INFRASTRUCTURE_FAILURE' });
     const round = await database.query<{ readonly status: string }>('SELECT status FROM rounds WHERE id = $1', [scheduled.roundId]);
     expect(round.rows[0]?.status).toBe('FINALIZED');
-    await expect(scheduleRound(database, { tournamentStage: stage, idempotencyKey: 'round-after-unrated-series' }))
-      .rejects.toThrow('ROUND_RATING_PENDING');
-    const tiedTeams = await database.query<{ readonly team_a_id: string; readonly team_b_id: string }>(
-      'SELECT team_a_id, team_b_id FROM series WHERE id = $1', [tieSeries],
-    );
-    await database.query(
-      'INSERT INTO rating_ledger (team_id, series_id, rating_before, rating_after, delta) VALUES ($1,$3,1000,1000,0),($2,$3,1000,1000,0)',
-      [tiedTeams.rows[0]!.team_a_id, tiedTeams.rows[0]!.team_b_id, tieSeries],
-    );
+    expect(await database.query('SELECT team_id FROM rating_ledger WHERE series_id = $1', [tieSeries])).toMatchObject({ rowCount: 2 });
+    expect(await database.query('SELECT team_id FROM rating_ledger WHERE series_id = $1', [cancelledSeries])).toMatchObject({ rowCount: 0 });
     const nextRound = await scheduleRound(database, { tournamentStage: stage, idempotencyKey: 'round-after-rating' });
     expect(nextRound.replayed).toBe(false);
     expect(nextRound.roundId).not.toBe(scheduled.roundId);
