@@ -301,15 +301,16 @@ Không triển khai ID này. Workspace chung chuyển cho Đinh Đức Thuận d
 **Ước lượng:** M (3 file)
 **Hoàn tất:** `CoreGameAdapter` forward nguyên vẹn các API công khai của `@ott/game-core`; CLI dùng map chuẩn 18 quân và adapter này thay vì `FakeGame`. Integration test chạy core thật với `ScriptedBot`, kiểm tra `TURN_LIMIT`, event log và final hash; typecheck/build pass.
 
-### [ ] P1-D10 — E2E hai bot và bot lỗi
+### [x] P1-D10 — E2E hai bot và bot lỗi
 
 **Owner:** Phạm Tất Đạt
 **Mô tả:** Chạy CLI với Python process thật cho happy path và fault matrix.
 **Acceptance criteria:** (1) Hai bot hợp lệ hoàn tất trận, process thoát sạch; (2) phủ malformed, illegal, stale, timeout, crash, oversized; (3) hai lần cùng input cho cùng event/hash.
-**Verification:** `npm test -- src/match-runner/tests/e2e && python3 -m unittest discover -s src/bots/python/tests`.
+**Verification:** `npm --workspace @ott/match-runner test -- tests/e2e && python3 -m unittest discover -s src/bots/python/tests`.
 **Dependencies:** `P1-D09`, `P1-N06`.
 **Files dự kiến:** `src/match-runner/tests/e2e/happy-path.test.ts`, `src/match-runner/tests/e2e/faults.test.ts`, `src/match-runner/tests/e2e/determinism.test.ts`, `src/match-runner/tests/e2e/helpers.ts`
 **Ước lượng:** M (4 file)
+**Hoàn tất:** 8 E2E test chạy production CLI với Python process thật: happy path (`first_legal_bot`/`capture_first_bot`), `MALFORMED_JSON`, `ILLEGAL_ACTION`, `TURN_ID_MISMATCH`, `BOT_TIMEOUT`, `MESSAGE_TOO_LARGE`, `BOT_CRASHED` và determinism. Mọi event log đều replay được qua core thật; PID của cả hai bot đã dừng sau mỗi trận. Python bot suite: 27 test pass.
 
 ### [ ] P1-D11 — Runbook và bàn giao local
 

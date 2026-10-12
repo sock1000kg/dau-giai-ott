@@ -10,7 +10,7 @@ MatchRunner — điều phối **Engine API v1** và **Bot Protocol v1**: mỗi 
 Module này đã có ranh giới (P1-D02), vòng lặp trận happy path (P1-D03), policy lỗi/skip/
 cleanup (P1-D04), adapter bot process NDJSON (P1-D05), timeout/cleanup (P1-D06),
 event log / replay verifier (P1-D07), CLI chạy trận local (P1-D08) và adapter core thật
-(P1-D09).
+(P1-D09), E2E Python bots và fault matrix (P1-D10).
 
 ## Phạm vi P1-D02 — ports và fakes
 
@@ -279,3 +279,21 @@ npm run build
 Runtime dependency chỉ là hai package workspace nội bộ (`@ott/game-core`, `@ott/bot-protocol`);
 không có thư viện runtime ngoài nào khác. Công cụ chạy dòng lệnh `tsx` (pin chính xác 4.23.15)
 được đặt trong root `devDependencies` theo convention §2.
+
+## Phạm vi P1-D10 — E2E Python bots
+
+`tests/e2e/` gọi `runCli` với `python3 -I -B -u` và các bot source thật trong `src/bots/python/`:
+
+- Happy path dùng `first_legal_bot.py` và `capture_first_bot.py`, tạo event log replay được qua
+  `CoreGameAdapter`.
+- Fault matrix dùng `invalid_bot.py`/`process_fault_bot.py`, xác nhận `MALFORMED_JSON`,
+  `ILLEGAL_ACTION`, `TURN_ID_MISMATCH`, `BOT_TIMEOUT`, `MESSAGE_TOO_LARGE` và `BOT_CRASHED`.
+- Mỗi case kiểm tra PID của cả hai bot đã dừng; case determinism so final hash và event-log bytes
+  giữa hai trận có cùng input (stdout chỉ khác đường dẫn artifact `eventLog`).
+
+Chạy riêng E2E:
+
+```bash
+npm --workspace @ott/match-runner test -- tests/e2e
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s src/bots/python/tests
+```
