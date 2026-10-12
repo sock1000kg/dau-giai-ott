@@ -1,0 +1,26 @@
+{
+  "name": "@ott/platform-api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": "^22.12.0" },
+  "exports": { ".": "./src/index.ts" },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage --coverage.include=src",
+    "build": "tsc -p tsconfig.build.json",
+    "db:migrate": "tsx src/db/migrate.ts"
+  },
+  "dependencies": {
+    "pg": "8.23.1"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5",
+    "@types/pg": "8.23.1",
+    "@vitest/coverage-v8": "5.0.3",
+    "tsx": "4.23.15",
+    "typescript": "7.0.2",
+    "vitest": "5.0.3"
+  }
+}
