@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "engines": { "node": "^22.12.0" },
-  "workspaces": ["src/game-core", "src/bot-protocol", "src/match-runner"],
+  "workspaces": ["src/game-core", "src/bot-protocol", "src/match-runner", "src/platform/job-contract"],
   "scripts": {
     "typecheck": "npm run typecheck --workspaces && tsc -p tsconfig.json",
     "test": "npm run test --workspaces && vitest run",
