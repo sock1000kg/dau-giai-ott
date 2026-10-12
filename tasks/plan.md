@@ -201,8 +201,8 @@ Phase 1 complete
                                          └──► P2-T05 Auth contract → P2-L02 Web shell + login
                      P2-T06 + P2-L02 ──► P2-N14 BTC credential UI
     P2-T14 → P2-T08 OCI canary/security corpus ──┐
-    P2-T07 → P2-T09 Worker ──────────────────────┴──► P2-T10 OCI sandbox → P2-T11 Finalization → P2-T12 Scheduling → P2-T13 Elo/results API → P2-N15 Results UI
-    P2-T08 + P2-T10 ─────────────────────────────────► P2-T15 Quota benchmark / registration gate
+    P2-T07 → P2-T09 Worker ──────────────────────┴──► P2-T10 OCI sandbox ✅ → P2-T11 Finalization → P2-T12 Scheduling → P2-T13 Elo/results API → P2-N15 Results UI
+    P2-T08 + P2-T10 ✅ ───────────────────────────────► P2-T15 Quota benchmark / registration gate
 
     P2-T11 ──► P2-D14 Replay publication API ──┬──► P2-D15 BTC replay console
                                                  └──► P2-D16 Spectator replay UI
@@ -226,7 +226,7 @@ Phase 1 complete
 - [ ] `P2-L03` — Team portal submission UI.
 - [x] `P2-T08` — OCI canary bot và sandbox security corpus.
 - [x] `P2-T09` — MatchJob và BullMQ worker.
-- [ ] `P2-T10` — Sandbox adapter và artifact validation.
+- [x] `P2-T10` — Sandbox adapter và artifact validation; Docker API integration 13/13 pass (2026-10-13).
 - [ ] `P2-T15` — Benchmark quota OCI và gate mở nhận bot đa ngôn ngữ.
 - [ ] `P2-T11` — MatchResult finalization idempotent.
 - [ ] `P2-T12` — Scheduling và series scoring.

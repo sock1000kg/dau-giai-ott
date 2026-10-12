@@ -477,7 +477,7 @@ Các ID cũ bị hủy trước khi triển khai và không được tái sử d
 **Ước lượng:** M (8 logical paths)
 **Hoàn tất:** 2026-10-13 — `MatchJobV1` strict/versioned pin submission/archive/manifest/config/policy cho hai phía, idempotency key gắn với UUID trận; BullMQ giữ terminal job, retry exponential 3 lần và dead-letter riêng (poison payload được cách ly ngay, không copy raw payload). Contract unit tests 3/3, Redis integration 4/4 (duplicate/image conflict, retry+DLQ, poison payload, graceful shutdown) và API/worker typecheck pass.
 
-### [ ] P2-T10 — Sandbox adapter và artifact validation
+### [x] P2-T10 — Sandbox adapter và artifact validation
 
 **Owner:** Đinh Đức Thuận
 **Mô tả:** Dùng Docker Engine local qua `SandboxOciBotPort` để xác minh OCI artifact và chạy bot qua BotPort trong giới hạn tài nguyên/network.
@@ -486,6 +486,7 @@ Các ID cũ bị hủy trước khi triển khai và không được tái sử d
 **Dependencies:** `P2-T07`, `P2-T09`, `P2-T08`.
 **Files dự kiến:** `src/platform/worker/src/sandbox/oci-runtime.ts`, `src/platform/worker/src/sandbox/oci-bot-port.ts`, `src/platform/worker/src/sandbox/policy.ts`, `src/platform/worker/src/artifacts.ts`, `src/platform/worker/tests/sandbox.integration.test.ts`
 **Ước lượng:** M (4 file)
+**Hoàn tất:** 2026-10-13 — Docker Engine API `/images/load` nhập OCI layout, pin image theo manifest digest và đối chiếu Entrypoint; archive SHA/config/policy được kiểm tra trước import. `SandboxOciBotPort` chạy qua MatchRunner không đổi protocol; Docker inspect xác nhận user non-root, network none, read-only rootfs, CapDrop ALL, không mount/device, 1 vCPU/256 MiB/64 PID. Python (2 bot), Node, native và 7 fault corpus: integration 13/13; worker typecheck pass. `OTT_SANDBOX_V1` vẫn baseline, `P2-T15` chưa benchmark quota công bố. DOCS UPDATED: SAD OCI, worker README, task graph.
 
 ### [ ] P2-T15 — Benchmark quota OCI và gate mở nhận bot đa ngôn ngữ
 

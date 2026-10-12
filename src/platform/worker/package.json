@@ -11,7 +11,10 @@
     "build": "tsc -p tsconfig.build.json"
   },
   "dependencies": {
+    "@ott/bot-protocol": "*",
+    "@ott/game-core": "*",
     "@ott/job-contract": "*",
+    "@ott/match-runner": "*",
     "bullmq": "6.3.13",
     "ioredis": "5.9.3"
   },
