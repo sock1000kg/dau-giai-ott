@@ -30,19 +30,20 @@
 
 Không triển khai ID này. Workspace chung chuyển cho Đinh Đức Thuận dưới ID `P1-T02` (2026-10-09); ID `P1-D01` không được tái sử dụng.
 
-### [ ] P1-L01 — Triển khai behavior baseline Human-vs-Human
+### [x] P1-L01 — Triển khai behavior baseline Human-vs-Human
 
 **Owner:** Long Trần
 **Mô tả:** Triển khai lại behavior baseline theo đặc tả và commit tham chiếu, không sao chép source chưa có LICENSE.
 **Acceptance criteria:** (1) Ghi nguồn/commit hành vi; module không khởi động UI/process; (2) baseline test khóa spawn, move, combat, win; (3) không copy/submodule/package source tham chiếu.
-**Verification:** `npm --prefix src/game-core test -- tests/baseline.test.ts && npm --prefix src/game-core run typecheck`.
+**Verification:** `npm --prefix src/game-core test && npm --prefix src/game-core run typecheck`.
 **Dependencies:** `P1-T01`.
-**Files dự kiến:** `src/game-core/package.json`, `src/game-core/src/index.ts`, `src/game-core/src/engine.ts`, `src/game-core/tests/baseline.test.ts`, `src/game-core/README.md`
+**Files dự kiến:** `src/game-core/package.json`, `src/game-core/src/index.ts`, `src/game-core/src/engine.ts`, `src/game-core/tests/regression.test.ts`, `src/game-core/README.md`
 **Ước lượng:** M (5 file)
+**Hoàn tất:** Feature `f728703` đã merge vào `main`; verification hiện tại: 46 game-core tests, typecheck và build pass.
 
 ## Phase 1 — Gate 1: hiện thực contract đã khóa
 
-### [ ] P1-L02 — Hiện thực Engine API và domain types đã khóa
+### [x] P1-L02 — Hiện thực Engine API và domain types đã khóa
 
 **Owner:** Long Trần
 **Mô tả:** Hiện thực domain types, map types, `createGame` và public exports nền tảng từ `docs/contracts/engine-api-v1.md`; movement/lifecycle được hoàn thiện ở `P1-L05`–`P1-L07`.
@@ -51,8 +52,9 @@ Không triển khai ID này. Workspace chung chuyển cho Đinh Đức Thuận d
 **Dependencies:** `P1-L01`.
 **Files dự kiến:** `src/game-core/src/types.ts`, `src/game-core/src/engine.ts`, `src/game-core/src/index.ts`, `src/game-core/tests/contract.test.ts`
 **Ước lượng:** M (4 file)
+**Hoàn tất:** Feature `3023be4` đã merge vào `main`; Engine API public types và `createGame` được cover bởi contract tests hiện tại.
 
-### [ ] P1-L03 — Hiện thực Bot Protocol v1 types
+### [x] P1-L03 — Hiện thực Bot Protocol v1 types
 
 **Owner:** Long Trần
 **Mô tả:** Hiện thực types/error codes đúng contract v1 đã khóa để Nguyên và Đạt import qua public package entrypoint.
@@ -61,8 +63,9 @@ Không triển khai ID này. Workspace chung chuyển cho Đinh Đức Thuận d
 **Dependencies:** `P1-L02`.
 **Files dự kiến:** `src/bot-protocol/package.json`, `src/bot-protocol/src/messages.ts`, `src/bot-protocol/src/errors.ts`, `src/bot-protocol/src/index.ts`
 **Ước lượng:** M (4 file)
+**Hoàn tất:** Feature `776dcbe` đã merge vào `main`; bot-protocol typecheck và 16 tests pass.
 
-### [ ] P1-L04 — Validator và contract tests từ schema/fixtures
+### [x] P1-L04 — Validator và contract tests từ schema/fixtures
 
 **Owner:** Long Trần
 **Mô tả:** Dùng schema/fixtures đã khóa để hiện thực runtime validator và contract tests.
@@ -71,17 +74,18 @@ Không triển khai ID này. Workspace chung chuyển cho Đinh Đức Thuận d
 **Dependencies:** `P1-L03`.
 **Files dự kiến:** `src/bot-protocol/src/validate.ts`, `src/bot-protocol/src/index.ts`, `src/bot-protocol/tests/schema.test.ts`
 **Ước lượng:** M (3 file)
+**Hoàn tất:** Feature `6d61b9f` đã merge vào `main`; validator và schema tests pass.
 
-## Checkpoint P1-A — Executable contract baseline
+## [x] Checkpoint P1-A — Executable contract baseline
 
-- [ ] `P1-T01`, `P1-L01`–`P1-L04`, `P1-N01` và `P1-D02` hoàn tất.
-- [ ] Python SDK và MatchRunner ports cùng dùng contract/schema/fixtures chuẩn, không tạo protocol/type semantics riêng.
-- [ ] Thay đổi protocol sau gate phải do Long cập nhật và Nguyên, Đạt review.
-- [ ] Chạy `node .gitnexus/run.cjs detect-changes --scope all --repo .` và xử lý cảnh báo HIGH/CRITICAL.
+- [x] `P1-T01`, `P1-L01`–`P1-L04`, `P1-N01` và `P1-D02` hoàn tất.
+- [x] Python SDK và MatchRunner ports cùng dùng contract/schema/fixtures chuẩn, không tạo protocol/type semantics riêng.
+- [x] Contract/schema vẫn khóa; thay đổi protocol sau gate tiếp tục phải do Long cập nhật và Nguyên, Đạt review.
+- [x] Chạy `node .gitnexus/run.cjs detect-changes --scope all --repo .`: không có thay đổi cần xử lý.
 
 ## Phase 1 — Lane Long: core và protocol
 
-### [ ] P1-L05 — API điều khiển game theo side/action
+### [x] P1-L05 — API điều khiển game theo side/action
 
 **Owner:** Long Trần
 **Mô tả:** Cho phép caller chọn action theo side mà không phụ thuộc input Human-vs-Human.
@@ -90,8 +94,9 @@ Không triển khai ID này. Workspace chung chuyển cho Đinh Đức Thuận d
 **Dependencies:** `P1-L04`.
 **Files dự kiến:** `src/game-core/src/engine.ts`, `src/game-core/src/types.ts`, `src/game-core/tests/actions.test.ts`
 **Ước lượng:** M (3 file)
+**Hoàn tất:** Feature `3647880` đã merge vào `main`; action tests nằm trong 46 game-core tests và coverage tổng branch đạt 96.07%.
 
-### [ ] P1-L06 — Skip turn, maxTurns và GameResult
+### [x] P1-L06 — Skip turn, maxTurns và GameResult
 
 **Owner:** Long Trần
 **Mô tả:** Bổ sung lifecycle runner cần khi bot lỗi hoặc trận chạm giới hạn lượt.
@@ -100,8 +105,9 @@ Không triển khai ID này. Workspace chung chuyển cho Đinh Đức Thuận d
 **Dependencies:** `P1-L05`.
 **Files dự kiến:** `src/game-core/src/engine.ts`, `src/game-core/src/types.ts`, `src/game-core/tests/lifecycle.test.ts`
 **Ước lượng:** M (3 file)
+**Hoàn tất:** Feature `9e302da` đã merge vào `main`; lifecycle tests pass.
 
-### [ ] P1-L07 — Event transition và finalStateHash
+### [x] P1-L07 — Event transition và finalStateHash
 
 **Owner:** Long Trần
 **Mô tả:** Xuất transition deterministic để runner ghi log và replay.
@@ -110,8 +116,9 @@ Không triển khai ID này. Workspace chung chuyển cho Đinh Đức Thuận d
 **Dependencies:** `P1-L06`.
 **Files dự kiến:** `src/game-core/src/events.ts`, `src/game-core/src/hash.ts`, `src/game-core/src/engine.ts`, `src/game-core/tests/replay.test.ts`
 **Ước lượng:** M (4 file)
+**Hoàn tất:** Feature `f569684` đã merge vào `main`; replay/determinism tests pass.
 
-### [ ] P1-L08 — Regression test và tài liệu core
+### [x] P1-L08 — Regression test và tài liệu core
 
 **Owner:** Long Trần
 **Mô tả:** Khóa tương thích Human-vs-Human và hướng dẫn dùng API công khai.
@@ -120,6 +127,7 @@ Không triển khai ID này. Workspace chung chuyển cho Đinh Đức Thuận d
 **Dependencies:** `P1-L07`.
 **Files dự kiến:** `src/game-core/tests/regression.test.ts`, `src/game-core/tests/invariants.test.ts`, `src/game-core/README.md`
 **Ước lượng:** M (3 file)
+**Hoàn tất:** Feature `84e194b` đã merge vào `main`; 46 game-core tests, 96.07% branch coverage, typecheck và build pass.
 
 ## Phase 1 — Lane Nguyên: bot Python kiểm thử
 
@@ -264,10 +272,10 @@ Không triển khai ID này. Workspace chung chuyển cho Đinh Đức Thuận d
 
 ## Checkpoint P1-B — Ba lane độc lập hoàn tất
 
-- [ ] Long xong `P1-L05`–`P1-L08`; Nguyên xong `P1-N01`–`P1-N06`; Đạt xong `P1-D02`–`P1-D08`.
+- [x] Long xong `P1-L05`–`P1-L08`; Nguyên xong `P1-N01`–`P1-N06`; Đạt xong `P1-D02`–`P1-D08`.
 - [ ] Unit/contract tests từng lane chạy độc lập trên localhost.
 - [ ] Không có thay đổi protocol chưa được ba owner review.
-- [ ] Chạy GitNexus `detect-changes` trước integration.
+- [x] Chạy GitNexus `detect-changes` trước integration: không có thay đổi cần xử lý.
 
 ## Phase 1 — Integration
 

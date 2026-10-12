@@ -91,15 +91,15 @@ flowchart LR
     T01["✅ P1-T01 (Thuận)<br/>Khóa Engine API + Bot Protocol v1"]
 
     subgraph LANES["Phát triển độc lập trên localhost"]
-        L1["longt/* — Long Trần<br/>Baseline, Engine API, protocol, validator<br/>P1-L01…L04"]
-        L2["longt/* — Long Trần<br/>Action, lifecycle, hash, regression<br/>P1-L05…L08"]
-        N1["nguyendk/* — Đỗ Khôi Nguyên<br/>Python Bot SDK<br/>P1-N01"]
-        N2["nguyendk/* — Đỗ Khôi Nguyên<br/>Bot hợp lệ, bot lỗi, contract test<br/>P1-N02…N06"]
+        L1["✅ longt/* — Long Trần<br/>Baseline, Engine API, protocol, validator<br/>P1-L01…L04"]
+        L2["✅ longt/* — Long Trần<br/>Action, lifecycle, hash, regression<br/>P1-L05…L08"]
+        N1["✅ nguyendk/* — Đỗ Khôi Nguyên<br/>Python Bot SDK<br/>P1-N01"]
+        N2["✅ nguyendk/* — Đỗ Khôi Nguyên<br/>Bot hợp lệ, bot lỗi, contract test<br/>P1-N02…N06"]
         D1["✅ P1-D02 (Đạt)<br/>GamePort, BotPort, fakes"]
-        D2["datpt/* — Phạm Tất Đạt<br/>MatchRunner, BotProcess, replay, CLI<br/>P1-D03…D08"]
+        D2["✅ datpt/* — Phạm Tất Đạt<br/>MatchRunner, BotProcess, replay, CLI<br/>P1-D03…D08"]
     end
 
-    PA["Checkpoint P1-A<br/>Contract chạy được"]
+    PA["✅ Checkpoint P1-A<br/>Contract chạy được"]
     PB["Checkpoint P1-B<br/>Ba lane xong độc lập"]
     T02["P1-T02 (Thuận)<br/>Gộp workspace chung"]
     D9["P1-D09 (Đạt)<br/>Tích hợp core thật"]
@@ -119,7 +119,7 @@ flowchart LR
 
     classDef done fill:#123d2a,stroke:#39d98a,color:#ffffff,stroke-width:2px;
     classDef gate stroke-width:3px;
-    class T01,D1 done;
+    class T01,L1,L2,N1,N2,D1,D2,PA done;
     class PA,PB,PC gate;
 ```
 
@@ -159,7 +159,7 @@ flowchart LR
     class PC,PA2,PB2 gate;
 ```
 
-`✅` chỉ gắn cho node có task/checkpoint đã hoàn tất trong `tasks/todo.md` và có bằng chứng verification. Hiện tại chỉ `P1-T01` hoàn tất. Khi một task hoặc checkpoint được xác nhận, thêm `✅` vào đầu nhãn node và đưa node đó vào `class ... done`.
+`✅` chỉ gắn cho node có task/checkpoint đã hoàn tất trong `tasks/todo.md` và có bằng chứng verification. Hiện tại `P1-T01`, `P1-L01`–`P1-L08`, `P1-N01`–`P1-N06`, `P1-D02`–`P1-D08` và Checkpoint `P1-A` đã hoàn tất. Checkpoint `P1-B` vẫn pending vì full MatchRunner suite còn hai test timing-flaky. Khi một task hoặc checkpoint được xác nhận, thêm `✅` vào đầu nhãn node và đưa node đó vào `class ... done`.
 
 Các điểm đồng bộ bắt buộc:
 
