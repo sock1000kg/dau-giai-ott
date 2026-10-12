@@ -594,15 +594,15 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 **Files dự kiến:** `package.json`, `package-lock.json`, `src/platform/web/package.json`, `src/platform/web/tsconfig.json`, `src/platform/web/tsconfig.build.json`, `src/platform/web/src/index.ts`, `tests/smoke.test.ts`
 **Ước lượng:** M (7 file; workspace/lock/config foundation)
 
-### [ ] P2-T17B — React/Vite app shell và component test harness
+### [x] P2-T17B — React/Vite app shell và component test harness
 
 **Owner:** Đinh Đức Thuận
 **Mô tả:** Tạo entrypoint, app shell tối thiểu và jsdom test harness trên workspace đã đăng ký.
 **Acceptance criteria:** (1) Vite render app shell từ `main.tsx`; (2) Vitest/Testing Library chạy component test với cleanup/setup ổn định; (3) build không nhúng secret/env production và shell chưa tự giả auth/domain data.
-**Verification:** `npm test --workspace @ott/platform-web && npm run typecheck --workspace @ott/platform-web && npm run build --workspace @ott/platform-web`.
+**Verification:** Pass 2026-10-13: workspace component test (1/1), typecheck, production build; root `npm test`, `npm run typecheck`, `npm run build` pass. Dev-server HTTP smoke returned Vietnamese HTML title and transformed React entry/App modules. Build output contains no configured secret/env values. Chrome DevTools MCP was unavailable, so visual browser inspection was not performed.
 **Dependencies:** `P2-T17A`.
-**Files dự kiến:** `src/platform/web/index.html`, `src/platform/web/src/main.tsx`, `src/platform/web/src/app/App.tsx`, `src/platform/web/src/app/App.test.tsx`, `src/platform/web/src/test/setup.ts`
-**Ước lượng:** M (5 file)
+**Files dự kiến:** `src/platform/web/package.json`, root `package-lock.json`, `src/platform/web/vite.config.ts`, `src/platform/web/index.html`, `src/platform/web/src/main.tsx`, `src/platform/web/src/app/App.tsx`, `src/platform/web/src/app/App.test.tsx`, `src/platform/web/src/test/setup.ts`
+**Ước lượng:** M (8 files; shell, React transform and jsdom harness)
 
 ### [ ] P2-T18 — Login, session restore và route authorization UI
 

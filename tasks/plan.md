@@ -242,7 +242,7 @@ Phase 1 complete
 - `P2-L02`, `P2-L03`, `P2-N14`, `P2-N15`, `P2-D13`–`P2-D16` — Đã hủy và phát hành lại cho Thuận; không tái sử dụng.
 - [x] `P2-T16` — Rebaseline ownership và execution loop Phase 2.
 - [x] `P2-T17A` — React/Vite workspace package foundation; clean install, root tests/typecheck/build pass (2026-10-13).
-- [ ] `P2-T17B` — React/Vite app shell và component test harness.
+- [x] `P2-T17B` — React/Vite app shell và component test harness; component + root checks/build and local HTTP smoke pass (2026-10-13).
 - [ ] `P2-T18` — Login, session restore và route authorization UI.
 - [ ] `P2-T19` — BTC team-account provisioning console.
 - [ ] `P2-T20` — Team OCI submission portal.

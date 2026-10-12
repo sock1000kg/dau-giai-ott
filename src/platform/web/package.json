@@ -6,16 +6,18 @@
   "engines": { "node": "^22.12.0" },
   "exports": { ".": "./src/index.ts" },
   "scripts": {
+    "dev": "vite --host 127.0.0.1",
     "typecheck": "tsc -p tsconfig.json",
-    "test": "vitest run --passWithNoTests",
+    "test": "vitest run",
     "test:coverage": "vitest run --coverage --coverage.include=src",
-    "build": "tsc -p tsconfig.build.json"
+    "build": "tsc -p tsconfig.build.json && vite build"
   },
   "dependencies": {
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },
   "devDependencies": {
+    "@vitejs/plugin-react": "6.1.2",
     "@testing-library/dom": "10.4.2",
     "@testing-library/react": "16.3.3",
     "@types/node": "22.20.5",

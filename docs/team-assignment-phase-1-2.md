@@ -148,7 +148,8 @@ flowchart LR
     PA2["✅ Checkpoint P2-A<br/>Backend local"]
     PLAN["✅ P2-T16 (Thuận)<br/>Rebaseline single-owner"]
     WEBBASE["✅ P2-T17A (Thuận)<br/>Web workspace foundation"]
-    WEB["P2-T17B…T18 (Thuận)<br/>App shell + auth"]
+    WEB["✅ P2-T17B (Thuận)<br/>React app shell + tests"]
+    AUTH["P2-T18 (Thuận)<br/>Login + session/role guard"]
     PORTAL["P2-T19…T22 (Thuận)<br/>BTC/team/results/leaderboard UI"]
     REP["P2-T23…T24 (Thuận)<br/>Replay persistence + HTTP API"]
     VIEW["P2-T25…T27 (Thuận)<br/>BTC console + spectator player"]
@@ -167,7 +168,7 @@ flowchart LR
     ELO -.-> PA2
     BENCH -.-> PA2
     PA2 --> PLAN
-    PLAN --> WEBBASE --> WEB --> PORTAL
+    PLAN --> WEBBASE --> WEB --> AUTH --> PORTAL
     PLAN & WORKER --> REP
     WEB & REP --> VIEW
     PORTAL & VIEW & BENCH --> E2E --> PB2
@@ -615,11 +616,11 @@ Thuận sở hữu toàn bộ Phase 2 local theo chuỗi `P2-T01`–`P2-T29`:
 6. Replay publication API, BTC console và spectator player.
 7. Qualification E2E và local runbook.
 
-Backend `P2-T01`–`P2-T15`, rebaseline `P2-T16` và workspace foundation `P2-T17A` đã hoàn tất. Vòng lặp tiếp theo bắt đầu ở `P2-T17B`; mỗi task dùng một branch riêng, chỉ bắt đầu khi dependencies trong `tasks/todo.md` đã xanh, rồi test → docs/status → commit → merge `main` trước task kế tiếp.
+Backend `P2-T01`–`P2-T15`, rebaseline `P2-T16`, web workspace `P2-T17A` và app shell/test harness `P2-T17B` đã hoàn tất. Vòng lặp tiếp theo bắt đầu ở `P2-T18`; mỗi task dùng một branch riêng, chỉ bắt đầu khi dependencies trong `tasks/todo.md` đã xanh, rồi test → docs/status → commit → merge `main` trước task kế tiếp.
 
 Phần Thuận có thể làm tiếp ngay:
 
-- `P2-T17A` web workspace package foundation đã xanh; tiếp theo `P2-T17B` app shell/test harness.
+- `P2-T17A` web workspace và `P2-T17B` app shell/test harness đã xanh; tiếp theo `P2-T18` auth UI.
 - `P2-T23` replay persistence có thể làm sau `P2-T16`; không cần chờ UI.
 - Sau `P2-T17B`, `P2-T18` và `P2-T22` theo dependencies tương ứng.
 
