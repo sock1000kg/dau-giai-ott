@@ -381,15 +381,16 @@ Các ID cũ bị hủy trước khi triển khai và không được tái sử d
 **Ước lượng:** M (5 file)
 **Hoàn tất:** 2026-10-12 — validator thuần kiểm tra tar/path/link/duplicate, OCI layout/index/sha256/platform/Entrypoint và layer foreign; 4 test không cần Docker daemon, typecheck/build module và full workspace suite pass.
 
-### [ ] P2-T04 — Authentication và RBAC foundation
+### [x] P2-T04 — Authentication và RBAC foundation
 
 **Owner:** Đinh Đức Thuận
 **Mô tả:** Thiết lập username/password nội bộ, Redis session và authorization server-side cho `BTC_ADMIN` và `TEAM_ACCOUNT` theo ADR-0004.
 **Acceptance criteria:** (1) Login/logout/session dùng opaque session cookie, password Argon2id và bootstrap BTC bằng env local không commit; (2) không có self-register/reset endpoint, login generic failure + rate limit, guard server từ chối unauthenticated/forbidden ổn định; (3) integration tests chứng minh `TEAM_ACCOUNT` chỉ truy cập đúng `teamId`, UI không là ranh giới quyền.
 **Verification:** `npm test -- src/platform/api/tests/auth.integration.test.ts` với PostgreSQL local.
 **Dependencies:** `P2-T03`.
-**Files dự kiến:** `src/platform/api/src/modules/auth/plugin.ts`, `src/platform/api/src/modules/auth/sessions.ts`, `src/platform/api/src/modules/auth/authorize.ts`, `src/platform/api/src/modules/auth/types.ts`, `src/platform/api/tests/auth.integration.test.ts`
+**Files:** `src/platform/api/src/app.ts`, `src/platform/api/src/modules/auth/{plugin,sessions,authorize,bootstrap,passwords,audit,types}.ts`, `src/platform/api/tests/auth.integration.test.ts`
 **Ước lượng:** M (5 file)
+**Hoàn tất:** 2026-10-12 — Fastify auth/RBAC foundation dùng Argon2id, Redis opaque session/rate-limit, cookie `HttpOnly`/`SameSite=Lax` (`Secure` mặc định), local BTC bootstrap idempotent và audit không chứa plaintext. Integration PostgreSQL + Redis xác minh generic failure, rate-limit, revoke, stable 401/403 và cross-team server guard; clean install, full workspace 216 tests, typecheck, build và audit pass trên `main`.
 
 ### [ ] P2-T05 — Auth HTTP contract và local bootstrap config
 
