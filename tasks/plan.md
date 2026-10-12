@@ -218,7 +218,7 @@ Phase 1 complete
 - [x] `P2-T03` — Database schema và migration foundation.
 - [x] `P2-T14` — OCI submission contract và layout validator.
 - [x] `P2-T04` — Authentication và RBAC foundation.
-- [ ] `P2-T05` — Auth HTTP contract và local bootstrap config.
+- [x] `P2-T05` — Auth HTTP contract và local bootstrap config.
 - [ ] `P2-L02` — Web shell và team portal login.
 - [ ] `P2-T06` — Team management vertical slice.
 - [ ] `P2-T07` — OCI submission upload và S3-compatible storage vertical slice.

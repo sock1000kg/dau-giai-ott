@@ -392,7 +392,7 @@ Các ID cũ bị hủy trước khi triển khai và không được tái sử d
 **Ước lượng:** M (5 file)
 **Hoàn tất:** 2026-10-12 — Fastify auth/RBAC foundation dùng Argon2id, Redis opaque session/rate-limit, cookie `HttpOnly`/`SameSite=Lax` (`Secure` mặc định), local BTC bootstrap idempotent và audit không chứa plaintext. Integration PostgreSQL + Redis xác minh generic failure, rate-limit, revoke, stable 401/403 và cross-team server guard; clean install, full workspace 216 tests, typecheck, build và audit pass trên `main`.
 
-### [ ] P2-T05 — Auth HTTP contract và local bootstrap config
+### [x] P2-T05 — Auth HTTP contract và local bootstrap config
 
 **Owner:** Đinh Đức Thuận
 **Mô tả:** Công bố contract v1 cho login/logout/current-session cùng error semantics và biến môi trường bootstrap BTC để các frontend tích hợp mà không tự suy đoán auth behavior.
@@ -401,6 +401,7 @@ Các ID cũ bị hủy trước khi triển khai và không được tái sử d
 **Dependencies:** `P2-T04`.
 **Files dự kiến:** `docs/contracts/platform-auth-v1.md`, `.env.example`, `docs/runbooks/local-services.md`
 **Ước lượng:** S (3 file)
+**Hoàn tất:** 2026-10-12 — Contract v1 công bố login/logout/current-session, opaque cookie/session, role/team principal, stable 401/403/429 semantics và API cố ý vắng mặt; `.env.example` chỉ dùng placeholder bootstrap, runbook cảnh báo test reset local DB/Redis. Auth integration PostgreSQL + Redis pass trên `main` cùng `git diff --check`.
 
 ### [ ] P2-L02 — Web shell và team portal login
 
