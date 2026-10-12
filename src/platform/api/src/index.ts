@@ -8,3 +8,4 @@ export { createRedisAuthStore, RedisAuthStore, type LoginRateLimiter, type Redis
 export { type AccountRole, type AuthRateLimit, type PasswordHasher, type SessionPrincipal } from './modules/auth/types.ts';
 export { readSubmissionArchive } from './modules/submissions/service.ts';
 export { createS3Storage, type ObjectStorage, type S3StorageOptions } from './storage/s3.ts';
+export { MatchQueue, MATCH_QUEUE_NAME, type MatchQueueOptions, type EnqueuedMatch } from './queue/match-queue.ts';

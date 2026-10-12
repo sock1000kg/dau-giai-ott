@@ -466,15 +466,16 @@ Các ID cũ bị hủy trước khi triển khai và không được tái sử d
 **Ước lượng:** M (5 file)
 **Hoàn tất:** 2026-10-13 — 11 OCI archives (2 Python, Node, Go native, 7 fault scenarios) build được; manifest lưu archive SHA-256, manifest/config digest, entrypoint và expected outcome. Build lại xác nhận SHA ổn định; validator OCI chấp nhận archive; fault images chỉ dành cho sandbox harness. `sandbox-corpus` tests/typecheck và OCI validator 4 tests pass.
 
-### [ ] P2-T09 — MatchJob contract và BullMQ worker
+### [x] P2-T09 — MatchJob contract và BullMQ worker
 
 **Owner:** Đinh Đức Thuận
 **Mô tả:** Queue yêu cầu chạy trận và worker nhận job version hóa.
 **Acceptance criteria:** (1) Job schema/version/idempotency key và pinned OCI submission/manifest/config/policy reference hợp lệ, không có tag/command mutable; (2) retry/backoff/dead-letter, duplicate không tạo hai match hoặc thay image; (3) structured log và graceful shutdown.
-**Verification:** `npm test -- src/platform/worker/tests/match-job.integration.test.ts` với Redis local.
+**Verification:** `REDIS_URL=redis://... npm test --workspace @ott/platform-worker -- --run tests/match-job.integration.test.ts` với Redis local; `npm test --workspace @ott/job-contract -- --run tests/match-job.test.ts`.
 **Dependencies:** `P2-T02`, `P2-T07`, `P2-T14`, `P2-T01`, `P1-D11`.
-**Files dự kiến:** `src/platform/job-contract/src/match-job.ts`, `src/platform/job-contract/src/oci-reference.ts`, `src/platform/api/src/queue/match-queue.ts`, `src/platform/worker/src/worker.ts`, `src/platform/worker/tests/match-job.integration.test.ts`
-**Ước lượng:** M (5 file)
+**Files dự kiến:** job-contract types/schema/tests; API BullMQ producer; worker package/runtime/integration test; README/SAD/task graph.
+**Ước lượng:** M (8 logical paths)
+**Hoàn tất:** 2026-10-13 — `MatchJobV1` strict/versioned pin submission/archive/manifest/config/policy cho hai phía, idempotency key gắn với UUID trận; BullMQ giữ terminal job, retry exponential 3 lần và dead-letter riêng (poison payload được cách ly ngay, không copy raw payload). Contract unit tests 3/3, Redis integration 4/4 (duplicate/image conflict, retry+DLQ, poison payload, graceful shutdown) và API/worker typecheck pass.
 
 ### [ ] P2-T10 — Sandbox adapter và artifact validation
 

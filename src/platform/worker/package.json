@@ -1,0 +1,21 @@
+{
+  "name": "@ott/platform-worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": "^22.12.0" },
+  "exports": { ".": "./src/index.ts" },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "dependencies": {
+    "@ott/job-contract": "*",
+    "bullmq": "6.3.13",
+    "ioredis": "5.9.3"
+  },
+  "devDependencies": {
+    "@ott/platform-api": "*"
+  }
+}

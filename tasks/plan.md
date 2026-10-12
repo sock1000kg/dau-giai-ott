@@ -221,11 +221,11 @@ Phase 1 complete
 - [x] `P2-T05` — Auth HTTP contract và local bootstrap config.
 - [ ] `P2-L02` — Web shell và team portal login.
 - [x] `P2-T06` — Team management vertical slice.
-- [ ] `P2-T07` — OCI submission upload và S3-compatible storage vertical slice.
+- [x] `P2-T07` — OCI submission upload và S3-compatible storage vertical slice.
 - [ ] `P2-N14` — BTC team-account provisioning console.
 - [ ] `P2-L03` — Team portal submission UI.
-- [ ] `P2-T08` — OCI canary bot và sandbox security corpus.
-- [ ] `P2-T09` — MatchJob và BullMQ worker.
+- [x] `P2-T08` — OCI canary bot và sandbox security corpus.
+- [x] `P2-T09` — MatchJob và BullMQ worker.
 - [ ] `P2-T10` — Sandbox adapter và artifact validation.
 - [ ] `P2-T15` — Benchmark quota OCI và gate mở nhận bot đa ngôn ngữ.
 - [ ] `P2-T11` — MatchResult finalization idempotent.

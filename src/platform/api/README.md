@@ -23,3 +23,12 @@ DATABASE_URL=postgresql://... REDIS_URL=redis://:...@127.0.0.1:6379 \
 ```
 
 The test resets the local `public` schema and Redis database. Do not point these URLs at a shared or production service.
+
+## Match queue integration
+
+`P2-T09` publishes only a validated `MatchJobV1` to BullMQ queue
+`ott.match.v1`, with `jobId=match-<match UUID>`. Jobs get three attempts with
+exponential backoff starting at one second; completed and failed jobs remain
+retained so a duplicate cannot silently replace pinned OCI references. See
+[`@ott/platform-worker`](../worker/README.md) for worker and Redis integration
+verification.

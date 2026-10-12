@@ -87,7 +87,7 @@ Control plane và execution plane có thể cùng một máy trong local develop
 
 ### 4.3 Job và finalization exactly-once
 
-`MatchJobV1` có tối thiểu `schemaVersion`, `matchId`, `idempotencyKey` và immutable artifact references. Worker sinh `attemptId` khi claim lease. Payload chỉ mang reference; PostgreSQL là nguồn sự thật cho status, submission, map, seed và resource profile.
+`MatchJobV1` dùng strict allowlist với `schemaVersion`, `matchId`, `idempotencyKey=matchId`, policy version và immutable references cho từng submission (submission UUID, archive SHA-256, OCI manifest/config digest, policy version). Không có registry tag, image name hay command do client chọn. Queue dùng `jobId=match-<match UUID>`, giữ terminal job để dedupe và phát final failure đúng một lần vào dead-letter queue riêng; retry tối đa 3 lần exponential backoff bắt đầu 1 giây. Worker validate contract trước handler; malformed payload được cách ly ngay, chỉ lưu fingerprint SHA-256; logs chỉ giữ stable error code, không stdout/stderr/raw exception. Graceful close đợi active jobs. PostgreSQL vẫn là nguồn sự thật cho status, submission, map, seed và resource profile; claim lease/attempt persistence thuộc finalization task.
 
 ```text
 schedule transaction

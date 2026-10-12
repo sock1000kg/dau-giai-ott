@@ -141,7 +141,7 @@ flowchart LR
         AUTHC["✅ P2-T05<br/>Auth HTTP contract + bootstrap config"]
         TEAM["✅ P2-T06<br/>Team + credential API"]
         SUBAPI["✅ P2-T07<br/>OCI upload bot"]
-        WORKER["P2-T09<br/>Queue + worker"]
+        WORKER["✅ P2-T09<br/>MatchJob + BullMQ queue/worker"]
         RUN["P2-T10…T11<br/>Sandbox + ghi kết quả"]
         BENCH["P2-T15<br/>Benchmark quota / gate đăng ký"]
         ELO["P2-T12…T13<br/>Lịch thi đấu, Elo, leaderboard API"]
