@@ -215,7 +215,7 @@ Phase 1 complete
 
 - [x] `P2-T01` — Khóa quyết định triển khai Phase 2 local.
 - [x] `P2-T02` — Docker Compose PostgreSQL/Redis/SeaweedFS.
-- [ ] `P2-T03` — Database schema và migration foundation.
+- [x] `P2-T03` — Database schema và migration foundation.
 - [x] `P2-T14` — OCI submission contract và layout validator.
 - [ ] `P2-T04` — Authentication và RBAC foundation.
 - [ ] `P2-T05` — Auth HTTP contract và local bootstrap config.

@@ -118,7 +118,6 @@ flowchart LR
     PB --> T02 --> D9 --> D10 --> D11 --> PC
 
     classDef done fill:#123d2a,stroke:#39d98a,color:#ffffff,stroke-width:2px;
-    classDef done fill:#123d2a,stroke:#39d98a,color:#ffffff,stroke-width:2px;
     classDef gate stroke-width:3px;
     class T01,L1,L2,N1,N2,D1,D2,PA,PB,T02,D9,D10,D11,PC done;
     class PA,PB,PC gate;
@@ -137,7 +136,8 @@ flowchart LR
     CO["P2-T08 (Thuận)<br/>OCI canary + security corpus"]
 
     subgraph BE["Backend local — Thuận làm tuần tự"]
-        DB["P2-T03…T04<br/>Schema, auth/RBAC"]
+        DB["✅ P2-T03 (Thuận)<br/>PostgreSQL schema + migration"]
+        RBAC["P2-T04 (Thuận)<br/>Authentication, RBAC"]
         AUTHC["P2-T05<br/>Auth HTTP contract + bootstrap config"]
         TEAM["P2-T06<br/>Team + credential API"]
         SUBAPI["P2-T07<br/>OCI upload bot"]
@@ -159,10 +159,10 @@ flowchart LR
 
     PC --> T21
     PC --> I1
-    I1 --> DB
+    I1 --> DB --> RBAC
     T21 --> OCI --> CO
-    DB --> AUTHC --> PORTAL
-    DB --> TEAM --> SUBAPI --> SUB["P2-L03 team submission"]
+    RBAC --> AUTHC --> PORTAL
+    RBAC --> TEAM --> SUBAPI --> SUB["P2-L03 team submission"]
     OCI --> SUBAPI
     PORTAL & TEAM --> ADMIN
     T21 & I1 & OCI & SUBAPI --> WORKER
@@ -178,7 +178,7 @@ flowchart LR
 
     classDef done fill:#123d2a,stroke:#39d98a,color:#ffffff,stroke-width:2px;
     classDef gate stroke-width:3px;
-    class T21,I1,OCI done;
+    class T21,I1,OCI,DB done;
     class PC,PA2,PB2 gate;
 ```
 

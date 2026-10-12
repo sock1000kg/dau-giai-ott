@@ -359,15 +359,16 @@ Các ID cũ bị hủy trước khi triển khai và không được tái sử d
 **Ước lượng:** M (4 file)
 **Hoàn tất:** 2026-10-12 — Docker Compose xác nhận PostgreSQL, Redis và SeaweedFS đều healthy trên loopback; S3 `HeadBucket`, put/head/delete object dùng credential đúng pass và credential sai bị từ chối `403`.
 
-### [ ] P2-T03 — Database schema và migration foundation
+### [x] P2-T03 — Database schema và migration foundation
 
 **Owner:** Đinh Đức Thuận
 **Mô tả:** Schema cho account/session/team, OCI submission identity, match, event/result và rating ledger.
 **Acceptance criteria:** (1) PK/FK/unique/index và trạng thái đầy đủ, gồm invariant một `TEAM_ACCOUNT`/team, immutable OCI manifest/config digest và một official result/match; (2) migrate được từ DB rỗng, có reset strategy; (3) integration test dùng PostgreSQL thật.
 **Verification:** `npm run db:migrate && npm test -- src/platform/api/tests/db`.
 **Dependencies:** `P2-T02`.
-**Files dự kiến:** `src/platform/api/src/db/schema.ts`, `src/platform/api/src/db/client.ts`, `src/platform/api/migrations/0001_initial.sql`, `src/platform/api/tests/db/schema.test.ts`
+**Files:** `src/platform/api/src/db/schema.ts`, `src/platform/api/src/db/client.ts`, `src/platform/api/src/db/migrate.ts`, `src/platform/api/migrations/0001_initial.sql`, `src/platform/api/tests/db/schema.test.ts`, `src/platform/api/README.md`, `src/platform/api/package.json`
 **Ước lượng:** M (4 file)
+**Hoàn tất:** 2026-10-12 — migration `0001_initial` chạy trên PostgreSQL local từ schema rỗng và idempotent khi chạy lại. Integration test xác nhận invariant một `TEAM_ACCOUNT`/team, OCI manifest/config identity bất biến, một `MatchResult`/match và một `RatingLedger`/team/series; full workspace test/typecheck/build và audit pass trên `main`.
 
 ### [x] P2-T14 — OCI submission contract và layout validator
 
