@@ -40,7 +40,8 @@ Nếu `origin/main` chưa tồn tại hoặc working tree đang có thay đổi 
 
 - `P1-T01` đã hoàn tất; bảo vệ các contract/ADR đã khóa khỏi thay đổi không được review.
 - Xác nhận contract/checkpoint và xử lý mâu thuẫn giữa các tài liệu.
-- Hoàn tất `P2-T01`, sau đó triển khai tuần tự toàn bộ backend local `P2-T02`–`P2-T13`; auth/team portal dùng ADR-0004 và các UI chỉ bắt đầu khi API dependency đã pass verification.
+- `P2-T01` đã hoàn tất; triển khai tuần tự toàn bộ backend local `P2-T02`–`P2-T15`. Auth/team portal dùng ADR-0004 và các UI chỉ bắt đầu khi API dependency đã pass verification.
+- Dùng [Solution Architecture Phase 2](../architecture/solution-architecture-phase-2.md), [SAD OCI Bot Submission](../architecture/sad-oci-bot-submissions.md), ADR-0005 và ADR-0006 làm ranh giới thực thi; `P2-T15` là cổng benchmark resource profile trước khi mở nhận bot của đội thi.
 - Nhận bàn giao Phase 1 và Phase 2 chạy trên local.
 - Lập kế hoạch CI/CD và local → cloud sau khi local đạt Definition of Done.
 - Không thay Long/Nguyên triển khai UI của họ, hoặc thay Đạt triển khai replay/E2E `P2-D13`–`P2-D16`.
@@ -53,8 +54,9 @@ Nếu `origin/main` chưa tồn tại hoặc working tree đang có thay đổi 
 4. `tasks/plan.md`.
 5. `docs/tai-lieu-yeu-cau.md`, ưu tiên phần yêu cầu đang cần quyết định.
 6. `docs/team-assignment-phase-1-2.md`.
-7. `docs/decisions/` và `docs/huong-dan-tham-gia-du-an-voi-ai.md`.
-8. `git status --short` và source/test liên quan nếu đang review bàn giao.
+7. `docs/architecture/solution-architecture-phase-2.md` khi làm Phase 2.
+8. `docs/decisions/` và `docs/huong-dan-tham-gia-du-an-voi-ai.md`.
+9. `git status --short` và source/test liên quan nếu đang review bàn giao.
 
 Nếu có mâu thuẫn, AI phải nêu rõ hai nguồn và đề xuất lựa chọn; không tự chọn âm thầm.
 
@@ -68,8 +70,8 @@ Nếu có mâu thuẫn, AI phải nêu rõ hai nguồn và đề xuất lựa ch
 | Duyệt Checkpoint `P1-B` | Long xong `P1-L05`–`P1-L08`, Nguyên xong `P1-N01`–`P1-N06`, Đạt xong `P1-D02`–`P1-D08` |
 | Duyệt Checkpoint `P1-C` | `P1-D11` và full verification đã pass |
 | `P2-T01` — khóa quyết định Phase 2 | `P1-D11` hoàn tất |
-| `P2-T02`–`P2-T13` — backend local | Theo dependency của từng task card; làm tuần tự trong lane backend |
-| Duyệt Checkpoint `P2-A` | `P2-T01`–`P2-T13` hoàn tất |
+| `P2-T02`–`P2-T15` — backend local | Theo dependency của từng task card; làm tuần tự trong lane backend |
+| Duyệt Checkpoint `P2-A` | `P2-T01`–`P2-T15` hoàn tất |
 | Duyệt Checkpoint `P2-B`, nhận bàn giao Phase 2 local | `P2-L02`, `P2-L03`, `P2-N14`, `P2-N15`, `P2-D14`–`P2-D16`, `P2-D13` và qualification E2E (gồm BTC provision → team login → submission và replay) đã pass |
 | Deploy từ `main` lên các môi trường | Sau Checkpoint `P2-B` |
 | Thiết kế CI/CD và cloud | Chỉ sau khi local contract/runbook được bàn giao |
@@ -138,7 +140,7 @@ Hãy:
 5. Nếu là decision gate như P2-T01, lập bảng: quyết định, lựa chọn, khuyến nghị, lý do, ảnh hưởng và nơi ghi nhận.
 6. Nếu là checkpoint, đối chiếu từng acceptance criterion với bằng chứng test/build thực tế.
 7. Dùng GitNexus trước khi sửa file hiện có và detect-changes trước khi đề xuất commit.
-8. Với Phase 2, triển khai backend `P2-T02`–`P2-T13`; không triển khai UI của Long/Nguyên hoặc replay/E2E của Đạt.
+8. Với Phase 2, triển khai backend `P2-T02`–`P2-T15`; không triển khai UI của Long/Nguyên hoặc replay/E2E của Đạt.
 9. Không commit, merge hoặc deploy khi chưa được yêu cầu.
 
 Trước khi sửa, hãy trả về task đã chọn, dependency, assumption, file dự kiến sửa và verification plan.

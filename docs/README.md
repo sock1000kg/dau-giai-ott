@@ -25,7 +25,7 @@ Nếu hai nguồn sự thật khác loại mâu thuẫn nhau, AI phải dừng t
 
 - `P1-T01` đã hoàn tất: ADR-0002, Engine API v1, Bot Protocol v1, schema và fixtures đã khóa.
 - `main` là nhánh tích hợp và nguồn deploy. `develop` được giữ lại như nhánh legacy sau lần chuyển convention ngày 2026-10-12 và không còn là base/target branch.
-- Ngày 2026-10-09 owner đổi theo lane và task ID được đánh lại theo owner mới: Long Trần làm core/protocol (`P1-L*`), Đỗ Khôi Nguyên làm bot Python (`P1-N*`), Phạm Tất Đạt làm MatchRunner (`P1-D*`). Ngày 2026-10-12, toàn bộ backend local Phase 2 được phát hành lại cho Thuận dưới `P2-T02`–`P2-T13`; Đạt giữ replay/E2E `P2-D13`–`P2-D16`. Bảng lịch sử ID: [`tasks/plan.md` mục 2.2.1](../tasks/plan.md).
+- Ngày 2026-10-09 owner đổi theo lane và task ID được đánh lại theo owner mới: Long Trần làm core/protocol (`P1-L*`), Đỗ Khôi Nguyên làm bot Python (`P1-N*`), Phạm Tất Đạt làm MatchRunner (`P1-D*`). Ngày 2026-10-12, toàn bộ backend local Phase 2 được phát hành lại cho Thuận dưới `P2-T02`–`P2-T15`; Đạt giữ replay/E2E `P2-D13`–`P2-D16`. Bảng lịch sử ID: [`tasks/plan.md` mục 2.2.1](../tasks/plan.md).
 - Workspace chung là `P1-T02` của Đinh Đức Thuận (thay `P1-D01` đã hủy), gộp sau Checkpoint `P1-B`; trước đó mỗi module tự khai báo dependency và chạy local.
 - Các feature branch remote hiện có đều đã là tổ tiên của `main`; `main` còn chứa validator protocol, lifecycle/hash/event core, BotProcess và CLI mới hơn `develop`.
 - Source root là [`src/`](../src/README.md); Phase 1 đã có implementation cho game-core, bot-protocol, MatchRunner và Python bots.
@@ -79,10 +79,18 @@ Quy tắc:
 - [ADR-0002 — Engine và Bot Protocol v1](decisions/0002-phase-1-engine-and-bot-protocol-v1.md).
 - [ADR-0003 — Chỉ phát hành replay sau khi trận kết thúc](decisions/0003-replay-publication-after-match.md).
 - [ADR-0004 — Tài khoản đội được BTC provision cho Phase 2](decisions/0004-phase-2-team-account-authentication.md).
+- [ADR-0005 — Modular monolith và execution worker Phase 2](decisions/0005-phase-2-modular-monolith-and-execution-boundary.md).
+- [ADR-0006 — OCI image submission cho bot đa ngôn ngữ](decisions/0006-oci-image-submissions-for-language-neutral-bots.md).
+- [ADR-0007 — SeaweedFS S3-compatible cho local Phase 2](decisions/0007-seaweedfs-local-s3-compatible-storage.md).
 - [Engine API v1](contracts/engine-api-v1.md).
 - [Bot Protocol v1](contracts/bot-protocol-v1.md), [JSON Schema](contracts/bot-protocol-v1.schema.json) và [fixtures](contracts/fixtures/).
 
-## 6. AI Context Pack theo thành viên
+## 6. Kiến trúc
+
+- [Solution Architecture — Phase 2 local](architecture/solution-architecture-phase-2.md).
+- [SAD — OCI bot submission và sandbox execution](architecture/sad-oci-bot-submissions.md).
+
+## 7. AI Context Pack theo thành viên
 
 - [Đinh Đức Thuận](ai-context/dinh-duc-thuan.md).
 - [Long Trần](ai-context/long-tran.md).
@@ -91,7 +99,7 @@ Quy tắc:
 
 AI context pack là điểm bắt đầu theo vai trò. Task ID, dependency và trạng thái hoàn thành luôn phải đọc lại từ `tasks/todo.md`.
 
-## 7. Chính sách cập nhật tài liệu liên tục
+## 8. Chính sách cập nhật tài liệu liên tục
 
 Tài liệu là một phần của implementation, không phải bước làm sau:
 

@@ -12,7 +12,7 @@
 
 ## 1. Phạm vi
 
-Bot Protocol v1 là contract giữa MatchRunner và một bot process trong Phase 1. Protocol chỉ truyền state/action; Engine là nguồn sự thật duy nhất và luôn validate lại action.
+Bot Protocol v1 là contract giữa MatchRunner và một bot process. Protocol chỉ truyền state/action; Engine là nguồn sự thật duy nhất và luôn validate lại action. Transport này không phụ thuộc ngôn ngữ; Phase 1 có baseline Python, còn submission chính thức Phase 2 dùng OCI artifact theo OCI Submission Contract v1 sẽ được phát hành ở `P2-T14`.
 
 Protocol có đúng năm message:
 
@@ -35,7 +35,7 @@ Protocol có đúng năm message:
 - Mọi object dùng `additionalProperties: false` theo JSON Schema.
 - `maxMessageBytes` tính theo byte UTF-8 của JSON, không gồm LF.
 
-## 3. Runtime baseline
+## 3. Runtime baseline Phase 1
 
 | Giá trị | Phase 1 |
 | --- | ---: |
@@ -51,6 +51,8 @@ Protocol có đúng năm message:
 | Recoverable faults toàn trận | `5` |
 
 Startup timeout được tính từ khi spawn tới khi process tồn tại và Runner ghi xong `INIT`. V1 không có `READY`; lỗi spawn/exit trong giai đoạn này là forfeit ngay. Timeout lượt đầu chỉ bắt đầu sau khi Runner ghi xong `STATE_UPDATE` đầu tiên.
+
+Các giá trị Python/argv trong bảng này chỉ áp dụng cho Phase 1 CLI và regression fixtures; chúng không phải format nộp bot Phase 2. OCI submission vẫn dùng đúng STDIO/NDJSON v1 nhưng container entrypoint do OCI config xác định và worker sandbox khởi chạy.
 
 ## 4. Common fields
 

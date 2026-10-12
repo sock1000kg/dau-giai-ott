@@ -92,7 +92,7 @@ Không được sửa nếu chưa phối hợp owner:
 
 - `src/bots/python/**` của Nguyên.
 - `src/match-runner/**` của Đạt.
-- Fastify, PostgreSQL, Redis/BullMQ, MinIO, cloud.
+- Fastify, PostgreSQL, Redis/BullMQ, S3-compatible storage, cloud.
 - `src/platform/web/src/features/admin-teams/**`, `results/**`, `leaderboard/**`, `replay-admin/**`, `spectator/**` của owner tương ứng.
 
 Nếu test của consumer phát hiện contract sai, sửa tại core/protocol và cập nhật schema/fixtures; không vá trực tiếp code consumer.

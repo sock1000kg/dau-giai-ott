@@ -189,16 +189,20 @@ P1-D09 + P1-N06 ──► P1-D10 Full local E2E ──► P1-D11 Local handoff
 
 ## 7. Dependency graph Phase 2
 
+`P2-T01` đã chốt architecture baseline, authentication, replay, rating, qualification series và OCI artifact policy tại [Solution Architecture Phase 2](../docs/architecture/solution-architecture-phase-2.md) và [SAD OCI](../docs/architecture/sad-oci-bot-submissions.md). Baseline quota đủ để code/test local; `P2-T15` là cổng benchmark bắt buộc để xác nhận quota công bố và mở nhận submission của đội thi.
+
 ```text
 Phase 1 complete
-    ├── P2-T01 Khóa quota/Elo/series decisions ──► P2-T08, P2-T09, P2-T12
+    ├── P2-T01 Khóa quota/Elo/series/OCI decisions ──► P2-T14, P2-T08, P2-T09, P2-T12
     └── P2-T02 Local Docker services ──► P2-T03 Database → P2-T04 Auth/RBAC
 
-    P2-T04 Auth/RBAC ──┬──► P2-T06 Team + credential API → P2-T07 Submission → P2-L03 Team portal
+    P2-T14 OCI contract/layout validator ──┬──► P2-T07 OCI submission → P2-L03 Team portal
+    P2-T04 Auth/RBAC ──┬──► P2-T06 Team + credential API ────────────────┘
                                          └──► P2-T05 Auth contract → P2-L02 Web shell + login
                      P2-T06 + P2-L02 ──► P2-N14 BTC credential UI
-    P2-T08 Canary/security corpus ──┐
-    P2-T09 Worker ──────────────────┴──► P2-T10 Sandbox → P2-T11 Finalization → P2-T12 Scheduling → P2-T13 Elo/results API → P2-N15 Results UI
+    P2-T14 → P2-T08 OCI canary/security corpus ──┐
+    P2-T07 → P2-T09 Worker ──────────────────────┴──► P2-T10 OCI sandbox → P2-T11 Finalization → P2-T12 Scheduling → P2-T13 Elo/results API → P2-N15 Results UI
+    P2-T08 + P2-T10 ─────────────────────────────────► P2-T15 Quota benchmark / registration gate
 
     P2-T11 ──► P2-D14 Replay publication API ──┬──► P2-D15 BTC replay console
                                                  └──► P2-D16 Spectator replay UI
@@ -209,19 +213,21 @@ Phase 1 complete
 
 ## 8. Phase 2 task index
 
-- [ ] `P2-T01` — Khóa quyết định triển khai Phase 2 local.
-- [ ] `P2-T02` — Docker Compose PostgreSQL/Redis/MinIO.
+- [x] `P2-T01` — Khóa quyết định triển khai Phase 2 local.
+- [x] `P2-T02` — Docker Compose PostgreSQL/Redis/SeaweedFS.
 - [ ] `P2-T03` — Database schema và migration foundation.
+- [x] `P2-T14` — OCI submission contract và layout validator.
 - [ ] `P2-T04` — Authentication và RBAC foundation.
 - [ ] `P2-T05` — Auth HTTP contract và local bootstrap config.
 - [ ] `P2-L02` — Web shell và team portal login.
 - [ ] `P2-T06` — Team management vertical slice.
-- [ ] `P2-T07` — Submission upload và MinIO vertical slice.
+- [ ] `P2-T07` — OCI submission upload và S3-compatible storage vertical slice.
 - [ ] `P2-N14` — BTC team-account provisioning console.
 - [ ] `P2-L03` — Team portal submission UI.
-- [ ] `P2-T08` — Canary bot và sandbox security corpus.
+- [ ] `P2-T08` — OCI canary bot và sandbox security corpus.
 - [ ] `P2-T09` — MatchJob và BullMQ worker.
 - [ ] `P2-T10` — Sandbox adapter và artifact validation.
+- [ ] `P2-T15` — Benchmark quota OCI và gate mở nhận bot đa ngôn ngữ.
 - [ ] `P2-T11` — MatchResult finalization idempotent.
 - [ ] `P2-T12` — Scheduling và series scoring.
 - [ ] `P2-T13` — Match results, Elo ledger và leaderboard API.
@@ -235,7 +241,7 @@ Phase 1 complete
 
 ## 9. Cảnh báo tải Phase 2
 
-Thuận sở hữu tuần tự `P2-T01`–`P2-T13`: quyết định và toàn bộ backend local. Đạt sở hữu 4 task replay/E2E (`P2-D13`–`P2-D16`); Long sở hữu 2 task web và Nguyên sở hữu 2 task UI. Cụm backend là critical path, vì vậy chỉ mở task kế tiếp khi dependency và verification của task trước đã rõ. Sau khi API ổn định, Long và Nguyên có thể làm hai feature UI độc lập song song.
+Thuận sở hữu tuần tự `P2-T01`–`P2-T15`: quyết định và toàn bộ backend local. Đạt sở hữu 4 task replay/E2E (`P2-D13`–`P2-D16`); Long sở hữu 2 task web và Nguyên sở hữu 2 task UI. Cụm backend là critical path, vì vậy chỉ mở task kế tiếp khi dependency và verification của task trước đã rõ. Sau khi API ổn định, Long và Nguyên có thể làm hai feature UI độc lập song song.
 
 1. Hạ tầng local và database.
 2. Authentication/RBAC, team và submission.
