@@ -97,5 +97,5 @@ ra stderr. Chi tiết semantic của fault và message nằm ở Bot Protocol v1
 ## Ranh giới Phase 2
 
 Không tự khởi tạo Compose, PostgreSQL, Redis/BullMQ, MinIO, Fastify hay React/Vite từ runbook này.
-Những dependency, `.env` variables và service lifecycle thuộc P2-D01 trở đi, sau P2-T01.
+Những dependency, `.env` variables và service lifecycle thuộc P2-T02 trở đi, sau P2-T01.
 Phase 1 handoff chỉ xác nhận local deterministic match execution.

@@ -335,15 +335,22 @@ Không triển khai ID này. Workspace chung chuyển cho Đinh Đức Thuận d
 
 **Owner:** Đinh Đức Thuận
 **Mô tả:** Chốt các giá trị còn mở ảnh hưởng trực tiếp database, API, sandbox, scheduling và Elo trước khi các module đó được triển khai.
-**Acceptance criteria:** (1) Chốt auth/RBAC local, K-factor/rating khởi tạo và series đổi phía; (2) chốt artifact/image policy cùng CPU/RAM/PID quota sau benchmark; (3) cập nhật mục 20 của yêu cầu và ADR mới nếu quyết định mang tính kiến trúc.
-**Verification:** Không còn quyết định Phase 2 liên quan trong trạng thái `OPEN/PARTIAL` mà task `P2-D02`–`P2-D10` cần để code; owner bị ảnh hưởng review.
+**Acceptance criteria:** (1) Chốt auth/RBAC local, K-factor/rating khởi tạo và series đổi phía; (2) chốt artifact/image policy cùng CPU/RAM/PID quota sau benchmark; (3) chốt replay chỉ phát sau terminal/integrity check, với BTC stage/publish và không live stream; (4) cập nhật mục 20 của yêu cầu và ADR mới nếu quyết định mang tính kiến trúc.
+**Verification:** Không còn quyết định Phase 2 liên quan trong trạng thái `OPEN/PARTIAL` mà task `P2-T03`–`P2-T13` cần để code; owner bị ảnh hưởng review.
 **Dependencies:** `P1-D11`.
-**Files dự kiến:** `docs/tai-lieu-yeu-cau.md`, `docs/decisions/0003-phase-2-runtime-and-access-policy.md`, `tasks/plan.md`, `tasks/todo.md`
-**Ước lượng:** M (4 file)
+**Tiến độ:** D-11 (replay) và D-13 (auth/RBAC) đã được khóa bằng ADR-0003/0004; quota, Elo và series vẫn còn mở nên task chưa hoàn tất.
+**Files dự kiến:** `docs/tai-lieu-yeu-cau.md`, `docs/decisions/0003-replay-publication-after-match.md`, `docs/decisions/0004-phase-2-team-account-authentication.md`, `tasks/plan.md`, `tasks/todo.md`
+**Ước lượng:** M (5 file)
 
-### [ ] P2-D01 — Docker Compose PostgreSQL, Redis và MinIO
+### Điều chỉnh owner ngày 2026-10-12 — ID cũ không tái sử dụng
 
-**Owner:** Phạm Tất Đạt
+`P2-D01` → `P2-T02`, `P2-D02` → `P2-T03`, `P2-D03` → `P2-T04`, `P2-D17` → `P2-T05`, `P2-D04` → `P2-T06`, `P2-D05` → `P2-T07`, `P2-N01` → `P2-T08`, `P2-D06` → `P2-T09`, `P2-D07` → `P2-T10`, `P2-D08` → `P2-T11`, `P2-D09` → `P2-T12`, `P2-D10` → `P2-T13`.
+
+Các ID cũ bị hủy trước khi triển khai và không được tái sử dụng. Công việc tương ứng được phát hành lại với ID `P2-Txx` để khớp owner Đinh Đức Thuận. Các UI/replay/E2E `P2-D13`–`P2-D16`, `P2-L02`–`P2-L03`, `P2-N14`–`P2-N15` không đổi owner.
+
+### [ ] P2-T02 — Docker Compose PostgreSQL, Redis và MinIO
+
+**Owner:** Đinh Đức Thuận
 **Mô tả:** Môi trường dependency local có healthcheck và version pin.
 **Acceptance criteria:** (1) Ba service chạy localhost; (2) có healthcheck, volume, port/env, bucket init idempotent; (3) không commit secret, có hướng dẫn reset/start/stop.
 **Verification:** `docker compose -f infra/local/compose.yaml up -d --wait && docker compose -f infra/local/compose.yaml ps`.
@@ -351,49 +358,89 @@ Không triển khai ID này. Workspace chung chuyển cho Đinh Đức Thuận d
 **Files dự kiến:** `infra/local/compose.yaml`, `infra/local/minio-init.sh`, `.env.example`, `docs/runbooks/local-services.md`
 **Ước lượng:** M (4 file)
 
-### [ ] P2-D02 — Database schema và migration foundation
+### [ ] P2-T03 — Database schema và migration foundation
 
-**Owner:** Phạm Tất Đạt
-**Mô tả:** Schema cho team, submission, match, event/result và rating ledger.
-**Acceptance criteria:** (1) PK/FK/unique/index và trạng thái đầy đủ; (2) migrate được từ DB rỗng, có reset strategy; (3) integration test dùng PostgreSQL thật.
+**Owner:** Đinh Đức Thuận
+**Mô tả:** Schema cho account/session/team, submission, match, event/result và rating ledger.
+**Acceptance criteria:** (1) PK/FK/unique/index và trạng thái đầy đủ, gồm invariant một `TEAM_ACCOUNT`/team; (2) migrate được từ DB rỗng, có reset strategy; (3) integration test dùng PostgreSQL thật.
 **Verification:** `npm run db:migrate && npm test -- src/platform/api/tests/db`.
-**Dependencies:** `P2-D01`, `P2-T01`.
+**Dependencies:** `P2-T02`.
 **Files dự kiến:** `src/platform/api/src/db/schema.ts`, `src/platform/api/src/db/client.ts`, `src/platform/api/migrations/0001_initial.sql`, `src/platform/api/tests/db/schema.test.ts`
 **Ước lượng:** M (4 file)
 
-### [ ] P2-D03 — Authentication và RBAC foundation
+### [ ] P2-T04 — Authentication và RBAC foundation
 
-**Owner:** Phạm Tất Đạt
-**Mô tả:** Thiết lập identity/authentication local và authorization server-side cho các vai trò BTC, đội trưởng và thành viên theo policy đã khóa tại `P2-T01`.
-**Acceptance criteria:** (1) Request có principal xác thực và role/membership rõ; (2) Fastify guard từ chối unauthenticated/forbidden bằng error ổn định; (3) integration tests chứng minh quyền được kiểm tra ở server, không dựa vào UI.
+**Owner:** Đinh Đức Thuận
+**Mô tả:** Thiết lập username/password nội bộ, Redis session và authorization server-side cho `BTC_ADMIN` và `TEAM_ACCOUNT` theo ADR-0004.
+**Acceptance criteria:** (1) Login/logout/session dùng opaque session cookie, password Argon2id và bootstrap BTC bằng env local không commit; (2) không có self-register/reset endpoint, login generic failure + rate limit, guard server từ chối unauthenticated/forbidden ổn định; (3) integration tests chứng minh `TEAM_ACCOUNT` chỉ truy cập đúng `teamId`, UI không là ranh giới quyền.
 **Verification:** `npm test -- src/platform/api/tests/auth.integration.test.ts` với PostgreSQL local.
-**Dependencies:** `P2-D02`, `P2-T01`.
-**Files dự kiến:** `src/platform/api/src/modules/auth/plugin.ts`, `src/platform/api/src/modules/auth/authorize.ts`, `src/platform/api/src/modules/auth/types.ts`, `src/platform/api/tests/auth.integration.test.ts`
-**Ước lượng:** M (4 file)
+**Dependencies:** `P2-T03`.
+**Files dự kiến:** `src/platform/api/src/modules/auth/plugin.ts`, `src/platform/api/src/modules/auth/sessions.ts`, `src/platform/api/src/modules/auth/authorize.ts`, `src/platform/api/src/modules/auth/types.ts`, `src/platform/api/tests/auth.integration.test.ts`
+**Ước lượng:** M (5 file)
 
-### [ ] P2-D04 — Team management vertical slice
+### [ ] P2-T05 — Auth HTTP contract và local bootstrap config
 
-**Owner:** Phạm Tất Đạt
-**Mô tả:** Fastify API tạo, đọc, cập nhật team trên PostgreSQL.
-**Acceptance criteria:** (1) Validate request/response và error ổn định; (2) uniqueness enforce ở DB/API; (3) test success, duplicate, not found, invalid.
+**Owner:** Đinh Đức Thuận
+**Mô tả:** Công bố contract v1 cho login/logout/current-session cùng error semantics và biến môi trường bootstrap BTC để các frontend tích hợp mà không tự suy đoán auth behavior.
+**Acceptance criteria:** (1) Contract có typed request/response, cookie/session behavior, role/team principal và error generic; (2) `.env.example` chỉ có tên/format biến bootstrap, không chứa secret thật; (3) không công bố register/self-reset endpoint hoặc password plaintext ngoài response create/reset one-time của team API.
+**Verification:** `npm test -- src/platform/api/tests/auth.integration.test.ts && git diff --check`.
+**Dependencies:** `P2-T04`.
+**Files dự kiến:** `docs/contracts/platform-auth-v1.md`, `.env.example`, `docs/runbooks/local-services.md`
+**Ước lượng:** S (3 file)
+
+### [ ] P2-L02 — Web shell và team portal login
+
+**Owner:** Long Trần
+**Mô tả:** Khởi tạo React/Vite web shell và màn hình đăng nhập duy nhất cho team portal; dùng session API của `P2-T04`, không tạo trang đăng ký.
+**Acceptance criteria:** (1) Có login/logout/session restore và route guard, chỉ mở portal sau authentication; (2) không có component, route hay API client self-register/self-reset; (3) generic login failure, loading/accessibility cơ bản và component tests phủ authenticated/unauthenticated/error.
+**Verification:** `npm test -- src/platform/web/src/features/auth && npm run build --workspace src/platform/web`.
+**Dependencies:** `P2-T05`.
+**Files dự kiến:** `src/platform/web/package.json`, `src/platform/web/vite.config.ts`, `src/platform/web/src/app/App.tsx`, `src/platform/web/src/features/auth/LoginPage.tsx`, `src/platform/web/src/features/auth/LoginPage.test.tsx`
+**Ước lượng:** M (5 file)
+
+### [ ] P2-T06 — Team management vertical slice
+
+**Owner:** Đinh Đức Thuận
+**Mô tả:** Fastify API để BTC tạo/đọc/cập nhật team và provision/reset `TEAM_ACCOUNT` trên PostgreSQL.
+**Acceptance criteria:** (1) `BTC_ADMIN` chỉ nhập tên đội; server atomically tạo team, username duy nhất và password ngẫu nhiên/hashing; (2) plaintext credential chỉ trả một lần ở create/reset, reset thu hồi session cũ và audit không chứa secret; (3) validate/unique/error ổn định, test success/duplicate/not found/invalid/cross-role.
 **Verification:** `npm test -- src/platform/api/tests/teams.integration.test.ts`.
-**Dependencies:** `P2-D03`.
-**Files dự kiến:** `src/platform/api/src/modules/teams/routes.ts`, `src/platform/api/src/modules/teams/service.ts`, `src/platform/api/src/modules/teams/repository.ts`, `src/platform/api/tests/teams.integration.test.ts`
-**Ước lượng:** M (4 file)
+**Dependencies:** `P2-T04`.
+**Files dự kiến:** `src/platform/api/src/modules/teams/routes.ts`, `src/platform/api/src/modules/teams/service.ts`, `src/platform/api/src/modules/teams/repository.ts`, `src/platform/api/src/modules/teams/credentials.ts`, `src/platform/api/tests/teams.integration.test.ts`
+**Ước lượng:** M (5 file)
 
-### [ ] P2-D05 — Submission upload và MinIO vertical slice
+### [ ] P2-T07 — Submission upload và MinIO vertical slice
 
-**Owner:** Phạm Tất Đạt
+**Owner:** Đinh Đức Thuận
 **Mô tả:** Nhận artifact, lưu S3-compatible storage và metadata/checksum.
 **Acceptance criteria:** (1) Enforce owner/type/size/checksum và server-generated key; (2) metadata commit sau object hợp lệ, lỗi có cleanup; (3) download nội bộ chống traversal/overwrite và verify checksum.
 **Verification:** `npm test -- src/platform/api/tests/submissions.integration.test.ts` với PostgreSQL/MinIO local.
-**Dependencies:** `P2-D04`.
+**Dependencies:** `P2-T06`.
 **Files dự kiến:** `src/platform/api/src/modules/submissions/routes.ts`, `src/platform/api/src/modules/submissions/service.ts`, `src/platform/api/src/storage/s3.ts`, `src/platform/api/tests/submissions.integration.test.ts`
 **Ước lượng:** M (4 file)
 
-### [ ] P2-N01 — Canary bot và sandbox security corpus
+### [ ] P2-N14 — BTC team-account provisioning console
 
 **Owner:** Đỗ Khôi Nguyên
+**Mô tả:** Tạo màn hình BTC tạo team từ tên đội và xem/copy credential sinh từ server đúng một lần; không gửi credential qua hệ thống.
+**Acceptance criteria:** (1) Form chỉ có team name, chỉ principal BTC truy cập; (2) sau create/reset hiển thị username/password một lần để BTC copy gửi qua chat ngoài hệ thống, refresh/rerender không thể lấy lại plaintext; (3) confirm reset, loading/success/error/accessibility và component tests đầy đủ.
+**Verification:** `npm test -- src/platform/web/src/features/admin-teams && npm run build --workspace src/platform/web`.
+**Dependencies:** `P2-L02`, `P2-T06`.
+**Files dự kiến:** `src/platform/web/src/features/admin-teams/TeamProvisionPage.tsx`, `src/platform/web/src/features/admin-teams/api.ts`, `src/platform/web/src/features/admin-teams/CredentialOnce.tsx`, `src/platform/web/src/features/admin-teams/TeamProvisionPage.test.tsx`
+**Ước lượng:** M (4 file)
+
+### [ ] P2-L03 — Team portal submission UI
+
+**Owner:** Long Trần
+**Mô tả:** Tạo frontend để `TEAM_ACCOUNT` đã đăng nhập nộp bot và xem trạng thái submission của chính team; không chọn hoặc giả teamId ở client.
+**Acceptance criteria:** (1) Team identity lấy từ session, không có team selector hay trusted client-supplied teamId; (2) client validate file/size, loading/progress/success/error và chống double-submit; (3) component tests phủ happy/invalid/API failure/cross-team denial.
+**Verification:** `npm test -- src/platform/web/src/features/submissions && npm run build --workspace src/platform/web`.
+**Dependencies:** `P2-L02`, `P2-T07`.
+**Files dự kiến:** `src/platform/web/src/features/submissions/SubmissionForm.tsx`, `src/platform/web/src/features/submissions/api.ts`, `src/platform/web/src/features/submissions/SubmissionStatus.tsx`, `src/platform/web/src/features/submissions/SubmissionForm.test.tsx`
+**Ước lượng:** M (4 file)
+
+### [ ] P2-T08 — Canary bot và sandbox security corpus
+
+**Owner:** Đinh Đức Thuận
 **Mô tả:** Artifact bot tốt/xấu để kiểm thử sandbox/worker.
 **Acceptance criteria:** (1) Có canary và timeout/fork/write/network/output/memory/CPU cases; (2) mỗi artifact có expected outcome, chỉ chạy qua harness giới hạn; (3) manifest/version/checksum deterministic.
 **Verification:** `python3 -m unittest discover -s src/bots/sandbox-corpus/tests`.
@@ -401,94 +448,122 @@ Không triển khai ID này. Workspace chung chuyển cho Đinh Đức Thuận d
 **Files dự kiến:** `src/bots/sandbox-corpus/manifest.json`, `src/bots/sandbox-corpus/canary_bot.py`, `src/bots/sandbox-corpus/fault_bot.py`, `src/bots/sandbox-corpus/tests/test_manifest.py`, `src/bots/sandbox-corpus/README.md`
 **Ước lượng:** M (5 file)
 
-### [ ] P2-D06 — MatchJob contract và BullMQ worker
+### [ ] P2-T09 — MatchJob contract và BullMQ worker
 
-**Owner:** Phạm Tất Đạt
+**Owner:** Đinh Đức Thuận
 **Mô tả:** Queue yêu cầu chạy trận và worker nhận job version hóa.
 **Acceptance criteria:** (1) Job schema/version/idempotency key và artifact reference hợp lệ; (2) retry/backoff/dead-letter, duplicate không tạo hai match; (3) structured log và graceful shutdown.
 **Verification:** `npm test -- src/platform/worker/tests/match-job.integration.test.ts` với Redis local.
-**Dependencies:** `P2-D01`, `P2-T01`, `P1-D11`.
+**Dependencies:** `P2-T02`, `P2-T01`, `P1-D11`.
 **Files dự kiến:** `src/platform/job-contract/src/match-job.ts`, `src/platform/api/src/queue/match-queue.ts`, `src/platform/worker/src/worker.ts`, `src/platform/worker/src/config.ts`, `src/platform/worker/tests/match-job.integration.test.ts`
 **Ước lượng:** M (5 file)
 
-### [ ] P2-D07 — Sandbox adapter và artifact validation
+### [ ] P2-T10 — Sandbox adapter và artifact validation
 
-**Owner:** Phạm Tất Đạt
+**Owner:** Đinh Đức Thuận
 **Mô tả:** Xác minh artifact và chạy bot trong giới hạn tài nguyên/network.
 **Acceptance criteria:** (1) Check permission/checksum/entrypoint, workdir cô lập; (2) enforce time/CPU/memory/process/output/network/filesystem; (3) canary pass, corpus xấu bị chặn với reason ổn định.
 **Verification:** `npm test -- src/platform/worker/tests/sandbox.integration.test.ts` trên Docker local.
-**Dependencies:** `P2-D05`, `P2-D06`, `P2-N01`.
+**Dependencies:** `P2-T07`, `P2-T09`, `P2-T08`.
 **Files dự kiến:** `src/platform/worker/src/sandbox/adapter.ts`, `src/platform/worker/src/sandbox/policy.ts`, `src/platform/worker/src/artifacts.ts`, `src/platform/worker/tests/sandbox.integration.test.ts`
 **Ước lượng:** M (4 file)
 
-### [ ] P2-D08 — MatchResult finalization idempotent
+### [ ] P2-T11 — MatchResult finalization idempotent
 
-**Owner:** Phạm Tất Đạt
+**Owner:** Đinh Đức Thuận
 **Mô tả:** Chạy MatchRunner trong worker và ghi result/event đúng một lần.
 **Acceptance criteria:** (1) Map output sang result/error chuẩn; (2) retry không nhân đôi result/event/rating trigger; (3) DB result và artifact có checksum/final hash.
 **Verification:** `npm test -- src/platform/worker/tests/finalization.integration.test.ts`.
-**Dependencies:** `P2-D07`, `P2-D02`.
+**Dependencies:** `P2-T10`, `P2-T03`.
 **Files dự kiến:** `src/platform/worker/src/run-match-job.ts`, `src/platform/worker/src/finalize-result.ts`, `src/platform/worker/src/result-repository.ts`, `src/platform/worker/tests/finalization.integration.test.ts`
 **Ước lượng:** M (4 file)
 
-### [ ] P2-D09 — Scheduling và series scoring
+### [ ] P2-T12 — Scheduling và series scoring
 
-**Owner:** Phạm Tất Đạt
+**Owner:** Đinh Đức Thuận
 **Mô tả:** Tạo series/match schedule và tổng hợp điểm Phase 2.
 **Acceptance criteria:** (1) Pairings deterministic, không trùng và có idempotency key; (2) finalize khi đủ terminal matches, tie/forfeit/cancel rõ; (3) retry không đổi số match/điểm.
 **Verification:** `npm test -- src/platform/api/tests/scheduling.integration.test.ts`.
-**Dependencies:** `P2-D08`, `P2-T01`.
+**Dependencies:** `P2-T11`, `P2-T01`.
 **Files dự kiến:** `src/platform/api/src/modules/scheduling/service.ts`, `src/platform/api/src/modules/scheduling/repository.ts`, `src/platform/api/src/modules/series/scoring.ts`, `src/platform/api/tests/scheduling.integration.test.ts`
 **Ước lượng:** M (4 file)
 
-### [ ] P2-D10 — Match results, Elo ledger và leaderboard API
+### [ ] P2-T13 — Match results, Elo ledger và leaderboard API
 
-**Owner:** Phạm Tất Đạt
+**Owner:** Đinh Đức Thuận
 **Mô tả:** Ghi biến động Elo dạng ledger và cung cấp API đọc match/series results cùng leaderboard.
 **Acceptance criteria:** (1) Mỗi series terminal tạo một ledger entry; (2) results/leaderboard có authorization, ordering, tie-break và pagination ổn định; (3) rebuild ledger cho cùng rating hiện tại.
 **Verification:** `npm test -- src/platform/api/tests/leaderboard.integration.test.ts`.
-**Dependencies:** `P2-D09`, `P2-T01`.
+**Dependencies:** `P2-T12`, `P2-T01`.
 **Files dự kiến:** `src/platform/api/src/modules/ratings/elo.ts`, `src/platform/api/src/modules/ratings/service.ts`, `src/platform/api/src/modules/ratings/routes.ts`, `src/platform/api/src/modules/results/routes.ts`, `src/platform/api/tests/leaderboard.integration.test.ts`
 **Ước lượng:** M (5 file)
 
-### [ ] P2-D11 — React/Vite submission UI
+### P2-D11 — Đã hủy, tách thành `P2-L02` và `P2-L03`
+
+Không triển khai ID này. Web shell/login và team submission portal được chuyển cho Long để mã owner khớp task ID; `P2-D11` không được tái sử dụng.
+
+### P2-D12 — Đã hủy, tách thành `P2-N15`
+
+Không triển khai ID này. Results/leaderboard UI được chuyển cho Nguyên để chia feature code Phase 2; `P2-D12` không được tái sử dụng.
+
+### [ ] P2-N15 — Results và leaderboard UI
+
+**Owner:** Đỗ Khôi Nguyên
+**Mô tả:** Hiển thị match/series results, error reason và leaderboard từ API của `P2-T13` trong web shell chung.
+**Acceptance criteria:** (1) Hiển thị outcome và liên kết team/submission theo quyền API trả về; (2) leaderboard có tie-break/pagination/loading/empty/error; (3) component tests kiểm tra mapping và states chính, không tự tính Elo ở UI.
+**Verification:** `npm test -- src/platform/web/src/features/results src/platform/web/src/features/leaderboard && npm run build --workspace src/platform/web`.
+**Dependencies:** `P2-L02`, `P2-T13`.
+**Files dự kiến:** `src/platform/web/src/features/results/MatchResult.tsx`, `src/platform/web/src/features/leaderboard/Leaderboard.tsx`, `src/platform/web/src/features/results/api.ts`, `src/platform/web/src/features/results/MatchResult.test.tsx`, `src/platform/web/src/features/leaderboard/Leaderboard.test.tsx`
+**Ước lượng:** M (5 file)
+
+### [ ] P2-D14 — Replay catalog và publication API
 
 **Owner:** Phạm Tất Đạt
-**Mô tả:** UI chọn team, upload bot và theo dõi submission.
-**Acceptance criteria:** (1) Client validate file/size nhưng hiển thị lỗi server chuẩn; (2) loading/progress/success/error và chống double-submit; (3) component tests phủ happy/invalid/API failure.
-**Verification:** `npm test -- src/platform/web/src/features/submissions && npm run build --workspace src/platform/web`.
-**Dependencies:** `P2-D05`.
-**Files dự kiến:** `src/platform/web/src/features/submissions/SubmissionForm.tsx`, `src/platform/web/src/features/submissions/api.ts`, `src/platform/web/src/features/submissions/SubmissionStatus.tsx`, `src/platform/web/src/features/submissions/SubmissionForm.test.tsx`
+**Mô tả:** Cung cấp API server-side để BTC liệt kê các trận terminal, stage/publish replay integrity-checked và để spectator chỉ đọc replay đã publish.
+**Acceptance criteria:** (1) Chỉ terminal match có event log/checksum hợp lệ mới chuyển `STAGED`/`PUBLISHED`; transition idempotent và audit được actor/lý do; (2) endpoint public theo `matchId` từ chối replay chưa publish và loại dữ liệu nhạy cảm; (3) API trả schema/version/checksum đủ để client kiểm tra artifact và từ chối artifact bị sửa một byte.
+**Verification:** `npm test -- src/platform/api/tests/replays.integration.test.ts` với PostgreSQL/MinIO local.
+**Dependencies:** `P2-T04`, `P2-T11`.
+**Files dự kiến:** `src/platform/api/src/modules/replays/routes.ts`, `src/platform/api/src/modules/replays/service.ts`, `src/platform/api/src/modules/replays/repository.ts`, `src/platform/api/tests/replays.integration.test.ts`
 **Ước lượng:** M (4 file)
 
-### [ ] P2-D12 — React/Vite results và leaderboard UI
+### [ ] P2-D15 — BTC replay catalog và publication console
 
 **Owner:** Phạm Tất Đạt
-**Mô tả:** Hiển thị match/series results, error reason và leaderboard.
-**Acceptance criteria:** (1) Hiển thị outcome và liên kết team/submission; (2) leaderboard có tie-break/pagination/loading/empty/error; (3) component tests kiểm tra mapping và states chính.
-**Verification:** `npm test -- src/platform/web/src/features/results src/platform/web/src/features/leaderboard && npm run build --workspace src/platform/web`.
-**Dependencies:** `P2-D10`.
-**Files dự kiến:** `src/platform/web/src/features/results/MatchResult.tsx`, `src/platform/web/src/features/leaderboard/Leaderboard.tsx`, `src/platform/web/src/features/results/api.ts`, `src/platform/web/src/features/results/MatchResult.test.tsx`, `src/platform/web/src/features/leaderboard/Leaderboard.test.tsx`
+**Mô tả:** Tạo GUI chỉ cho BTC để tìm trận terminal, xem metadata/kết quả và chọn stage/publish replay; đây không phải điều khiển trận đang chạy.
+**Acceptance criteria:** (1) Hiển thị terminal match, publication state và integrity status; (2) chỉ principal BTC được stage/publish và UI hiển thị lỗi server chuẩn; (3) loading/empty/error/success và component tests phủ state transition.
+**Verification:** `npm test -- src/platform/web/src/features/replay-admin && npm run build --workspace src/platform/web`.
+**Dependencies:** `P2-L02`, `P2-D14`.
+**Files dự kiến:** `src/platform/web/src/features/replay-admin/ReplayCatalog.tsx`, `src/platform/web/src/features/replay-admin/api.ts`, `src/platform/web/src/features/replay-admin/PublicationControls.tsx`, `src/platform/web/src/features/replay-admin/ReplayCatalog.test.tsx`
+**Ước lượng:** M (4 file)
+
+### [ ] P2-D16 — Spectator replay UI
+
+**Owner:** Phạm Tất Đạt
+**Mô tả:** Tạo màn hình công khai chỉ đọc cho replay `PUBLISHED`, phục vụ BTC trình chiếu cho khán giả sau khi trận kết thúc.
+**Acceptance criteria:** (1) Tải và kiểm tra schema/version/checksum của replay published, không truy cập replay private và không hiển thị artifact lệch checksum; (2) play/pause, seek theo event index/snapshot, tốc độ 0.5×/1×/2× và hiển thị đội/map/action/fault/kết quả; (3) responsive desktop/mobile, keyboard/accessibility cơ bản và component tests cho loading/error/checksum mismatch/replay end.
+**Verification:** `npm test -- src/platform/web/src/features/spectator && npm run build --workspace src/platform/web`.
+**Dependencies:** `P2-D14`, `P2-L02`.
+**Files dự kiến:** `src/platform/web/src/features/spectator/ReplayPlayer.tsx`, `src/platform/web/src/features/spectator/replay-state.ts`, `src/platform/web/src/features/spectator/api.ts`, `src/platform/web/src/features/spectator/ReplayPlayer.test.tsx`, `src/platform/web/src/pages/SpectatorReplayPage.tsx`
 **Ước lượng:** M (5 file)
 
 ### [ ] P2-D13 — Qualification E2E local
 
 **Owner:** Phạm Tất Đạt
-**Mô tả:** Chứng minh flow từ team/submission đến worker, result, Elo và UI.
-**Acceptance criteria:** (1) Một command dựng service/migrate/chạy flow bằng canary; (2) verify submission → queued → running → terminal → series → rating; (3) retry/restart không duplicate và artifact audit được.
+**Mô tả:** Chứng minh flow từ team/submission đến worker, result, Elo, publication và spectator replay.
+**Acceptance criteria:** (1) Một command dựng service/migrate/chạy flow bằng canary; (2) verify submission → queued → running → terminal → series → rating; (3) verify terminal match → stage/publish → spectator replay, artifact bị sửa một byte bị từ chối, retry/restart không duplicate và artifact audit được.
 **Verification:** `npm run test:e2e:qualification`; sau test không còn job active ngoài fixture.
-**Dependencies:** `P2-D08`, `P2-D09`, `P2-D10`, `P2-D11`, `P2-D12`.
+**Dependencies:** `P2-T11`, `P2-T12`, `P2-T13`, `P2-L03`, `P2-N14`, `P2-N15`, `P2-D14`, `P2-D15`, `P2-D16`.
 **Files dự kiến:** `tests/e2e/qualification.test.ts`, `tests/e2e/helpers.ts`, `scripts/run-local-qualification.sh`, `docs/runbooks/phase-2-local.md`, `package.json`
 **Ước lượng:** M (5 file)
 
 ## Checkpoint P2-A — Backend local
 
-- [ ] `P2-T01`, `P2-D01`–`P2-D10` và `P2-N01` hoàn tất; API/worker tests pass với Docker services.
+- [ ] `P2-T01`–`P2-T13` hoàn tất; API/worker tests pass với Docker services.
 - [ ] Queue retry, sandbox, finalization idempotency và rating rebuild có automated evidence.
 - [ ] Chạy GitNexus `detect-changes` và xử lý mọi HIGH/CRITICAL risk.
 
 ## Checkpoint P2-B — Phase 2 local hoàn tất
 
-- [ ] `P2-D11`–`P2-D13` hoàn tất; qualification E2E pass.
+- [ ] `P2-L02`, `P2-L03`, `P2-N14`, `P2-N15`, `P2-D14`–`P2-D16` hoàn tất; qualification E2E pass gồm BTC provision → team login → submission và replay publication/spectator flow.
 - [ ] `npm run typecheck && npm test && npm run build` pass từ clean checkout.
 - [ ] Thuận nhận runbook, env contract, artifact format để lập kế hoạch local → cloud riêng.

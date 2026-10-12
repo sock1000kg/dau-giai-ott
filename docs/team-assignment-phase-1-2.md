@@ -10,7 +10,7 @@ Ba thành viên Dev phát triển độc lập trên `localhost`:
 - **Đỗ Khôi Nguyên:** viết các bot mẫu và bot lỗi để kiểm thử.
 - **Phạm Tất Đạt:** viết chương trình chạy trận, nối core với hai bot và kiểm thử end-to-end local.
 
-**Đinh Đức Thuận** nhận phiên bản local hoàn chỉnh để làm CI/CD và triển khai cloud. Phần DevOps không nằm trong phạm vi triển khai của ba Dev.
+**Đinh Đức Thuận** sở hữu decision gate và, từ ngày 2026-10-12, toàn bộ backend local Phase 2. Sau khi bản local đạt cổng nghiệm thu, Thuận tiếp tục làm CI/CD và triển khai cloud. Phần DevOps không nằm trong phạm vi triển khai của ba Dev.
 
 ## 2. Hiện trạng đã kiểm tra
 
@@ -63,7 +63,7 @@ Long Trần không làm bot Python, process runner, Fastify API, database, queue
 - BotProcess adapter để chạy hai tiến trình bot.
 - Timeout, parse NDJSON, dọn tiến trình và event log.
 - CLI và E2E local.
-- Sang Phase 2: PostgreSQL, Redis/BullMQ, MinIO, Fastify API và React/Vite.
+- Sang Phase 2: replay publication API, BTC replay console, spectator replay UI và qualification E2E.
 
 Đạt không sửa luật trong core và không viết chiến thuật bot.
 
@@ -128,32 +128,44 @@ flowchart LR
 ```mermaid
 flowchart LR
     PC["Checkpoint P1-C<br/>Phase 1 hoàn tất"]
-    T21["P2-T01 (Thuận)<br/>Khóa auth, quota, Elo, series"]
-    I1["P2-D01 (Đạt)<br/>Docker: PostgreSQL, Redis, MinIO"]
-    CO["P2-N01 (Nguyên)<br/>Bot canary + security corpus"]
+    T21["P2-T01 (Thuận)<br/>Khóa quota, Elo, series<br/>auth/replay đã khóa"]
+    I1["P2-T02 (Thuận)<br/>Docker: PostgreSQL, Redis, MinIO"]
+    CO["P2-T08 (Thuận)<br/>Bot canary + security corpus"]
 
-    subgraph BE["Backend local — Đạt làm tuần tự"]
-        DB["P2-D02…D05<br/>Schema, auth/RBAC, team, upload bot"]
-        RUN["P2-D06…D08<br/>Queue, worker, sandbox, ghi kết quả"]
-        ELO["P2-D09…D10<br/>Lịch thi đấu, Elo, leaderboard API"]
+    subgraph BE["Backend local — Thuận làm tuần tự"]
+        DB["P2-T03…T04<br/>Schema, auth/RBAC"]
+        AUTHC["P2-T05<br/>Auth HTTP contract + bootstrap config"]
+        TEAM["P2-T06…T07<br/>Team + upload bot"]
+        WORKER["P2-T09<br/>Queue + worker"]
+        RUN["P2-T10…T11<br/>Sandbox + ghi kết quả"]
+        ELO["P2-T12…T13<br/>Lịch thi đấu, Elo, leaderboard API"]
     end
 
     PA2["Checkpoint P2-A<br/>Backend local"]
-    UI["P2-D11…D12 (Đạt)<br/>React/Vite: nộp bot, kết quả, leaderboard"]
+    PORTAL["P2-L02…L03 (Long)<br/>Web shell/login + team submission"]
+    ADMIN["P2-N14 (Nguyên)<br/>BTC team-account console"]
+    RESULTS["P2-N15 (Nguyên)<br/>Results + leaderboard UI"]
+    REP["P2-D14 (Đạt)<br/>Replay publication API"]
+    VIEW["P2-D15…D16 (Đạt)<br/>BTC replay console + spectator UI"]
     E2E["P2-D13 (Đạt)<br/>Qualification E2E local"]
     PB2["Checkpoint P2-B<br/>Phase 2 local hoàn tất"]
     DEP["Thuận deploy từ main<br/>lên các môi trường"]
 
     PC --> T21
     PC --> I1
-    T21 --> DB
     I1 --> DB
     T21 --> CO
-    DB --> RUN
-    CO --> RUN
+    DB --> AUTHC --> PORTAL
+    DB --> TEAM --> SUB["P2-L03 team submission"]
+    PORTAL & TEAM --> ADMIN
+    T21 & I1 --> WORKER
+    CO & TEAM & WORKER --> RUN
     RUN --> ELO
     ELO -.-> PA2
-    ELO --> UI --> E2E --> PB2 --> DEP
+    RUN --> REP
+    ELO --> RESULTS
+    PORTAL & REP --> VIEW
+    SUB & ADMIN & RESULTS & VIEW --> E2E --> PB2 --> DEP
 
     classDef gate stroke-width:3px;
     class PC,PA2,PB2 gate;
@@ -572,48 +584,37 @@ Như vậy Đạt không bị block toàn bộ. Chỉ E2E cuối cùng phụ thu
 
 - Chỉ bảo trì core và protocol.
 - Hỗ trợ map động hoặc protocol version mới khi có yêu cầu đã duyệt.
-- Không nhận phần tài khoản, submission, queue, Elo hoặc web.
+- Trong Phase 2, sở hữu web shell/login và team submission portal (`P2-L02`, `P2-L03`); không sửa Fastify API, database, queue hoặc Elo.
 
 ### Đỗ Khôi Nguyên
 
-- Dùng bộ bot lỗi để kiểm thử sandbox và worker.
-- Bổ sung bot canary dùng trước mỗi đợt thi đấu.
 - Duy trì compatibility test với Bot Protocol v1.
+- Trong Phase 2, sở hữu BTC team-account provisioning console (`P2-N14`) và results/leaderboard UI (`P2-N15`); không sửa server-side authorization/API.
 
 ### Phạm Tất Đạt
 
-- Docker Compose local cho PostgreSQL, Redis và MinIO.
-- Schema/migration cho identity, Team, Submission, Match, Attempt, Event và Result.
-- Authentication/RBAC server-side theo policy được Thuận khóa tại `P2-T01`.
-- Fastify API cho đội, nộp bot, tạo/xem trận và kết quả.
-- MinIO adapter lưu bot, map và replay.
-- Sandbox local để chạy artifact bot theo giới hạn đã chốt.
-- Redis/BullMQ adapter đưa MatchJob vào MatchRunner.
-- Xếp lịch series, chốt MatchResult, tính Elo và ghi rating ledger.
-- React/Vite cho nộp bot, lịch, kết quả và bảng xếp hạng.
+- Sở hữu replay publication API (`P2-D14`), BTC replay console (`P2-D15`), spectator replay UI (`P2-D16`) và qualification E2E (`P2-D13`).
+- Không sở hữu Docker, database, Fastify API, MinIO, queue/worker, sandbox, scheduling hoặc Elo Phase 2; các phần đó thuộc lane `P2-T02`–`P2-T13` của Thuận.
 
-### Cảnh báo tải công việc Phase 2
+### Phân công tải công việc Phase 2
 
-Nếu giữ Long chỉ làm core và Nguyên chỉ làm bot test, toàn bộ platform Phase 2 dồn vào Đạt. Đạt không bị chặn kỹ thuật, nhưng sẽ trở thành điểm nghẽn về khối lượng công việc.
+Thuận sở hữu backend local theo một chuỗi `P2-T02`–`P2-T13`, sau decision gate `P2-T01`:
 
-Khi chưa chia thêm owner, Đạt phải làm Phase 2 theo thứ tự:
-
-1. Local Docker Compose và decision gate `P2-T01`.
+1. Local Docker Compose.
 2. Data model, authentication/RBAC, Team/Submission API và MinIO.
 3. Queue/worker và sandbox.
 4. Match finalization, scheduling và Elo.
-5. React/Vite UI.
 
-Năm nhóm việc trên không nên chạy đồng thời bởi một người. Sau khi Phase 1 hoàn tất, cả nhóm cần quyết định chia bớt sandbox/worker hoặc scheduling/Elo, hoặc chấp nhận Phase 2 triển khai tuần tự.
+Đạt bắt đầu `P2-D14` khi `P2-T04` và `P2-T11` hoàn tất, sau đó làm `P2-D15`/`P2-D16` và cuối cùng `P2-D13`. Long và Nguyên có thể làm các feature UI độc lập sau khi API contract và web shell tương ứng đã sẵn sàng; không cùng sửa app shell hoặc API của Thuận.
 
-Phần Đạt có thể làm độc lập ngay ở Phase 2:
+Phần Thuận có thể làm độc lập ngay ở Phase 2:
 
 - Local Docker Compose.
 - Team/Submission schema và CRUD.
 - Upload artifact vào MinIO.
-- UI dùng mock API.
+- Contract/API documentation cho UI dùng mock API.
 
-Phần Đạt phải chờ contract:
+Phần Thuận phải chờ contract:
 
 - Authentication/RBAC: chờ identity policy được khóa tại `P2-T01`.
 - Lưu MatchResult: chờ schema kết quả của Phase 1.

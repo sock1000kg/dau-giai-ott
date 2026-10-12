@@ -2,9 +2,9 @@
 
 > Trạng thái: **Bản làm việc đã duyệt cho Phase 1–2; các quyết định OPEN tại mục 20 chưa được duyệt**
 >
-> Phiên bản: **0.4.0**
+> Phiên bản: **0.4.2**
 >
-> Ngày cập nhật: **09/10/2026**
+> Ngày cập nhật: **12/10/2026**
 >
 > Phạm vi: vòng xếp hạng định kỳ, vòng chung kết, vận hành bot, sandbox và replay
 >
@@ -101,8 +101,7 @@ tournament-operations được bổ sung xuyên suốt từng giai đoạn
 | --- | --- |
 | Quản trị viên BTC | Tạo giải, phân quyền, khóa cấu hình, mở/đóng giai đoạn |
 | Trọng tài/Vận hành | Duyệt submission, điều khiển job, xem log kỹ thuật, xử lý sự cố |
-| Đội trưởng | Quản lý thành viên, nộp và kích hoạt bot, xem kết quả của đội |
-| Thành viên đội | Xem thông tin đội và submission; nộp bot nếu được đội trưởng cấp quyền |
+| Tài khoản đội | Đăng nhập portal, nộp/kích hoạt bot và xem dữ liệu thuộc đúng một đội |
 | Caster | Xem replay đã được BTC phát hành và dữ liệu phục vụ bình luận |
 | Khán giả | Xem lịch, kết quả, bảng xếp hạng và replay công khai |
 
@@ -111,7 +110,21 @@ Yêu cầu phân quyền:
 - Mọi thao tác làm thay đổi kết quả, Elo, bracket hoặc trạng thái giải PHẢI yêu cầu vai trò BTC và được ghi audit log.
 - Đội thi chỉ được đọc source/log chi tiết của chính đội mình.
 - Khán giả không được truy cập source bot, stderr riêng tư, map chưa phát hành hoặc seed chưa công bố.
-- Một tài khoản có thể thuộc nhiều vai trò nhưng quyền được kiểm tra ở server, không chỉ ẩn nút trên giao diện.
+- Quyền được kiểm tra ở server, không chỉ ẩn nút trên giao diện. `TEAM_ACCOUNT` Phase 2 luôn gắn đúng một team; các vai trò BTC/vận hành có thể được gán theo policy server-side.
+
+### 4.1 Tài khoản và đăng nhập Phase 2
+
+- Xác thực dùng username/password nội bộ; không có đăng ký tự phục vụ, OAuth/email login hoặc trang đăng ký.
+- Một `TEAM_ACCOUNT` dùng chung cho đúng một đội. BTC tạo đội từ console bằng tên đội; server tạo
+  username duy nhất và mật khẩu ngẫu nhiên, lưu password hash và chỉ trả plaintext credential đúng một lần
+  khi tạo hoặc reset. BTC tự gửi credential qua kênh chat ngoài hệ thống.
+- Chỉ `BTC_ADMIN` tạo hoặc reset `TEAM_ACCOUNT`; reset phải vô hiệu session cũ. Audit chỉ ghi actor,
+  team/account, thời điểm và loại thao tác, tuyệt đối không ghi password.
+- `BTC_ADMIN` đầu tiên được bootstrap bằng biến môi trường local không commit; sau đó đăng nhập như bình
+  thường. Team portal chỉ có màn hình đăng nhập và không có đường dẫn/API đăng ký hoặc tự reset password.
+- Session là opaque server-side session trong Redis, phát cho browser bằng cookie `HttpOnly`, `SameSite=Lax`
+  và `Secure` ở môi trường HTTPS. Password hash dùng Argon2id; rate limit login và error response không được
+  tiết lộ username có tồn tại hay không.
 
 ## 5. Vòng đời giải đấu
 
@@ -124,7 +137,7 @@ DRAFT → REGISTRATION → QUALIFICATION → RANKING_LOCKED → FINALS → COMPL
 ### 5.1 Quy tắc chuyển giai đoạn
 
 - `DRAFT`: BTC cấu hình luật, lịch, map, quota và thể thức; chưa nhận đăng ký.
-- `REGISTRATION`: đội đăng ký và nộp bot thử nghiệm; chưa tính Elo chính thức.
+- `REGISTRATION`: BTC provision team account và đội nộp bot thử nghiệm; chưa tính Elo chính thức.
 - `QUALIFICATION`: chạy các vòng xếp hạng; mỗi vòng có cutoff submission riêng.
 - `RANKING_LOCKED`: không nhận thay đổi làm ảnh hưởng thứ hạng; BTC kiểm tra và công bố seed.
 - `FINALS`: chỉ submission đã khóa được thi đấu; mọi thay đổi phải theo quy trình sự cố.
@@ -264,9 +277,11 @@ Transcript đầy đủ có thể chạy bằng máy nằm tại
 
 ### 8.1 Đội thi
 
-- Mỗi đội có mã duy nhất, tên hiển thị, đội trưởng và danh sách thành viên.
+- Mỗi đội có mã duy nhất, tên hiển thị và đúng một `TEAM_ACCOUNT` ở Phase 2.
 - Tên đội phải duy nhất trong một giải và tuân theo quy định nội dung của BTC.
 - Chỉ đội đủ điều kiện và không bị đình chỉ mới được kích hoạt submission.
+- Username của đội do server tạo từ tên đội với hậu tố chống trùng; BTC chỉ cần nhập tên đội. Không có
+  self-service roster, self-service password reset hoặc tạo tài khoản đội từ portal trong Phase 2.
 
 ### 8.2 Gói nộp
 
@@ -425,8 +440,10 @@ Kết quả trận PHẢI được suy ra từ cùng event log dùng cho replay;
 ### 13.2 Phát hành replay
 
 - Sandbox không stream trực tiếp ra Internet.
-- Trận được tính xong trước, sau đó BTC phát hành replay tức thời hoặc có trì hoãn.
-- Chung kết cho phép operator giữ replay ở trạng thái `STAGED` để caster chuẩn bị rồi mới `PUBLISHED`.
+- Trận phải được tính xong, event log phải qua kiểm tra toàn vẹn trước khi BTC phát hành replay;
+  không có live stream hoặc can thiệp vào trận đang chạy.
+- BTC chọn replay terminal trong console để giữ `STAGED` trước khi công bố `PUBLISHED`; khán giả
+  chỉ xem replay `PUBLISHED` qua control plane.
 - Replay công khai phải tải được theo `matchId`, kiểm tra schema version và checksum.
 
 ### 13.3 Chức năng UI
@@ -457,7 +474,9 @@ Audit log PHẢI append-only ở cấp ứng dụng và ghi actor, action, targe
 | Thực thể | Trường định danh và quan hệ chính |
 | --- | --- |
 | `Tournament` | `id`, version cấu hình, stage, mốc thời gian |
-| `Team` | `id`, tên, trạng thái, thành viên |
+| `Account` | `id`, `username`, password hash, loại account, `teamId` nullable, status |
+| `Session` | `id`, account, opaque token hash, expiry, revoked time |
+| `Team` | `id`, tên, trạng thái, `TEAM_ACCOUNT` 1:1 |
 | `Submission` | `id`, `teamId`, hash, runtime, status, artifact URI |
 | `MapVersion` | `mapId`, version, checksum, visibility |
 | `Round` | `id`, stage, cutoff, rating snapshot, schedule seed |
@@ -603,13 +622,14 @@ Quyết định và hệ quả triển khai được ghi tại [ADR-0001](decisi
 
 ### Giai đoạn 2 — Vòng xếp hạng tự động
 
-- Authentication/RBAC, đội/submission, sandbox, queue/worker, map động, scheduling, Elo và leaderboard.
-- Cổng nghiệm thu: AC-04 đến AC-08, AC-11 và AC-12 pass.
+- Authentication/RBAC, đội/submission, sandbox, queue/worker, map động, scheduling, Elo,
+  leaderboard, replay staging/publishing và Spectator UI.
+- Cổng nghiệm thu: AC-04 đến AC-08, AC-10, AC-11 và AC-12 pass.
 
 ### Giai đoạn 3 — Chung kết và trình diễn
 
-- Khóa seed, bracket, BO3, map pool, replay staging/publishing và Spectator UI.
-- Cổng nghiệm thu: AC-09, AC-10 và diễn tập live event pass.
+- Khóa seed, bracket, BO3 và map pool; BTC dùng replay đã phát hành để trình diễn.
+- Cổng nghiệm thu: AC-09 và diễn tập sự kiện pass.
 
 Không bắt đầu code giai đoạn kế tiếp trước khi yêu cầu và cổng nghiệm thu của giai đoạn hiện tại được duyệt.
 
@@ -627,9 +647,9 @@ Không bắt đầu code giai đoạn kế tiếp trước khi yêu cầu và c�
 | D-08 | CPU/RAM/startup/log quota | Startup 5 s, message 64 KiB, stderr 1 MiB; CPU/RAM/PID benchmark sau | PARTIAL | 09/10/2026 | Đinh Đức Thuận | Trước nhận submission |
 | D-09 | Kích thước dải Elo và số series/vòng | Xác định theo số đội và quỹ máy | OPEN | — | — | Trước vòng loại |
 | D-10 | Single game hay cặp game đổi phía | Cặp hai game đổi X/O | OPEN | — | — | Trước công bố thể thức |
-| D-11 | Thời điểm công bố replay/seed | Ngay ở vòng loại; operator publish ở finals | OPEN | — | — | Trước giải |
+| D-11 | Phát hành replay | Chỉ replay sau trận terminal/integrity check; BTC stage/publish, không live stream | ACCEPTED | 12/10/2026 | Đinh Đức Thuận | Đã chốt |
 | D-12 | Quyền dùng code repo tham chiếu | Chỉ đặc tả lại behavior; không copy source khi chưa có LICENSE | ACCEPTED | 09/10/2026 | Đinh Đức Thuận | Đã chốt |
-| D-13 | Authentication/RBAC cho Phase 2 | Chốt identity provider/session model và role mapping trước API | OPEN | — | — | Tại `P2-T01` |
+| D-13 | Authentication/RBAC cho Phase 2 | Username/password nội bộ; bootstrap BTC qua env local; `BTC_ADMIN` provision/reset một `TEAM_ACCOUNT`/team; Argon2id + Redis cookie session; không self-register | ACCEPTED | 12/10/2026 | Đinh Đức Thuận | Đã chốt |
 
 Khi một quyết định được chốt, cập nhật bảng này bằng giá trị cuối, ngày, người duyệt và sửa các yêu cầu phụ thuộc trong cùng thay đổi.
 

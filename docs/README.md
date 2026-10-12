@@ -1,6 +1,6 @@
 # Tài liệu dự án đấu giải OTT
 
-> Cập nhật: 09/10/2026
+> Cập nhật: 12/10/2026
 >
 > Đây là mục lục và quy tắc quản trị tài liệu chính thức. AI phải đọc file này trước khi kết hợp nhiều tài liệu.
 
@@ -25,7 +25,7 @@ Nếu hai nguồn sự thật khác loại mâu thuẫn nhau, AI phải dừng t
 
 - `P1-T01` đã hoàn tất: ADR-0002, Engine API v1, Bot Protocol v1, schema và fixtures đã khóa.
 - `main` là nhánh tích hợp và nguồn deploy. `develop` được giữ lại như nhánh legacy sau lần chuyển convention ngày 2026-10-12 và không còn là base/target branch.
-- Ngày 2026-10-09 owner đổi theo lane và task ID được đánh lại theo owner mới: Long Trần làm core/protocol (`P1-L*`), Đỗ Khôi Nguyên làm bot Python và sandbox corpus (`P1-N*`, `P2-N01`), Phạm Tất Đạt làm MatchRunner và platform (`P1-D*`, `P2-D*`). Bảng ID cũ → mới: [`tasks/plan.md` mục 2.2.1](../tasks/plan.md).
+- Ngày 2026-10-09 owner đổi theo lane và task ID được đánh lại theo owner mới: Long Trần làm core/protocol (`P1-L*`), Đỗ Khôi Nguyên làm bot Python (`P1-N*`), Phạm Tất Đạt làm MatchRunner (`P1-D*`). Ngày 2026-10-12, toàn bộ backend local Phase 2 được phát hành lại cho Thuận dưới `P2-T02`–`P2-T13`; Đạt giữ replay/E2E `P2-D13`–`P2-D16`. Bảng lịch sử ID: [`tasks/plan.md` mục 2.2.1](../tasks/plan.md).
 - Workspace chung là `P1-T02` của Đinh Đức Thuận (thay `P1-D01` đã hủy), gộp sau Checkpoint `P1-B`; trước đó mỗi module tự khai báo dependency và chạy local.
 - Các feature branch remote hiện có đều đã là tổ tiên của `main`; `main` còn chứa validator protocol, lifecycle/hash/event core, BotProcess và CLI mới hơn `develop`.
 - Source root là [`src/`](../src/README.md); Phase 1 đã có implementation cho game-core, bot-protocol, MatchRunner và Python bots.
@@ -77,6 +77,8 @@ Quy tắc:
 
 - [ADR-0001 — Stack và môi trường local](decisions/0001-technology-stack-and-local-development.md).
 - [ADR-0002 — Engine và Bot Protocol v1](decisions/0002-phase-1-engine-and-bot-protocol-v1.md).
+- [ADR-0003 — Chỉ phát hành replay sau khi trận kết thúc](decisions/0003-replay-publication-after-match.md).
+- [ADR-0004 — Tài khoản đội được BTC provision cho Phase 2](decisions/0004-phase-2-team-account-authentication.md).
 - [Engine API v1](contracts/engine-api-v1.md).
 - [Bot Protocol v1](contracts/bot-protocol-v1.md), [JSON Schema](contracts/bot-protocol-v1.schema.json) và [fixtures](contracts/fixtures/).
 
