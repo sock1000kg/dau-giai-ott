@@ -8,7 +8,7 @@ Phase 1 chạy một trận Rock–Paper–Scissors trên bàn 9×9 giữa hai b
 
 - Node.js `^22.12.0` và npm (lockfile root).
 - Python 3 để chạy các bot mẫu và E2E.
-- Không cần Docker, PostgreSQL, Redis hay MinIO cho Phase 1.
+- Không cần Docker, PostgreSQL, Redis hay SeaweedFS cho Phase 1.
 
 ## Chạy từ clean checkout
 
@@ -34,8 +34,9 @@ Lệnh in đúng một JSON result lên stdout và ghi artifact replayable vào 
 ## Phạm vi
 
 Phase 1 chỉ gồm game core thuần, Bot Protocol v1, MatchRunner/CLI, event log và Python bots.
-Phase 2 (Fastify, PostgreSQL, Redis/BullMQ, MinIO, React/Vite, Docker Compose) chưa được
-khởi tạo; xem task `P2-*` trước khi giả định các service hoặc biến môi trường đó tồn tại.
+Phase 2 bắt đầu với local services PostgreSQL, Redis và SeaweedFS tại `infra/local/`.
+Các API, worker và web package vẫn theo dependency trong task `P2-*`; xem
+[`docs/runbooks/local-services.md`](docs/runbooks/local-services.md) trước khi dựng stack.
 
 Nguồn sự thật về task/status là [tasks/todo.md](tasks/todo.md); contract là
 [docs/contracts/](docs/contracts/).
