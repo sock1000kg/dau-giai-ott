@@ -4,6 +4,7 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import type { Database } from './db/client.ts';
 import { AuthorizationError } from './modules/auth/authorize.ts';
 import { registerAuthPlugin } from './modules/auth/plugin.ts';
+import { registerTeamRoutes } from './modules/teams/routes.ts';
 import { createPasswordHasher, type PasswordHashPolicy } from './modules/auth/passwords.ts';
 import { createRedisAuthStore, type RedisAuthCommands } from './modules/auth/sessions.ts';
 import type { AuthRateLimit, PasswordHasher } from './modules/auth/types.ts';
@@ -20,6 +21,7 @@ export interface CreateAuthAppOptions {
 export function createAuthApp(options: CreateAuthAppOptions): FastifyInstance {
   const storeOptions = options.rateLimit === undefined ? {} : { rateLimit: options.rateLimit };
   const authStore = createRedisAuthStore(options.redis, storeOptions);
+  const passwordHasher = options.passwordHasher ?? createPasswordHasher(options.passwordHashPolicy);
 
   const application = Fastify({ logger: false });
   application.register(cookie);
@@ -32,9 +34,10 @@ export function createAuthApp(options: CreateAuthAppOptions): FastifyInstance {
   registerAuthPlugin(application, {
     database: options.database,
     sessionStore: authStore,
-    passwordHasher: options.passwordHasher ?? createPasswordHasher(options.passwordHashPolicy),
+    passwordHasher,
     rateLimiter: authStore,
     secureCookies: options.secureCookies ?? true,
   });
+  registerTeamRoutes(application, { database: options.database, passwordHasher, sessionStore: authStore });
   return application;
 }

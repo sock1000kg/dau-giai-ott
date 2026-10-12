@@ -8,12 +8,15 @@ export interface RedisAuthCommands {
   del(key: string): Promise<number>;
   incr(key: string): Promise<number>;
   expire(key: string, seconds: number): Promise<unknown>;
+  sAdd(key: string, member: string): Promise<number>;
+  sMembers(key: string): Promise<string[]>;
 }
 
 export interface SessionStore {
   create(principal: SessionPrincipal): Promise<string>;
   read(token: string): Promise<SessionPrincipal | null>;
   revoke(token: string): Promise<void>;
+  revokeAccount(accountId: string): Promise<void>;
 }
 
 export interface LoginRateLimiter {
@@ -60,7 +63,11 @@ export class RedisAuthStore implements SessionStore, LoginRateLimiter {
 
   public async create(principal: SessionPrincipal): Promise<string> {
     const token = randomBytes(32).toString('base64url');
-    await this.redis.set(this.sessionKey(token), JSON.stringify(principal), { EX: this.sessionTtlSeconds });
+    const sessionKey = this.sessionKey(token);
+    const accountKey = this.accountKey(principal.accountId);
+    await this.redis.set(sessionKey, JSON.stringify(principal), { EX: this.sessionTtlSeconds });
+    await this.redis.sAdd(accountKey, sessionKey);
+    await this.redis.expire(accountKey, this.sessionTtlSeconds);
     return token;
   }
 
@@ -82,6 +89,15 @@ export class RedisAuthStore implements SessionStore, LoginRateLimiter {
 
   public async revoke(token: string): Promise<void> {
     await this.redis.del(this.sessionKey(token));
+  }
+
+  public async revokeAccount(accountId: string): Promise<void> {
+    const accountKey = this.accountKey(accountId);
+    const sessions = await this.redis.sMembers(accountKey);
+    if (sessions.length > 0) {
+      await Promise.all(sessions.map((sessionKey) => this.redis.del(sessionKey)));
+    }
+    await this.redis.del(accountKey);
   }
 
   public async isLimited(username: string, clientAddress: string): Promise<boolean> {
@@ -107,6 +123,10 @@ export class RedisAuthStore implements SessionStore, LoginRateLimiter {
 
   private loginKey(username: string, clientAddress: string): string {
     return `auth:login:${digest(`${username}\u0000${clientAddress}`)}`;
+  }
+
+  private accountKey(accountId: string): string {
+    return `auth:account:${digest(accountId)}`;
   }
 }
 
