@@ -48,10 +48,10 @@ Quy tắc:
 
 | Ký hiệu | Owner | Phạm vi |
 | --- | --- | --- |
-| `T` | Đinh Đức Thuận | Quyết định chung, phê duyệt cổng và nhận bàn giao local |
+| `T` | Đinh Đức Thuận | Quyết định, backend local Phase 2, phê duyệt cổng và nhận bàn giao local |
 | `L` | Long Trần | Core Game API và Bot Protocol v1 |
 | `N` | Đỗ Khôi Nguyên | Bot Python hợp lệ, bot lỗi và contract test phía bot |
-| `D` | Phạm Tất Đạt | MatchRunner, BotProcess, CLI/E2E; Phase 2 platform local |
+| `D` | Phạm Tất Đạt | MatchRunner, BotProcess, CLI/E2E; Phase 2 replay/E2E |
 
 ### 2.2.1 Đổi task ID ngày 2026-10-09
 
@@ -65,6 +65,11 @@ Quy tắc:
 | `P1-N02`–`P1-N11` | `P1-D02`–`P1-D11` | Runner + integration (Đạt) |
 | `P2-L01` | `P2-N01` | Sandbox corpus (Nguyên) |
 | `P2-N01`–`P2-N13` | `P2-D01`–`P2-D13` | Platform (Đạt) |
+| — (mới 2026-10-12) | `P2-D14`–`P2-D16` | Replay publication và spectator UI (Đạt) |
+| — (mới 2026-10-12) | `P2-D17` | Auth HTTP contract và bootstrap config (Đạt) |
+| — (mới 2026-10-12) | `P2-L02`–`P2-L03` | Web shell/login và team submission portal (Long) |
+| — (mới 2026-10-12) | `P2-N14`–`P2-N15` | BTC team-account console, results/leaderboard UI (Nguyên) |
+| `P2-D01`–`P2-D10`, `P2-D17`, `P2-N01` | `P2-T02`–`P2-T13` | Backend local chuyển cho Thuận; ID cũ hủy, task phát hành lại (2026-10-12) |
 
 Mỗi task chỉ có một owner chính. Người review không sửa trực tiếp vào phạm vi của owner nếu chưa trao đổi.
 
@@ -115,43 +120,43 @@ P1-D09 + P1-N06 ──► P1-D10 Full local E2E ──► P1-D11 Local handoff
 
 - [x] `P1-T01` — Khóa các quyết định trước khi code — Đinh Đức Thuận.
 - `P1-D01` — Đã hủy, chuyển thành `P1-T02` (Thuận, sau Checkpoint `P1-B`).
-- [ ] `P1-L01` — Triển khai behavior baseline Human-vs-Human — Long Trần.
+- [x] `P1-L01` — Triển khai behavior baseline Human-vs-Human — Long Trần.
 
 ### Gate 1 — Hiện thực contract đã khóa
 
-- [ ] `P1-L02` — Hiện thực Engine API và domain types đã khóa — Long Trần.
-- [ ] `P1-L03` — Hiện thực message types Bot Protocol v1 đã khóa — Long Trần.
-- [ ] `P1-L04` — Hiện thực validator và contract tests từ schema/fixtures — Long Trần.
+- [x] `P1-L02` — Hiện thực Engine API và domain types đã khóa — Long Trần.
+- [x] `P1-L03` — Hiện thực message types Bot Protocol v1 đã khóa — Long Trần.
+- [x] `P1-L04` — Hiện thực validator và contract tests từ schema/fixtures — Long Trần.
 
 ### Lane Long — Core và protocol
 
-- [ ] `P1-L05` — API điều khiển game theo side/action.
-- [ ] `P1-L06` — Skip turn, maxTurns và GameResult.
-- [ ] `P1-L07` — Event transition và finalStateHash.
-- [ ] `P1-L08` — Regression test Human-vs-Human và tài liệu core.
+- [x] `P1-L05` — API điều khiển game theo side/action.
+- [x] `P1-L06` — Skip turn, maxTurns và GameResult.
+- [x] `P1-L07` — Event transition và finalStateHash.
+- [x] `P1-L08` — Regression test Human-vs-Human và tài liệu core.
 
 ### Lane Nguyên — Bot kiểm thử
 
-- [ ] `P1-N01` — Python Bot SDK tối thiểu.
-- [ ] `P1-N02` — FirstLegalBot.
-- [ ] `P1-N03` — CaptureFirstBot.
-- [ ] `P1-N04` — Bot lỗi JSON/action/turnId.
-- [ ] `P1-N05` — Bot timeout/crash/oversize.
-- [ ] `P1-N06` — Contract test và README bot.
+- [x] `P1-N01` — Python Bot SDK tối thiểu.
+- [x] `P1-N02` — FirstLegalBot.
+- [x] `P1-N03` — CaptureFirstBot.
+- [x] `P1-N04` — Bot lỗi JSON/action/turnId.
+- [x] `P1-N05` — Bot timeout/crash/oversize.
+- [x] `P1-N06` — Contract test và README bot.
 
 ### Lane Đạt — Runner và tích hợp local
 
-- [ ] `P1-D02` — GamePort, BotPort và fakes.
-- [ ] `P1-D03` — MatchRunner happy path.
-- [ ] `P1-D04` — MatchRunner error/skip/cleanup.
-- [ ] `P1-D05` — BotProcess NDJSON adapter.
-- [ ] `P1-D06` — BotProcess timeout và process cleanup.
-- [ ] `P1-D07` — Event log và replay verifier.
-- [ ] `P1-D08` — CLI chạy trận.
-- [ ] `P1-T02` — Gộp workspace chung — Đinh Đức Thuận, sau Checkpoint `P1-B`.
-- [ ] `P1-D09` — Tích hợp core thật với MatchRunner.
-- [ ] `P1-D10` — E2E hai bot và các bot lỗi.
-- [ ] `P1-D11` — Runbook và bàn giao local.
+- [x] `P1-D02` — GamePort, BotPort và fakes.
+- [x] `P1-D03` — MatchRunner happy path.
+- [x] `P1-D04` — MatchRunner error/skip/cleanup.
+- [x] `P1-D05` — BotProcess NDJSON adapter.
+- [x] `P1-D06` — BotProcess timeout và process cleanup.
+- [x] `P1-D07` — Event log và replay verifier.
+- [x] `P1-D08` — CLI chạy trận.
+- [x] `P1-T02` — Gộp workspace chung — Đinh Đức Thuận, sau Checkpoint `P1-B`.
+- [x] `P1-D09` — Tích hợp core thật với MatchRunner.
+- [x] `P1-D10` — E2E hai bot và các bot lỗi.
+- [x] `P1-D11` — Runbook và bàn giao local.
 
 ## 6. Checkpoint Phase 1
 
@@ -186,55 +191,60 @@ P1-D09 + P1-N06 ──► P1-D10 Full local E2E ──► P1-D11 Local handoff
 
 ```text
 Phase 1 complete
-    ├── P2-T01 Khóa auth/quota/Elo/series decisions ─────┐
-    └── P2-D01 Local Docker services ────────────────────┤
-                                                         ▼
-                     P2-D02 Database → P2-D03 Auth/RBAC → P2-D04 Team
-                                                         │
-                                                         ▼
-                                                P2-D05 Submission ──► P2-D11 Submission UI
-                                                         │
-                    P2-N01 Canary/security corpus ────────┤
-                                                         ▼
-                          P2-D06 Worker → P2-D07 Sandbox → P2-D08 Finalization
-                                                         ▼
-                          P2-D09 Scheduling → P2-D10 Elo/results API → P2-D12 Results UI
+    ├── P2-T01 Khóa quota/Elo/series decisions ──► P2-T08, P2-T09, P2-T12
+    └── P2-T02 Local Docker services ──► P2-T03 Database → P2-T04 Auth/RBAC
 
-P2-D08 + P2-D09 + P2-D10 + P2-D11 + P2-D12 ──► P2-D13 Qualification E2E
+    P2-T04 Auth/RBAC ──┬──► P2-T06 Team + credential API → P2-T07 Submission → P2-L03 Team portal
+                                         └──► P2-T05 Auth contract → P2-L02 Web shell + login
+                     P2-T06 + P2-L02 ──► P2-N14 BTC credential UI
+    P2-T08 Canary/security corpus ──┐
+    P2-T09 Worker ──────────────────┴──► P2-T10 Sandbox → P2-T11 Finalization → P2-T12 Scheduling → P2-T13 Elo/results API → P2-N15 Results UI
+
+    P2-T11 ──► P2-D14 Replay publication API ──┬──► P2-D15 BTC replay console
+                                                 └──► P2-D16 Spectator replay UI
+    P2-L02 ────────────────────────────────────────────► P2-D15, P2-D16
+
+    P2-T11 + P2-T12 + P2-T13 + P2-L03 + P2-N14 + P2-N15 + P2-D14 + P2-D15 + P2-D16 ──► P2-D13 Qualification E2E
 ```
 
 ## 8. Phase 2 task index
 
 - [ ] `P2-T01` — Khóa quyết định triển khai Phase 2 local.
-- [ ] `P2-D01` — Docker Compose PostgreSQL/Redis/MinIO.
-- [ ] `P2-D02` — Database schema và migration foundation.
-- [ ] `P2-D03` — Authentication và RBAC foundation.
-- [ ] `P2-D04` — Team management vertical slice.
-- [ ] `P2-D05` — Submission upload và MinIO vertical slice.
-- [ ] `P2-N01` — Canary bot và sandbox security corpus.
-- [ ] `P2-D06` — MatchJob và BullMQ worker.
-- [ ] `P2-D07` — Sandbox adapter và artifact validation.
-- [ ] `P2-D08` — MatchResult finalization idempotent.
-- [ ] `P2-D09` — Scheduling và series scoring.
-- [ ] `P2-D10` — Match results, Elo ledger và leaderboard API.
-- [ ] `P2-D11` — React/Vite submission UI.
-- [ ] `P2-D12` — React/Vite results và leaderboard UI.
+- [ ] `P2-T02` — Docker Compose PostgreSQL/Redis/MinIO.
+- [ ] `P2-T03` — Database schema và migration foundation.
+- [ ] `P2-T04` — Authentication và RBAC foundation.
+- [ ] `P2-T05` — Auth HTTP contract và local bootstrap config.
+- [ ] `P2-L02` — Web shell và team portal login.
+- [ ] `P2-T06` — Team management vertical slice.
+- [ ] `P2-T07` — Submission upload và MinIO vertical slice.
+- [ ] `P2-N14` — BTC team-account provisioning console.
+- [ ] `P2-L03` — Team portal submission UI.
+- [ ] `P2-T08` — Canary bot và sandbox security corpus.
+- [ ] `P2-T09` — MatchJob và BullMQ worker.
+- [ ] `P2-T10` — Sandbox adapter và artifact validation.
+- [ ] `P2-T11` — MatchResult finalization idempotent.
+- [ ] `P2-T12` — Scheduling và series scoring.
+- [ ] `P2-T13` — Match results, Elo ledger và leaderboard API.
+- `P2-D11` — Đã hủy, tách thành `P2-L02` và `P2-L03`.
+- `P2-D12` — Đã hủy, tách thành `P2-N15`.
+- [ ] `P2-N15` — Results và leaderboard UI.
+- [ ] `P2-D14` — Replay catalog và publication API.
+- [ ] `P2-D15` — BTC replay catalog và publication console.
+- [ ] `P2-D16` — Spectator replay UI.
 - [ ] `P2-D13` — Qualification E2E local.
 
 ## 9. Cảnh báo tải Phase 2
 
-Đạt sở hữu 13/14 task Dev của Phase 2; Nguyên sở hữu một task corpus. `P2-T01` là decision gate của Thuận. Các task của Đạt không thể chạy song song bởi một người. Thứ tự bắt buộc là:
+Thuận sở hữu tuần tự `P2-T01`–`P2-T13`: quyết định và toàn bộ backend local. Đạt sở hữu 4 task replay/E2E (`P2-D13`–`P2-D16`); Long sở hữu 2 task web và Nguyên sở hữu 2 task UI. Cụm backend là critical path, vì vậy chỉ mở task kế tiếp khi dependency và verification của task trước đã rõ. Sau khi API ổn định, Long và Nguyên có thể làm hai feature UI độc lập song song.
 
 1. Hạ tầng local và database.
 2. Authentication/RBAC, team và submission.
 3. Queue/worker/sandbox.
 4. Result finalization, scheduling và Elo.
-5. UI và E2E.
+5. Web shell/login, team portal, BTC credential console, results UI và replay UI.
+6. Qualification E2E.
 
-Trước Phase 2, nhóm phải chọn một trong hai:
-
-- Chấp nhận Đạt triển khai tuần tự; hoặc
-- Chia bớt sandbox/worker hay scheduling/Elo cho người khác.
+Phân công frontend/feature đã được chốt: Long làm web shell/login và team submission; Nguyên làm BTC provision cùng results/leaderboard; Đạt giữ API/platform, replay và E2E.
 
 Không dùng AI như một “thành viên thứ hai” để mở đồng thời nhiều branch chạm cùng schema/module.
 

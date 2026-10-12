@@ -20,7 +20,7 @@ Không commit, push hoặc sửa core/runner nếu tôi chưa yêu cầu.
 - Base branch: `main`.
 - Mỗi task dùng branch riêng với prefix `nguyendk/`, ví dụ `nguyendk/feat-p1-n01-bot-sdk`.
 - Không code trực tiếp trên `main`.
-- Một branch chỉ chứa một task `P1-Nxx` hoặc `P2-N01`.
+- Một branch chỉ chứa một task `P1-Nxx` hoặc `P2-Nxx`.
 - Hoàn tất thì push branch và tạo PR target `main` để chạy contract/integration tests.
 
 ```bash
@@ -54,11 +54,12 @@ Bot phải hoạt động từ schema/fixtures của Long, không được impor
 | `P1-N04` — malformed/illegal/stale bot | `P1-N01` |
 | `P1-N05` — timeout/crash/oversize bot | `P1-N01` |
 | `P1-N06` — contract test/README | `P1-N02`–`P1-N05` |
-| `P2-N01` — sandbox security corpus | `P1-D11`, `P2-T01` |
+| `P2-N14` — BTC team-account provisioning console | `P2-L02`, `P2-T06` |
+| `P2-N15` — results và leaderboard UI | `P2-L02`, `P2-T13` |
 
 Sau `P1-N01`, các task `P1-N02`–`P1-N05` độc lập về logic nhưng một người chỉ nên làm từng task/phiên để tránh trộn diff.
 
-Checkpoint liên quan: `P1-A` sau `P1-N01`; `P1-B` sau `P1-N06`. Bot của Nguyên được dùng trong `P1-D10` (E2E). Phase 2: `P2-N01` chặn sandbox `P2-D07` của Đạt và thuộc Checkpoint `P2-A`. Sơ đồ hai phase: `docs/team-assignment-phase-1-2.md` mục 4.2.
+Checkpoint liên quan: `P1-A` sau `P1-N01`; `P1-B` sau `P1-N06`. Bot của Nguyên được dùng trong `P1-D10` (E2E). Phase 2: sandbox corpus đã được chuyển từ `P2-N01` sang `P2-T08` của Thuận; `P2-N14`/`P2-N15` thuộc Checkpoint `P2-B`, và `P2-N14` là một dependency của qualification E2E. Sơ đồ hai phase: `docs/team-assignment-phase-1-2.md` mục 4.2.
 
 ## 5. Tài liệu AI phải đọc
 
@@ -67,7 +68,7 @@ Checkpoint liên quan: `P1-A` sau `P1-N01`; `P1-B` sau `P1-N06`. Bot của Nguy�
 3. Task đang chọn trong `tasks/todo.md`.
 4. Bot Protocol v1, JSON Schema và fixtures do Long phát hành.
 5. Lane Nguyên trong `docs/team-assignment-phase-1-2.md`.
-6. Error/timeout/sandbox requirements liên quan trong `docs/tai-lieu-yeu-cau.md`.
+6. Error/timeout/sandbox hoặc account/UI requirements liên quan trong `docs/tai-lieu-yeu-cau.md` và ADR-0004 khi làm `P2-N14`.
 7. `tasks/plan.md` để kiểm tra checkpoint/dependency.
 8. Python bot/test hiện có trước khi sửa.
 
@@ -78,15 +79,16 @@ Nếu schema và tài liệu protocol khác nhau, không tự chọn. Tạo test
 Được sửa:
 
 - `src/bots/python/**`
-- `src/bots/sandbox-corpus/**` khi làm `P2-N01`
 - README/test fixtures thuộc bot
+- `src/platform/web/src/features/admin-teams/**` khi làm `P2-N14`
+- `src/platform/web/src/features/results/**`, `src/platform/web/src/features/leaderboard/**` khi làm `P2-N15`
 
 Không được sửa:
 
 - `src/game-core/**`
 - `src/bot-protocol/**` nếu chưa có yêu cầu từ Long
 - `src/match-runner/**`
-- API, database, queue, UI hoặc cloud
+- API, database, queue, app shell/auth/submission/replay UI hoặc cloud
 
 Bot không tự tính lại game rules. Nếu `STATE_UPDATE` có `legalActions`, bot chọn từ danh sách đó theo contract.
 
@@ -128,19 +130,19 @@ Nếu skill có sẵn trong `.agents/skills`, dùng bản trong repo. Nếu AI k
 ## 8. Prompt triển khai sẵn dùng
 
 ```text
-Tôi là Đỗ Khôi Nguyên, owner bot Python và contract tests phía bot.
+Tôi là Đỗ Khôi Nguyên, owner bot Python/contract tests và hai feature UI Phase 2 được giao.
 
-Hãy chọn task P1-Nxx hoặc P2-N01 đầu tiên chưa hoàn tất và đã đủ dependency.
+Hãy chọn task P1-Nxx hoặc P2-Nxx đầu tiên chưa hoàn tất và đã đủ dependency.
 Chỉ thực hiện đúng một task.
 
 Quy trình bắt buộc:
 1. Đọc rules, task card, Bot Protocol schema/fixtures và Python code/test liên quan.
 2. Xác nhận branch `nguyendk/feat-<task-id>-<slug>` được tạo từ main; không làm trực tiếp trên main.
-3. Kiểm tra protocol đã khóa; nếu chưa, báo blocked và không invent message fields.
+3. Kiểm tra protocol hoặc API/ADR đã khóa; nếu chưa, báo blocked và không invent message fields hoặc auth contract.
 4. Dùng GitNexus impact trước khi sửa file hiện có.
 5. Viết unittest cho behavior hoặc fault mode trước/cùng implementation.
-6. Giữ stdout chỉ có NDJSON protocol; log chỉ ra stderr; behavior deterministic.
-7. Không import hoặc sửa core TypeScript/MatchRunner.
+6. Với bot giữ stdout chỉ có NDJSON protocol; với UI không giữ credential plaintext sau response one-time và không dựa vào client authorization.
+7. Không import hoặc sửa core TypeScript/MatchRunner/API server.
 8. Không chạy payload network/fork/CPU/memory nguy hiểm ngoài sandbox/harness đã giới hạn.
 9. Chạy verification command của task và toàn bộ bot contract tests liên quan.
 10. Review diff, chạy detect-changes và chỉ đề xuất PR vào main.

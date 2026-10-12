@@ -2,7 +2,7 @@
 
 > Trạng thái: **Đã tự động duyệt**
 > Mức khuyến nghị: **HIGH RECOMMEND**
-> Vai trò: quyết định chung, kiểm soát checkpoint, tiếp nhận local và DevOps/cloud
+> Vai trò: quyết định chung, backend local Phase 2, kiểm soát checkpoint và DevOps/cloud
 
 ## 1. Cách dùng ngay
 
@@ -40,10 +40,10 @@ Nếu `origin/main` chưa tồn tại hoặc working tree đang có thay đổi 
 
 - `P1-T01` đã hoàn tất; bảo vệ các contract/ADR đã khóa khỏi thay đổi không được review.
 - Xác nhận contract/checkpoint và xử lý mâu thuẫn giữa các tài liệu.
-- Hoàn tất `P2-T01` trước các task Phase 2 cần auth, quota, series hoặc Elo policy.
+- Hoàn tất `P2-T01`, sau đó triển khai tuần tự toàn bộ backend local `P2-T02`–`P2-T13`; auth/team portal dùng ADR-0004 và các UI chỉ bắt đầu khi API dependency đã pass verification.
 - Nhận bàn giao Phase 1 và Phase 2 chạy trên local.
 - Lập kế hoạch CI/CD và local → cloud sau khi local đạt Definition of Done.
-- Không thay Long, Nguyên hoặc Đạt triển khai feature thuộc lane của họ.
+- Không thay Long/Nguyên triển khai UI của họ, hoặc thay Đạt triển khai replay/E2E `P2-D13`–`P2-D16`.
 
 ## 4. Tài liệu AI phải đọc
 
@@ -68,8 +68,9 @@ Nếu có mâu thuẫn, AI phải nêu rõ hai nguồn và đề xuất lựa ch
 | Duyệt Checkpoint `P1-B` | Long xong `P1-L05`–`P1-L08`, Nguyên xong `P1-N01`–`P1-N06`, Đạt xong `P1-D02`–`P1-D08` |
 | Duyệt Checkpoint `P1-C` | `P1-D11` và full verification đã pass |
 | `P2-T01` — khóa quyết định Phase 2 | `P1-D11` hoàn tất |
-| Duyệt Checkpoint `P2-A` | `P2-T01`, `P2-D01`–`P2-D10` và `P2-N01` hoàn tất |
-| Duyệt Checkpoint `P2-B`, nhận bàn giao Phase 2 local | `P2-D13` và qualification E2E đã pass |
+| `P2-T02`–`P2-T13` — backend local | Theo dependency của từng task card; làm tuần tự trong lane backend |
+| Duyệt Checkpoint `P2-A` | `P2-T01`–`P2-T13` hoàn tất |
+| Duyệt Checkpoint `P2-B`, nhận bàn giao Phase 2 local | `P2-L02`, `P2-L03`, `P2-N14`, `P2-N15`, `P2-D14`–`P2-D16`, `P2-D13` và qualification E2E (gồm BTC provision → team login → submission và replay) đã pass |
 | Deploy từ `main` lên các môi trường | Sau Checkpoint `P2-B` |
 | Thiết kế CI/CD và cloud | Chỉ sau khi local contract/runbook được bàn giao |
 
@@ -89,7 +90,7 @@ Các task DevOps/cloud chưa nằm trong checklist hiện tại. AI phải lập
 
 Đầu ra phải đủ rõ để Long, Nguyên và Đạt code mà không tạo ba cách hiểu khác nhau.
 
-Các quyết định còn mở của Phase 2 không được lẫn vào Phase 1. `P2-T01` phải khóa authentication/RBAC, runtime image/artifact policy, CPU/RAM/PID quota, K-factor/rating khởi tạo và series đổi phía trước các task phụ thuộc.
+Các quyết định còn mở của Phase 2 không được lẫn vào Phase 1. D-13 authentication/RBAC đã khóa tại ADR-0004: BTC provision tài khoản team username/password, không self-register. `P2-T01` vẫn phải khóa runtime image/artifact policy, CPU/RAM/PID quota, K-factor/rating khởi tạo và series đổi phía trước các task phụ thuộc.
 
 ## 7. Skill cần dùng và bước cài nếu thiếu
 
@@ -127,7 +128,7 @@ Nếu AI không hỗ trợ installer nhưng file có trong `.agents/skills/`, y�
 ## 8. Prompt điều hành sẵn dùng
 
 ```text
-Tôi là Đinh Đức Thuận, owner quyết định chung và bàn giao DevOps của dự án.
+Tôi là Đinh Đức Thuận, owner quyết định chung, backend local Phase 2 và bàn giao DevOps của dự án.
 
 Hãy:
 1. Đọc rules, tasks/plan.md, tasks/todo.md và các tài liệu liên quan.
@@ -137,7 +138,7 @@ Hãy:
 5. Nếu là decision gate như P2-T01, lập bảng: quyết định, lựa chọn, khuyến nghị, lý do, ảnh hưởng và nơi ghi nhận.
 6. Nếu là checkpoint, đối chiếu từng acceptance criterion với bằng chứng test/build thực tế.
 7. Dùng GitNexus trước khi sửa file hiện có và detect-changes trước khi đề xuất commit.
-8. Không triển khai feature của Long, Nguyên hoặc Đạt.
+8. Với Phase 2, triển khai backend `P2-T02`–`P2-T13`; không triển khai UI của Long/Nguyên hoặc replay/E2E của Đạt.
 9. Không commit, merge hoặc deploy khi chưa được yêu cầu.
 
 Trước khi sửa, hãy trả về task đã chọn, dependency, assumption, file dự kiến sửa và verification plan.
@@ -146,7 +147,7 @@ Trước khi sửa, hãy trả về task đã chọn, dependency, assumption, fi
 ## 9. Không được làm
 
 - Không thay đổi luật game hoặc Bot Protocol thay Long.
-- Không sửa bot test thay Nguyên hoặc MatchRunner/platform thay Đạt.
+- Không sửa bot test thay Nguyên hoặc MatchRunner/replay UI/E2E thay Đạt.
 - Không đưa secret hoặc cấu hình production vào repository.
 - Không deploy từ branch khác `main` hoặc từ `main` chưa qua checkpoint.
 - Không duyệt checkpoint chỉ dựa trên báo cáo của AI; phải có command và output thực tế.
