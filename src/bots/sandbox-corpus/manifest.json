@@ -66,10 +66,10 @@
       "archive": "oci-fixtures/timeout.oci.tar",
       "dockerfile": "src/bots/oci-fixtures/fault/Dockerfile",
       "buildArg": "MODE=timeout",
-      "archiveSha256": "sha256:309e2e0a319110efc44fab4aff8b485798831419cc7f062547d8388e6524d521",
-      "imageId": "sha256:0a01a9b42347407f60045ce52feb4a2f1c59cf188b1caaeba01e1cbf7354a213",
-      "ociManifestDigest": "sha256:64d4287b7f329358b7008de71a0b7c262955d61a3291962a4a322c9c3cd58d70",
-      "ociConfigDigest": "sha256:91c55e987b352fb0f098a608960800dd2f29ea82473e5b6694173497d2406ec2",
+      "archiveSha256": "sha256:e170532bb1c59508fce99ca64820fd04c7f014e83bfdf1f653854c911e797375",
+      "imageId": "sha256:109101d8b5486fce9545e5b638d782f55c2144c97642ef50ad6a6c7888e6b892",
+      "ociManifestDigest": "sha256:ceb182dc71d79225cb98e66438cf79e184d95352848ff39a4bf7f830e0ae7bd6",
+      "ociConfigDigest": "sha256:6af42ef2dc39a945322af1dc88948d10fd5f04b4f56dc6eda65a405065c5bdb4",
       "entrypoint": [
         "/app/bot"
       ]
@@ -80,10 +80,10 @@
       "archive": "oci-fixtures/fork.oci.tar",
       "dockerfile": "src/bots/oci-fixtures/fault/Dockerfile",
       "buildArg": "MODE=fork",
-      "archiveSha256": "sha256:8a98a29c9d588b770cb37a7183b1ea7e9f1f594b42744bd09371437585b92c18",
-      "imageId": "sha256:05ff61ddf287a73bec8a2bc0b150e9fc5e0e9b566a54d5d5172a6bc3acea54b3",
-      "ociManifestDigest": "sha256:c3a6c92e07b4b78dd2e41b3ffb6185445d089a736603a6e34a6277d57a3834e2",
-      "ociConfigDigest": "sha256:4ed746782225ff7706b736ea8ba37fb88bf538faf50258d583ddb80c8cb90d44",
+      "archiveSha256": "sha256:3925989ad3531a4602e665d591fea0737232951b072472a6d15da11481a9a613",
+      "imageId": "sha256:3716c2032b7e1322938dbf54a3a4a55053bb603ca3eedfcb150d23c659fe5b4e",
+      "ociManifestDigest": "sha256:c7db844cb562a8e50779e82e56529c8eebf5d3c9be8e3fcf1ad75a19b8bbf756",
+      "ociConfigDigest": "sha256:a0dbad44131c15f464efca7f75f0f0ca46e05980e0a2158b80486a9d428baa56",
       "entrypoint": [
         "/app/bot"
       ]
@@ -94,10 +94,10 @@
       "archive": "oci-fixtures/write.oci.tar",
       "dockerfile": "src/bots/oci-fixtures/fault/Dockerfile",
       "buildArg": "MODE=write",
-      "archiveSha256": "sha256:0998f07ddd2ae1e953fac72a0633cc189cdeef119fffea48c80db8484256f9de",
-      "imageId": "sha256:049f414f6432bdfd167ed7f3b46a6b6d086ea4f42fc2b56c850cfd0335653411",
-      "ociManifestDigest": "sha256:ad921ab938e22cfd19dce8486ca57f3bf6921aa13eaf8ba98aa68fdd65ba5d7a",
-      "ociConfigDigest": "sha256:d17b10a15a82b885af380f08d86026f8ab28de481aa43151edfd82030b656eba",
+      "archiveSha256": "sha256:857684c1540e79c1998dd803b99753d8c15de59630fad8068c6ee8689da6aa0e",
+      "imageId": "sha256:26f72f1b1c1727bb24374a4ab017589a400e210197bb3e2387fe2729680b3ec4",
+      "ociManifestDigest": "sha256:1a993847b644e77658cf2cae3fedeee02186ba2a388e48d8bd631a0f7d657511",
+      "ociConfigDigest": "sha256:373388d1b5aedf1586c712f79943bd9a8a9274a9725baf6c56e93fdb3b277c0d",
       "entrypoint": [
         "/app/bot"
       ]
@@ -108,10 +108,10 @@
       "archive": "oci-fixtures/network.oci.tar",
       "dockerfile": "src/bots/oci-fixtures/fault/Dockerfile",
       "buildArg": "MODE=network",
-      "archiveSha256": "sha256:a80219762a8c93681185174466199d04bea4c74da86e7d3d94314882ffcd73bf",
-      "imageId": "sha256:a816aca30085fb8b2caedff7b6d6e1da30ab172ddbae03755e4f22b5a2bedcce",
-      "ociManifestDigest": "sha256:60a7936556eeb02d7d27b81bf24fb8dfb9e0fff29b2235386df95d85305a3ad1",
-      "ociConfigDigest": "sha256:d5e7d0f6f55f12115cf0a2e5310be47d37cdc68f276348eb6c7a35f2c6142933",
+      "archiveSha256": "sha256:65bcdf0fbd761e14d0e04af2b05c57be2ac8054f5271d10792fbbde5b8af5d97",
+      "imageId": "sha256:41fd4b5eee3eeab5b970ebbdc619863ad76ca1941181dfb24d7ffdc9b455ec04",
+      "ociManifestDigest": "sha256:534d00166adae2429745f14d89a317dc2119d931a6f99c181a6d5bfb7361de96",
+      "ociConfigDigest": "sha256:4f35f99721460390193dc32a293e076726abd8725fc4bf042950edcba84b4f3e",
       "entrypoint": [
         "/app/bot"
       ]
@@ -122,10 +122,10 @@
       "archive": "oci-fixtures/output.oci.tar",
       "dockerfile": "src/bots/oci-fixtures/fault/Dockerfile",
       "buildArg": "MODE=output",
-      "archiveSha256": "sha256:747d10c349dbae8513b5086d44017a7a1a77765e1b37a3c867d6d1614188c855",
-      "imageId": "sha256:a35eef889a836171e3d61a59e0a8279c54a36141be131ec2d044076ed5db4d5d",
-      "ociManifestDigest": "sha256:a2818038d11f28256c097ee45e81b04443931b226074ad34ca0b660180dbabb1",
-      "ociConfigDigest": "sha256:a0d54f0c34949d42579e524b85a73f0a4d44dfcabdfef0affdadf0292b6645cf",
+      "archiveSha256": "sha256:a1bce8e2622ea805111bc56021014d56f6ff9e146aeaae7d7b5a2c8529135780",
+      "imageId": "sha256:32939daa673293670726d7243fb525f2421d42ab00dc14deef704288d8fadcb3",
+      "ociManifestDigest": "sha256:ad773dada2b65577b42daa67379ed0800f32dc068b2be13e2d66f06128c7713a",
+      "ociConfigDigest": "sha256:8b182396e053332a740ae107dba254eabc72c515ca83c933b93face63f35a59e",
       "entrypoint": [
         "/app/bot"
       ]
@@ -136,10 +136,10 @@
       "archive": "oci-fixtures/memory.oci.tar",
       "dockerfile": "src/bots/oci-fixtures/fault/Dockerfile",
       "buildArg": "MODE=memory",
-      "archiveSha256": "sha256:41fa213ed91c72b9aa67338a2e45f07f4c6ecb874b52f033c5e00801d5187146",
-      "imageId": "sha256:53ff4451cee787e93031a0f513f29ce9290591af9addbe5e2ec61caae45022a4",
-      "ociManifestDigest": "sha256:1d2e78d46c7429d4ddc288006b75e47901ca0ce33ed84d550b8ab6dcba204a88",
-      "ociConfigDigest": "sha256:c6533ed294d0f721ff50446495405a6ea1f74cb5472ec5b1989b4883a1e11d74",
+      "archiveSha256": "sha256:c5c3917fc5dca8f5320656c602d7b083aca4e97dc5b8894a30ea06b16ed4d881",
+      "imageId": "sha256:e2a6164d4ab6b6f0c0913a223fa436983643e0543448a21abc2c36a19ec89f6a",
+      "ociManifestDigest": "sha256:0e9fe82197595d9065ae112c0bf0d929f7406f264e200bb6187ac8cf34df9149",
+      "ociConfigDigest": "sha256:82af9bca55149bbb0412ab25e95b88fe361f083c2f95892b9afc9dc9d9ab4283",
       "entrypoint": [
         "/app/bot"
       ]
@@ -150,10 +150,10 @@
       "archive": "oci-fixtures/cpu.oci.tar",
       "dockerfile": "src/bots/oci-fixtures/fault/Dockerfile",
       "buildArg": "MODE=cpu",
-      "archiveSha256": "sha256:0a049dfabf90a1321cd38f43f085b44827c071f06f59bb160f72e1024eabec76",
-      "imageId": "sha256:ef222658353ea59a18b2b1f87e337e48b52ed61a71a01f2bd6367386577ad5db",
-      "ociManifestDigest": "sha256:fdcc094fb32610367079ede3decb7a73b99ddf111bf59ca6695fdf0195b46a72",
-      "ociConfigDigest": "sha256:50e4b8860e899fdfa9cdd213758c3a8b316723f8ccec846ee23ac6b69746a248",
+      "archiveSha256": "sha256:67f3ba41b200d22600f989cfcb788b136b87b241fb538029b27e3488809e0fd5",
+      "imageId": "sha256:0f5229e244aa85f6d62f0169b5b57a0c22d72c020f68196d03f7482cfb0233b3",
+      "ociManifestDigest": "sha256:797732b3e5da4837e3bc7b19ddc5ce95b1be8500dd4aee6ffb792a85a00995ef",
+      "ociConfigDigest": "sha256:ccc486599fcf7f61f794f5be4306718936b7a0a74e20492267d660cb5e088ae5",
       "entrypoint": [
         "/app/bot"
       ]

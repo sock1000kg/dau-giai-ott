@@ -1,0 +1,212 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-10-12T20:44:07.053Z",
+  "policyVersion": "OTT_SANDBOX_V1",
+  "host": {
+    "engineVersion": "29.8.1",
+    "apiVersion": "1.56",
+    "os": "Ubuntu 26.04.1 LTS",
+    "architecture": "x86_64",
+    "kernelVersion": "7.0.0-34-generic",
+    "logicalCpus": 8,
+    "memoryBytes": 40660094976,
+    "cgroupVersion": "2",
+    "nodeVersion": "v22.22.1",
+    "hostPlatform": "linux",
+    "hostArchitecture": "x64",
+    "hostKernel": "7.0.0-34-generic",
+    "cpuModel": "11th Gen Intel(R) Core(TM) i5-1135G7 @ 2.40GHz",
+    "logicalCpuCount": 8,
+    "hostMemoryBytes": 40660094976
+  },
+  "measurementNotes": [
+    "One local run per canary; startup and first-action latency are wall-clock measurements.",
+    "Docker stats are one-shot samples while the container is alive; memoryMaxUsageBytes may be null on cgroup v2.",
+    "A single developer host and internal canary corpus cannot establish cross-team fairness; registration remains gated by a representative repeated benchmark."
+  ],
+  "fixtures": [
+    {
+      "fixtureId": "first-legal-python",
+      "expected": "ACTION",
+      "category": "allowed",
+      "startupMs": 322.19,
+      "firstActionMs": 127.64,
+      "outcome": "ACTION",
+      "samples": [
+        {
+          "readAt": "2026-10-12T20:43:45.014830523Z",
+          "memoryUsageBytes": 8925184,
+          "memoryLimitBytes": 268435456,
+          "memoryMaxUsageBytes": null,
+          "cpuUsageNs": 186845000,
+          "cpuSystemUsageNs": 1551840020000000,
+          "onlineCpus": 8,
+          "pidsCurrent": 1,
+          "cpuPercent": 12.82415286624204
+        }
+      ]
+    },
+    {
+      "fixtureId": "capture-first-python",
+      "expected": "ACTION",
+      "category": "allowed",
+      "startupMs": 297.48,
+      "firstActionMs": 145.07,
+      "outcome": "ACTION",
+      "samples": [
+        {
+          "readAt": "2026-10-12T20:43:47.01880977Z",
+          "memoryUsageBytes": 8978432,
+          "memoryLimitBytes": 268435456,
+          "memoryMaxUsageBytes": null,
+          "cpuUsageNs": 196349000,
+          "cpuSystemUsageNs": 1551855730000000,
+          "onlineCpus": 8,
+          "pidsCurrent": 1,
+          "cpuPercent": 7.5138071065989855
+        }
+      ]
+    },
+    {
+      "fixtureId": "node-action",
+      "expected": "ACTION",
+      "category": "allowed",
+      "startupMs": 457.02,
+      "firstActionMs": 6.7,
+      "outcome": "ACTION",
+      "samples": [
+        {
+          "readAt": "2026-10-12T20:43:49.203818632Z",
+          "memoryUsageBytes": 9310208,
+          "memoryLimitBytes": 268435456,
+          "memoryMaxUsageBytes": null,
+          "cpuUsageNs": 58501000,
+          "cpuSystemUsageNs": 1551872860000000,
+          "onlineCpus": 8,
+          "pidsCurrent": 7,
+          "cpuPercent": 0.5403045685279187
+        }
+      ]
+    },
+    {
+      "fixtureId": "native-action",
+      "expected": "ACTION",
+      "category": "allowed",
+      "startupMs": 191.67,
+      "firstActionMs": 1.62,
+      "outcome": "ACTION",
+      "samples": [
+        {
+          "readAt": "2026-10-12T20:43:51.208596576Z",
+          "memoryUsageBytes": 1236992,
+          "memoryLimitBytes": 268435456,
+          "memoryMaxUsageBytes": null,
+          "cpuUsageNs": 25131000,
+          "cpuSystemUsageNs": 1551888600000000,
+          "onlineCpus": 8,
+          "pidsCurrent": 5,
+          "cpuPercent": 0
+        }
+      ]
+    },
+    {
+      "fixtureId": "timeout",
+      "expected": "TIMEOUT",
+      "category": "fault",
+      "startupMs": 234.85,
+      "firstActionMs": 3001.64,
+      "outcome": "BOT_TIMEOUT",
+      "samples": [
+        {
+          "readAt": "2026-10-12T20:43:53.214605964Z",
+          "memoryUsageBytes": 643072,
+          "memoryLimitBytes": 268435456,
+          "memoryMaxUsageBytes": null,
+          "cpuUsageNs": 26159000,
+          "cpuSystemUsageNs": 1551904310000000,
+          "onlineCpus": 8,
+          "pidsCurrent": 2,
+          "cpuPercent": 0
+        }
+      ]
+    },
+    {
+      "fixtureId": "fork",
+      "expected": "PID_LIMIT",
+      "category": "fault",
+      "startupMs": 224.58,
+      "firstActionMs": 0.76,
+      "outcome": "BOT_CRASHED",
+      "samples": []
+    },
+    {
+      "fixtureId": "write",
+      "expected": "READ_ONLY_FILESYSTEM",
+      "category": "fault",
+      "startupMs": 211.63,
+      "firstActionMs": 0.33,
+      "outcome": "BOT_CRASHED",
+      "samples": []
+    },
+    {
+      "fixtureId": "network",
+      "expected": "NETWORK_DENIED",
+      "category": "fault",
+      "startupMs": 214.79,
+      "firstActionMs": 3001.57,
+      "outcome": "BOT_TIMEOUT",
+      "samples": [
+        {
+          "readAt": "2026-10-12T20:43:57.382856502Z",
+          "memoryUsageBytes": 552960,
+          "memoryLimitBytes": 268435456,
+          "memoryMaxUsageBytes": null,
+          "cpuUsageNs": 26392000,
+          "cpuSystemUsageNs": 1551936840000000,
+          "onlineCpus": 8,
+          "pidsCurrent": 2,
+          "cpuPercent": 0
+        }
+      ]
+    },
+    {
+      "fixtureId": "output",
+      "expected": "STDOUT_LIMIT_EXCEEDED",
+      "category": "fault",
+      "startupMs": 215.05,
+      "firstActionMs": 1.15,
+      "outcome": "RESOURCE_LIMIT_EXCEEDED",
+      "samples": []
+    },
+    {
+      "fixtureId": "memory",
+      "expected": "MEMORY_LIMIT",
+      "category": "fault",
+      "startupMs": 214.21,
+      "firstActionMs": 143.42,
+      "outcome": "RESOURCE_LIMIT_EXCEEDED",
+      "samples": []
+    },
+    {
+      "fixtureId": "cpu",
+      "expected": "CPU_LIMIT",
+      "category": "fault",
+      "startupMs": 223.04,
+      "firstActionMs": 3000.53,
+      "outcome": "BOT_TIMEOUT",
+      "samples": [
+        {
+          "readAt": "2026-10-12T20:44:05.205630193Z",
+          "memoryUsageBytes": 401408,
+          "memoryLimitBytes": 268435456,
+          "memoryMaxUsageBytes": null,
+          "cpuUsageNs": 1783946000,
+          "cpuSystemUsageNs": 1551998220000000,
+          "onlineCpus": 8,
+          "pidsCurrent": 1,
+          "cpuPercent": 101.19636363636364
+        }
+      ]
+    }
+  ]
+}

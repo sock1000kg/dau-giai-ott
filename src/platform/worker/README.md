@@ -34,4 +34,15 @@ enforces `OTT_SANDBOX_V1`: non-root, `network=none`, read-only root, all Linux
 capabilities dropped, no mounts/devices, 1 vCPU, 256 MiB RAM, 64 PIDs, 64 MiB
 `/tmp`, 4 MiB stdout, 1 MiB stderr, 64 KiB per protocol message and a 3-second
 turn timeout. The quota is an implementation baseline only; `P2-T15` is the
-benchmark and public-registration gate.
+benchmark and public-registration gate. Its single-host evidence is recorded at
+`src/bots/sandbox-corpus/results/2026-10-13-local-docker.json`. Recreate it with:
+
+```bash
+npm --workspace @ott/sandbox-corpus run build:corpus
+OTT_SANDBOX_BENCHMARK_REPORT="$PWD/src/bots/sandbox-corpus/results/2026-10-13-local-docker.json" \
+  npm test --workspace @ott/platform-worker -- --run tests/sandbox.integration.test.ts
+```
+
+This run does not qualify a fair public profile. Keep team registration closed
+until repeated representative-host measurements are reviewed and the tournament
+owner approves D-08.

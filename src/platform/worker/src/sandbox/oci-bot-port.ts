@@ -54,11 +54,14 @@ export class SandboxOciBotPort implements BotPort {
       this.running = await this.runtime.createAndStart(imageId, this.identity.entrypoint, `ott-${randomUUID()}`);
       this.running.stream.on('data', (chunk: Buffer) => this.onDockerData(chunk));
       this.running.stream.on('error', () => this.onExit('BOT_CRASHED'));
-      this.running.stream.on('end', () => this.onExit('BOT_EOF'));
+      // Stream EOF has no exit status; the Engine wait endpoint is authoritative for exit/OOM classification.
       this.waitTask = this.runtime.wait(this.running.id).then((result) => {
         if (!this.closed) this.onExit(result.oomKilled ? 'RESOURCE_LIMIT_EXCEEDED' : result.statusCode === 0 ? 'BOT_EOF' : 'BOT_CRASHED');
         return result;
-      }).catch(() => ({ statusCode: 1, oomKilled: false }));
+      }).catch(() => {
+        if (!this.closed) this.onExit('BOT_CRASHED');
+        return { statusCode: 1, oomKilled: false };
+      });
       const effectiveInit: InitMessage = {
         ...init,
         limits: {
@@ -112,6 +115,12 @@ export class SandboxOciBotPort implements BotPort {
   async inspectSandbox() {
     if (!this.running) throw new Error('SANDBOX_NOT_RUNNING');
     return this.runtime.inspectSandbox(this.running.id);
+  }
+
+  /** Read-only Docker stats for local P2-T15 quota qualification; never sent to teams. */
+  async benchmarkStats() {
+    if (!this.running) throw new Error('SANDBOX_NOT_RUNNING');
+    return this.runtime.benchmarkStats(this.running.id);
   }
 
   private write(message: ProtocolMessage): boolean {

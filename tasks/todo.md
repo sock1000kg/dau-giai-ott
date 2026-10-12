@@ -486,9 +486,9 @@ Các ID cũ bị hủy trước khi triển khai và không được tái sử d
 **Dependencies:** `P2-T07`, `P2-T09`, `P2-T08`.
 **Files dự kiến:** `src/platform/worker/src/sandbox/oci-runtime.ts`, `src/platform/worker/src/sandbox/oci-bot-port.ts`, `src/platform/worker/src/sandbox/policy.ts`, `src/platform/worker/src/artifacts.ts`, `src/platform/worker/tests/sandbox.integration.test.ts`
 **Ước lượng:** M (4 file)
-**Hoàn tất:** 2026-10-13 — Docker Engine API `/images/load` nhập OCI layout, pin image theo manifest digest và đối chiếu Entrypoint; archive SHA/config/policy được kiểm tra trước import. `SandboxOciBotPort` chạy qua MatchRunner không đổi protocol; Docker inspect xác nhận user non-root, network none, read-only rootfs, CapDrop ALL, không mount/device, 1 vCPU/256 MiB/64 PID. Python (2 bot), Node, native và 7 fault corpus: integration 13/13; worker typecheck pass. `OTT_SANDBOX_V1` vẫn baseline, `P2-T15` chưa benchmark quota công bố. DOCS UPDATED: SAD OCI, worker README, task graph.
+**Hoàn tất:** 2026-10-13 — Docker Engine API `/images/load` nhập OCI layout, pin image theo manifest digest và đối chiếu Entrypoint; archive SHA/config/policy được kiểm tra trước import. `SandboxOciBotPort` chạy qua MatchRunner không đổi protocol; Docker inspect xác nhận user non-root, network none, read-only rootfs, CapDrop ALL, không mount/device, 1 vCPU/256 MiB/64 PID. Python (2 bot), Node, native và 7 fault corpus: integration 13/13; worker typecheck pass. `OTT_SANDBOX_V1` là baseline nội bộ; benchmark và gate đăng ký ở `P2-T15`. DOCS UPDATED: SAD OCI, worker README, task graph.
 
-### [ ] P2-T15 — Benchmark quota OCI và gate mở nhận bot đa ngôn ngữ
+### [x] P2-T15 — Benchmark quota OCI và gate mở nhận bot đa ngôn ngữ
 
 **Owner:** Đinh Đức Thuận
 **Mô tả:** Đo sandbox thực trên Docker local bằng corpus OCI, xác nhận hoặc điều chỉnh profile tài nguyên công bố; đây là cổng bắt buộc trước khi BTC nhận submission từ đội thi ngoài các fixture nội bộ.
@@ -497,6 +497,8 @@ Các ID cũ bị hủy trước khi triển khai và không được tái sử d
 **Dependencies:** `P2-T08`, `P2-T10`.
 **Files dự kiến:** `src/bots/sandbox-corpus/results/`, `src/platform/worker/tests/sandbox.integration.test.ts`, `docs/architecture/sad-oci-bot-submissions.md`, `docs/tai-lieu-yeu-cau.md`, `docs/runbooks/phase-2-local.md`
 **Ước lượng:** S (3 file)
+
+**Hoàn tất:** 2026-10-13 — Docker local, Ubuntu 26.04.1/cgroup v2, Engine 29.8.1/API 1.56, 8 logical CPUs, 40.66 GB RAM. Python FirstLegal/CaptureFirst, Node, native đều `ACTION`; 7 fault canaries được thực thi: timeout/network/CPU bị giới hạn theo turn, fork/write crash, output/memory `RESOURCE_LIMIT_EXCEEDED`; CPU canary đo ~101% của 1 CPU, memory chạm quota 256 MiB. Sandbox corpus 1/1 và Docker integration 14/14 pass. Report: `src/bots/sandbox-corpus/results/2026-10-13-local-docker.json`. Một máy/một lượt chưa chứng minh fairness; không đổi D-08, `OTT_SANDBOX_V1` vẫn baseline nội bộ và registration tiếp tục đóng đến benchmark lặp trên host đại diện + BTC duyệt. DOCS UPDATED: SAD OCI, yêu cầu D-08, worker README, Phase 2 runbook, sandbox report.
 
 ### [ ] P2-T11 — MatchResult finalization idempotent
 

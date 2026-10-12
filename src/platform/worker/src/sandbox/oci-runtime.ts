@@ -23,6 +23,27 @@ export interface ContainerSandboxSnapshot {
   readonly devices: readonly unknown[];
   readonly tmpfs: Readonly<Record<string, string>>;
 }
+export interface DockerHostBenchmarkInfo {
+  readonly engineVersion: string;
+  readonly apiVersion: string;
+  readonly os: string;
+  readonly architecture: string;
+  readonly kernelVersion: string;
+  readonly logicalCpus: number;
+  readonly memoryBytes: number;
+  readonly cgroupVersion: string;
+}
+export interface DockerContainerStats {
+  readonly readAt: string;
+  readonly memoryUsageBytes: number;
+  readonly memoryLimitBytes: number;
+  readonly memoryMaxUsageBytes: number | null;
+  readonly cpuUsageNs: number;
+  readonly cpuSystemUsageNs: number;
+  readonly onlineCpus: number;
+  readonly pidsCurrent: number | null;
+  readonly cpuPercent: number | null;
+}
 
 type DockerImage = { readonly Id: string; readonly Config?: { readonly Entrypoint?: readonly string[] | null } };
 
@@ -94,6 +115,47 @@ export class DockerOciRuntime {
       memoryBytes: config?.Memory ?? 0, memorySwapBytes: config?.MemorySwap ?? 0,
       nanoCpus: config?.NanoCpus ?? 0, pidsLimit: config?.PidsLimit ?? 0, mounts: config?.Mounts ?? [],
       binds: config?.Binds ?? [], devices: config?.Devices ?? [], tmpfs: config?.Tmpfs ?? {},
+    };
+  }
+
+  async benchmarkHostInfo(): Promise<DockerHostBenchmarkInfo> {
+    const [version, info] = await Promise.all([
+      this.requestJson<{ readonly Version?: string; readonly ApiVersion?: string; readonly Os?: string; readonly Arch?: string; readonly KernelVersion?: string }>('GET', `${API}/version`),
+      this.requestJson<{ readonly OperatingSystem?: string; readonly Architecture?: string; readonly KernelVersion?: string; readonly NCPU?: number; readonly MemTotal?: number; readonly CgroupVersion?: string }>('GET', `${API}/info`),
+    ]);
+    return {
+      engineVersion: version.Version ?? '', apiVersion: version.ApiVersion ?? '',
+      os: info.OperatingSystem ?? version.Os ?? '', architecture: info.Architecture ?? version.Arch ?? '',
+      kernelVersion: info.KernelVersion ?? version.KernelVersion ?? '', logicalCpus: info.NCPU ?? 0,
+      memoryBytes: info.MemTotal ?? 0, cgroupVersion: info.CgroupVersion ?? 'unknown',
+    };
+  }
+
+  /** One Docker stats response; stream=false returns one bounded sample and closes the HTTP request. */
+  /** Docker Engine stats formula: cpuDelta / systemCpuDelta * online CPUs * 100; API docs: https://docs.docker.com/reference/api/engine/version/v1.56/#get-container-stats-based-on-resource-usage */
+  async benchmarkStats(id: string): Promise<DockerContainerStats> {
+    const stats = await this.requestJson<{
+      readonly read?: string;
+      readonly memory_stats?: { readonly usage?: number; readonly limit?: number; readonly max_usage?: number };
+      readonly cpu_stats?: { readonly cpu_usage?: { readonly total_usage?: number; readonly percpu_usage?: readonly number[] }; readonly system_cpu_usage?: number; readonly online_cpus?: number };
+      readonly precpu_stats?: { readonly cpu_usage?: { readonly total_usage?: number; readonly percpu_usage?: readonly number[] }; readonly system_cpu_usage?: number; readonly online_cpus?: number };
+      readonly pids_stats?: { readonly current?: number };
+    }>('GET', `${API}/containers/${id}/stats?stream=false`);
+    const cpu = stats.cpu_stats;
+    const previousCpu = stats.precpu_stats;
+    const cpuUsageNs = cpu?.cpu_usage?.total_usage ?? 0;
+    const previousCpuUsageNs = previousCpu?.cpu_usage?.total_usage ?? 0;
+    const systemCpuUsageNs = cpu?.system_cpu_usage ?? 0;
+    const previousSystemCpuUsageNs = previousCpu?.system_cpu_usage ?? 0;
+    const onlineCpus = cpu?.online_cpus ?? cpu?.cpu_usage?.percpu_usage?.length ?? 0;
+    const cpuDelta = cpuUsageNs - previousCpuUsageNs;
+    const systemDelta = systemCpuUsageNs - previousSystemCpuUsageNs;
+    const memory = stats.memory_stats;
+    return {
+      readAt: stats.read ?? new Date().toISOString(), memoryUsageBytes: memory?.usage ?? 0,
+      memoryLimitBytes: memory?.limit ?? 0, memoryMaxUsageBytes: memory?.max_usage ?? null,
+      cpuUsageNs, cpuSystemUsageNs: systemCpuUsageNs, onlineCpus, pidsCurrent: stats.pids_stats?.current ?? null,
+      cpuPercent: cpuDelta >= 0 && systemDelta > 0 && onlineCpus > 0 ? (cpuDelta / systemDelta) * onlineCpus * 100 : null,
     };
   }
 

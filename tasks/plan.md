@@ -227,7 +227,7 @@ Phase 1 complete
 - [x] `P2-T08` — OCI canary bot và sandbox security corpus.
 - [x] `P2-T09` — MatchJob và BullMQ worker.
 - [x] `P2-T10` — Sandbox adapter và artifact validation; Docker API integration 13/13 pass (2026-10-13).
-- [ ] `P2-T15` — Benchmark quota OCI và gate mở nhận bot đa ngôn ngữ.
+- [x] `P2-T15` — Benchmark quota OCI và gate mở nhận bot đa ngôn ngữ; local benchmark pass 14/14, D-08 remains internal baseline and team registration gated pending representative repeated benchmark + BTC approval (2026-10-13).
 - [ ] `P2-T11` — MatchResult finalization idempotent.
 - [ ] `P2-T12` — Scheduling và series scoring.
 - [ ] `P2-T13` — Match results, Elo ledger và leaderboard API.

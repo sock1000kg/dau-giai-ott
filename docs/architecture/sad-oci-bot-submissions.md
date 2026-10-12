@@ -132,8 +132,29 @@ protocol process faults; per-message overflow maps to `MESSAGE_TOO_LARGE`.
 Turn timeout remains the protocol's recoverable `BOT_TIMEOUT`: a late reply is
 discarded, the sandbox may receive later turn messages, and the container is
 removed idempotently when the match lifecycle stops it.
-This remains a pre-benchmark baseline: the OCI corpus must prove it before
-registration opens.
+This remains an internal implementation baseline until the benchmark gate below
+is satisfied; it is not a team-facing quota.
+
+### P2-T15 local qualification (2026-10-13)
+
+The version-controlled single-run evidence is in
+[`2026-10-13-local-docker.json`](../../src/bots/sandbox-corpus/results/2026-10-13-local-docker.json).
+It records Docker Engine 29.8.1/API 1.56, Ubuntu 26.04.1, x86_64, kernel
+7.0.0-34-generic, cgroup v2, 8 logical CPUs and 40,660,094,976 bytes host RAM.
+FirstLegal, CaptureFirst, Node and native fixtures all returned `ACTION`; their
+startup times were 183–497 ms and first actions 1–150 ms in this run. Timeout,
+network, CPU, fork, write, output and memory cases were exercised; memory and
+output mapped to `RESOURCE_LIMIT_EXCEEDED`, while CPU/network are intentionally
+bounded by the 3-second turn timeout. The measured CPU canary used about 101% of
+one host CPU under the 1-vCPU cap. The memory canary reached the 256 MiB cgroup
+limit and was OOM-classified. On this cgroup v2 host Docker omits the memory
+high-water field, so the report uses live usage only.
+
+No quota is changed or published by this run. It is one run on one developer
+host, not a cross-team fairness study; `OTT_SANDBOX_V1` remains an internal
+implementation baseline and **team registration stays closed** until repeated
+representative-host measurements and tournament-owner approval. Docker stats
+CPU percentage follows the [Docker Engine stats API formula](https://docs.docker.com/reference/api/engine/version/v1.56/#get-container-stats-based-on-resource-usage).
 
 ## 6. Persistence and audit
 
