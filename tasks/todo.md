@@ -312,7 +312,7 @@ Không triển khai ID này. Workspace chung chuyển cho Đinh Đức Thuận d
 **Ước lượng:** M (4 file)
 **Hoàn tất:** 8 E2E test chạy production CLI với Python process thật: happy path (`first_legal_bot`/`capture_first_bot`), `MALFORMED_JSON`, `ILLEGAL_ACTION`, `TURN_ID_MISMATCH`, `BOT_TIMEOUT`, `MESSAGE_TOO_LARGE`, `BOT_CRASHED` và determinism. Mọi event log đều replay được qua core thật; PID của cả hai bot đã dừng sau mỗi trận. Python bot suite: 27 test pass.
 
-### [ ] P1-D11 — Runbook và bàn giao local
+### [x] P1-D11 — Runbook và bàn giao local
 
 **Owner:** Phạm Tất Đạt
 **Mô tả:** Để Thuận chạy lại toàn bộ Phase 1 từ clean checkout.
@@ -321,12 +321,13 @@ Không triển khai ID này. Workspace chung chuyển cho Đinh Đức Thuận d
 **Dependencies:** `P1-D10`.
 **Files dự kiến:** `README.md`, `docs/runbooks/phase-1-local.md`, `.env.example`
 **Ước lượng:** S (3 file)
+**Hoàn tất:** Đã thêm root README, `.env.example` không-secret và runbook clean-checkout gồm prerequisites/install/test/run/artifact/troubleshooting/Phase-2 boundary. Đã chạy `npm ci && npm run typecheck && npm test && npm run build`, Python 27 test và command trận mẫu với hai Python bot; artifact `/tmp/ott-phase-1-match.json` được tạo thành công.
 
 ## Checkpoint P1-C — Phase 1 hoàn tất
 
-- [ ] Full typecheck, unit, contract, integration, E2E và build pass.
-- [ ] Happy path và fault matrix có automated evidence; replay/determinism pass.
-- [ ] Không còn child process/open handle; Thuận duyệt bàn giao local.
+- [x] Full typecheck, unit, contract, integration, E2E và build pass.
+- [x] Happy path và fault matrix có automated evidence; replay/determinism pass.
+- [x] Không còn child process/open handle; Thuận đã duyệt bàn giao local sau clean-checkout verification ngày 2026-10-12.
 
 ## Phase 2 — Local platform
 
