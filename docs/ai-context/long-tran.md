@@ -20,7 +20,7 @@ Không commit, push hoặc sửa phạm vi của người khác nếu tôi chưa
 - Base branch: `main`.
 - Mỗi task dùng branch riêng với prefix `longt/`, ví dụ `longt/feat-p1-l01-game-baseline`.
 - Không code trực tiếp trên `main`.
-- Một branch chỉ chứa một task `P1-Lxx` hoặc `P2-Lxx`; không trộn core/protocol/web task khác.
+- Một branch chỉ chứa một task `P1-Lxx`; không trộn core/protocol với phạm vi Phase 2 của Thuận.
 - Hoàn tất thì push branch và tạo PR target `main` để integration test.
 
 ```bash
@@ -44,7 +44,7 @@ Long là owner duy nhất của:
 - Deterministic transition event và `finalStateHash`.
 - Regression test bảo vệ Human-vs-Human.
 
-Ở Phase 2, Long còn sở hữu web shell/login và team submission portal theo task card; không sở hữu Fastify API, database hoặc authorization server-side.
+Long không còn task implementation Phase 2; `P2-L02`/`P2-L03` đã hủy và phát hành lại thành `P2-T17A`/`P2-T17B`/`P2-T18`/`P2-T20` cho Thuận.
 
 ## 4. Task theo thứ tự bắt buộc
 
@@ -58,12 +58,10 @@ Long là owner duy nhất của:
 | 6 | `P1-L06` — skip/maxTurns/result | `P1-L05` |
 | 7 | `P1-L07` — events/finalStateHash | `P1-L06` |
 | 8 | `P1-L08` — regression/docs | `P1-L07` |
-| 9 | `P2-L02` — web shell và team portal login | `P2-T05` |
-| 10 | `P2-L03` — team portal submission UI | `P2-L02`, `P2-T07` |
 
 Mỗi phiên AI chỉ làm một task. Nguyên đã có thể làm `P1-N01` từ schema/fixtures khóa tại `P1-T01`; Đạt bắt đầu `P1-D02` khi `P1-L02` và `P1-L03` hoàn tất. `P1-L04` là executable validator baseline, không phải thời điểm phát hành contract lần đầu.
 
-Checkpoint liên quan: `P1-A` sau `P1-L01`–`P1-L04` (Đạt dựa vào public types để làm runner); `P1-B` sau `P1-L08`. Phase 2: `P2-L02` chờ auth contract `P2-T05`, `P2-L03` chờ submission API `P2-T07`; cả hai thuộc Checkpoint `P2-B`. Sơ đồ hai phase: `docs/team-assignment-phase-1-2.md` mục 4.2.
+Checkpoint liên quan: `P1-A` sau `P1-L01`–`P1-L04` (Đạt dựa vào public types để làm runner); `P1-B` sau `P1-L08`. Phase 2 thuộc Thuận; Long chỉ review core/protocol compatibility khi được yêu cầu. Sơ đồ hai phase: `docs/team-assignment-phase-1-2.md` mục 4.2.
 
 ## 5. Tài liệu AI phải đọc
 
@@ -86,14 +84,13 @@ Hành vi tham chiếu phải được đối chiếu với commit core đã pin.
 - `src/game-core/**`
 - `src/bot-protocol/**`
 - Tài liệu protocol/core liên quan
-- `src/platform/web/package.json`, `src/platform/web/vite.config.ts`, `src/platform/web/src/app/**`, `src/platform/web/src/features/auth/**`, `src/platform/web/src/features/submissions/**` khi làm `P2-L02`/`P2-L03`
 
 Không được sửa nếu chưa phối hợp owner:
 
 - `src/bots/python/**` của Nguyên.
 - `src/match-runner/**` của Đạt.
 - Fastify, PostgreSQL, Redis/BullMQ, S3-compatible storage, cloud.
-- `src/platform/web/src/features/admin-teams/**`, `results/**`, `leaderboard/**`, `replay-admin/**`, `spectator/**` của owner tương ứng.
+- `src/platform/**` thuộc toàn bộ lane Phase 2 của Thuận.
 
 Nếu test của consumer phát hiện contract sai, sửa tại core/protocol và cập nhật schema/fixtures; không vá trực tiếp code consumer.
 
@@ -139,9 +136,9 @@ Nếu project đã có `.agents/skills/<skill>/SKILL.md`, ưu tiên dùng bản 
 ## 8. Prompt triển khai sẵn dùng
 
 ```text
-Tôi là Long Trần, owner Core Game API/Bot Protocol v1 và hai feature web Phase 2 được giao.
+Tôi là Long Trần, owner Core Game API/Bot Protocol v1 Phase 1.
 
-Hãy chọn task P1-Lxx hoặc P2-Lxx đầu tiên chưa hoàn tất và đã đủ dependency trong tasks/todo.md.
+Hãy chọn task P1-Lxx đầu tiên chưa hoàn tất và đã đủ dependency trong tasks/todo.md.
 Chỉ thực hiện đúng một task.
 
 Quy trình bắt buộc:
@@ -153,7 +150,7 @@ Quy trình bắt buộc:
 6. Triển khai tối thiểu, không tạo game rules thứ hai cho bot.
 7. Chạy focused test, typecheck và verification command của task.
 8. Review diff, chạy GitNexus detect-changes và báo risk thực tế.
-9. Không sửa bot Python, MatchRunner, API/database/worker hoặc cloud; với P2 chỉ sửa web paths đã giao.
+9. Không sửa bot Python, MatchRunner hoặc bất kỳ phạm vi Phase 2 nào của Thuận.
 10. Chỉ đề xuất PR vào main; không merge/commit nếu tôi chưa yêu cầu.
 
 Trước khi code, trả về: task được chọn, dependency, assumption, public API bị ảnh hưởng, file dự kiến sửa và test plan.

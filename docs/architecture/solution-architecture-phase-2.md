@@ -147,7 +147,7 @@ The worker is trusted and may use the host container runtime; **a bot container 
 | Round schedule | one series/team/round; Elo band starts at 200 and expands 100 deterministically until paired; seed/snapshot freeze before enqueue | `P2-T12` |
 | Runtime artifact | OCI Image Spec 1.1 in OCI Image Layout (`imageLayoutVersion: 1.0.0`), `linux/amd64`, non-empty image Entrypoint; platform derives/pins manifest+config digest and rejects Dockerfile, registry URL, tag or client command. | `P2-T03`, `P2-T14`, `P2-T07`, `P2-T10` |
 | Baseline resource profile | startup 5 s, turn 3 s, message 64 KiB, stderr 1 MiB, 1 vCPU, 256 MiB RAM, 64 PIDs, 64 MiB writable tmpfs, no egress | `P2-T08`, `P2-T10`, `P2-T09` capacity controller |
-| Replay | only terminal + integrity-verified artifact; BTC `STAGED` → `PUBLISHED`; no live stream/control | `P2-D14`–`P2-D16` |
+| Replay | only terminal + integrity-verified artifact; BTC `STAGED` → `PUBLISHED`; no live stream/control | `P2-T23`–`P2-T27` |
 | Authentication | internal username/password, BTC provisioning, opaque Redis session, `BTC_ADMIN`/`TEAM_ACCOUNT` | `P2-T04`–`P2-T07`, UI tasks |
 
 The resource profile above is a conservative **implementation baseline**, not a claim that a tournament quota benchmark has passed. `P2-T10` supplies the sandbox evidence; `P2-T15` runs the `P2-T08` corpus under it, records measured startup, peak RAM, CPU and failure behavior on the target local host, and is the gate for opening team submissions. Any change to a published tournament profile creates a new profile version; never silently edit a profile already pinned by a match.
@@ -162,12 +162,12 @@ Minimum telemetry has correlation fields `tournamentId`, `roundId`, `seriesId`, 
 
 1. `P2-T02` Compose and local secret/config contract.
 2. `P2-T03` schema/migrations and invariant tests.
-3. `P2-T04`/`P2-T05` auth boundary and contract; Long can begin web shell after `T05`.
-4. `P2-T14` OCI contract/layout validator, then `P2-T06`/`P2-T07` team provisioning and immutable OCI upload; Nguyên/Long can build their dependent UI.
+3. `P2-T04`/`P2-T05` auth boundary and contract.
+4. `P2-T14` OCI contract/layout validator, then `P2-T06`/`P2-T07` team provisioning and immutable OCI upload.
 5. `P2-T08` OCI corpus using existing Python bots first, then `P2-T09` job contract/worker and `P2-T10` sandbox adapter.
 6. `P2-T15` executes the benchmark and locks the published profile before external team submissions open.
-6. `P2-T11` finalization, then `P2-T12` scheduling and `P2-T13` rating/read API.
-7. Replay work (`P2-D14`–`P2-D16`) and qualification E2E (`P2-D13`) only consume FINALIZED/PUBLISHED control-plane contracts.
+7. `P2-T11` finalization, then `P2-T12` scheduling and `P2-T13` rating/read API.
+8. Thuận triển khai web/replay (`P2-T17A`–`P2-T27`) và qualification E2E (`P2-T28`–`P2-T29`) trên các auth/result và FINALIZED/PUBLISHED control-plane contracts đã khóa.
 
 ## 10. Deferred decisions
 

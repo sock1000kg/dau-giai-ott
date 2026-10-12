@@ -2,7 +2,7 @@
 
 > Trạng thái: **Đã tự động duyệt**
 > Mức khuyến nghị: **HIGH RECOMMEND**
-> Vai trò: MatchRunner/BotProcess/CLI/E2E, replay publication và qualification E2E Phase 2
+> Vai trò: MatchRunner/BotProcess/CLI/E2E Phase 1; review compatibility khi Thuận yêu cầu
 
 ## 1. Cách dùng ngay
 
@@ -20,7 +20,7 @@ Không commit, push, deploy hoặc sửa game rules/bot strategy nếu tôi chư
 - Base branch: `main`.
 - Mỗi task dùng branch riêng với prefix `datpt/`, ví dụ `datpt/feat-p1-d02-ports`.
 - Không code trực tiếp trên `main`.
-- Một branch chỉ chứa một task `P1-Dxx` hoặc `P2-Dxx`, đặc biệt không trộn schema/API/UI.
+- Một branch chỉ chứa một task `P1-Dxx`; Phase 2 thuộc Thuận.
 - Hoàn tất thì push branch và tạo PR target `main` để chạy integration/E2E.
 
 ```bash
@@ -41,9 +41,7 @@ Phase 1:
 - Event log, replay verifier, CLI và E2E local.
 - Adapter tích hợp core thật và hai bot Python thật.
 
-Phase 2 local:
-
-- Replay publication API, BTC/spectator replay UI và qualification E2E; web shell, team portal, BTC credential console và results UI thuộc Long/Nguyên.
+Phase 2 local không còn task implementation của Đạt; `P2-D13`–`P2-D16` đã hủy và phát hành lại thành `P2-T23`–`P2-T29` cho Thuận.
 
 Đạt không sở hữu game rules hoặc chiến thuật bot.
 
@@ -60,11 +58,9 @@ Phase 2 local:
 
 ### Phase 2 local
 
-Chỉ làm `P2-D14`–`P2-D16` và `P2-D13` theo đúng dependency trong `tasks/todo.md`; `P2-D01`–`P2-D10`, `P2-D17` và `P2-N01` đã hủy trước khi triển khai và phát hành lại thành `P2-T02`–`P2-T13` cho Thuận; `P2-T14` mới khóa OCI submission contract. `P2-D14` chỉ xử lý replay terminal đã qua integrity check; `P2-D15` và `P2-D16` không được tạo live stream hoặc điều khiển trận đang chạy.
+Không chọn task `P2-Dxx`. Toàn bộ Phase 2 còn mở là `P2-T17A`, `P2-T17B`, `P2-T18`–`P2-T29` của Thuận. Đạt chỉ review contract tương thích với event log/replay verifier Phase 1 khi có yêu cầu cụ thể.
 
-Checkpoint liên quan: Phase 1 có `P1-A` sau `P1-D02`, `P1-B` sau `P1-D08`, `P1-C` sau `P1-D11`. Phase 2 có `P2-A` sau `P2-T01`–`P2-T15` (backend của Thuận), `P2-B` sau `P2-L02`, `P2-L03`, `P2-N14`, `P2-N15`, `P2-D14`–`P2-D16` và `P2-D13`; sau `P2-B` Thuận mới deploy. Sơ đồ hai phase: `docs/team-assignment-phase-1-2.md` mục 4.2.
-
-Đạt làm tuần tự replay API → replay UI → qualification E2E; Long/Nguyên chỉ làm UI trên ranh giới file/API đã giao, không mở nhiều branch chạm cùng module.
+Checkpoint liên quan: Phase 1 có `P1-A` sau `P1-D02`, `P1-B` sau `P1-D08`, `P1-C` sau `P1-D11`. Phase 2 do Thuận duyệt `P2-A`/`P2-B`. Sơ đồ hai phase: `docs/team-assignment-phase-1-2.md` mục 4.2.
 
 ## 5. Tài liệu AI phải đọc
 
@@ -85,16 +81,13 @@ Checkpoint liên quan: Phase 1 có `P1-A` sau `P1-D02`, `P1-B` sau `P1-D08`, `P1
 
 - Chỉ `package.json` của `src/match-runner`; workspace/config gốc (`P1-T02`) thuộc Thuận.
 - `src/match-runner/**` trong Phase 1.
-- `src/platform/api/src/modules/replays/**` khi làm `P2-D14`, đúng task card.
-- `src/platform/web/src/features/replay-admin/**`, `src/platform/web/src/features/spectator/**` khi làm `P2-D15`/`P2-D16`.
-- Integration/E2E và runbook thuộc phạm vi task.
 
 Không được sửa:
 
 - Game rules trong `src/game-core/**`.
 - Bot Protocol/schema thuộc Long, trừ khi có review/ủy quyền rõ.
 - Python bot strategy/fault bots thuộc Nguyên.
-- Web shell/auth/submission thuộc Long; admin-teams/results/leaderboard UI thuộc Nguyên.
+- Toàn bộ `src/platform/**`, Phase 2 E2E và local runbook thuộc Thuận.
 - Cấu hình cloud hoặc production secret.
 
 Khi core chưa sẵn sàng, dùng `FakeGame`. Khi bot chưa sẵn sàng, dùng `ScriptedBot`. Không copy luật game vào fake.
@@ -140,9 +133,9 @@ Sau khi cài xong, báo tôi mở phiên mới.
 ## 8. Prompt triển khai sẵn dùng
 
 ```text
-Tôi là Phạm Tất Đạt, owner MatchRunner, replay publication và qualification E2E local.
+Tôi là Phạm Tất Đạt, owner MatchRunner/BotProcess/CLI/E2E Phase 1.
 
-Hãy chọn task P1-Dxx hoặc P2-Dxx đầu tiên chưa hoàn tất và đã đủ dependency.
+Hãy chọn task P1-Dxx đầu tiên chưa hoàn tất và đã đủ dependency.
 Chỉ thực hiện đúng một task, tối đa phạm vi file ghi trong task card.
 
 Quy trình bắt buộc:
@@ -152,7 +145,7 @@ Quy trình bắt buộc:
 4. Nếu core/bot thật chưa sẵn sàng, dùng ports/fakes; không invent game rules/protocol.
 5. Viết test trước hoặc cùng implementation; ưu tiên thin vertical slice.
 6. Với child process: timeout bằng server clock, cleanup trong finally, không dùng shell string.
-7. Với Phase 2: chỉ làm replay terminal/published và E2E theo API contract của Thuận; không commit secret.
+7. Không triển khai task Phase 2 của Thuận; không commit secret.
 8. Chạy verification command của task, typecheck/build liên quan và review diff.
 9. Chạy GitNexus detect-changes; chỉ đề xuất PR vào main, không deploy.
 
@@ -165,8 +158,6 @@ Trước khi code, trả về: task, dependency, contract đầu vào, file dự
 - Runner authoritative; bot chỉ đề xuất action.
 - Process/timer/listener được cleanup; không còn open handle/PID.
 - Không copy game rules vào runner/fake.
-- Phase 2 có integration test với Docker services thật khi task yêu cầu.
-- Retry/finalization quan trọng phải idempotent.
 - Không có secret hoặc cloud config trong task local.
 - Không sửa core hoặc bot của owner khác.
 - Handoff có test/build/GitNexus evidence.

@@ -9,7 +9,7 @@ src/
 ├── match-runner/    # Phạm Tất Đạt: ports, runner, process, CLI
 ├── bots/
 │   ├── python/      # Đỗ Khôi Nguyên: SDK, bot mẫu và bot lỗi
-│   └── sandbox-corpus/ # Đỗ Khôi Nguyên: canary và artifact kiểm thử sandbox Phase 2
+│   └── sandbox-corpus/ # Đinh Đức Thuận: canary và artifact kiểm thử sandbox Phase 2
 └── platform/        # Phase 2 local
     ├── api/         # Fastify + PostgreSQL + S3-compatible storage adapter
     ├── job-contract/ # MatchJob schema dùng chung giữa API và worker

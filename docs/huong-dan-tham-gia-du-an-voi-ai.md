@@ -230,25 +230,25 @@ AI không được tạo một bộ luật riêng cho bot. API bot và Human-vs-
 
 AI không được sửa core hoặc protocol. Bot lỗi chỉ được chạy trong test harness phù hợp; không chạy payload thử network, fork, CPU hoặc memory trực tiếp trên máy nếu chưa có sandbox.
 
-**Phạm Tất Đạt — MatchRunner và platform local**
+**Phạm Tất Đạt — MatchRunner Phase 1**
 
 - `api-and-interface-design`
 - `incremental-implementation`
 - `test-driven-development`
 - `security-and-hardening`
-- `frontend-ui-engineering` khi bắt đầu React/Vite
 
 AI phải dùng `FakeGame` và `ScriptedBot` trước khi core/bot thật sẵn sàng. Không đưa game rules vào MatchRunner.
 
-**Đinh Đức Thuận — tích hợp, CI/CD và cloud**
+**Đinh Đức Thuận — toàn bộ Phase 2 local**
 
-- `ci-cd-and-automation`
+- `frontend-ui-engineering`
+- `browser-testing-with-devtools`
+- `api-and-interface-design`
+- `test-driven-development`
 - `observability-and-instrumentation`
-- `shipping-and-launch`
 - `security-and-hardening`
-- `terraform-skill` nếu dùng Terraform/OpenTofu
 
-Cloud là giai đoạn bàn giao riêng. Các task local của ba Dev không được tự thêm credential hoặc cấu hình production.
+Phase 2 dừng ở qualification E2E/runbook local. Không tự thêm CI/CD, cloud deployment, production credential hoặc cấu hình production.
 
 ## 10. Quy tắc GitNexus bắt buộc
 

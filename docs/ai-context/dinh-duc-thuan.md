@@ -2,7 +2,7 @@
 
 > Trạng thái: **Đã tự động duyệt**
 > Mức khuyến nghị: **HIGH RECOMMEND**
-> Vai trò: quyết định chung, backend local Phase 2, kiểm soát checkpoint và DevOps/cloud
+> Vai trò: owner duy nhất toàn bộ Phase 2 local — backend, frontend, replay, E2E và checkpoint
 
 ## 1. Cách dùng ngay
 
@@ -10,28 +10,28 @@ Mở AI tại repository root, đính kèm file này và gửi đúng câu sau:
 
 ```text
 Đọc toàn bộ file docs/ai-context/dinh-duc-thuan.md và dùng nó làm context điều hành.
-Hãy kiểm tra repository, chọn task đầu tiên của tôi đã đủ dependency và bắt đầu theo workflow trong file.
-Nếu chưa đủ dependency hoặc gặp quyết định chưa được chốt, dừng và báo blocker cụ thể.
-Không commit, push, merge hoặc deploy nếu tôi chưa yêu cầu.
+Tiếp tục tự động toàn bộ task Phase 2 của tôi đến khi Checkpoint P2-B hoàn thành.
+Không dừng giữa các task: mỗi vòng chọn task ID nhỏ nhất đã đủ dependency, tạo branch từ main,
+test, cập nhật docs/status, commit và merge lại main rồi chuyển task kế tiếp.
+Chỉ dừng khi có blocker thật sự; báo evidence và phương án. Không push hoặc deploy cloud.
 ```
 
 AI phải đọc file này cùng tài liệu nguồn; không chỉ dựa vào lịch sử conversation.
 
 ## 2. Git branch workflow
 
-- `main` là branch tích hợp chung và nguồn deploy.
+- `main` là branch tích hợp chung.
 - Mỗi task dùng branch riêng của owner, tạo từ `main`.
-- Branch dùng prefix `thuandd/`, ví dụ task tiếp theo `thuandd/feat-p2-t01-decisions`.
+- Branch dùng prefix `thuandd/`, ví dụ task tiếp theo `thuandd/feat-p2-t17a-web-workspace`.
 - Không code trực tiếp trên `main`.
-- Khi task pass verification, push branch cá nhân và tạo PR vào `main`.
-- Duyệt checkpoint trên `main`; sau khi hoàn thiện, deploy từ `main` (branch có code mới nhất) lên các môi trường.
+- Khi task pass verification, commit nguyên tử và merge vào `main`; chỉ push khi người dùng yêu cầu riêng.
+- Duyệt checkpoint trên `main`; Phase 2 hiện tại dừng ở local qualification E2E/runbook.
 - `develop` là nhánh legacy, không dùng để tạo branch, nhận PR hoặc deploy.
 
 ```bash
-git fetch origin
 git switch main
-git pull --ff-only origin main
-git switch -c thuandd/feat-p2-t01-decisions
+git status --short --branch
+git switch -c thuandd/feat-p2-t17a-web-workspace
 ```
 
 Nếu `origin/main` chưa tồn tại hoặc working tree đang có thay đổi của người khác, dừng và báo blocker; không tự reset. Trước PR, đồng bộ lại `main`, chạy verification và GitNexus `detect-changes`.
@@ -40,11 +40,10 @@ Nếu `origin/main` chưa tồn tại hoặc working tree đang có thay đổi 
 
 - `P1-T01` đã hoàn tất; bảo vệ các contract/ADR đã khóa khỏi thay đổi không được review.
 - Xác nhận contract/checkpoint và xử lý mâu thuẫn giữa các tài liệu.
-- `P2-T01` đã hoàn tất; triển khai tuần tự toàn bộ backend local `P2-T02`–`P2-T15`. Auth/team portal dùng ADR-0004 và các UI chỉ bắt đầu khi API dependency đã pass verification.
+- `P2-T01`–`P2-T16` đã hoàn tất; triển khai tuần tự toàn bộ phần còn lại `P2-T17A`, `P2-T17B`, `P2-T18`–`P2-T29`, gồm frontend, replay API/UI và qualification E2E.
 - Dùng [Solution Architecture Phase 2](../architecture/solution-architecture-phase-2.md), [SAD OCI Bot Submission](../architecture/sad-oci-bot-submissions.md), ADR-0005 và ADR-0006 làm ranh giới thực thi; `P2-T15` là cổng benchmark resource profile trước khi mở nhận bot của đội thi.
-- Nhận bàn giao Phase 1 và Phase 2 chạy trên local.
-- Lập kế hoạch CI/CD và local → cloud sau khi local đạt Definition of Done.
-- Không thay Long/Nguyên triển khai UI của họ, hoặc thay Đạt triển khai replay/E2E `P2-D13`–`P2-D16`.
+- Hoàn tất Phase 2 chạy trên local và duyệt Checkpoint `P2-B` bằng bằng chứng clean-checkout verification.
+- Không thêm CI/CD, cloud infrastructure, production secrets hoặc deploy stage vào Phase 2 hiện tại.
 
 ## 4. Tài liệu AI phải đọc
 
@@ -70,15 +69,14 @@ Nếu có mâu thuẫn, AI phải nêu rõ hai nguồn và đề xuất lựa ch
 | Duyệt Checkpoint `P1-B` | Long xong `P1-L05`–`P1-L08`, Nguyên xong `P1-N01`–`P1-N06`, Đạt xong `P1-D02`–`P1-D08` |
 | Duyệt Checkpoint `P1-C` | `P1-D11` và full verification đã pass |
 | `P2-T01` — khóa quyết định Phase 2 | `P1-D11` hoàn tất |
-| `P2-T02`–`P2-T15` — backend local | Theo dependency của từng task card; làm tuần tự trong lane backend |
-| Duyệt Checkpoint `P2-A` | `P2-T01`–`P2-T15` hoàn tất |
-| Duyệt Checkpoint `P2-B`, nhận bàn giao Phase 2 local | `P2-L02`, `P2-L03`, `P2-N14`, `P2-N15`, `P2-D14`–`P2-D16`, `P2-D13` và qualification E2E (gồm BTC provision → team login → submission và replay) đã pass |
-| Deploy từ `main` lên các môi trường | Sau Checkpoint `P2-B` |
-| Thiết kế CI/CD và cloud | Chỉ sau khi local contract/runbook được bàn giao |
+| `P2-T02`–`P2-T15` — backend local | Đã hoàn tất và Checkpoint `P2-A` đã đạt |
+| `P2-T16` — rebaseline ownership/execution loop | Đã hoàn tất ngày 13/10/2026 |
+| `P2-T17A`–`P2-T29` — frontend, replay, E2E local | Chọn task ID nhỏ nhất chưa xong có mọi dependency đã `[x]` |
+| Duyệt Checkpoint `P2-B` | `P2-T17A`, `P2-T17B`, `P2-T18`–`P2-T29` và full clean-checkout verification đã pass |
 
 Sơ đồ hai phase: `docs/team-assignment-phase-1-2.md` mục 4.2. Sau khi duyệt task hoặc checkpoint, thêm `✅` vào node tương ứng trong sơ đồ.
 
-Các task DevOps/cloud chưa nằm trong checklist hiện tại. AI phải lập plan riêng trước khi triển khai, không tự thêm cloud vào task local.
+Deploy cloud không thuộc checklist hoặc Definition of Done Phase 2. AI không tự tạo task cloud trong vòng lặp này.
 
 ## 6. Quyết định đã khóa tại P1-T01
 
@@ -101,16 +99,16 @@ Skill khuyến nghị:
 - `context-engineering`
 - `planning-and-task-breakdown`
 - `documentation-and-adrs`
-- `ci-cd-and-automation`
+- `frontend-ui-engineering` cho `P2-T17A`–`P2-T22` và `P2-T25`–`P2-T27`
+- `browser-testing-with-devtools` khi verification yêu cầu browser thật
 - `observability-and-instrumentation`
 - `security-and-hardening`
-- `shipping-and-launch`
 - `code-review-and-quality`
 
 Kiểm tra skill trong repo:
 
 ```bash
-for skill in context-engineering planning-and-task-breakdown documentation-and-adrs ci-cd-and-automation observability-and-instrumentation security-and-hardening shipping-and-launch code-review-and-quality; do
+for skill in context-engineering planning-and-task-breakdown documentation-and-adrs frontend-ui-engineering browser-testing-with-devtools observability-and-instrumentation security-and-hardening code-review-and-quality; do
   test -f ".agents/skills/$skill/SKILL.md" || echo "MISSING: $skill"
 done
 test -f .claude/skills/gitnexus-impact-analysis/SKILL.md || echo "MISSING: gitnexus-impact-analysis"
@@ -130,18 +128,19 @@ Nếu AI không hỗ trợ installer nhưng file có trong `.agents/skills/`, y�
 ## 8. Prompt điều hành sẵn dùng
 
 ```text
-Tôi là Đinh Đức Thuận, owner quyết định chung, backend local Phase 2 và bàn giao DevOps của dự án.
+Tôi là Đinh Đức Thuận, owner duy nhất của toàn bộ Phase 2 local.
 
 Hãy:
 1. Đọc rules, tasks/plan.md, tasks/todo.md và các tài liệu liên quan.
 2. Kiểm tra git status; giữ nguyên thay đổi không thuộc công việc hiện tại.
 3. Xác nhận branch `thuandd/feat-<task-id>-<slug>` tạo từ main; không làm trực tiếp trên main.
-4. Chọn đúng một task/checkpoint của tôi đã đủ dependency.
+4. Mỗi vòng chọn đúng một task/checkpoint đã đủ dependency; hoàn tất và merge xong mới chuyển task kế tiếp.
 5. Nếu là decision gate như P2-T01, lập bảng: quyết định, lựa chọn, khuyến nghị, lý do, ảnh hưởng và nơi ghi nhận.
 6. Nếu là checkpoint, đối chiếu từng acceptance criterion với bằng chứng test/build thực tế.
 7. Dùng GitNexus trước khi sửa file hiện có và detect-changes trước khi đề xuất commit.
-8. Với Phase 2, triển khai backend `P2-T02`–`P2-T15`; không triển khai UI của Long/Nguyên hoặc replay/E2E của Đạt.
-9. Không commit, merge hoặc deploy khi chưa được yêu cầu.
+8. Với Phase 2, chọn task ID nhỏ nhất chưa hoàn tất trong `P2-T17A`–`P2-T29` có đủ dependency; làm tuần tự đến Checkpoint `P2-B`.
+9. Mỗi task phải test, cập nhật docs/status, commit và merge vào `main`; không push hoặc deploy cloud nếu chưa được yêu cầu.
+10. Sau merge, đọc lại `tasks/todo.md` và tự bắt đầu task khả dụng kế tiếp; chỉ kết thúc khi Checkpoint `P2-B` đạt hoặc có blocker thật sự kèm evidence/phương án.
 
 Trước khi sửa, hãy trả về task đã chọn, dependency, assumption, file dự kiến sửa và verification plan.
 ```
@@ -149,9 +148,9 @@ Trước khi sửa, hãy trả về task đã chọn, dependency, assumption, fi
 ## 9. Không được làm
 
 - Không thay đổi luật game hoặc Bot Protocol thay Long.
-- Không sửa bot test thay Nguyên hoặc MatchRunner/replay UI/E2E thay Đạt.
+- Không thay đổi Phase 1 core/protocol/bot/MatchRunner ngoài dependency cần thiết và đã được impact-review.
 - Không đưa secret hoặc cấu hình production vào repository.
-- Không deploy từ branch khác `main` hoặc từ `main` chưa qua checkpoint.
+- Không thêm hoặc thực hiện deploy cloud trong Phase 2 hiện tại.
 - Không duyệt checkpoint chỉ dựa trên báo cáo của AI; phải có command và output thực tế.
 
 ## 10. Definition of Done và handoff

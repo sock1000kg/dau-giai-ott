@@ -12,13 +12,13 @@
 
 - Tài liệu được đánh giá `HIGH RECOMMEND` được Đinh Đức Thuận tự động duyệt.
 - Tài liệu mức trung bình, thấp hoặc còn quyết định ảnh hưởng lớn phải chờ duyệt thủ công.
-- Tự động duyệt chỉ áp dụng cho tài liệu; không tự động cho phép triển khai cloud, thao tác phá hủy dữ liệu hoặc bỏ qua checkpoint kỹ thuật.
+- Tự động duyệt chỉ áp dụng cho tài liệu; không tự động cho phép thao tác phá hủy dữ liệu hoặc bỏ qua checkpoint kỹ thuật. Deploy cloud nằm ngoài phạm vi Phase 2 hiện tại.
 
 ## 1. Mục tiêu
 
 Phase 1 phải tạo được một lệnh chạy hai bot Python trên localhost, dùng game core triển khai theo hành vi Human-vs-Human tham chiếu, giao tiếp qua Bot Protocol v1 và xuất kết quả/event log có thể tái hiện.
 
-Phase 2 dùng kết quả Phase 1 để xây luồng nộp bot, queue/worker, sandbox, scheduling, Elo, leaderboard và giao diện web trên local. Việc triển khai cloud do Đinh Đức Thuận thực hiện sau khi bản local đạt cổng nghiệm thu.
+Phase 2 dùng kết quả Phase 1 để xây luồng nộp bot, queue/worker, sandbox, scheduling, Elo, leaderboard, replay và giao diện web hoàn chỉnh trên local. Từ ngày 2026-10-13, Đinh Đức Thuận là owner duy nhất của toàn bộ Phase 2; deploy cloud không thuộc plan hoặc Definition of Done của phase này.
 
 ## 2. Quy ước ID và owner
 
@@ -48,10 +48,10 @@ Quy tắc:
 
 | Ký hiệu | Owner | Phạm vi |
 | --- | --- | --- |
-| `T` | Đinh Đức Thuận | Quyết định, backend local Phase 2, phê duyệt cổng và nhận bàn giao local |
+| `T` | Đinh Đức Thuận | Toàn bộ Phase 2 local: architecture, backend, frontend, replay, E2E và checkpoint |
 | `L` | Long Trần | Core Game API và Bot Protocol v1 |
 | `N` | Đỗ Khôi Nguyên | Bot Python hợp lệ, bot lỗi và contract test phía bot |
-| `D` | Phạm Tất Đạt | MatchRunner, BotProcess, CLI/E2E; Phase 2 replay/E2E |
+| `D` | Phạm Tất Đạt | MatchRunner, BotProcess, CLI/E2E Phase 1 |
 
 ### 2.2.1 Đổi task ID ngày 2026-10-09
 
@@ -70,6 +70,7 @@ Quy tắc:
 | — (mới 2026-10-12) | `P2-L02`–`P2-L03` | Web shell/login và team submission portal (Long) |
 | — (mới 2026-10-12) | `P2-N14`–`P2-N15` | BTC team-account console, results/leaderboard UI (Nguyên) |
 | `P2-D01`–`P2-D10`, `P2-D17`, `P2-N01` | `P2-T02`–`P2-T13` | Backend local chuyển cho Thuận; ID cũ hủy, task phát hành lại (2026-10-12) |
+| `P2-L02`, `P2-L03`, `P2-N14`, `P2-N15`, `P2-D13`–`P2-D16` | `P2-T17A`, `P2-T17B`, `P2-T18`–`P2-T29` | Toàn bộ scope Phase 2 còn mở chuyển cho Thuận và được tách lại theo lát nhỏ (2026-10-13) |
 
 Mỗi task chỉ có một owner chính. Người review không sửa trực tiếp vào phạm vi của owner nếu chưa trao đổi.
 
@@ -84,7 +85,7 @@ Branch tạo từ `main` theo owner:
 | Đỗ Khôi Nguyên | `nguyendk/` | `nguyendk/feat-p1-n01-bot-sdk` |
 | Phạm Tất Đạt | `datpt/` | `datpt/feat-p1-d02-ports` |
 
-Mỗi branch chứa đúng một task, pull request target `main`; không code trực tiếp trên `main`. Checkpoint duyệt trên `main`, và Thuận deploy từ `main`. `develop` là nhánh legacy, không dùng cho development/integration/deploy. Luồng đầy đủ: [`docs/README.md` mục 3](../docs/README.md).
+Mỗi branch chứa đúng một task, pull request target `main`; không code trực tiếp trên `main`. Checkpoint Phase 2 duyệt trên `main`; deploy cloud không nằm trong plan này. `develop` là nhánh legacy, không dùng cho development/integration/deploy. Luồng đầy đủ: [`docs/README.md` mục 3](../docs/README.md).
 
 ## 3. Baseline đã khóa
 
@@ -196,20 +197,24 @@ Phase 1 complete
     ├── P2-T01 Khóa quota/Elo/series/OCI decisions ──► P2-T14, P2-T08, P2-T09, P2-T12
     └── P2-T02 Local Docker services ──► P2-T03 Database → P2-T04 Auth/RBAC
 
-    P2-T14 OCI contract/layout validator ──┬──► P2-T07 OCI submission → P2-L03 Team portal
+    P2-T14 OCI contract/layout validator ──┬──► P2-T07 OCI submission
     P2-T04 Auth/RBAC ──┬──► P2-T06 Team + credential API ────────────────┘
-                                         └──► P2-T05 Auth contract → P2-L02 Web shell + login
-                     P2-T06 + P2-L02 ──► P2-N14 BTC credential UI
+                                         └──► P2-T05 Auth contract
     P2-T14 → P2-T08 OCI canary/security corpus ──┐
     P2-T07 → P2-T09 Worker ──────────────────────┴──► P2-T10 OCI sandbox ✅ → P2-T11 Finalization → P2-T12 Scheduling ─┬─► P2-T13A Elo ledger ✅ → P2-T13B Leaderboard API ✅ ─┐
-                                                                                                                      └─► P2-T13C Results API ✅ ───────────────────────┴─► P2-N15 Results UI
+                                                                                                                      └─► P2-T13C Results API ✅
     P2-T08 + P2-T10 ✅ ───────────────────────────────► P2-T15 Quota benchmark / registration gate
 
-    P2-T11 ──► P2-D14 Replay publication API ──┬──► P2-D15 BTC replay console
-                                                 └──► P2-D16 Spectator replay UI
-    P2-L02 ────────────────────────────────────────────► P2-D15, P2-D16
+    P2-T16 Ownership/execution rebaseline
+      ├──► P2-T17A…T17B Web foundation ──► P2-T18 Auth UI ─┬──► P2-T19 BTC team console
+      │                                               ├──► P2-T20 Team submission
+      │                                               └──► P2-T21 Results UI
+      ├──► P2-T17B + P2-T13B ────────────────────────────► P2-T22 Leaderboard UI
+      └──► P2-T23 Replay persistence ──► P2-T24 Replay HTTP/integrity
+                                           ├──► P2-T25 BTC replay console
+                                           └──► P2-T26 Spectator client ──► P2-T27 Replay player
 
-    P2-T11 + P2-T12 + P2-T13 + P2-L03 + P2-N14 + P2-N15 + P2-D14 + P2-D15 + P2-D16 ──► P2-D13 Qualification E2E
+    P2-T19…T27 + P2-T15 ──► P2-T28 E2E harness ──► P2-T29 Qualification full flow
 ```
 
 ## 8. Phase 2 task index
@@ -220,11 +225,8 @@ Phase 1 complete
 - [x] `P2-T14` — OCI submission contract và layout validator.
 - [x] `P2-T04` — Authentication và RBAC foundation.
 - [x] `P2-T05` — Auth HTTP contract và local bootstrap config.
-- [ ] `P2-L02` — Web shell và team portal login.
 - [x] `P2-T06` — Team management vertical slice.
 - [x] `P2-T07` — OCI submission upload và S3-compatible storage vertical slice.
-- [ ] `P2-N14` — BTC team-account provisioning console.
-- [ ] `P2-L03` — Team portal submission UI.
 - [x] `P2-T08` — OCI canary bot và sandbox security corpus.
 - [x] `P2-T09` — MatchJob và BullMQ worker.
 - [x] `P2-T10` — Sandbox adapter và artifact validation; Docker API integration 13/13 pass (2026-10-13).
@@ -237,15 +239,26 @@ Phase 1 complete
   - [x] `P2-T13C` — Match/series results API với RBAC; PostgreSQL + Redis integration 2/2 pass.
 - `P2-D11` — Đã hủy, tách thành `P2-L02` và `P2-L03`.
 - `P2-D12` — Đã hủy, tách thành `P2-N15`.
-- [ ] `P2-N15` — Results và leaderboard UI.
-- [ ] `P2-D14` — Replay catalog và publication API.
-- [ ] `P2-D15` — BTC replay catalog và publication console.
-- [ ] `P2-D16` — Spectator replay UI.
-- [ ] `P2-D13` — Qualification E2E local.
+- `P2-L02`, `P2-L03`, `P2-N14`, `P2-N15`, `P2-D13`–`P2-D16` — Đã hủy và phát hành lại cho Thuận; không tái sử dụng.
+- [x] `P2-T16` — Rebaseline ownership và execution loop Phase 2.
+- [ ] `P2-T17A` — React/Vite workspace package foundation.
+- [ ] `P2-T17B` — React/Vite app shell và component test harness.
+- [ ] `P2-T18` — Login, session restore và route authorization UI.
+- [ ] `P2-T19` — BTC team-account provisioning console.
+- [ ] `P2-T20` — Team OCI submission portal.
+- [ ] `P2-T21` — Team/BTC match và series results UI.
+- [ ] `P2-T22` — Public leaderboard UI.
+- [ ] `P2-T23` — Replay publication persistence và catalog repository.
+- [ ] `P2-T24` — Replay publication và public artifact HTTP API.
+- [ ] `P2-T25` — BTC replay catalog và publication console.
+- [ ] `P2-T26` — Spectator replay client và integrity verification.
+- [ ] `P2-T27` — Spectator replay player và presentation page.
+- [ ] `P2-T28` — Qualification E2E harness và deterministic fixtures.
+- [ ] `P2-T29` — Qualification full-flow E2E và local handoff.
 
 ## 9. Cảnh báo tải Phase 2
 
-Thuận sở hữu tuần tự `P2-T01`–`P2-T15`: quyết định và toàn bộ backend local. Đạt sở hữu 4 task replay/E2E (`P2-D13`–`P2-D16`); Long sở hữu 2 task web và Nguyên sở hữu 2 task UI. Cụm backend là critical path, vì vậy chỉ mở task kế tiếp khi dependency và verification của task trước đã rõ. Sau khi API ổn định, Long và Nguyên có thể làm hai feature UI độc lập song song.
+Thuận là owner duy nhất của `P2-T01`–`P2-T29`. `P2-T01`–`P2-T16` đã hoàn tất; vòng lặp AI tiếp tục từ `P2-T17A`, mỗi lần chọn đúng một task có dependency đã xanh, tạo branch riêng, test, cập nhật docs/status, commit và merge vào `main` trước task kế tiếp. Không mở nhiều branch chạm chung `src/platform/web` hoặc replay schema trong cùng lúc.
 
 1. Hạ tầng local và database.
 2. Authentication/RBAC, team và submission.
@@ -254,9 +267,7 @@ Thuận sở hữu tuần tự `P2-T01`–`P2-T15`: quyết định và toàn b�
 5. Web shell/login, team portal, BTC credential console, results UI và replay UI.
 6. Qualification E2E.
 
-Phân công frontend/feature đã được chốt: Long làm web shell/login và team submission; Nguyên làm BTC provision cùng results/leaderboard; Đạt giữ API/platform, replay và E2E.
-
-Không dùng AI như một “thành viên thứ hai” để mở đồng thời nhiều branch chạm cùng schema/module.
+Phase 2 kết thúc tại local qualification E2E và runbook. Không thêm CI/CD, cloud infrastructure, production credential hoặc deploy stage vào các task `P2-T17A`, `P2-T17B`, `P2-T18`–`P2-T29`.
 
 ## 10. Rủi ro
 
@@ -266,20 +277,19 @@ Không dùng AI như một “thành viên thứ hai” để mở đồng thờ
 | Protocol đổi khi ba lane đang code | Cao | Contract docs/schema khóa tại `P1-T01`; executable baseline tại `P1-L04`; Long là owner duy nhất |
 | Nguyên hoặc Đạt phải chờ implementation của Long | Trung bình | Dùng JSON fixtures, `FakeGame` và `ScriptedBot` |
 | Child process treo/rò rỉ | Cao | Cleanup trong `finally`, timeout monotonic, test còn PID/open handle |
-| Phase 2 dồn quá nhiều cho Đạt | Cao | Re-plan owner trước khi mở Phase 2 hoặc làm tuần tự |
+| Một owner xử lý toàn bộ Phase 2 còn lại | Cao | Task S/M, một branch/task, checkpoint sau từng cụm và full gate tại `P2-T29` |
 | Task vượt 5 file | Trung bình | Tách task trước khi bắt đầu; không mở rộng scope trong cùng PR |
 
 ## 11. Open questions không chặn Phase 1
 
-- Owner bổ sung cho Phase 2, nếu không chấp nhận Đạt triển khai tuần tự.
-- CPU/RAM/PID quota, auth/RBAC, Elo và series policy phải được khóa tại `P2-T01`.
-- Các quyết định bracket/finals phải khóa trước giai đoạn tương ứng.
+- Exact leaderboard tie vẫn cần BTC ra quyết định nghiệp vụ; UI chỉ hiển thị `BTC_REQUIRED`, không tự đặt luật phụ.
+- Bracket/finals ngoài qualification flow phải được đặc tả riêng; không tự thêm vào `P2-T17A`, `P2-T17B`, `P2-T18`–`P2-T29`.
 
 ## 12. Plan verification
 
 - [x] Mỗi task có owner.
 - [x] Task chi tiết có acceptance criteria, verification, dependency và file dự kiến trong `tasks/todo.md`.
-- [x] Mỗi task dự kiến chạm tối đa 5 file.
+- [x] Mỗi implementation task còn mở dự kiến chạm tối đa 5 file; `P2-T16` là ngoại lệ governance chỉ đồng bộ tài liệu.
 - [x] Có checkpoint sau contract, sau ba lane và sau E2E.
 - [x] Plan cũ và plan mới là cùng phạm vi nên được cập nhật tại chỗ.
 - [x] Plan đạt `HIGH RECOMMEND` và được Đinh Đức Thuận tự động duyệt.

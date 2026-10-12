@@ -10,7 +10,7 @@ Ba thành viên Dev phát triển độc lập trên `localhost`:
 - **Đỗ Khôi Nguyên:** viết các bot mẫu và bot lỗi để kiểm thử.
 - **Phạm Tất Đạt:** viết chương trình chạy trận, nối core với hai bot và kiểm thử end-to-end local.
 
-**Đinh Đức Thuận** sở hữu decision gate và, từ ngày 2026-10-12, toàn bộ backend local Phase 2. Sau khi bản local đạt cổng nghiệm thu, Thuận tiếp tục làm CI/CD và triển khai cloud. Phần DevOps không nằm trong phạm vi triển khai của ba Dev.
+**Đinh Đức Thuận** sở hữu decision gate và toàn bộ Phase 2 local. Backend `P2-T01`–`P2-T15` đã hoàn tất; frontend, replay và E2E còn lại được phát hành lại thành `P2-T17A`, `P2-T17B`, `P2-T18`–`P2-T29` ngày 2026-10-13. Phase 2 kết thúc ở qualification E2E/runbook local; CI/CD và triển khai cloud bị loại khỏi phạm vi hiện tại.
 
 ## 2. Hiện trạng đã kiểm tra
 
@@ -63,7 +63,7 @@ Long Trần không làm bot Python, process runner, Fastify API, database, queue
 - BotProcess adapter để chạy hai tiến trình bot.
 - Timeout, parse NDJSON, dọn tiến trình và event log.
 - CLI và E2E local.
-- Sang Phase 2: replay publication API, BTC replay console, spectator replay UI và qualification E2E.
+- Sau Phase 1 chỉ hỗ trợ review MatchRunner/replay contract khi Thuận yêu cầu; không còn task implementation Phase 2.
 
 Đạt không sửa luật trong core và không viết chiến thuật bot.
 
@@ -78,7 +78,7 @@ Long Trần không làm bot Python, process runner, Fastify API, database, queue
 | Đỗ Khôi Nguyên | `nguyendk/` | `nguyendk/feat-p1-n01-bot-sdk` |
 | Phạm Tất Đạt | `datpt/` | `datpt/feat-p1-d02-ports` |
 
-`main` là branch tích hợp chung. Mỗi task dùng một branch riêng tạo từ `main`, theo mẫu `<prefix>feat-<task-id>-<slug>`. Pull request target `main`; checkpoint và deploy đều thực hiện từ `main`; không code trực tiếp trên `main` và không trộn nhiều task trong một branch. `develop` là nhánh legacy, không dùng để tạo branch, nhận PR hoặc deploy.
+`main` là branch tích hợp chung. Mỗi task dùng một branch riêng tạo từ `main`, theo mẫu `<prefix>feat-<task-id>-<slug>`. Pull request target `main`; checkpoint thực hiện trên `main`; không code trực tiếp trên `main` và không trộn nhiều task trong một branch. `develop` là nhánh legacy. Deploy cloud không thuộc Phase 2 hiện tại.
 
 ### 4.2 Luồng phát triển và tích hợp
 
@@ -138,47 +138,42 @@ flowchart LR
     subgraph BE["Backend local — Thuận làm tuần tự"]
         DB["✅ P2-T03 (Thuận)<br/>PostgreSQL schema + migration"]
         RBAC["✅ P2-T04 (Thuận)<br/>Authentication, RBAC"]
-        AUTHC["✅ P2-T05<br/>Auth HTTP contract + bootstrap config"]
-        TEAM["✅ P2-T06<br/>Team + credential API"]
-        SUBAPI["✅ P2-T07<br/>OCI upload bot"]
-        WORKER["✅ P2-T09<br/>MatchJob + BullMQ queue/worker"]
-        RUN["P2-T10…T11<br/>Sandbox + ghi kết quả"]
-        BENCH["P2-T15<br/>Benchmark quota / gate đăng ký"]
-        ELO["P2-T12…T13<br/>Lịch thi đấu, Elo, leaderboard API"]
+        AUTHC["✅ P2-T05 (Thuận)<br/>Auth HTTP contract"]
+        TEAM["✅ P2-T06…T07 (Thuận)<br/>Team + OCI submission API"]
+        WORKER["✅ P2-T09…T11 (Thuận)<br/>Queue, sandbox, finalization"]
+        BENCH["✅ P2-T15 (Thuận)<br/>Benchmark quota"]
+        ELO["✅ P2-T12…T13 (Thuận)<br/>Scheduling, Elo, read API"]
     end
 
-    PA2["Checkpoint P2-A<br/>Backend local"]
-    PORTAL["P2-L02…L03 (Long)<br/>Web shell/login + team submission"]
-    ADMIN["P2-N14 (Nguyên)<br/>BTC team-account console"]
-    RESULTS["P2-N15 (Nguyên)<br/>Results + leaderboard UI"]
-    REP["P2-D14 (Đạt)<br/>Replay publication API"]
-    VIEW["P2-D15…D16 (Đạt)<br/>BTC replay console + spectator UI"]
-    E2E["P2-D13 (Đạt)<br/>Qualification E2E local"]
+    PA2["✅ Checkpoint P2-A<br/>Backend local"]
+    PLAN["✅ P2-T16 (Thuận)<br/>Rebaseline single-owner"]
+    WEB["P2-T17A…T18 (Thuận)<br/>Web foundation + auth"]
+    PORTAL["P2-T19…T22 (Thuận)<br/>BTC/team/results/leaderboard UI"]
+    REP["P2-T23…T24 (Thuận)<br/>Replay persistence + HTTP API"]
+    VIEW["P2-T25…T27 (Thuận)<br/>BTC console + spectator player"]
+    E2E["P2-T28…T29 (Thuận)<br/>Qualification E2E local"]
     PB2["Checkpoint P2-B<br/>Phase 2 local hoàn tất"]
-    DEP["Thuận deploy từ main<br/>lên các môi trường"]
 
     PC --> T21
     PC --> I1
     I1 --> DB --> RBAC
     T21 --> OCI --> CO
-    RBAC --> AUTHC --> PORTAL
-    RBAC --> TEAM --> SUBAPI --> SUB["P2-L03 team submission"]
-    OCI --> SUBAPI
-    PORTAL & TEAM --> ADMIN
-    T21 & I1 & OCI & SUBAPI --> WORKER
-    CO & SUBAPI & WORKER --> RUN
-    CO & RUN --> BENCH
-    RUN --> ELO
+    RBAC --> AUTHC
+    RBAC & OCI --> TEAM
+    T21 & I1 & OCI & TEAM --> WORKER
+    CO & WORKER --> BENCH
+    WORKER --> ELO
     ELO -.-> PA2
     BENCH -.-> PA2
-    RUN --> REP
-    ELO --> RESULTS
-    PORTAL & REP --> VIEW
-    SUB & ADMIN & RESULTS & VIEW --> E2E --> PB2 --> DEP
+    PA2 --> PLAN
+    PLAN --> WEB --> PORTAL
+    PLAN & WORKER --> REP
+    WEB & REP --> VIEW
+    PORTAL & VIEW & BENCH --> E2E --> PB2
 
     classDef done fill:#123d2a,stroke:#39d98a,color:#ffffff,stroke-width:2px;
     classDef gate stroke-width:3px;
-    class T21,I1,OCI,DB,RBAC,AUTHC,TEAM done;
+    class PC,T21,I1,OCI,CO,DB,RBAC,AUTHC,TEAM,WORKER,BENCH,ELO,PA2,PLAN done;
     class PC,PA2,PB2 gate;
 ```
 
@@ -595,42 +590,44 @@ Như vậy Đạt không bị block toàn bộ. Chỉ E2E cuối cùng phụ thu
 
 - Chỉ bảo trì core và protocol.
 - Hỗ trợ map động hoặc protocol version mới khi có yêu cầu đã duyệt.
-- Trong Phase 2, sở hữu web shell/login và team submission portal (`P2-L02`, `P2-L03`); không sửa Fastify API, database, queue hoặc Elo.
+- Không còn task implementation Phase 2; `P2-L02`/`P2-L03` đã hủy và phát hành lại cho Thuận.
 
 ### Đỗ Khôi Nguyên
 
 - Duy trì compatibility test với Bot Protocol v1.
-- Trong Phase 2, sở hữu BTC team-account provisioning console (`P2-N14`) và results/leaderboard UI (`P2-N15`); không sửa server-side authorization/API.
+- Không còn task implementation Phase 2; `P2-N14`/`P2-N15` đã hủy và phát hành lại cho Thuận.
 
 ### Phạm Tất Đạt
 
-- Sở hữu replay publication API (`P2-D14`), BTC replay console (`P2-D15`), spectator replay UI (`P2-D16`) và qualification E2E (`P2-D13`).
-- Không sở hữu Docker, database, Fastify API, object storage, queue/worker, sandbox, scheduling hoặc Elo Phase 2; các phần đó thuộc lane `P2-T02`–`P2-T15` của Thuận.
+- Chỉ bảo trì MatchRunner/BotProcess/CLI/E2E Phase 1.
+- Không còn task implementation Phase 2; `P2-D13`–`P2-D16` đã hủy và phát hành lại cho Thuận.
 
 ### Phân công tải công việc Phase 2
 
-Thuận sở hữu backend local theo một chuỗi `P2-T02`–`P2-T15`, sau decision gate `P2-T01`:
+Thuận sở hữu toàn bộ Phase 2 local theo chuỗi `P2-T01`–`P2-T29`:
 
 1. Local Docker Compose.
 2. Data model, authentication/RBAC, Team/Submission API và S3-compatible storage.
 3. Queue/worker và sandbox.
 4. Match finalization, scheduling và Elo.
+5. React/Vite foundation, authentication UI, team/BTC portal, results và leaderboard.
+6. Replay publication API, BTC console và spectator player.
+7. Qualification E2E và local runbook.
 
-Đạt bắt đầu `P2-D14` khi `P2-T04` và `P2-T11` hoàn tất, sau đó làm `P2-D15`/`P2-D16` và cuối cùng `P2-D13`. Long và Nguyên có thể làm các feature UI độc lập sau khi API contract và web shell tương ứng đã sẵn sàng; không cùng sửa app shell hoặc API của Thuận.
+Backend `P2-T01`–`P2-T15` và rebaseline `P2-T16` đã hoàn tất. Vòng lặp tiếp theo bắt đầu ở `P2-T17A`; mỗi task dùng một branch riêng, chỉ bắt đầu khi dependencies trong `tasks/todo.md` đã xanh, rồi test → docs/status → commit → merge `main` trước task kế tiếp.
 
-Phần Thuận có thể làm độc lập ngay ở Phase 2:
+Phần Thuận có thể làm tiếp ngay:
 
-- Local Docker Compose.
-- Team/Submission schema và CRUD.
-- Upload artifact qua S3-compatible storage.
-- Contract/API documentation cho UI dùng mock API.
+- `P2-T17A` web workspace package foundation, sau đó `P2-T17B` app shell/test harness.
+- `P2-T23` replay persistence có thể làm sau `P2-T16`; không cần chờ UI.
+- Sau `P2-T17B`, `P2-T18` và `P2-T22` theo dependencies tương ứng.
 
-Phần Thuận phải chờ contract:
+Ranh giới tuần tự bắt buộc:
 
-- Authentication/RBAC: chờ identity policy được khóa tại `P2-T01`.
-- Lưu MatchResult: chờ schema kết quả của Phase 1.
-- Gọi worker: chờ MatchJob payload được chốt.
-- Sandbox, series và bảng xếp hạng: chờ quota, series/Elo policy được khóa tại `P2-T01`.
+- `P2-T19`–`P2-T21` chờ auth UI `P2-T18`.
+- `P2-T24` chờ replay persistence `P2-T23`; replay UI `P2-T25`–`P2-T27` chờ API `P2-T24`.
+- `P2-T28` chỉ bắt đầu sau các UI/replay feature; `P2-T29` là full-flow gate cuối.
+- Deploy cloud, production secrets và CI/CD không thuộc chuỗi task này.
 
 ## 11. Thứ tự triển khai
 
