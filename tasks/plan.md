@@ -241,7 +241,7 @@ Phase 1 complete
 - `P2-D12` — Đã hủy, tách thành `P2-N15`.
 - `P2-L02`, `P2-L03`, `P2-N14`, `P2-N15`, `P2-D13`–`P2-D16` — Đã hủy và phát hành lại cho Thuận; không tái sử dụng.
 - [x] `P2-T16` — Rebaseline ownership và execution loop Phase 2.
-- [ ] `P2-T17A` — React/Vite workspace package foundation.
+- [x] `P2-T17A` — React/Vite workspace package foundation; clean install, root tests/typecheck/build pass (2026-10-13).
 - [ ] `P2-T17B` — React/Vite app shell và component test harness.
 - [ ] `P2-T18` — Login, session restore và route authorization UI.
 - [ ] `P2-T19` — BTC team-account provisioning console.
@@ -289,7 +289,7 @@ Phase 2 kết thúc tại local qualification E2E và runbook. Không thêm CI/C
 
 - [x] Mỗi task có owner.
 - [x] Task chi tiết có acceptance criteria, verification, dependency và file dự kiến trong `tasks/todo.md`.
-- [x] Mỗi implementation task còn mở dự kiến chạm tối đa 5 file; `P2-T16` là ngoại lệ governance chỉ đồng bộ tài liệu.
+- [x] Mỗi implementation task còn mở dự kiến là một lát S/M; package/workspace bootstrap có thể vượt 5 file vì phải cập nhật root lock/workspace, hai TypeScript configs và smoke test cùng nhau.
 - [x] Có checkpoint sau contract, sau ba lane và sau E2E.
 - [x] Plan cũ và plan mới là cùng phạm vi nên được cập nhật tại chỗ.
 - [x] Plan đạt `HIGH RECOMMEND` và được Đinh Đức Thuận tự động duyệt.

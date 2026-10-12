@@ -584,15 +584,15 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 **Ước lượng:** M (docs governance)
 **Hoàn tất:** 2026-10-13 — toàn bộ scope Phase 2 còn lại được phát hành lại thành `P2-T17A`, `P2-T17B`, `P2-T18`–`P2-T29`; deploy cloud bị loại khỏi Definition of Done Phase 2 local.
 
-### [ ] P2-T17A — React/Vite workspace package foundation
+### [x] P2-T17A — React/Vite workspace package foundation
 
 **Owner:** Đinh Đức Thuận
-**Mô tả:** Đăng ký `src/platform/web` thành npm workspace React/Vite và khóa toolchain/package scripts.
-**Acceptance criteria:** (1) Package tuân Node.js 22/npm workspace/TypeScript convention; (2) dependencies React/Vite/Vitest/Testing Library được pin và lockfile nhất quán; (3) scripts `dev`, `test`, `typecheck`, `build` tồn tại nhưng chưa chứa domain behavior.
-**Verification:** `npm ci && npm run typecheck --workspace @ott/platform-web`.
+**Mô tả:** Đăng ký `src/platform/web` thành npm workspace và khóa React/Vite/tooling dependencies trước khi thêm app behavior.
+**Acceptance criteria:** (1) Root workspace nhận đúng `@ott/platform-web`; React, React DOM, Vite, Testing Library và jsdom được pin chính xác; (2) module tuân exports và hai TypeScript config của convention package; (3) test import package chạy qua Vitest, chưa có auth/domain behavior.
+**Verification:** Pass 2026-10-13: `npm ci`; workspace test (no module tests yet), typecheck and build; root `npm test`, `npm run typecheck`, and `npm run build` all pass. Root suite includes the new `@ott/platform-web` public-import smoke test. `npm ci` reported 0 vulnerabilities.
 **Dependencies:** `P2-T16`.
-**Files dự kiến:** `package.json`, `package-lock.json`, `src/platform/web/package.json`, `src/platform/web/tsconfig.json`, `src/platform/web/vite.config.ts`
-**Ước lượng:** M (5 file)
+**Files dự kiến:** `package.json`, `package-lock.json`, `src/platform/web/package.json`, `src/platform/web/tsconfig.json`, `src/platform/web/tsconfig.build.json`, `src/platform/web/src/index.ts`, `tests/smoke.test.ts`
+**Ước lượng:** M (7 file; workspace/lock/config foundation)
 
 ### [ ] P2-T17B — React/Vite app shell và component test harness
 
