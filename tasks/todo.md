@@ -524,15 +524,40 @@ Các ID cũ bị hủy trước khi triển khai và không được tái sử d
 
 **Hoàn tất:** 2026-10-13 — Migration 0003 bổ sung round snapshot/idempotency, series BO2/score, unique participant per round, pairing reverse-pair guard, swapped game number và immutability triggers; `scheduleRound` đọc active submission/current rating từ DB, khóa đồng thời theo stage, greedy pairing band 200 +100 và tránh rematch trong 3 round gần nhất, ghi bye, 2 match X/O đảo phe và `MATCH_SCHEDULED` outbox atomically. Queue dispatcher validates payload và retry an toàn qua stable MatchQueue key; `settleSeries` đợi đủ hai terminal games, tính điểm theo side swap, retry idempotent, tie rõ ràng, hạ tầng failure/cancel không có score (bot FORFEIT vẫn là result chính thức). Mỗi stage chỉ có một round mở; round mới bị chặn đến khi mọi series FINALIZED ở round trước có đủ 2 rating ledger entries từ P2-T13; series CANCELLED không cần ledger. Test logic 9/9, PostgreSQL schema+scheduling integration 11/11, worker finalization integration 5/5; full test/typecheck/build pass, audit 0 vulnerabilities; docs SAD, API README và local runbook updated. DOCS UPDATED: Solution Architecture Phase 2, platform API README, Phase 2 local runbook, task graph.
 
-### [ ] P2-T13 — Match results, Elo ledger và leaderboard API
+### [ ] P2-T13 — Match results, Elo ledger và leaderboard API (nhóm task)
 
 **Owner:** Đinh Đức Thuận
-**Mô tả:** Ghi biến động Elo dạng ledger và cung cấp API đọc match/series results cùng leaderboard.
-**Acceptance criteria:** (1) Mỗi series terminal tạo một ledger entry; (2) results/leaderboard có authorization, ordering, tie-break và pagination ổn định; (3) rebuild ledger cho cùng rating hiện tại.
-**Verification:** `npm test -- src/platform/api/tests/leaderboard.integration.test.ts`.
+**Mô tả:** Hoàn thiện Elo ledger, leaderboard và API kết quả; được tách thành các PR nhỏ theo ranh giới triển khai.
+**Acceptance criteria:** (1) Mỗi series terminal tạo ledger entry đúng một lần từ snapshot đầu vòng; (2) rebuild/replay giữ nguyên rating hiện tại; (3) leaderboard và results có authorization, ordering, tie-break và pagination ổn định.
 **Dependencies:** `P2-T12`, `P2-T01`.
-**Files dự kiến:** `src/platform/api/src/modules/ratings/elo.ts`, `src/platform/api/src/modules/ratings/service.ts`, `src/platform/api/src/modules/ratings/routes.ts`, `src/platform/api/src/modules/results/routes.ts`, `src/platform/api/tests/leaderboard.integration.test.ts`
-**Ước lượng:** M (5 file)
+**Ước lượng:** L (3 task con)
+
+#### [ ] P2-T13A — Elo calculation, round ledger và rebuild verification
+
+**Owner:** Đinh Đức Thuận
+**Mô tả:** Áp dụng Elo cho toàn bộ series hợp lệ sau khi vòng terminal, ghi ledger nguyên tử/idempotent và cung cấp phép rebuild đối chiếu.
+**Acceptance criteria:** (1) Mỗi series FINALIZED có đúng hai ledger entry, series hủy/lỗi hạ tầng không đổi Elo; (2) mọi series trong vòng dùng rating snapshot đầu vòng; (3) chạy lại không nhân đôi và rebuild cùng dữ liệu cho cùng current rating.
+**Verification:** API rating unit/integration tests với PostgreSQL.
+**Dependencies:** `P2-T12`, `P2-T01`.
+**Files dự kiến:** migration, `ratings/elo.ts`, `ratings/service.ts`, tests.
+
+#### [ ] P2-T13B — Leaderboard API và tie-break
+
+**Owner:** Đinh Đức Thuận
+**Mô tả:** Cung cấp leaderboard ổn định với thứ tự theo Elo, điểm đối đầu, win-rate, lỗi kỹ thuật/forfeit và khóa cuối xác định.
+**Acceptance criteria:** (1) Public response chỉ gồm field được phép; (2) thứ tự tie-break đầy đủ deterministic; (3) pagination validate/bounded và ổn định khi khóa sort trùng.
+**Verification:** Leaderboard API integration tests.
+**Dependencies:** `P2-T13A`.
+**Files dự kiến:** `ratings/routes.ts`, repository/query, tests, API docs.
+
+#### [ ] P2-T13C — Match/series results API với RBAC
+
+**Owner:** Đinh Đức Thuận
+**Mô tả:** Cung cấp kết quả trận/series cho BTC và giới hạn tài khoản đội vào dữ liệu được phép xem.
+**Acceptance criteria:** (1) Team account không thể đọc chéo team; BTC xem trong phạm vi giải; (2) response không lộ seed, object key hay artifact riêng tư; (3) ordering và pagination deterministic, có reason/terminal outcome.
+**Verification:** Results API integration tests gồm unauthenticated, team IDOR và BTC cases.
+**Dependencies:** `P2-T12`, `P2-T01`.
+**Files dự kiến:** `results/routes.ts`, app registration, tests, API docs.
 
 ### P2-D11 — Đã hủy, tách thành `P2-L02` và `P2-L03`
 
