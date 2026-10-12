@@ -97,7 +97,7 @@ Nếu working tree đã có thay đổi không phải của mình, không xóa, 
 
 Không đưa secret, token, mật khẩu, `.env` thật hoặc dữ liệu riêng tư vào prompt AI.
 
-### 5.1 Tạo branch riêng từ `develop`
+### 5.1 Tạo branch riêng từ `main`
 
 | Thành viên | Prefix |
 | --- | --- |
@@ -110,12 +110,12 @@ Ví dụ cho task `P1-N01` của Nguyên:
 
 ```bash
 git fetch origin
-git switch develop
-git pull --ff-only origin develop
+git switch main
+git pull --ff-only origin main
 git switch -c nguyendk/feat-p1-n01-bot-sdk
 ```
 
-Feature dùng `<prefix>feat-<task-id>-<slug>`, fix dùng `<prefix>fix-<task-id>-<slug>`, tài liệu dùng `<prefix>docs-<task-id>-<slug>`. Nếu `origin/develop` chưa tồn tại hoặc working tree có thay đổi không rõ owner, dừng và báo; không tự reset. Pull request luôn target `develop`.
+Feature dùng `<prefix>feat-<task-id>-<slug>`, fix dùng `<prefix>fix-<task-id>-<slug>`, tài liệu dùng `<prefix>docs-<task-id>-<slug>`. Nếu `origin/main` chưa tồn tại hoặc working tree có thay đổi không rõ owner, dừng và báo; không tự reset. Pull request luôn target `main`.
 
 ## 6. Prompt mở phiên AI đầu tiên
 
@@ -133,7 +133,7 @@ Trước khi làm:
 3. Đọc phần liên quan trong docs/team-assignment-phase-1-2.md,
    docs/tai-lieu-yeu-cau.md và ADR liên quan.
 4. Kiểm tra git status và giữ nguyên thay đổi không thuộc task.
-5. Xác nhận branch đúng prefix owner, được tạo từ develop.
+5. Xác nhận branch đúng prefix owner, được tạo từ main.
 6. Dùng GitNexus để hiểu context và chạy impact trước khi sửa.
 
 Phạm vi được phép:
@@ -356,7 +356,7 @@ Phiên mới phải đọc lại rules, task card, `git status` và handoff gầ
 - [ ] Tôi biết phạm vi của mình trong tài liệu phân công.
 - [ ] Tôi đã chọn đúng một task ID trong `tasks/todo.md`.
 - [ ] Dependency của task đã hoàn tất.
-- [ ] Tôi đang ở branch đúng prefix của mình, tạo từ `develop`.
+- [ ] Tôi đang ở branch đúng prefix của mình, tạo từ `main`.
 - [ ] Tôi đã kiểm tra `git status` và không ghi đè thay đổi của người khác.
 - [ ] Prompt AI nêu rõ file được sửa và phần ngoài phạm vi.
 - [ ] AI sẽ chạy GitNexus impact trước khi edit.

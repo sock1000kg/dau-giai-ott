@@ -24,11 +24,11 @@ Nếu hai nguồn sự thật khác loại mâu thuẫn nhau, AI phải dừng t
 ## 2. Trạng thái hiện tại
 
 - `P1-T01` đã hoàn tất: ADR-0002, Engine API v1, Bot Protocol v1, schema và fixtures đã khóa.
-- Bộ tài liệu khởi tạo được đưa vào `main`, sau đó Thuận tạo `develop` từ `main` mới; nhóm chỉ bắt đầu branch cá nhân sau khi `origin/develop` tồn tại.
+- `main` là nhánh tích hợp và nguồn deploy. `develop` được giữ lại như nhánh legacy sau lần chuyển convention ngày 2026-10-12 và không còn là base/target branch.
 - Ngày 2026-10-09 owner đổi theo lane và task ID được đánh lại theo owner mới: Long Trần làm core/protocol (`P1-L*`), Đỗ Khôi Nguyên làm bot Python và sandbox corpus (`P1-N*`, `P2-N01`), Phạm Tất Đạt làm MatchRunner và platform (`P1-D*`, `P2-D*`). Bảng ID cũ → mới: [`tasks/plan.md` mục 2.2.1](../tasks/plan.md).
 - Workspace chung là `P1-T02` của Đinh Đức Thuận (thay `P1-D01` đã hủy), gộp sau Checkpoint `P1-B`; trước đó mỗi module tự khai báo dependency và chạy local.
-- `P1-D02` (GamePort, BotPort và fakes) đã merge vào `develop`; `P1-D03` (MatchRunner happy path), `P1-D04` (error, skip và cleanup), `P1-D07` (event log và replay verifier), `P1-D05` (BotProcess NDJSON adapter), `P1-D06` (BotProcess timeout và process cleanup) và `P1-D08` (CLI chạy trận local) của Đạt đã xong trên các branch riêng, chưa merge; tiếp theo là gộp batch (D05 → D06 → D08) vào `main`, sau đó là `P1-D09` (cần `P1-T02`).
-- Source root là [`src/`](../src/README.md); hiện mới có layout, chưa có implementation.
+- Các feature branch remote hiện có đều đã là tổ tiên của `main`; `main` còn chứa validator protocol, lifecycle/hash/event core, BotProcess và CLI mới hơn `develop`.
+- Source root là [`src/`](../src/README.md); Phase 1 đã có implementation cho game-core, bot-protocol, MatchRunner và Python bots.
 - Kế hoạch GitNexus ngày 08/10 trong `docs/plans/` đã bị supersede; không dùng task ID hoặc owner trong tài liệu đó.
 
 ## 3. Quy trình branch thống nhất
@@ -42,31 +42,28 @@ Nếu hai nguồn sự thật khác loại mâu thuẫn nhau, AI phải dừng t
 
 Luồng branch:
 
-1. Khởi tạo: branch tài liệu của Thuận merge vào `main`; Thuận tạo `develop` từ `main` và push `origin/develop`.
-2. Phát triển: mỗi người tạo branch task từ `develop` mới nhất, làm và verify trên branch đó.
-3. Tích hợp: mỗi task mở pull request vào `develop`.
-4. Checkpoint: Thuận duyệt checkpoint trên `develop` sau khi các task liên quan đã merge và integration/E2E pass.
-5. Triển khai: sau khi hoàn thiện, Thuận deploy từ `develop` lên các môi trường. `develop` luôn là branch có code mới nhất.
-6. Đồng bộ `main`: về sau Thuận merge `develop` vào `main`; chưa có lịch cố định, chỉ làm khi Thuận quyết định.
+1. Khởi tạo: `main` là nguồn branch và nhánh tích hợp chung.
+2. Phát triển: mỗi người tạo branch task từ `main` mới nhất, làm và verify trên branch đó.
+3. Tích hợp: mỗi task mở pull request vào `main`.
+4. Checkpoint: Thuận duyệt checkpoint trên `main` sau khi các task liên quan đã merge và integration/E2E pass.
+5. Triển khai: sau khi hoàn thiện, Thuận deploy từ `main` lên các môi trường.
+6. `develop` là nhánh legacy; không merge feature vào, không tạo branch từ và không deploy từ nhánh này.
 
 ```mermaid
 flowchart LR
-    S["thuandd/docs-p1-t01-doc-consistency"] -->|merge| M["main"]
-    M -->|tạo develop| V["develop"]
-    V -->|checkout| F["Branch task cá nhân<br/>vd. longt/feat-p1-l01-game-baseline"]
-    F -->|pull request| V
-    V --> C["Checkpoint Thuận duyệt"]
-    C --> E["Thuận deploy từ develop<br/>lên các môi trường"]
-    V -.->|sau này Thuận merge| M
+    M["main — tích hợp và deploy"] -->|checkout| F["Branch task cá nhân<br/>vd. longt/feat-p1-l01-game-baseline"]
+    F -->|pull request| M
+    M --> C["Checkpoint Thuận duyệt"]
+    C --> E["Thuận deploy từ main<br/>lên các môi trường"]
 ```
 
 Quy tắc:
 
 - Feature dùng `<prefix>feat-<task-id>-<slug>`; fix dùng `<prefix>fix-<task-id>-<slug>`; tài liệu dùng `<prefix>docs-<task-id>-<slug>`.
-- Mỗi task dùng một branch riêng tạo từ `develop`.
-- Không code trực tiếp trên `main` hoặc `develop`.
-- Mỗi pull request chỉ chứa một task và target `develop`.
-- Chỉ Đinh Đức Thuận deploy, và chỉ từ `develop` sau khi integration/E2E và checkpoint pass.
+- Mỗi task dùng một branch riêng tạo từ `main`.
+- Không code trực tiếp trên `main`.
+- Mỗi pull request chỉ chứa một task và target `main`.
+- Chỉ Đinh Đức Thuận deploy, và chỉ từ `main` sau khi integration/E2E và checkpoint pass.
 
 ## 4. Bắt đầu tại đây
 
@@ -100,5 +97,5 @@ Tài liệu là một phần của implementation, không phải bước làm sa
 - Thay đổi behavior/API/schema/config/command phải cập nhật requirement, contract, ADR, README hoặc runbook tương ứng.
 - Task chỉ được tick `[x]` khi acceptance criteria, verification và phần tài liệu liên quan đều hoàn tất.
 - Diagram chỉ gắn `✅` sau khi task/checkpoint đã được xác nhận; không suy đoán tiến độ từ file tồn tại hoặc báo cáo của AI.
-- Sau khi merge vào `develop`, task owner hoặc Đinh Đức Thuận cập nhật trạng thái tập trung ngay, không chờ cuối phase.
+- Sau khi merge vào `main`, task owner hoặc Đinh Đức Thuận cập nhật trạng thái tập trung ngay, không chờ cuối phase.
 - Handoff phải ghi `DOCS UPDATED` và liệt kê tài liệu đã sửa; nếu không cần sửa, ghi rõ lý do `not applicable`.

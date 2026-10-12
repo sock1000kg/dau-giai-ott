@@ -50,8 +50,8 @@ This project is indexed by GitNexus as **dau-giai-ott** (8 symbols, 6 relationsh
 - Không dùng `docs/plans/2026-10-08-gitnexus-plan-phase-one-two-delivery.md` để triển khai; tài liệu đó đã superseded.
 - Stack đã khóa: Node.js 22, TypeScript, Vitest, npm workspaces; Phase 2 dùng Fastify, PostgreSQL, Redis/BullMQ, MinIO và React/Vite.
 - Source nằm dưới `src/`; ranh giới module được mô tả tại `src/README.md`.
-- Mỗi task dùng branch riêng từ `develop`: `thuandd/`, `datpt/`, `longt/` hoặc `nguyendk/`, theo mẫu `<prefix>feat-<task-id>-<slug>`.
-- Không code trực tiếp trên `main` hoặc `develop`; pull request target `develop`.
-- `develop` là nhánh tích hợp và nguồn deploy: sau integration/E2E và checkpoint được Đinh Đức Thuận duyệt, Thuận deploy từ `develop` lên các môi trường; không merge vào `main` hoặc deploy khi chưa được yêu cầu.
+- Mỗi task dùng branch riêng từ `main`: `thuandd/`, `datpt/`, `longt/` hoặc `nguyendk/`, theo mẫu `<prefix>feat-<task-id>-<slug>`.
+- Không code trực tiếp trên `main`; pull request target `main`.
+- `main` là nhánh tích hợp và nguồn deploy: sau integration/E2E và checkpoint được Đinh Đức Thuận duyệt, Thuận deploy từ `main` lên các môi trường; không deploy khi chưa được yêu cầu. `develop` là nhánh legacy, không dùng để tạo branch, mở pull request hoặc deploy.
 - Docs-as-code: behavior/API/schema/config/command thay đổi phải cập nhật docs liên quan trong cùng branch/PR; chỉ tick task hoặc diagram sau verification.
 - Nếu requirement, ADR, contract và task card mâu thuẫn, dừng phần bị ảnh hưởng và báo đúng hai nguồn; không tự chọn.

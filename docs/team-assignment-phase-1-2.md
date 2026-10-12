@@ -78,7 +78,7 @@ Long Trần không làm bot Python, process runner, Fastify API, database, queue
 | Đỗ Khôi Nguyên | `nguyendk/` | `nguyendk/feat-p1-n01-bot-sdk` |
 | Phạm Tất Đạt | `datpt/` | `datpt/feat-p1-d02-ports` |
 
-`develop` được tạo từ `main` sau khi bộ tài liệu khởi tạo vào `main`. Mỗi task dùng một branch riêng tạo từ `develop`, theo mẫu `<prefix>feat-<task-id>-<slug>`. Pull request target `develop`; checkpoint và deploy đều thực hiện từ `develop`; không code trực tiếp trên `main`/`develop` và không trộn nhiều task trong một branch.
+`main` là branch tích hợp chung. Mỗi task dùng một branch riêng tạo từ `main`, theo mẫu `<prefix>feat-<task-id>-<slug>`. Pull request target `main`; checkpoint và deploy đều thực hiện từ `main`; không code trực tiếp trên `main` và không trộn nhiều task trong một branch. `develop` là nhánh legacy, không dùng để tạo branch, nhận PR hoặc deploy.
 
 ### 4.2 Luồng phát triển và tích hợp
 
@@ -142,7 +142,7 @@ flowchart LR
     UI["P2-D11…D12 (Đạt)<br/>React/Vite: nộp bot, kết quả, leaderboard"]
     E2E["P2-D13 (Đạt)<br/>Qualification E2E local"]
     PB2["Checkpoint P2-B<br/>Phase 2 local hoàn tất"]
-    DEP["Thuận deploy từ develop<br/>lên các môi trường"]
+    DEP["Thuận deploy từ main<br/>lên các môi trường"]
 
     PC --> T21
     PC --> I1
@@ -163,9 +163,9 @@ flowchart LR
 
 Các điểm đồng bộ bắt buộc:
 
-1. `origin/develop` phải tồn tại trước khi mở branch cá nhân.
+1. `origin/main` phải tồn tại và được cập nhật trước khi mở branch cá nhân.
 2. Long không chờ workspace gốc; Đạt chờ public types `P1-L02/P1-L03`; Nguyên bắt đầu từ schema/fixtures đã khóa.
-3. Cả ba lane merge vào `develop` để chạy E2E cuối Phase 1.
+3. Cả ba lane merge vào `main` để chạy E2E cuối Phase 1.
 
 Trong thời gian code, Nguyên và Đạt dùng fixture, mock hoặc fake; không gọi service chạy trên máy của Long.
 
@@ -174,7 +174,7 @@ Trong thời gian code, Nguyên và Đạt dùng fixture, mock hoặc fake; khô
 - Mỗi thay đổi behavior, public API, schema, command, config hoặc cách chạy phải cập nhật tài liệu liên quan ngay trên cùng branch với code.
 - Trước khi mở PR, task owner cập nhật README/runbook/contract/ADR cần thiết và ghi verification thực tế trong handoff.
 - Không tick task khi mới viết xong code. Chỉ đổi `[ ]` thành `[x]` sau khi acceptance criteria và verification pass.
-- Sau khi task/checkpoint được xác nhận trên `develop`, owner hoặc Đinh Đức Thuận cập nhật `tasks/todo.md` và thêm `✅` vào node tương ứng trong diagram.
+- Sau khi task/checkpoint được xác nhận trên `main`, owner hoặc Đinh Đức Thuận cập nhật `tasks/todo.md` và thêm `✅` vào node tương ứng trong diagram.
 - Nếu code và docs khác nhau, task chưa hoàn tất; không merge bằng cách hứa “cập nhật docs sau”.
 
 ## 5. Contract phải chốt trước khi code

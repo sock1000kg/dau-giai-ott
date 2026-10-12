@@ -17,20 +17,20 @@ Không commit, push hoặc sửa phạm vi của người khác nếu tôi chưa
 
 ## 2. Git branch workflow
 
-- Base branch: `develop`.
+- Base branch: `main`.
 - Mỗi task dùng branch riêng với prefix `longt/`, ví dụ `longt/feat-p1-l01-game-baseline`.
-- Không code trực tiếp trên `main` hoặc `develop`.
+- Không code trực tiếp trên `main`.
 - Một branch chỉ chứa một task `P1-Lxx`; không trộn core/protocol task khác.
-- Hoàn tất thì push branch và tạo PR target `develop` để integration test.
+- Hoàn tất thì push branch và tạo PR target `main` để integration test.
 
 ```bash
 git fetch origin
-git switch develop
-git pull --ff-only origin develop
+git switch main
+git pull --ff-only origin main
 git switch -c longt/feat-p1-l01-game-baseline
 ```
 
-Thay task ID/slug theo task đang làm. Nếu `origin/develop` chưa có hoặc working tree bẩn do người khác, dừng và báo blocker. Không force-push branch chung và không merge thẳng vào `main`.
+Thay task ID/slug theo task đang làm. Nếu `origin/main` chưa có hoặc working tree bẩn do người khác, dừng và báo blocker. Không force-push branch chung và không merge thẳng vào `main`.
 
 ## 3. Kết quả cần tạo ra
 
@@ -140,7 +140,7 @@ Chỉ thực hiện đúng một task.
 
 Quy trình bắt buộc:
 1. Đọc rules, task card, requirement/assignment section và code/test liên quan.
-2. Xác nhận branch `longt/feat-<task-id>-<slug>` được tạo từ develop; không làm trên main/develop.
+2. Xác nhận branch `longt/feat-<task-id>-<slug>` được tạo từ main; không làm trực tiếp trên main.
 3. Dùng GitNexus context/impact trước khi sửa symbol hoặc file hiện có.
 4. Nêu invariant, public contract và behavior phải giữ tương thích.
 5. Viết test thất bại trước hoặc cùng lúc với thay đổi hành vi.
@@ -148,7 +148,7 @@ Quy trình bắt buộc:
 7. Chạy focused test, typecheck và verification command của task.
 8. Review diff, chạy GitNexus detect-changes và báo risk thực tế.
 9. Không sửa bot Python, MatchRunner, platform hoặc cloud.
-10. Chỉ đề xuất PR vào develop; không merge/commit nếu tôi chưa yêu cầu.
+10. Chỉ đề xuất PR vào main; không merge/commit nếu tôi chưa yêu cầu.
 
 Trước khi code, trả về: task được chọn, dependency, assumption, public API bị ảnh hưởng, file dự kiến sửa và test plan.
 ```

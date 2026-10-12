@@ -7,7 +7,7 @@
 
 > Chỉ bắt đầu khi dependency đã xong. Mỗi task là một PR nhỏ; nếu dự kiến vượt 5 file thì tách task trước khi code.
 >
-> Trạng thái/dependency trong file này là nguồn duy nhất để AI chọn task. Branch phải tạo từ `develop` với prefix owner quy định tại `docs/README.md`.
+> Trạng thái/dependency trong file này là nguồn duy nhất để AI chọn task. Branch phải tạo từ `main` với prefix owner quy định tại `docs/README.md`.
 >
 > Module TypeScript tạo và dùng `package.json` theo [convention package module](../docs/conventions/module-package.md). Trước `P1-T02`, verification chạy trong thư mục module bằng `npm --prefix src/<module> ...`.
 >

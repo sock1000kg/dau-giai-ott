@@ -17,20 +17,20 @@ Không commit, push hoặc sửa core/runner nếu tôi chưa yêu cầu.
 
 ## 2. Git branch workflow
 
-- Base branch: `develop`.
+- Base branch: `main`.
 - Mỗi task dùng branch riêng với prefix `nguyendk/`, ví dụ `nguyendk/feat-p1-n01-bot-sdk`.
-- Không code trực tiếp trên `main` hoặc `develop`.
+- Không code trực tiếp trên `main`.
 - Một branch chỉ chứa một task `P1-Nxx` hoặc `P2-N01`.
-- Hoàn tất thì push branch và tạo PR target `develop` để chạy contract/integration tests.
+- Hoàn tất thì push branch và tạo PR target `main` để chạy contract/integration tests.
 
 ```bash
 git fetch origin
-git switch develop
-git pull --ff-only origin develop
+git switch main
+git pull --ff-only origin main
 git switch -c nguyendk/feat-p1-n01-bot-sdk
 ```
 
-Nếu `origin/develop` chưa có hoặc working tree có thay đổi chưa rõ owner, dừng và báo blocker. Không sửa branch của Long/Đạt và không merge trực tiếp vào `main`.
+Nếu `origin/main` chưa có hoặc working tree có thay đổi chưa rõ owner, dừng và báo blocker. Không sửa branch của Long/Đạt và không merge trực tiếp vào `main`.
 
 ## 3. Kết quả cần tạo ra
 
@@ -135,7 +135,7 @@ Chỉ thực hiện đúng một task.
 
 Quy trình bắt buộc:
 1. Đọc rules, task card, Bot Protocol schema/fixtures và Python code/test liên quan.
-2. Xác nhận branch `nguyendk/feat-<task-id>-<slug>` được tạo từ develop; không làm trên main/develop.
+2. Xác nhận branch `nguyendk/feat-<task-id>-<slug>` được tạo từ main; không làm trực tiếp trên main.
 3. Kiểm tra protocol đã khóa; nếu chưa, báo blocked và không invent message fields.
 4. Dùng GitNexus impact trước khi sửa file hiện có.
 5. Viết unittest cho behavior hoặc fault mode trước/cùng implementation.
@@ -143,7 +143,7 @@ Quy trình bắt buộc:
 7. Không import hoặc sửa core TypeScript/MatchRunner.
 8. Không chạy payload network/fork/CPU/memory nguy hiểm ngoài sandbox/harness đã giới hạn.
 9. Chạy verification command của task và toàn bộ bot contract tests liên quan.
-10. Review diff, chạy detect-changes và chỉ đề xuất PR vào develop.
+10. Review diff, chạy detect-changes và chỉ đề xuất PR vào main.
 
 Trước khi code, trả về: task, dependency, fixture/schema sẽ dùng, file dự kiến sửa, test cases và safety notes.
 ```

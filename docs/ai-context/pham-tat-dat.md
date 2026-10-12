@@ -17,20 +17,20 @@ Không commit, push, deploy hoặc sửa game rules/bot strategy nếu tôi chư
 
 ## 2. Git branch workflow
 
-- Base branch: `develop`.
+- Base branch: `main`.
 - Mỗi task dùng branch riêng với prefix `datpt/`, ví dụ `datpt/feat-p1-d02-ports`.
-- Không code trực tiếp trên `main` hoặc `develop`.
+- Không code trực tiếp trên `main`.
 - Một branch chỉ chứa một task `P1-Dxx` hoặc `P2-Dxx`, đặc biệt không trộn schema/API/UI.
-- Hoàn tất thì push branch và tạo PR target `develop` để chạy integration/E2E.
+- Hoàn tất thì push branch và tạo PR target `main` để chạy integration/E2E.
 
 ```bash
 git fetch origin
-git switch develop
-git pull --ff-only origin develop
+git switch main
+git pull --ff-only origin main
 git switch -c datpt/feat-p1-d02-ports
 ```
 
-Nếu `origin/develop` chưa có hoặc working tree chứa thay đổi của người khác, dừng và báo blocker. Không force-push `develop` và không merge trực tiếp vào `main`.
+Nếu `origin/main` chưa có hoặc working tree chứa thay đổi của người khác, dừng và báo blocker. Không force-push branch chung và không merge trực tiếp vào `main`.
 
 ## 3. Kết quả cần tạo ra
 
@@ -148,14 +148,14 @@ Chỉ thực hiện đúng một task, tối đa phạm vi file ghi trong task c
 
 Quy trình bắt buộc:
 1. Đọc rules, task card, dependency contract và code/test liên quan.
-2. Kiểm tra git status và xác nhận branch `datpt/feat-<task-id>-<slug>` tạo từ develop; không làm trên main/develop.
+2. Kiểm tra git status và xác nhận branch `datpt/feat-<task-id>-<slug>` tạo từ main; không làm trực tiếp trên main.
 3. Dùng GitNexus context/impact trước khi sửa symbol/file hiện có.
 4. Nếu core/bot thật chưa sẵn sàng, dùng ports/fakes; không invent game rules/protocol.
 5. Viết test trước hoặc cùng implementation; ưu tiên thin vertical slice.
 6. Với child process: timeout bằng server clock, cleanup trong finally, không dùng shell string.
 7. Với Phase 2: chỉ dùng PostgreSQL/Redis/MinIO local qua Docker và không commit secret.
 8. Chạy verification command của task, typecheck/build liên quan và review diff.
-9. Chạy GitNexus detect-changes; chỉ đề xuất PR vào develop, không deploy.
+9. Chạy GitNexus detect-changes; chỉ đề xuất PR vào main, không deploy.
 
 Trước khi code, trả về: task, dependency, contract đầu vào, file dự kiến sửa, test plan và risk chính.
 ```

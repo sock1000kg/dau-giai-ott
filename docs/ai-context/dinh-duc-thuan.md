@@ -19,23 +19,22 @@ AI phải đọc file này cùng tài liệu nguồn; không chỉ dựa vào l�
 
 ## 2. Git branch workflow
 
-- Khởi tạo: merge branch tài liệu hiện tại vào `main`, tạo `develop` từ `main` mới và push `origin/develop` trước khi nhóm mở branch cá nhân.
-- Branch tích hợp chung và nguồn deploy: `develop`.
-- Mỗi task dùng branch riêng của owner, tạo từ `develop`.
+- `main` là branch tích hợp chung và nguồn deploy.
+- Mỗi task dùng branch riêng của owner, tạo từ `main`.
 - Branch dùng prefix `thuandd/`, ví dụ task tiếp theo `thuandd/feat-p2-t01-decisions`.
-- Không code trực tiếp trên `main` hoặc `develop`.
-- Khi task pass verification, push branch cá nhân và tạo PR vào `develop`.
-- Duyệt checkpoint trên `develop`; sau khi hoàn thiện, deploy từ `develop` (branch có code mới nhất) lên các môi trường.
-- `main` không theo kịp `develop` trong lúc phát triển; về sau merge `develop` vào `main` khi quyết định.
+- Không code trực tiếp trên `main`.
+- Khi task pass verification, push branch cá nhân và tạo PR vào `main`.
+- Duyệt checkpoint trên `main`; sau khi hoàn thiện, deploy từ `main` (branch có code mới nhất) lên các môi trường.
+- `develop` là nhánh legacy, không dùng để tạo branch, nhận PR hoặc deploy.
 
 ```bash
 git fetch origin
-git switch develop
-git pull --ff-only origin develop
+git switch main
+git pull --ff-only origin main
 git switch -c thuandd/feat-p2-t01-decisions
 ```
 
-Nếu `origin/develop` chưa tồn tại hoặc working tree đang có thay đổi của người khác, dừng và báo blocker; không tự reset. Trước PR, đồng bộ lại `develop`, chạy verification và GitNexus `detect-changes`.
+Nếu `origin/main` chưa tồn tại hoặc working tree đang có thay đổi của người khác, dừng và báo blocker; không tự reset. Trước PR, đồng bộ lại `main`, chạy verification và GitNexus `detect-changes`.
 
 ## 3. Trách nhiệm
 
@@ -71,7 +70,7 @@ Nếu có mâu thuẫn, AI phải nêu rõ hai nguồn và đề xuất lựa ch
 | `P2-T01` — khóa quyết định Phase 2 | `P1-D11` hoàn tất |
 | Duyệt Checkpoint `P2-A` | `P2-T01`, `P2-D01`–`P2-D10` và `P2-N01` hoàn tất |
 | Duyệt Checkpoint `P2-B`, nhận bàn giao Phase 2 local | `P2-D13` và qualification E2E đã pass |
-| Deploy từ `develop` lên các môi trường | Sau Checkpoint `P2-B` |
+| Deploy từ `main` lên các môi trường | Sau Checkpoint `P2-B` |
 | Thiết kế CI/CD và cloud | Chỉ sau khi local contract/runbook được bàn giao |
 
 Sơ đồ hai phase: `docs/team-assignment-phase-1-2.md` mục 4.2. Sau khi duyệt task hoặc checkpoint, thêm `✅` vào node tương ứng trong sơ đồ.
@@ -133,7 +132,7 @@ Tôi là Đinh Đức Thuận, owner quyết định chung và bàn giao DevOps 
 Hãy:
 1. Đọc rules, tasks/plan.md, tasks/todo.md và các tài liệu liên quan.
 2. Kiểm tra git status; giữ nguyên thay đổi không thuộc công việc hiện tại.
-3. Xác nhận branch `thuandd/feat-<task-id>-<slug>` tạo từ develop; không làm trực tiếp trên main/develop.
+3. Xác nhận branch `thuandd/feat-<task-id>-<slug>` tạo từ main; không làm trực tiếp trên main.
 4. Chọn đúng một task/checkpoint của tôi đã đủ dependency.
 5. Nếu là decision gate như P2-T01, lập bảng: quyết định, lựa chọn, khuyến nghị, lý do, ảnh hưởng và nơi ghi nhận.
 6. Nếu là checkpoint, đối chiếu từng acceptance criterion với bằng chứng test/build thực tế.
@@ -149,7 +148,7 @@ Trước khi sửa, hãy trả về task đã chọn, dependency, assumption, fi
 - Không thay đổi luật game hoặc Bot Protocol thay Long.
 - Không sửa bot test thay Nguyên hoặc MatchRunner/platform thay Đạt.
 - Không đưa secret hoặc cấu hình production vào repository.
-- Không deploy từ branch khác `develop` hoặc từ `develop` chưa qua checkpoint.
+- Không deploy từ branch khác `main` hoặc từ `main` chưa qua checkpoint.
 - Không duyệt checkpoint chỉ dựa trên báo cáo của AI; phải có command và output thực tế.
 
 ## 10. Definition of Done và handoff

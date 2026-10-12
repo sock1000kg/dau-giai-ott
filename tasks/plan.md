@@ -70,7 +70,7 @@ Mỗi task chỉ có một owner chính. Người review không sửa trực ti�
 
 ### 2.3 Branch theo owner
 
-Branch tạo từ `develop` theo owner:
+Branch tạo từ `main` theo owner:
 
 | Owner | Prefix | Ví dụ |
 | --- | --- | --- |
@@ -79,7 +79,7 @@ Branch tạo từ `develop` theo owner:
 | Đỗ Khôi Nguyên | `nguyendk/` | `nguyendk/feat-p1-n01-bot-sdk` |
 | Phạm Tất Đạt | `datpt/` | `datpt/feat-p1-d02-ports` |
 
-Mỗi branch chứa đúng một task, pull request target `develop`; không code trực tiếp trên `develop` hoặc `main`. Checkpoint duyệt trên `develop`, và Thuận deploy từ `develop`. Luồng đầy đủ: [`docs/README.md` mục 3](../docs/README.md).
+Mỗi branch chứa đúng một task, pull request target `main`; không code trực tiếp trên `main`. Checkpoint duyệt trên `main`, và Thuận deploy từ `main`. `develop` là nhánh legacy, không dùng cho development/integration/deploy. Luồng đầy đủ: [`docs/README.md` mục 3](../docs/README.md).
 
 ## 3. Baseline đã khóa
 
