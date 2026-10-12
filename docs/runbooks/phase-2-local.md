@@ -25,3 +25,21 @@ in [the OCI sandbox SAD](../architecture/sad-oci-bot-submissions.md).
 quota. Do not open team registration based on a single developer-machine run;
 registration remains closed until repeated measurements on representative
 hosts establish fairness/isolation and the tournament owner approves D-08.
+
+## Match result finalization
+
+`P2-T11` requires a disposable PostgreSQL database for its integration test; the
+test applies migrations but does not drop the schema. Do not aim it at a shared
+or production database.
+
+```bash
+DATABASE_URL="$YOUR_DISPOSABLE_POSTGRES_URL" \
+  npm test --workspace @ott/platform-worker -- --run tests/finalization.integration.test.ts
+```
+
+The worker verifies the event log before storing it. Result, normalized events,
+match `FINALIZED` status and one `MATCH_FINALIZED` outbox event commit in the
+same transaction. Object storage receives a content-addressed event-log object
+before that transaction; an unreferenced object after a DB failure is harmless
+and can be garbage-collected later. Unique match/result and outbox keys are the
+deduplication boundary for queue redelivery.

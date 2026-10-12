@@ -9,9 +9,14 @@ export interface MatchWorkerLogger {
   error(fields: Readonly<Record<string, unknown>>, message: string): void;
 }
 
+export interface MatchWorkerAttemptContext {
+  readonly attemptNumber: number;
+  readonly maxAttempts: number;
+}
+
 export interface MatchWorkerOptions {
   readonly redisUrl: string;
-  readonly processMatch: (job: MatchJobV1) => Promise<void>;
+  readonly processMatch: (job: MatchJobV1, attempt: MatchWorkerAttemptContext) => Promise<void>;
   readonly logger: MatchWorkerLogger;
   readonly queueName?: string;
   readonly deadLetterQueueName?: string;
@@ -71,7 +76,10 @@ export function createMatchWorker(options: MatchWorkerOptions): {
     }
     options.logger.info({ event: 'match_job_started', matchId: job.data.matchId, attempt: job.attemptsMade + 1 }, 'Match job started');
     try {
-      await options.processMatch(validation.value);
+      await options.processMatch(validation.value, {
+        attemptNumber: job.attemptsMade + 1,
+        maxAttempts: job.opts.attempts ?? options.attempts ?? 3,
+      });
     } catch (error) {
       const attempts = job.opts.attempts ?? options.attempts ?? 3;
       if (job.attemptsMade + 1 >= attempts) {

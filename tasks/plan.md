@@ -228,7 +228,7 @@ Phase 1 complete
 - [x] `P2-T09` — MatchJob và BullMQ worker.
 - [x] `P2-T10` — Sandbox adapter và artifact validation; Docker API integration 13/13 pass (2026-10-13).
 - [x] `P2-T15` — Benchmark quota OCI và gate mở nhận bot đa ngôn ngữ; local benchmark pass 14/14, D-08 remains internal baseline and team registration gated pending representative repeated benchmark + BTC approval (2026-10-13).
-- [ ] `P2-T11` — MatchResult finalization idempotent.
+- [x] `P2-T11` — MatchResult finalization idempotent; PostgreSQL integration 5/5 and worker retry integration 4/4 pass, execution snapshot immutable and results/events/outbox commit idempotently (2026-10-13).
 - [ ] `P2-T12` — Scheduling và series scoring.
 - [ ] `P2-T13` — Match results, Elo ledger và leaderboard API.
 - `P2-D11` — Đã hủy, tách thành `P2-L02` và `P2-L03`.

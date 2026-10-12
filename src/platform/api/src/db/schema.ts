@@ -9,6 +9,7 @@ export interface Migration {
 
 const migrationFiles = [
   { id: '0001_initial', source: new URL('../../migrations/0001_initial.sql', import.meta.url) },
+  { id: '0002_match_execution_finalization', source: new URL('../../migrations/0002_match_execution_finalization.sql', import.meta.url) },
 ] as const;
 
 export async function loadMigrations(): Promise<readonly Migration[]> {

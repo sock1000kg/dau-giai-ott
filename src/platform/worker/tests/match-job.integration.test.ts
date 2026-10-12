@@ -5,7 +5,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 import { MATCH_QUEUE_NAME, type MatchJobV1 } from '@ott/job-contract';
 import { MatchQueue } from '@ott/platform-api';
 import { Redis } from 'ioredis';
-import { createMatchWorker } from '../src/worker.ts';
+import { createMatchWorker, type MatchWorkerAttemptContext } from '../src/worker.ts';
 
 const redisUrl = process.env.REDIS_URL ?? 'redis://127.0.0.1:16379';
 const namespace = `ott-p2-t09-${randomUUID()}`;
@@ -78,7 +78,11 @@ describe('BullMQ MatchJob worker integration', () => {
 
   it('retries with backoff, writes a dead letter once, and logs without bot output', async () => {
     await matchQueue.enqueue(job);
-    const processMatch = vi.fn(async () => { throw new Error('SANDBOX_TIMEOUT stdout SECRET_DATA'); });
+    const attemptsSeen: Array<{ attemptNumber: number; maxAttempts: number }> = [];
+    const processMatch = vi.fn(async (_matchJob: MatchJobV1, attempt: MatchWorkerAttemptContext) => {
+      attemptsSeen.push(attempt);
+      throw new Error('SANDBOX_TIMEOUT stdout SECRET_DATA');
+    });
     const runtime = createMatchWorker({ redisUrl, processMatch, logger, queueName, deadLetterQueueName, attempts: 3 });
     try {
       await runtime.worker.waitUntilReady();
@@ -89,6 +93,11 @@ describe('BullMQ MatchJob worker integration', () => {
         expect(deadLetters).toBe(1);
       }, { timeout: 15_000, interval: 250 });
       expect(processMatch).toHaveBeenCalledTimes(3);
+      expect(attemptsSeen).toEqual([
+        { attemptNumber: 1, maxAttempts: 3 },
+        { attemptNumber: 2, maxAttempts: 3 },
+        { attemptNumber: 3, maxAttempts: 3 },
+      ]);
       expect(logger.info).toHaveBeenCalledWith(expect.objectContaining({ event: 'match_job_started' }), 'Match job started');
       expect(logger.warn).toHaveBeenCalledWith(expect.objectContaining({ errorCode: 'MATCH_WORKER_FAILED' }), 'Match job attempt failed');
       expect(JSON.stringify([...logger.info.mock.calls, ...logger.warn.mock.calls, ...logger.error.mock.calls])).not.toMatch(/stdout|stderr|SECRET_DATA/i);

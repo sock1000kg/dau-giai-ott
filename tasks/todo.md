@@ -500,7 +500,7 @@ Các ID cũ bị hủy trước khi triển khai và không được tái sử d
 
 **Hoàn tất:** 2026-10-13 — Docker local, Ubuntu 26.04.1/cgroup v2, Engine 29.8.1/API 1.56, 8 logical CPUs, 40.66 GB RAM. Python FirstLegal/CaptureFirst, Node, native đều `ACTION`; 7 fault canaries được thực thi: timeout/network/CPU bị giới hạn theo turn, fork/write crash, output/memory `RESOURCE_LIMIT_EXCEEDED`; CPU canary đo ~101% của 1 CPU, memory chạm quota 256 MiB. Sandbox corpus 1/1 và Docker integration 14/14 pass. Report: `src/bots/sandbox-corpus/results/2026-10-13-local-docker.json`. Một máy/một lượt chưa chứng minh fairness; không đổi D-08, `OTT_SANDBOX_V1` vẫn baseline nội bộ và registration tiếp tục đóng đến benchmark lặp trên host đại diện + BTC duyệt. DOCS UPDATED: SAD OCI, yêu cầu D-08, worker README, Phase 2 runbook, sandbox report.
 
-### [ ] P2-T11 — MatchResult finalization idempotent
+### [x] P2-T11 — MatchResult finalization idempotent
 
 **Owner:** Đinh Đức Thuận
 **Mô tả:** Chạy MatchRunner trong worker và ghi result/event đúng một lần.
@@ -509,6 +509,8 @@ Các ID cũ bị hủy trước khi triển khai và không được tái sử d
 **Dependencies:** `P2-T10`, `P2-T03`.
 **Files dự kiến:** `src/platform/worker/src/run-match-job.ts`, `src/platform/worker/src/finalize-result.ts`, `src/platform/worker/src/result-repository.ts`, `src/platform/worker/tests/finalization.integration.test.ts`
 **Ước lượng:** M (4 file)
+
+**Hoàn tất:** 2026-10-13 — Worker claim match bằng row lock + 15 phút lease, so sánh immutable artifact refs với DB, SHA-256 archive, chạy `MatchRunner` qua OCI BotPort, verify event log/replay, upload theo content hash. Migration 0002 lưu execution snapshot/lease, giới hạn baseline 200 turns/3 giây và trigger DB từ chối sửa snapshot, cùng transactional outbox unique `(match_id,event_type)`. Finalize transaction ghi một `MatchResult`, event trail, `MATCH_FINALIZED`, thành công attempt và status `FINALIZED`; lỗi hạ tầng retryable/final attempt terminal, bot crash là FORFEIT chính thức. Integration PostgreSQL 5/5 pass (concurrent lease, redelivery, corrupt archive/retry, forfeit, immutable snapshot), worker/API typecheck pass; worker Redis retry integration 4/4 pass. DOCS UPDATED: Solution Architecture, worker README, Phase 2 runbook, task graph.
 
 ### [ ] P2-T12 — Scheduling và series scoring
 

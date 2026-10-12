@@ -6,6 +6,15 @@ Docker-backed `SandboxOciBotPort`; P2-T11 composes the port with MatchRunner and
 result finalization. Only this trusted worker may access the Docker Engine
 socket. The socket is never mounted into a bot container.
 
+`runMatchJob` is the processor passed to `createMatchWorker`. It verifies the
+database's pinned submissions, downloads and checks archive SHA-256, maps the
+single supported job profile (`P2_BASELINE_V1`) to the sandbox implementation
+policy (`OTT_SANDBOX_V1`), runs `@ott/match-runner`, verifies the replay, then
+commits result, events and a unique `MATCH_FINALIZED` outbox row. Attempts use a
+15-minute database lease; repeated deliveries after finalization return the
+stored official result without executing bots again. Bot faults become official
+forfeit results; infrastructure faults are retryable and record stable codes.
+
 The API enqueues `ott.match.v1` jobs with `jobId=match-<match UUID>`, three
 attempts, exponential backoff starting at one second, and terminal-job
 retention. The worker validates the strict versioned payload before invoking
@@ -25,6 +34,15 @@ npm run typecheck --workspace @ott/platform-worker
 REDIS_URL="$YOUR_LOCAL_REDIS_URL" npm test --workspace @ott/platform-worker -- --run tests/match-job.integration.test.ts
 npm --workspace @ott/sandbox-corpus run build:corpus
 npm test --workspace @ott/platform-worker -- --run tests/sandbox.integration.test.ts
+```
+
+The PostgreSQL-backed finalization integration test requires an empty,
+disposable database because it applies migrations. It does not reset the schema
+or touch unrelated rows:
+
+```bash
+DATABASE_URL="$YOUR_DISPOSABLE_POSTGRES_URL" \
+  npm test --workspace @ott/platform-worker -- --run tests/finalization.integration.test.ts
 ```
 
 The sandbox integration command requires a local Docker Engine and the generated
