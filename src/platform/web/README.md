@@ -53,3 +53,15 @@ submission ID, status, archive digest, and creation time. The list omits object
 keys and does not accept a team selector. API role checks remain authoritative;
 the portal does not persist session credentials or submission data in browser
 storage.
+
+## Public leaderboard (`P2-T22`)
+
+Anyone can open `/leaderboard` without a team/BTC session. The page reads
+`GET /api/v1/leaderboard?stage=QUALIFICATION&page=1&pageSize=25` and displays
+the server's rank, Elo, head-to-head points, series record, win rate, fault and
+forfeit counts, and update time. It never recalculates rank or tie-breaks;
+rows with `tieBreakStatus: "BTC_REQUIRED"` retain the server rank and call out
+that BTC decision is required. Stage and page controls request new server pages;
+the responsive table can scroll horizontally on narrow screens. Only the API's
+public entry fields are mapped into the page; private seeds and artifact keys
+are not rendered.

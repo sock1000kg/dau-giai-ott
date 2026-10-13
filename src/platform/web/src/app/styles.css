@@ -211,6 +211,41 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .results-pagination { display: flex; align-items: center; justify-content: center; gap: 14px; margin: 22px 0; color: #a8b8c8; font-size: 13px; }
 .results-pagination button { margin: 0; }
 
+.public-nav-link { color: #80e4d0; font-size: 12px; font-weight: 700; text-decoration: none; }
+.public-nav-link:hover { color: #a0f0e0; }
+.leaderboard-page { width: min(100%, 1200px); margin: auto; padding-block: 38px; }
+.leaderboard-intro { max-width: 820px; margin-bottom: 24px; }
+.leaderboard-intro h1 { margin: 14px 0 8px; font-size: clamp(32px, 5vw, 46px); letter-spacing: -.045em; }
+.leaderboard-intro > p:last-child, .leaderboard-note { color: #a8b8c8; font-size: 14px; line-height: 1.65; }
+.leaderboard-filters { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; margin-bottom: 18px; padding: 16px; border: 1px solid rgba(177, 204, 224, .16); border-radius: 12px; background: rgba(22, 35, 50, .9); }
+.leaderboard-filters label { flex: 1 1 220px; color: #dce6ef; font-size: 12px; font-weight: 650; }
+.leaderboard-filters input { display: block; width: 100%; min-height: 42px; margin-top: 7px; padding: 8px 10px; border: 1px solid #34495d; border-radius: 8px; background: #0e1926; color: #f3f6fb; }
+.leaderboard-filters .secondary-button, .leaderboard-error .secondary-button, .leaderboard-pagination .secondary-button { min-height: 42px; padding: 9px 14px; border: 1px solid #40566b; border-radius: 8px; background: #17283a; color: #dce6ef; cursor: pointer; font-weight: 650; }
+.leaderboard-filters button:disabled, .leaderboard-pagination button:disabled { cursor: wait; opacity: .55; }
+.leaderboard-error { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 18px; border: 1px solid rgba(255, 182, 173, .3); border-radius: 12px; color: #ffb6ad; }
+.leaderboard-error p { margin: 0; }
+.leaderboard-state { padding: 24px 18px; border: 1px dashed #3a5064; border-radius: 12px; color: #a8b8c8; text-align: center; }
+.leaderboard-table-scroll { overflow-x: auto; border: 1px solid rgba(177, 204, 224, .16); border-radius: 12px; background: rgba(22, 35, 50, .9); }
+.leaderboard-table { width: 100%; min-width: 900px; border-collapse: collapse; text-align: left; }
+.leaderboard-table th, .leaderboard-table td { padding: 14px 12px; border-bottom: 1px solid rgba(190, 211, 228, .1); color: #dce6ef; font-size: 12px; white-space: nowrap; }
+.leaderboard-table thead th { color: #8ea4b7; font-size: 10px; letter-spacing: .05em; text-transform: uppercase; }
+.leaderboard-table tbody tr:last-child th, .leaderboard-table tbody tr:last-child td { border-bottom: 0; }
+.leaderboard-table tbody tr:hover { background: rgba(128, 228, 208, .045); }
+.leaderboard-team { min-width: 160px; color: #f3f6fb !important; font-size: 13px !important; font-weight: 700; }
+.rank-value { display: inline-grid; min-width: 28px; min-height: 28px; place-items: center; border-radius: 8px; background: #20384a; color: #80e4d0; font-size: 13px; font-weight: 800; }
+.tie-break-status { display: block; width: max-content; margin-top: 5px; color: #ffd59a; font-size: 9px; font-weight: 750; }
+.leaderboard-pagination { display: flex; align-items: center; justify-content: center; gap: 14px; margin: 22px 0 12px; color: #a8b8c8; font-size: 13px; }
+.leaderboard-pagination button { margin: 0; }
+.leaderboard-note { margin-top: 20px; font-size: 12px; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; clip-path: inset(50%); }
+
+@media (max-width: 560px) {
+  .header-label { display: none; }
+  .public-nav-link { font-size: 11px; }
+  .leaderboard-pagination { gap: 8px; }
+  .leaderboard-pagination .secondary-button { padding-inline: 9px; font-size: 11px; }
+}
+
 .submission-page { width: min(100%, 960px); margin: auto; padding-block: 38px; }
 .submission-intro { max-width: 720px; margin-bottom: 28px; }
 .submission-intro h1 { margin: 14px 0 8px; font-size: clamp(30px, 5vw, 42px); letter-spacing: -0.04em; }

@@ -644,14 +644,14 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 **Files:** `src/platform/api/migrations/0005_match_fault_summary.sql`, `src/platform/api/src/db/schema.ts`, results API, worker finalization persistence, route/worker tests and docs, plus results UI/auth routes/styles/tests.
 **Ước lượng:** M (cross-layer persistence/API/UI slice)
 
-### [ ] P2-T22 — Public leaderboard UI
+### [x] P2-T22 — Public leaderboard UI
 
 **Owner:** Đinh Đức Thuận
 **Mô tả:** Hiển thị leaderboard public từ `P2-T13B`, giữ nguyên rank/tie-break của server.
 **Acceptance criteria:** (1) không tự tính Elo/rank/head-to-head ở client; (2) exact tie hiển thị đồng hạng và `BTC_REQUIRED`; (3) pagination, loading/empty/error, responsive table và accessibility tests pass.
-**Verification:** `npm test --workspace @ott/platform-web -- leaderboard && npm run build --workspace @ott/platform-web`.
+**Verification:** Pass 2026-10-13: root `npm test` (web 44/44; API 19 passed/17 DB-service-gated skipped; worker 19 passed/5 DB-service-gated skipped), `npm run typecheck`, and `npm run build` pass; focused leaderboard UI 4/4 and auth route suite passes. Existing leaderboard PostgreSQL integration tests pass 2/2 on a disposable database with current migrations. Component/API tests verify anonymous `/leaderboard` makes no auth request, preserves non-contiguous server ranks and `BTC_REQUIRED` ties without client ranking, sends stage/page filters, excludes seed/object key, and covers loading/empty/retryable error with accessible table/status/labels. Mutating the mapped rank by +1 failed three focused tests; after restoring server rank mapping, all four pass. Local Vite HTTP smoke served the `/leaderboard` SPA and transformed both page/table modules. Chrome DevTools MCP is not available in this session, so there is no live DOM/screenshot inspection. GitNexus staged/compare reported HIGH, 23 changed symbols, 10 files and 13 affected flows; all 13 returned flows were reviewed with no `partial`/`truncated` flags. Global flow inventory is incomplete (27/227 entrypoint candidates and 287 callees omitted). No API behavior/dependency change or cloud deployment.
 **Dependencies:** `P2-T17B`, `P2-T13B`.
-**Files dự kiến:** `src/platform/web/src/features/leaderboard/api.ts`, `src/platform/web/src/features/leaderboard/LeaderboardPage.tsx`, `src/platform/web/src/features/leaderboard/LeaderboardTable.tsx`, `src/platform/web/src/features/leaderboard/leaderboard.test.tsx`
+**Files:** `src/platform/web/src/features/leaderboard/{api.ts,LeaderboardPage.tsx,LeaderboardTable.tsx,leaderboard.test.tsx}`, public app routing/header/styles, and web README.
 **Ước lượng:** M (4 file)
 
 ### [ ] P2-T23 — Replay publication persistence và catalog repository
