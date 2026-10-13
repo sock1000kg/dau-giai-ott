@@ -7,6 +7,7 @@ function response(status: number, data?: unknown): Response {
     ok: status >= 200 && status < 300,
     status,
     json: async () => data,
+    text: async () => data === undefined ? '' : JSON.stringify(data),
   } as Response;
 }
 
@@ -99,6 +100,23 @@ describe('authentication routes', () => {
 
     expect(await screen.findByRole('heading', { name: /không có quyền truy cập/i })).toBeTruthy();
     expect(screen.queryByText('team-1')).toBeNull();
+  });
+
+  it('allows a team session to open its session-scoped submission portal', async () => {
+    const fetchMock = mockFetch(
+      response(200, { data: { role: 'TEAM_ACCOUNT', teamId: 'private-team-id' } }),
+      response(200, { data: [], pagination: { page: 1, pageSize: 20, totalItems: 0, totalPages: 0 } }),
+    );
+    window.history.replaceState({}, '', '/team/submissions');
+
+    render(<App />);
+
+    expect(await screen.findByRole('heading', { name: /nộp bot dự thi/i })).toBeTruthy();
+    expect(await screen.findByText(/chưa có submission nào/i)).toBeTruthy();
+    expect(fetchMock.mock.calls[1]?.[0]).toBe('/api/v1/submissions?page=1&pageSize=20');
+    expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({ credentials: 'include' });
+    expect(fetchMock.mock.calls[1]?.[0]).not.toContain('teamId');
+    expect(screen.queryByText('private-team-id')).toBeNull();
   });
 
   it('restores a BTC session only into the BTC area', async () => {

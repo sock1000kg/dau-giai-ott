@@ -8,8 +8,51 @@ import type { ObjectStorage } from '../../storage/s3.ts';
 const limits = { maxArchiveBytes: 256 * 1024 * 1024, maxUncompressedBytes: 512 * 1024 * 1024 };
 export interface SubmissionRoutesOptions { readonly database: Database; readonly storage: ObjectStorage; }
 
+interface SubmissionListQuery {
+  readonly page?: string;
+  readonly pageSize?: string;
+}
+
+function paginationValue(value: string | undefined, fallback: number, max: number): number | null {
+  if (value === undefined) return fallback;
+  if (!/^[1-9]\d*$/.test(value)) return null;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed <= max ? parsed : null;
+}
+
 export function registerSubmissionRoutes(app: FastifyInstance, options: SubmissionRoutesOptions): void {
   app.addContentTypeParser('application/octet-stream', { parseAs: 'buffer' }, (_request, body, done) => done(null, body));
+  app.get<{ Querystring: SubmissionListQuery }>('/api/v1/submissions', async (request, reply) => {
+    const principal = requireRole(requireAuthenticated(request.principal), 'TEAM_ACCOUNT');
+    const page = paginationValue(request.query.page, 1, 100_000);
+    const pageSize = paginationValue(request.query.pageSize, 20, 100);
+    if (page === null || pageSize === null) return reply.status(400).send({ error: { code: 'INVALID_PAGINATION', message: 'Invalid page or pageSize' } });
+    const offset = (page - 1) * pageSize;
+    const count = await options.database.query<{ readonly total: string }>(
+      'SELECT COUNT(*)::text AS total FROM submissions s WHERE s.team_id = $1',
+      [principal.teamId],
+    );
+    const result = await options.database.query<{
+      readonly id: string;
+      readonly status: string;
+      readonly archive_sha256: string;
+      readonly created_at: Date;
+    }>(
+      'SELECT s.id, s.status, s.archive_sha256, s.created_at FROM submissions s WHERE s.team_id = $1 ORDER BY s.created_at DESC, s.id DESC LIMIT $2 OFFSET $3',
+      [principal.teamId, pageSize, offset],
+    );
+    return { data: result.rows.map((row) => ({
+      id: row.id,
+      status: row.status,
+      archiveSha256: row.archive_sha256,
+      createdAt: row.created_at.toISOString(),
+    })), pagination: {
+      page,
+      pageSize,
+      totalItems: Number(count.rows[0]?.total ?? '0'),
+      totalPages: Math.ceil(Number(count.rows[0]?.total ?? '0') / pageSize),
+    } };
+  });
   app.post<{ Body: Buffer }>('/api/v1/submissions', async (request, reply) => {
     const principal = requireRole(requireAuthenticated(request.principal), 'TEAM_ACCOUNT');
     const archive = request.body;

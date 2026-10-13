@@ -624,15 +624,15 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 **Files dự kiến:** `src/platform/web/README.md`, `src/platform/web/src/app/routes.tsx`, `src/platform/web/src/app/App.tsx`, `src/platform/web/src/app/App.test.tsx`, `src/platform/web/src/app/styles.css`, `src/platform/web/src/features/auth/auth.test.tsx`, `src/platform/web/src/features/admin-teams/api.ts`, `src/platform/web/src/features/admin-teams/TeamProvisionPage.tsx`, `src/platform/web/src/features/admin-teams/CredentialOnce.tsx`, `src/platform/web/src/features/admin-teams/TeamProvisionPage.test.tsx`
 **Ước lượng:** M (10 files; BTC route, provisioning/reset and one-time credential UI)
 
-### [ ] P2-T20 — Team OCI submission portal
+### [x] P2-T20 — Team OCI submission portal
 
 **Owner:** Đinh Đức Thuận
 **Mô tả:** Cho team đã đăng nhập nộp OCI archive và xem submission của chính team, không tin `teamId` từ browser.
 **Acceptance criteria:** (1) UI không có team selector/language/command/tag/registry URL và API client không gửi teamId; (2) validate file/size, khóa double-submit, hiển thị progress và stable server error; (3) list/status chỉ lấy scope session, tests phủ invalid file/API failure/forbidden.
-**Verification:** `npm test --workspace @ott/platform-web -- submissions && npm run build --workspace @ott/platform-web`.
+**Verification:** Pass 2026-10-13: root `npm test`, `npm run typecheck`, and `npm run build` pass; web workspace 32/32, API 17 passed with 17 service-dependent integration tests skipped (no DB/Redis/S3 env); focused web submission/auth tests 21/21 and API route tests 4/4. Local dev-server HTTP smoke served `/team/submissions` SPA and transformed its route component. Component/API tests cover empty/non-tar/over-limit files, progress, duplicate-submit lock, status paging, retry/error/forbidden, and no team selector; API tests prove session-team SQL scope, BTC 403, bounded pagination, and malformed page rejection. Mutation replacing `principal.teamId` with `wrong-team` made the ownership test fail; restored and reran full checks. GitNexus staged/compare detected CRITICAL across 19 flows; reviewed auth/session composition, team upload/list/file validation/error paths and server OCI validation/authorization. No partial/truncated flag on these changed-flow responses; the global inventory separately warns that 14/214 candidate entry points and 293 callees are omitted, so global coverage is incomplete. Browser DevTools MCP is unavailable, so no browser screenshot/DOM inspection. API integration fixture is service-gated and destructive to schema/Redis, so it was not pointed at unverified services.
 **Dependencies:** `P2-T18`, `P2-T07`.
-**Files dự kiến:** `src/platform/web/src/features/submissions/api.ts`, `src/platform/web/src/features/submissions/SubmissionForm.tsx`, `src/platform/web/src/features/submissions/SubmissionStatus.tsx`, `src/platform/web/src/features/submissions/SubmissionForm.test.tsx`
-**Ước lượng:** M (4 file)
+**Files dự kiến:** `docs/contracts/oci-submission-v1.md`, `src/platform/api/src/modules/submissions/routes.ts`, `src/platform/api/tests/submissions.routes.test.ts`, `src/platform/web/README.md`, `src/platform/web/src/app/routes.tsx`, `src/platform/web/src/app/styles.css`, `src/platform/web/src/features/auth/auth.test.tsx`, và `src/platform/web/src/features/submissions/{api.ts,api.test.ts,SubmissionForm.tsx,SubmissionForm.test.tsx,SubmissionStatus.tsx}`.
+**Ước lượng:** M (12 implementation/test/docs files plus task-status docs)
 
 ### [ ] P2-T21 — Team/BTC match và series results UI
 

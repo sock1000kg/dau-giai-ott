@@ -36,3 +36,20 @@ revocation. The create/reset response credential is held in React memory only;
 the screen clears it when dismissed or when the page is left, and it is never
 written to storage or logs. The BTC operator must send it to the team through a
 separate private channel.
+
+## Team submission portal (`P2-T20`)
+
+Signed-in teams open `/team/submissions` to upload one `.tar` OCI archive and
+review their submission statuses. The browser sends the raw file as
+`application/octet-stream` to `POST /api/v1/submissions`, with the session
+cookie; it does not send team identity or build/runtime metadata. The upload
+form validates empty/oversized/non-tar files, reports transfer progress, and
+prevents duplicate submissions while an upload is in flight. OCI archive
+structure remains validated by the API, not by browser checks.
+
+The history is loaded from the paginated `GET /api/v1/submissions`, whose API
+derives the team scope from the authenticated session and returns only
+submission ID, status, archive digest, and creation time. The list omits object
+keys and does not accept a team selector. API role checks remain authoritative;
+the portal does not persist session credentials or submission data in browser
+storage.

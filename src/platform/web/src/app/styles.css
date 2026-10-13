@@ -187,6 +187,36 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .credential-actions button { margin: 0; }
 .admin-page > [role="alert"] { color: #ffb6ad; }
 
+.submission-page { width: min(100%, 960px); margin: auto; padding-block: 38px; }
+.submission-intro { max-width: 720px; margin-bottom: 28px; }
+.submission-intro h1 { margin: 14px 0 8px; font-size: clamp(30px, 5vw, 42px); letter-spacing: -0.04em; }
+.submission-intro > p:last-child, .submission-upload > p { color: #a8b8c8; font-size: 14px; line-height: 1.65; }
+.submission-upload, .submission-history { padding: clamp(20px, 3vw, 28px); border: 1px solid rgba(177, 204, 224, 0.16); border-radius: 14px; background: rgba(22, 35, 50, 0.9); }
+.submission-upload h2, .submission-history h2 { margin: 8px 0; font-size: 20px; letter-spacing: -0.02em; }
+.submission-upload form { display: grid; gap: 12px; margin-top: 20px; }
+.submission-upload label { color: #dce6ef; font-size: 13px; font-weight: 650; }
+.submission-upload input[type="file"] { width: 100%; min-height: 48px; padding: 10px; border: 1px solid #34495d; border-radius: 9px; background: #0e1926; color: #dce6ef; }
+.submission-upload button, .secondary-button { width: fit-content; min-height: 44px; padding: 10px 16px; border: 0; border-radius: 9px; background: #80e4d0; color: #10221f; cursor: pointer; font-weight: 750; }
+.submission-upload button:disabled, .secondary-button:disabled { cursor: wait; opacity: 0.68; }
+.submission-upload .selected-file { margin: 0; color: #dce6ef; font-size: 13px; overflow-wrap: anywhere; }
+.upload-progress { display: grid; gap: 8px; color: #dce6ef; font-size: 13px; }
+.upload-progress progress { width: 100%; height: 9px; accent-color: #80e4d0; }
+.submission-error, .submission-success { color: #ffb6ad; font-size: 13px; line-height: 1.5; }
+.submission-success { color: #80e4d0; }
+.submission-history { margin-top: 20px; }
+.submission-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.submission-section-heading .eyebrow { margin: 0; }
+.submission-section-heading h2 { margin-bottom: 0; }
+.secondary-button { min-height: 40px; border: 1px solid #40566b; background: #17283a; color: #dce6ef; font-size: 12px; }
+.submission-list { display: grid; gap: 10px; margin: 18px 0 0; padding: 0; list-style: none; }
+.submission-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 12px; border-top: 1px solid rgba(190, 211, 228, 0.1); }
+.submission-row > div { display: grid; gap: 5px; }
+.submission-row time, .submission-empty { color: #8ea4b7; font-size: 12px; }
+.submission-status { padding: 6px 9px; border: 1px solid rgba(128, 228, 208, 0.3); border-radius: 999px; color: #a0f0e0; font-size: 11px; font-weight: 700; white-space: nowrap; }
+.status-invalid, .status-revoked { border-color: rgba(255, 182, 173, 0.4); color: #ffb6ad; }
+.submission-error .secondary-button { margin-top: 6px; }
+.submission-pagination { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 18px; color: #a8b8c8; font-size: 12px; }
+
 @media (max-width: 520px) {
   .app-shell { padding-inline: 16px; }
   .app-header { min-height: 68px; }
@@ -194,6 +224,9 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .welcome-panel { border-radius: 14px; }
   .admin-page { padding-block: 28px; }
   .team-create-row, .team-list li { align-items: stretch; flex-direction: column; }
+  .submission-page { padding-block: 28px; }
+  .submission-section-heading, .submission-row { align-items: flex-start; flex-direction: column; }
+  .submission-pagination { align-items: stretch; flex-direction: column; }
 }
 
 @media (prefers-reduced-motion: reduce) {
