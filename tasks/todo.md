@@ -674,14 +674,14 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 **Files dự kiến:** `src/platform/api/src/modules/replays/service.ts`, `src/platform/api/src/modules/replays/routes.ts`, `src/platform/api/tests/replays.integration.test.ts`, `src/platform/api/src/app.ts`, `src/platform/api/README.md`
 **Ước lượng:** M (5 file)
 
-### [ ] P2-T25 — BTC replay catalog và publication console
+### [x] P2-T25 — BTC replay catalog và publication console
 
 **Owner:** Đinh Đức Thuận
 **Mô tả:** Cho BTC tìm terminal match, xem integrity/publication state và stage/publish replay sau trận.
 **Acceptance criteria:** (1) route chỉ dành cho BTC và không có live control; (2) transition có confirm/reason, double-click không tạo duplicate và UI refresh theo response chính thức; (3) loading/empty/error/success và component tests phủ state machine.
-**Verification:** `npm test --workspace @ott/platform-web -- replay-admin && npm run build --workspace @ott/platform-web`.
+**Verification:** Pass 2026-10-13: replay-admin UI suite 5/5; full web suite 49/49; root `npm test`, `npm run typecheck`, and `npm run build` pass. Covers BTC-only route, catalog loading/empty/retryable error, stage→publish server reconciliation, required reason, stable idempotency key on retry, and duplicate-submit lock. Mutating the transition response match-ID guard caused 3 focused tests to fail; after restoration the suite passes. Local Vite HTTP smoke served `/admin/replays` SPA and transformed the replay catalog module. GitNexus staged/compare reports CRITICAL, 27 symbols, 10 files and 18 affected flows; all 18 returned flows reviewed. The aggregate warning links `AuthRoutes` through existing app/session flows and the new replay paths; root suite covers those existing web paths. Global flow index is incomplete (55/255 entrypoint candidates and 325 callees omitted), so this is not treated as zero-impact proof. Chrome DevTools MCP/browser DOM inspection is unavailable in this session; no screenshot/accessibility-tree inspection. No live match controls or private object key/seed are rendered.
 **Dependencies:** `P2-T18`, `P2-T24`.
-**Files dự kiến:** `src/platform/web/src/features/replay-admin/api.ts`, `src/platform/web/src/features/replay-admin/ReplayCatalog.tsx`, `src/platform/web/src/features/replay-admin/PublicationControls.tsx`, `src/platform/web/src/features/replay-admin/ReplayCatalog.test.tsx`
+**Files:** `src/platform/web/src/features/replay-admin/{api.ts,ReplayCatalog.tsx,PublicationControls.tsx,ReplayCatalog.test.tsx}`, `src/platform/web/src/app/{routes.tsx,styles.css}`, `src/platform/web/README.md`
 **Ước lượng:** M (4 file)
 
 ### [ ] P2-T26 — Spectator replay client và integrity verification

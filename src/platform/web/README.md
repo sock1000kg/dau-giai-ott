@@ -65,3 +65,19 @@ that BTC decision is required. Stage and page controls request new server pages;
 the responsive table can scroll horizontally on narrow screens. Only the API's
 public entry fields are mapped into the page; private seeds and artifact keys
 are not rendered.
+
+## BTC replay publication console (`P2-T25`)
+
+BTC operators open `/admin/replays` to browse paginated terminal matches from
+`GET /api/v1/admin/replays/catalog`. The page shows the server publication
+state and stored event-log checksum, but never an object key or seed. `PRIVATE`
+replays can be staged and `STAGED` replays can be published through the T24
+admin routes. Each transition requires an explicit confirmation and a reason;
+the client sends a stable `Idempotency-Key` for a retry, locks the action while
+in flight, then reconciles the row from the server catalog. UI role checks only
+control navigation; API authorization remains authoritative. The console is
+strictly post-match and has no live match controls.
+
+Verification: `npm test --workspace @ott/platform-web -- replay-admin`,
+`npm run typecheck --workspace @ott/platform-web`, and
+`npm run build --workspace @ott/platform-web`.
