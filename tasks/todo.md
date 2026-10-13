@@ -664,12 +664,12 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 **Files dự kiến:** `src/platform/api/migrations/0006_replay_publication.sql`, `src/platform/api/src/modules/replays/types.ts`, `src/platform/api/src/modules/replays/repository.ts`, `src/platform/api/tests/replay-publication-repository.integration.test.ts`
 **Ước lượng:** M (4 file)
 
-### [ ] P2-T24 — Replay publication và public artifact HTTP API
+### [x] P2-T24 — Replay publication và public artifact HTTP API
 
 **Owner:** Đinh Đức Thuận
 **Mô tả:** Cung cấp BTC catalog/stage/publish endpoints và public read endpoint chỉ cho replay đã publish.
 **Acceptance criteria:** (1) BTC transitions idempotent, server kiểm tra terminal state + stored checksum trước publish; (2) anonymous chỉ đọc `PUBLISHED`, response loại seed/private object key và có schema/version/checksum; (3) test từ chối unauthenticated/TEAM_ACCOUNT transition, private replay và artifact bị sửa một byte.
-**Verification:** `npm test --workspace @ott/platform-api -- --run tests/replays.integration.test.ts` với PostgreSQL/Redis/SeaweedFS local.
+**Verification:** Pass 2026-10-13: T24 integration 1/1 against isolated PostgreSQL schema, local Redis and a disposable SeaweedFS S3 container; root `npm test`, `npm run typecheck`, and `npm run build` pass. Integration covers BTC catalog/auth boundaries, team/anonymous transition denial, PRIVATE not-found, idempotent stage/publish retries, tamper rejection before publish and public read, seed/key exclusion, and SHA-256 of exact public response bytes. A checksum-comparison mutation caused the valid stage assertion to fail; after restoring the guard the same integration passes. GitNexus staged/compare reports CRITICAL, 137 symbols, 14 files and 42 flows; all 42 returned flows reviewed. The aggregate warning is driven by the API composition-root change (`createAuthApp`) linking existing auth/error/query flows plus the new replay flows; targeted integration and complete workspace test/typecheck/build pass. Global flow inventory remains incomplete (47/247 entrypoint candidates and 323 callees omitted), so this is not treated as zero-impact proof. No Redis flush, shared bucket writes, or cloud deployment.
 **Dependencies:** `P2-T23`.
 **Files dự kiến:** `src/platform/api/src/modules/replays/service.ts`, `src/platform/api/src/modules/replays/routes.ts`, `src/platform/api/tests/replays.integration.test.ts`, `src/platform/api/src/app.ts`, `src/platform/api/README.md`
 **Ước lượng:** M (5 file)

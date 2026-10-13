@@ -27,3 +27,20 @@ export interface ReplayCatalogPage {
   readonly total: number;
   readonly totalPages: number;
 }
+
+export interface SpectatorReplayV1 {
+  readonly schema: 'ott.spectator-replay';
+  readonly schemaVersion: 1;
+  readonly matchId: string;
+  readonly header: Readonly<{
+    format: string;
+    formatVersion: 1;
+    matchId: string;
+    protocolVersion: 1;
+    engineVersion: string;
+    game: Readonly<{ engineVersion: string; maxTurns: number; map: import('@ott/game-core').MapDefinition }>;
+  }>;
+  readonly entries: readonly import('@ott/match-runner').EventLogEntry[];
+  readonly result: import('@ott/game-core').GameResult;
+  readonly faults: Readonly<Record<'X' | 'O', import('@ott/bot-protocol').FaultSummary>>;
+}

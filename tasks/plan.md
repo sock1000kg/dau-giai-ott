@@ -249,7 +249,7 @@ Phase 1 complete
 - [x] `P2-T21` — Team/BTC match/series results UI; fault summaries persisted MatchRunner → PostgreSQL → API and rendered with server-scoped filters; root checks and isolated PostgreSQL/Redis integration 7/7 pass (2026-10-13).
 - [x] `P2-T22` — Anonymous responsive leaderboard UI; presents server rank/tie-break unchanged, stage/page filtering and accessible loading/empty/error states; focused 4/4, root 44 web tests, typecheck/build pass (2026-10-13).
 - [x] `P2-T23` — Replay publication persistence và catalog repository; isolated PostgreSQL integration 5/5, migration 0006, immutable state/identity/audit and idempotency verified (2026-10-13).
-- [ ] `P2-T24` — Replay publication và public artifact HTTP API.
+- [x] `P2-T24` — BTC catalog/stage/publish and anonymous seed-free public replay API; isolated PostgreSQL/Redis/SeaweedFS integration 1/1, root tests/typecheck/build pass (2026-10-13).
 - [ ] `P2-T25` — BTC replay catalog và publication console.
 - [ ] `P2-T26` — Spectator replay client và integrity verification.
 - [ ] `P2-T27` — Spectator replay player và presentation page.

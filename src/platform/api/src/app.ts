@@ -8,6 +8,7 @@ import { registerTeamRoutes } from './modules/teams/routes.ts';
 import { registerSubmissionRoutes } from './modules/submissions/routes.ts';
 import { registerLeaderboardRoutes } from './modules/ratings/routes.ts';
 import { registerResultRoutes } from './modules/results/routes.ts';
+import { registerReplayRoutes } from './modules/replays/routes.ts';
 import type { ObjectStorage } from './storage/s3.ts';
 import { createPasswordHasher, type PasswordHashPolicy } from './modules/auth/passwords.ts';
 import { createRedisAuthStore, type RedisAuthCommands } from './modules/auth/sessions.ts';
@@ -46,6 +47,9 @@ export function createAuthApp(options: CreateAuthAppOptions): FastifyInstance {
   registerTeamRoutes(application, { database: options.database, passwordHasher, sessionStore: authStore });
   registerLeaderboardRoutes(application, { database: options.database });
   registerResultRoutes(application, { database: options.database });
-  if (options.storage !== undefined) registerSubmissionRoutes(application, { database: options.database, storage: options.storage });
+  if (options.storage !== undefined) {
+    registerSubmissionRoutes(application, { database: options.database, storage: options.storage });
+    registerReplayRoutes(application, { database: options.database, storage: options.storage });
+  }
   return application;
 }

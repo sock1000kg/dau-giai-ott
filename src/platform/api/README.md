@@ -111,3 +111,25 @@ schema during teardown:
 DATABASE_URL="$YOUR_DISPOSABLE_POSTGRES_URL" \
   npm test --workspace @ott/platform-api -- --run tests/replay-publication-repository.integration.test.ts
 ```
+
+`P2-T24` exposes BTC-only `GET /api/v1/admin/replays/catalog` and idempotent
+stage/publish POST routes plus anonymous
+`GET /api/v1/public/replays/:matchId`. Before each transition and public read,
+the API loads the storage key from PostgreSQL, reads the private object, checks
+the exact bytes against the stored SHA-256, and parses event-log v1. Public
+responses are an allowlisted `ott.spectator-replay` v1 projection with the
+source seed and private key omitted. `X-Replay-SHA256` hashes the exact public
+response bytes; see [Spectator Replay API v1](../../../docs/contracts/spectator-replay-v1.md)
+for the wire contract.
+
+Run the T24 integration test against disposable PostgreSQL and a local Redis;
+it uses SeaweedFS when the S3 environment variables are set and otherwise uses
+an in-memory object-storage adapter. PostgreSQL fixtures use a random schema;
+Redis keys and object keys are unique to the test:
+
+```bash
+DATABASE_URL="$YOUR_DISPOSABLE_POSTGRES_URL" REDIS_URL="$YOUR_LOCAL_REDIS_URL" \
+  S3_ENDPOINT="$YOUR_LOCAL_S3_ENDPOINT" S3_BUCKET="$YOUR_TEST_BUCKET" \
+  S3_ACCESS_KEY_ID="$YOUR_LOCAL_S3_ACCESS_KEY" S3_SECRET_ACCESS_KEY="$YOUR_LOCAL_S3_SECRET_KEY" \
+  npm test --workspace @ott/platform-api -- --run tests/replays.integration.test.ts
+```
