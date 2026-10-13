@@ -625,7 +625,7 @@ Thuận sở hữu toàn bộ Phase 2 local theo chuỗi `P2-T01`–`P2-T29`:
 6. Replay publication API, BTC console và spectator player.
 7. Qualification E2E và local runbook.
 
-Backend `P2-T01`–`P2-T15`, rebaseline `P2-T16`, web workspace `P2-T17A`, app shell `P2-T17B`, login/session/role guard `P2-T18`, BTC team provisioning `P2-T19`, team OCI submission portal `P2-T20`, results UI `P2-T21`, public leaderboard UI `P2-T22`, replay persistence/catalog repository `P2-T23`, replay publication/public artifact API `P2-T24`, BTC replay catalog/publication console `P2-T25`, spectator replay client/integrity verification `P2-T26`, spectator replay player `P2-T27`, isolated qualification harness `P2-T28` và full-flow qualification `P2-T29` đã hoàn tất theo verification trong `tasks/todo.md`. Clean-checkout verification còn lại để chốt Checkpoint `P2-B`; mỗi task dùng branch riêng, test → docs/status → commit → merge `main`.
+Backend `P2-T01`–`P2-T15`, rebaseline `P2-T16`, web workspace `P2-T17A`, app shell `P2-T17B`, login/session/role guard `P2-T18`, BTC team provisioning `P2-T19`, team OCI submission portal `P2-T20`, results UI `P2-T21`, public leaderboard UI `P2-T22`, replay persistence/catalog repository `P2-T23`, replay publication/public artifact API `P2-T24`, BTC replay catalog/publication console `P2-T25`, spectator replay client/integrity verification `P2-T26`, spectator replay player `P2-T27`, isolated qualification harness `P2-T28` và full-flow qualification `P2-T29` đã hoàn tất theo verification trong `tasks/todo.md`. Checkpoint `P2-B` đạt sau detached clean-worktree verification; mỗi task dùng branch riêng, test → docs/status → commit → merge `main`.
 
 Phần Thuận có thể làm tiếp ngay:
 
@@ -637,7 +637,7 @@ Ranh giới tuần tự bắt buộc:
 
 - `P2-T19`–`P2-T21` chờ auth UI `P2-T18` (đã hoàn tất).
 - `P2-T24` replay HTTP API, `P2-T25` console BTC, `P2-T26` verified spectator client và `P2-T27` read-only replay player đã hoàn tất; `P2-T28` nay đủ dependency.
-- `P2-T28` harness chạy sạch hai lần; `P2-T29` full flow đã pass trong Compose isolated; clean-checkout verification còn lại là gate cuối của `P2-B`.
+- `P2-T28` harness chạy sạch hai lần; `P2-T29` full flow và detached clean-worktree verification đã pass trong Compose isolated; Checkpoint `P2-B` đạt.
 - Deploy cloud, production secrets và CI/CD không thuộc chuỗi task này.
 
 ## 11. Thứ tự triển khai

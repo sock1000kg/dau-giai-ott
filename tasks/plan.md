@@ -258,7 +258,7 @@ Phase 1 complete
 
 ## 9. Cảnh báo tải Phase 2
 
-Thuận là owner duy nhất của `P2-T01`–`P2-T29`. Toàn bộ task Phase 2 local đã hoàn tất; clean-checkout verification là gate cuối để xác nhận Checkpoint `P2-B`. Deploy cloud không nằm trong Definition of Done. Không mở nhiều branch chạm chung `src/platform/web` hoặc replay schema trong cùng lúc.
+Thuận là owner duy nhất của `P2-T01`–`P2-T29`. Toàn bộ task Phase 2 local và Checkpoint `P2-B` đã hoàn tất sau qualification, root gates và detached clean-worktree verification pass (`404195f`, 2026-10-13). Deploy cloud không nằm trong Definition of Done. Không mở nhiều branch chạm chung `src/platform/web` hoặc replay schema trong cùng lúc.
 
 1. Hạ tầng local và database.
 2. Authentication/RBAC, team và submission.

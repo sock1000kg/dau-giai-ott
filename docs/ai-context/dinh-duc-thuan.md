@@ -42,7 +42,7 @@ Nếu `origin/main` chưa tồn tại hoặc working tree đang có thay đổi 
 - Xác nhận contract/checkpoint và xử lý mâu thuẫn giữa các tài liệu.
 - `P2-T01`–`P2-T29` đã hoàn tất; không còn task implementation Phase 2 local đang mở. Kiểm tra clean checkout và xác nhận Checkpoint `P2-B` là bước cuối.
 - Dùng [Solution Architecture Phase 2](../architecture/solution-architecture-phase-2.md), [SAD OCI Bot Submission](../architecture/sad-oci-bot-submissions.md), ADR-0005 và ADR-0006 làm ranh giới thực thi; `P2-T15` là cổng benchmark resource profile trước khi mở nhận bot của đội thi.
-- Phase 2 local đã hoàn tất; clean-checkout verification là bước cuối để xác nhận Checkpoint `P2-B`. Deploy cloud bị loại khỏi phạm vi.
+- Phase 2 local và Checkpoint `P2-B` đã hoàn tất sau detached clean-worktree verification; deploy cloud bị loại khỏi phạm vi.
 - Không thêm CI/CD, cloud infrastructure, production secrets hoặc deploy stage vào Phase 2 hiện tại.
 
 ## 4. Tài liệu AI phải đọc
@@ -72,7 +72,7 @@ Nếu có mâu thuẫn, AI phải nêu rõ hai nguồn và đề xuất lựa ch
 | `P2-T02`–`P2-T15` — backend local | Đã hoàn tất và Checkpoint `P2-A` đã đạt |
 | `P2-T16` — rebaseline ownership/execution loop | Đã hoàn tất ngày 13/10/2026 |
 | `P2-T17A`–`P2-T29` — frontend, replay, E2E local | Đã hoàn tất; không tạo task mới ngoài phạm vi đã duyệt |
-| Duyệt Checkpoint `P2-B` | Toàn bộ task đã `[x]`; cần clean-checkout verification pass |
+| Duyệt Checkpoint `P2-B` | Đã hoàn tất; detached clean-worktree verification pass |
 
 Sơ đồ hai phase: `docs/team-assignment-phase-1-2.md` mục 4.2. Sau khi duyệt task hoặc checkpoint, thêm `✅` vào node tương ứng trong sơ đồ.
 

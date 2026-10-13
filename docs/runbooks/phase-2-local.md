@@ -35,8 +35,18 @@ npm run test:e2e:qualification -- --runInBand --testNamePattern harness
 ```
 
 The command requires Node.js 22, Docker Engine/Compose, installed npm
-dependencies, the checked-in sandbox profile and all corpus archives with
-matching SHA-256 digests. It preflights those inputs before creating resources,
+dependencies, the checked-in sandbox profile, and locally generated corpus
+archives with matching SHA-256 digests. From a clean checkout, build these
+ignored artifacts first:
+
+```bash
+npm --workspace @ott/sandbox-corpus run build:corpus
+```
+
+This builds the declared OCI images through Docker and writes the archives
+under ignored `src/bots/sandbox-corpus/artifacts/`; it does not change tracked
+manifest data unless the rebuilt digests differ. The qualification command
+preflights those inputs before creating resources,
 then starts PostgreSQL, Redis and SeaweedFS with an unpredictable Compose
 project name, loopback-only ephemeral host ports, per-run credentials, and
 isolated volumes. It applies migrations and seeds a BTC account, two team
@@ -58,6 +68,7 @@ Run the complete local gate (harness plus end-to-end flow) from the repository
 root:
 
 ```bash
+npm --workspace @ott/sandbox-corpus run build:corpus
 npm run test:e2e:qualification
 npm run typecheck
 npm test

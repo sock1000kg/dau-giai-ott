@@ -736,5 +736,5 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 ## Checkpoint P2-B — Phase 2 local hoàn tất
 
 - [x] `P2-T17A`, `P2-T17B` và `P2-T18`–`P2-T29` hoàn tất; qualification E2E pass gồm BTC provision → team login → submission và replay publication/spectator flow.
-- [ ] `npm run typecheck && npm test && npm run build` pass từ clean checkout.
-- [x] Runbook, env contract và artifact format local tái lập được; deploy cloud không thuộc phạm vi Phase 2 này.
+- [x] Từ detached clean worktree của `404195f`, `npm ci`, build corpus, qualification E2E, `npm run typecheck`, `npm test`, `npm run build`, `git diff --check` và `bash -n scripts/run-local-qualification.sh` đều pass; OCI canary archives được build từ source bằng Docker, Compose harness dọn sạch resource. Root tests: 19 passed, 5 skipped (service-gated); web 65/65; các workspace khác đều xanh.
+- [x] Runbook, env contract và artifact format local tái lập được; runbook ghi rõ build corpus archive bị ignore trước qualification; deploy cloud không thuộc phạm vi Phase 2 này.
