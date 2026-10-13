@@ -684,14 +684,14 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 **Files:** `src/platform/web/src/features/replay-admin/{api.ts,ReplayCatalog.tsx,PublicationControls.tsx,ReplayCatalog.test.tsx}`, `src/platform/web/src/app/{routes.tsx,styles.css}`, `src/platform/web/README.md`
 **Ước lượng:** M (4 file)
 
-### [ ] P2-T26 — Spectator replay client và integrity verification
+### [x] P2-T26 — Spectator replay client và integrity verification
 
 **Owner:** Đinh Đức Thuận
 **Mô tả:** Xây client public tải replay và kiểm tra schema/version/checksum trước khi giao dữ liệu cho player.
 **Acceptance criteria:** (1) private/not-found/schema mismatch có error ổn định; (2) checksum tính trên canonical bytes theo API contract và mismatch không trả event data; (3) tests dùng valid/tampered/unsupported fixtures, không phụ thuộc UI timer.
-**Verification:** `npm test --workspace @ott/platform-web -- replay-integrity && npm run typecheck --workspace @ott/platform-web`.
+**Verification:** Pass 2026-10-13: replay integrity suite 10/10; full web suite 59/59; root `npm test`, `npm run typecheck`, and `npm run build` pass. Tests verify exact raw body bytes (including final newline) before parse, valid event sequence starting at 0, tampering rejected before return, stable private/not-found and schema errors, allowlist strips seed/unknown fields, anonymous fetch uses `credentials: omit`, invalid ID/network failure handling. Inverting the checksum guard made 6 tests fail; restored verifier passes. GitNexus staged/compare reports HIGH, 57 symbols, 8 files and 9 flows; all 9 returned flows reviewed and they resolve to the new replay parser/validator and docs references. Global flow index is incomplete (71/271 entrypoint candidates and 346 callees omitted), so this is not treated as zero-impact proof. The original task filter `replay-integrity` matched no test file; corrected the canonical filter to `verify-replay` to match `verify-replay.test.ts`. No browser-rendered page in this task; Chrome DevTools UI inspection is not applicable here. No dependency or cloud changes.
 **Dependencies:** `P2-T17B`, `P2-T24`.
-**Files dự kiến:** `src/platform/web/src/features/spectator/api.ts`, `src/platform/web/src/features/spectator/replay-schema.ts`, `src/platform/web/src/features/spectator/verify-replay.ts`, `src/platform/web/src/features/spectator/verify-replay.test.ts`
+**Files:** `src/platform/web/src/features/spectator/{api.ts,replay-schema.ts,verify-replay.ts,verify-replay.test.ts}`, `src/platform/web/README.md`, `tasks/todo.md`
 **Ước lượng:** M (4 file)
 
 ### [ ] P2-T27 — Spectator replay player và presentation page

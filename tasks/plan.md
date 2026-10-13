@@ -251,7 +251,7 @@ Phase 1 complete
 - [x] `P2-T23` — Replay publication persistence và catalog repository; isolated PostgreSQL integration 5/5, migration 0006, immutable state/identity/audit and idempotency verified (2026-10-13).
 - [x] `P2-T24` — BTC catalog/stage/publish and anonymous seed-free public replay API; isolated PostgreSQL/Redis/SeaweedFS integration 1/1, root tests/typecheck/build pass (2026-10-13).
 - [x] `P2-T25` — BTC replay catalog và publication console; replay-admin UI 5/5, web suite 49/49, typecheck/build pass (2026-10-13).
-- [ ] `P2-T26` — Spectator replay client và integrity verification.
+- [x] `P2-T26` — Spectator replay client và integrity verification; 10 focused tests, full web 59/59, root tests/typecheck/build pass (2026-10-13).
 - [ ] `P2-T27` — Spectator replay player và presentation page.
 - [ ] `P2-T28` — Qualification E2E harness và deterministic fixtures.
 - [ ] `P2-T29` — Qualification full-flow E2E và local handoff.

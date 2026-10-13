@@ -81,3 +81,16 @@ strictly post-match and has no live match controls.
 Verification: `npm test --workspace @ott/platform-web -- replay-admin`,
 `npm run typecheck --workspace @ott/platform-web`, and
 `npm run build --workspace @ott/platform-web`.
+
+## Spectator replay verification (`P2-T26`)
+
+The public client requests `/api/v1/public/replays/:matchId` without session
+credentials. It checks the exact v1 media type and `X-Replay-SHA256`, hashes
+the unmodified response bytes (including the contract's final newline), and
+only then decodes/parses the body. Unsupported schema, checksum mismatch,
+private/not-found, malformed replay and network failures use stable client
+error codes. The parser returns a typed allowlisted model and drops unrecognized
+fields; the replay player must receive this verified model rather than raw JSON.
+
+Verification: `npm test --workspace @ott/platform-web -- verify-replay` and
+`npm run typecheck --workspace @ott/platform-web`.
