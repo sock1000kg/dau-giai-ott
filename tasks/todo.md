@@ -614,15 +614,15 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 **Files dự kiến:** `src/platform/web/README.md`, `src/platform/web/src/features/auth/api.ts`, `src/platform/web/src/features/auth/AuthProvider.tsx`, `src/platform/web/src/features/auth/LoginPage.tsx`, `src/platform/web/src/app/routes.tsx`, `src/platform/web/src/app/App.tsx`, `src/platform/web/src/app/App.test.tsx`, `src/platform/web/src/app/styles.css`, `src/platform/web/src/features/auth/auth.test.tsx`
 **Ước lượng:** M (9 files; contract client, auth state, routing and accessible login shell)
 
-### [ ] P2-T19 — BTC team-account provisioning console
+### [x] P2-T19 — BTC team-account provisioning console
 
 **Owner:** Đinh Đức Thuận
 **Mô tả:** Cho BTC tạo team từ tên đội, reset credential và xem/copy plaintext đúng một lần để gửi ngoài hệ thống.
 **Acceptance criteria:** (1) Chỉ `BTC_ADMIN` vào route và form create chỉ nhận team name; (2) credential chỉ nằm trong response/create-reset view, biến mất khi dismiss/navigation/refresh; (3) confirm reset, copy feedback, loading/empty/error và tests phủ role denial/one-time handling.
-**Verification:** `npm test --workspace @ott/platform-web -- admin-teams && npm run build --workspace @ott/platform-web`.
+**Verification:** Pass 2026-10-13: admin-teams component/API-client suite 10/10, workspace suite 20/20, root tests/typecheck/build pass; create sends only trimmed team name, role guard denies TEAM_ACCOUNT, credential view supports copy/dismiss and clears on `pagehide`, reset requires and honors confirmation, empty/loading/error/retry states are covered, malformed credential/server error details are not rendered. A role-gate inversion mutation made the team-route denial test fail; reverted and workspace suite passed 20/20. GitNexus all/compare reports `CRITICAL` across 20 flows because admin routes extend the app composition; the flows were reviewed by path: auth route/session, team create+shape/error, team reset+shape/error, list+retry, and one-time copy/clear. The backend `P2-T06` route enforces BTC server-side; this change adds no authority to the UI and the role-denial test passes. Warning reviewed, not waived using `riskSharedAxes`. P2-T06 integration test was invoked but skipped 3/3 because `DATABASE_URL`/`REDIS_URL` are absent; that fixture drops `public` schema/flushes Redis, so it was not pointed at any unverified data store. The exact route/response shapes were checked in `src/platform/api/src/modules/teams/routes.ts`.
 **Dependencies:** `P2-T18`, `P2-T06`.
-**Files dự kiến:** `src/platform/web/src/features/admin-teams/api.ts`, `src/platform/web/src/features/admin-teams/TeamProvisionPage.tsx`, `src/platform/web/src/features/admin-teams/CredentialOnce.tsx`, `src/platform/web/src/features/admin-teams/TeamProvisionPage.test.tsx`
-**Ước lượng:** M (4 file)
+**Files dự kiến:** `src/platform/web/README.md`, `src/platform/web/src/app/routes.tsx`, `src/platform/web/src/app/App.tsx`, `src/platform/web/src/app/App.test.tsx`, `src/platform/web/src/app/styles.css`, `src/platform/web/src/features/auth/auth.test.tsx`, `src/platform/web/src/features/admin-teams/api.ts`, `src/platform/web/src/features/admin-teams/TeamProvisionPage.tsx`, `src/platform/web/src/features/admin-teams/CredentialOnce.tsx`, `src/platform/web/src/features/admin-teams/TeamProvisionPage.test.tsx`
+**Ước lượng:** M (10 files; BTC route, provisioning/reset and one-time credential UI)
 
 ### [ ] P2-T20 — Team OCI submission portal
 

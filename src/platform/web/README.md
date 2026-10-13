@@ -25,3 +25,14 @@ npm run build --workspace @ott/platform-web
 The browser host must route `/api/v1` to the platform API on the same origin.
 Production secrets and API credentials must never be embedded in the Vite
 client bundle.
+
+## BTC team provisioning (`P2-T19`)
+
+The BTC-only screen uses the existing `P2-T06` routes: `GET /api/v1/admin/teams`,
+`POST /api/v1/admin/teams` with only `{ name }`, and
+`POST /api/v1/admin/teams/:id/reset-credential`. The server remains responsible
+for role checks, account creation, password generation/hashing and session
+revocation. The create/reset response credential is held in React memory only;
+the screen clears it when dismissed or when the page is left, and it is never
+written to storage or logs. The BTC operator must send it to the team through a
+separate private channel.

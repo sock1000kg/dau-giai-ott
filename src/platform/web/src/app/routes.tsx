@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { TeamProvisionPage } from '../features/admin-teams/TeamProvisionPage.tsx';
 import { LoginPage } from '../features/auth/LoginPage.tsx';
 import { useAuth } from '../features/auth/AuthProvider.tsx';
 
@@ -43,6 +44,7 @@ function Workspace({ role, onLogout }: Readonly<{ role: 'BTC_ADMIN' | 'TEAM_ACCO
       <div className="eyebrow"><span aria-hidden="true" /> ĐÃ ĐĂNG NHẬP</div>
       <h1>{role === 'BTC_ADMIN' ? 'Khu vực BTC' : 'Cổng đội thi'}</h1>
       <p className="welcome-copy">{role === 'BTC_ADMIN' ? 'Tài khoản Ban tổ chức.' : 'Tài khoản đội thi.'}</p>
+      {role === 'BTC_ADMIN' && <a href="/admin/teams">Quản lý đội thi</a>}
       {logoutFailed && <p role="alert">Không thể đăng xuất lúc này. Vui lòng thử lại.</p>}
       <button type="button" disabled={loggingOut} onClick={() => void handleLogout()}>
         {loggingOut ? 'Đang đăng xuất…' : 'Đăng xuất'}
@@ -62,6 +64,8 @@ export function AuthRoutes() {
   const role = auth.state.principal.role;
   const path = window.location.pathname;
   const expectedPath = role === 'BTC_ADMIN' ? '/admin' : '/team';
-  if (path !== '/' && path !== '/login' && path !== expectedPath) return <AccessDenied />;
+  const isTeamAdminPage = role === 'BTC_ADMIN' && path === '/admin/teams';
+  if (path !== '/' && path !== '/login' && path !== expectedPath && !isTeamAdminPage) return <AccessDenied />;
+  if (isTeamAdminPage) return <TeamProvisionPage />;
   return <Workspace role={role} onLogout={auth.logout} />;
 }

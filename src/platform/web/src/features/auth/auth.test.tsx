@@ -93,7 +93,7 @@ describe('authentication routes', () => {
 
   it('restores a team session and blocks the BTC route at the UI boundary', async () => {
     mockFetch(response(200, { data: { role: 'TEAM_ACCOUNT', teamId: 'team-1' } }));
-    window.history.replaceState({}, '', '/admin');
+    window.history.replaceState({}, '', '/admin/teams');
 
     render(<App />);
 

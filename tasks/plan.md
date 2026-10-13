@@ -244,7 +244,7 @@ Phase 1 complete
 - [x] `P2-T17A` — React/Vite workspace package foundation; clean install, root tests/typecheck/build pass (2026-10-13).
 - [x] `P2-T17B` — React/Vite app shell và component test harness; component + root checks/build and local HTTP smoke pass (2026-10-13).
 - [x] `P2-T18` — Login, session restore và role authorization UI; auth suite 9/9, shell test/typecheck/build pass (2026-10-13).
-- [ ] `P2-T19` — BTC team-account provisioning console.
+- [x] `P2-T19` — BTC team-account provisioning console; component/API-client suite 10/10, workspace checks/build pass (2026-10-13).
 - [ ] `P2-T20` — Team OCI submission portal.
 - [ ] `P2-T21` — Team/BTC match và series results UI.
 - [ ] `P2-T22` — Public leaderboard UI.

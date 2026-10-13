@@ -107,7 +107,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .welcome-panel form { display: grid; gap: 10px; margin-top: 28px; }
 .welcome-panel label { margin-top: 7px; color: #dce6ef; font-size: 13px; font-weight: 600; }
 
-.welcome-panel input {
+.welcome-panel input, .admin-page input {
   width: 100%;
   min-height: 46px;
   padding: 10px 12px;
@@ -117,10 +117,10 @@ button, a { -webkit-tap-highlight-color: transparent; }
   color: #f3f6fb;
 }
 
-.welcome-panel input:hover { border-color: #526a80; }
-.welcome-panel input:focus-visible { border-color: #80e4d0; }
+.welcome-panel input:hover, .admin-page input:hover { border-color: #526a80; }
+.welcome-panel input:focus-visible, .admin-page input:focus-visible { border-color: #80e4d0; }
 
-.welcome-panel button {
+.welcome-panel button, .admin-page button {
   min-height: 46px;
   margin-top: 12px;
   padding: 10px 16px;
@@ -133,8 +133,8 @@ button, a { -webkit-tap-highlight-color: transparent; }
   transition: background-color 140ms ease, transform 140ms ease;
 }
 
-.welcome-panel button:hover:not(:disabled) { background: #a0f0e0; transform: translateY(-1px); }
-.welcome-panel button:disabled { cursor: wait; opacity: 0.68; }
+.welcome-panel button:hover:not(:disabled), .admin-page button:hover:not(:disabled) { background: #a0f0e0; transform: translateY(-1px); }
+.welcome-panel button:disabled, .admin-page button:disabled { cursor: wait; opacity: 0.68; }
 .welcome-panel [role="alert"] { margin: 4px 0; color: #ffb6ad; font-size: 13px; line-height: 1.5; }
 .welcome-panel > a { display: inline-block; margin-top: 16px; color: #80e4d0; font-size: 14px; }
 .shell-note { margin: 20px 0 0; font-size: 12px; }
@@ -146,11 +146,54 @@ button, a { -webkit-tap-highlight-color: transparent; }
   font-size: 11px;
 }
 
+.admin-page {
+  width: min(100%, 900px);
+  margin: auto;
+  padding-block: 38px;
+}
+
+.admin-page h1 { margin: 14px 0 8px; font-size: clamp(30px, 5vw, 42px); letter-spacing: -0.04em; }
+.admin-page > .welcome-copy { margin: 0 0 28px; }
+.admin-back-link { display: inline-block; margin-top: 16px; color: #80e4d0; font-size: 13px; text-decoration: none; }
+
+.team-create-form, .team-list, .credential-card {
+  padding: clamp(20px, 3vw, 28px);
+  border: 1px solid rgba(177, 204, 224, 0.16);
+  border-radius: 14px;
+  background: rgba(22, 35, 50, 0.9);
+}
+
+.team-create-form label { display: block; margin-bottom: 10px; color: #dce6ef; font-size: 13px; font-weight: 650; }
+.team-create-row { display: flex; gap: 12px; }
+.team-create-row input { flex: 1; min-width: 0; }
+.team-create-row button { margin: 0; white-space: nowrap; }
+.team-list { margin-top: 20px; }
+.team-list-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.team-list h2, .credential-card h2 { margin: 0; font-size: 18px; letter-spacing: -0.02em; }
+.team-list-heading button { margin: 0; }
+.team-list ul { display: grid; gap: 10px; margin: 18px 0 0; padding: 0; list-style: none; }
+.team-list li { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 12px; border-top: 1px solid rgba(190, 211, 228, 0.1); color: #e6edf4; }
+.team-list li button { margin: 0; }
+.admin-page button.button-secondary { min-height: 40px; border: 1px solid #40566b; background: #17283a; color: #dce6ef; font-size: 12px; }
+.admin-page button.button-secondary:hover:not(:disabled) { border-color: #80e4d0; background: #20384a; }
+.credential-card { margin-bottom: 20px; border-color: rgba(128, 228, 208, 0.48); }
+.credential-card p { color: #a8b8c8; font-size: 13px; line-height: 1.6; }
+.credential-card dl { display: grid; gap: 12px; margin: 18px 0; }
+.credential-card dl > div { display: grid; gap: 6px; }
+.credential-card dt { color: #8ea4b7; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.credential-card dd { margin: 0; overflow-wrap: anywhere; color: #f3f6fb; }
+.credential-card code { font-size: 15px; }
+.credential-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.credential-actions button { margin: 0; }
+.admin-page > [role="alert"] { color: #ffb6ad; }
+
 @media (max-width: 520px) {
   .app-shell { padding-inline: 16px; }
   .app-header { min-height: 68px; }
   .header-label { font-size: 9px; }
   .welcome-panel { border-radius: 14px; }
+  .admin-page { padding-block: 28px; }
+  .team-create-row, .team-list li { align-items: stretch; flex-direction: column; }
 }
 
 @media (prefers-reduced-motion: reduce) {

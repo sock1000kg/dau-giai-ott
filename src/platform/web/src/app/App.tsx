@@ -6,7 +6,7 @@ export function App() {
   return (
     <div className="app-shell">
       <header className="app-header">
-        <a className="brand" href="#main" aria-label="Giải đấu OTT - trang chủ">
+        <a className="brand" href="/" aria-label="Giải đấu OTT - trang chủ">
           <span className="brand-mark" aria-hidden="true">O</span>
           <span>OTT Arena</span>
         </a>
