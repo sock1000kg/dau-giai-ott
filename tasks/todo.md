@@ -654,12 +654,12 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 **Files:** `src/platform/web/src/features/leaderboard/{api.ts,LeaderboardPage.tsx,LeaderboardTable.tsx,leaderboard.test.tsx}`, public app routing/header/styles, and web README.
 **Ước lượng:** M (4 file)
 
-### [ ] P2-T23 — Replay publication persistence và catalog repository
+### [x] P2-T23 — Replay publication persistence và catalog repository
 
 **Owner:** Đinh Đức Thuận
 **Mô tả:** Thêm model/migration/repository cho lifecycle `PRIVATE` → `STAGED` → `PUBLISHED` và BTC terminal-match catalog.
 **Acceptance criteria:** (1) một publication row/match với state transition bất biến và idempotency constraint; (2) chỉ match terminal có verified replay identity mới được stage; (3) actor/reason/time audit lưu được nhưng không chứa credential/object body.
-**Verification:** `npm test --workspace @ott/platform-api -- --run tests/replay-publication-repository.integration.test.ts` với PostgreSQL thật.
+**Verification:** Pass 2026-10-13: isolated PostgreSQL integration 5/5 (including simultaneous idempotent stage, publish retry, invalid actor/status/checksum, immutable transition/identity/audit, and catalog privacy/pagination); API unit suite 19 pass/22 service-gated skips; root `npm test`, `npm run typecheck`, and `npm run build` pass. Migration 0006 was applied in a random disposable schema and removed during test teardown. GitNexus staged/compare: HIGH, 111 symbols, 10 files, 8 affected flows; all eight are the new stage/publish transaction and validation paths, and direct source search confirms no callers outside repository tests yet (T24 will wire the API). The global flow index remains incomplete (33/233 entrypoint candidates and 298 callees omitted), so this is not treated as zero-impact proof. No cloud deployment.
 **Dependencies:** `P2-T04`, `P2-T11`, `P2-T16`.
 **Files dự kiến:** `src/platform/api/migrations/0006_replay_publication.sql`, `src/platform/api/src/modules/replays/types.ts`, `src/platform/api/src/modules/replays/repository.ts`, `src/platform/api/tests/replay-publication-repository.integration.test.ts`
 **Ước lượng:** M (4 file)

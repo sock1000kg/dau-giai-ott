@@ -110,7 +110,7 @@ schedule transaction
 
 ### 4.4 Replay publication
 
-Worker chỉ upload event log sau khi `verifyReplay` pass và lưu checksum/final hash. API replay kiểm tra match `FINALIZED`, artifact checksum và publication state trước khi BTC `STAGE`/`PUBLISH`. Spectator chỉ tải representation public đã lọc; không có live feed, seed chưa công bố, source bot, stderr hay worker log.
+Worker chỉ upload event log sau khi `verifyReplay` pass và lưu checksum/final hash. Migration `0006_replay_publication` tạo đúng một row `PRIVATE` cho mỗi `FINALIZED` match có content-addressed replay identity hợp lệ (kể cả dữ liệu terminal đã tồn tại lúc migration chạy). PostgreSQL chỉ cho phép `PRIVATE → STAGED → PUBLISHED`, khóa replay identity bất biến và lưu mỗi transition trong audit append-only gồm actor BTC, reason, thời gian, idempotency key và request fingerprint; không lưu credential hoặc artifact body. Repository kiểm tra BTC active, terminal status, object key/checksum identity và checksum đã được service xác minh. P2-T24 chịu trách nhiệm đọc bytes từ private storage và xác minh SHA-256 trước khi gọi transition; spectator chỉ tải representation public đã lọc sau `PUBLISHED`, không có live feed, seed chưa công bố, source bot, stderr hay worker log.
 
 ## 5. Dữ liệu, transaction và state machine
 

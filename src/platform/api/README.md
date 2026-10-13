@@ -92,3 +92,22 @@ with migrations applied; it creates and removes only its own unique fixture:
 DATABASE_URL="$YOUR_DISPOSABLE_POSTGRES_URL" \
   npm test --workspace @ott/platform-api -- --run tests/scheduling.logic.test.ts tests/scheduling.integration.test.ts
 ```
+
+`P2-T23` adds migration `0006_replay_publication` and a PostgreSQL repository for
+BTC replay catalog and publication state. A verified terminal match gets exactly
+one `PRIVATE` publication row; database guards only permit `PRIVATE → STAGED →
+PUBLISHED`, preserve the content-addressed replay identity, and keep actor,
+reason, timestamp, and idempotency key in append-only audit rows. The repository
+requires an active `BTC_ADMIN` and the caller's byte-verified SHA-256 to match
+the finalized result identity. `P2-T24` must verify the private object bytes
+through storage before calling these transition functions; this repository
+does not itself read the object store or expose its key in catalog results.
+
+Run the T23 integration test only against a disposable PostgreSQL database. It
+creates a random schema, applies the migrations there, and drops only that
+schema during teardown:
+
+```bash
+DATABASE_URL="$YOUR_DISPOSABLE_POSTGRES_URL" \
+  npm test --workspace @ott/platform-api -- --run tests/replay-publication-repository.integration.test.ts
+```
