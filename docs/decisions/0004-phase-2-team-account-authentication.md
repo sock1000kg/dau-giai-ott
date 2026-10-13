@@ -27,6 +27,11 @@ provider bên ngoài; bot source và dữ liệu submission phải luôn bị gi
   credential team; reset thu hồi toàn bộ session của account đó. Audit không bao giờ chứa password.
 - Server kiểm tra `TEAM_ACCOUNT.teamId` cho mọi thao tác submission/read riêng tư; UI chỉ là consumer,
   không phải ranh giới authorization.
+- Demo local có một ngoại lệ hẹp được owner duyệt ngày 2026-10-13: chỉ khi `OTT_DEMO_MODE=true`, seeder
+  được tạo đúng `btc`, `team01`, `team02` với public fixture password `ABC123`. Password vẫn được Argon2id
+  hash trong database; plaintext CSV chỉ được sinh tại `.local/demo/accounts.csv` với mode `0600`, bị
+  gitignore và không được log, commit, đưa vào image hoặc chạy ở production/shared environment. Production
+  provisioning/reset vẫn dùng credential ngẫu nhiên theo quyết định ở trên.
 
 ## Alternatives considered
 
@@ -37,6 +42,8 @@ Không chọn vì BTC cần kiểm soát danh sách đội, xác minh danh tính
 ### BTC tự nhập hoặc lưu plaintext password
 
 Không chọn vì tạo mật khẩu yếu/dùng lại và làm server hoặc log có thể giữ secret không cần thiết.
+Ngoại lệ demo local phía trên không biến mật khẩu này thành secret production và phải fail closed ngoài
+`OTT_DEMO_MODE`; nó tồn tại để một clean-checkout browser demo có credential dự đoán được.
 
 ### Identity provider bên ngoài
 

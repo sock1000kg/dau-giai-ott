@@ -122,6 +122,11 @@ Yêu cầu phân quyền:
   team/account, thời điểm và loại thao tác, tuyệt đối không ghi password.
 - `BTC_ADMIN` đầu tiên được bootstrap bằng biến môi trường local không commit; sau đó đăng nhập như bình
   thường. Team portal chỉ có màn hình đăng nhập và không có đường dẫn/API đăng ký hoặc tự reset password.
+- Ngoại lệ chỉ dành cho demo local: khi operator bật tường minh `OTT_DEMO_MODE=true`, seeder được phép tạo
+  đúng một BTC và hai team fixture với public demo password `ABC123`. Database vẫn chỉ lưu Argon2id hash;
+  plaintext chỉ được ghi vào `.local/demo/accounts.csv` mode `0600`, file phải bị gitignore, không được log,
+  đóng gói vào image hoặc dùng ở production/shared environment. Ngoại lệ này không thay đổi luồng BTC
+  provision/reset chính thức: luồng đó vẫn sinh credential ngẫu nhiên và chỉ trả plaintext một lần.
 - Session là opaque server-side session trong Redis, phát cho browser bằng cookie `HttpOnly`, `SameSite=Lax`
   và `Secure` ở môi trường HTTPS. Password hash dùng Argon2id; rate limit login và error response không được
   tiết lộ username có tồn tại hay không.

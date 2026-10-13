@@ -10,7 +10,7 @@ Ba thành viên Dev phát triển độc lập trên `localhost`:
 - **Đỗ Khôi Nguyên:** viết các bot mẫu và bot lỗi để kiểm thử.
 - **Phạm Tất Đạt:** viết chương trình chạy trận, nối core với hai bot và kiểm thử end-to-end local.
 
-**Đinh Đức Thuận** sở hữu decision gate và toàn bộ Phase 2 local. Backend `P2-T01`–`P2-T15` đã hoàn tất; frontend, replay và E2E còn lại được phát hành lại thành `P2-T17A`, `P2-T17B`, `P2-T18`–`P2-T29` ngày 2026-10-13. Phase 2 kết thúc ở qualification E2E/runbook local; CI/CD và triển khai cloud bị loại khỏi phạm vi hiện tại.
+**Đinh Đức Thuận** sở hữu decision gate và toàn bộ Phase 2 local. Core feature scope `P2-T01`–`P2-T29` đã hoàn tất; phần mở rộng runnable demo stack được phát hành thành `P2-T30`–`P2-T37` ngày 2026-10-13. Phase 2 kết thúc ở clean-checkout browser demo/Checkpoint `P2-C`; CI/CD và triển khai cloud bị loại khỏi phạm vi hiện tại.
 
 ## 2. Hiện trạng đã kiểm tra
 
@@ -162,6 +162,10 @@ flowchart LR
     E2E["✅ P2-T28 (Thuận)<br/>Isolated harness + canary fixtures"]
     FLOW["✅ P2-T29 (Thuận)<br/>Qualification full flow + local handoff"]
     PB2["✅ Checkpoint P2-B<br/>Phase 2 local hoàn tất"]
+    RUNTIME["P2-T30…T32 (Thuận)<br/>API/worker hosts + coordinator"]
+    CONTAINERS["P2-T33…T34 (Thuận)<br/>Images + full-stack Compose"]
+    DEMO["P2-T35…T37 (Thuận)<br/>Demo accounts/scripts + browser E2E"]
+    PC2["Checkpoint P2-C<br/>Runnable local demo"]
 
     PC --> T21
     PC --> I1
@@ -176,6 +180,7 @@ flowchart LR
     BENCH -.-> PA2
     PA2 --> PLAN
     PLAN --> WEBBASE --> WEB --> AUTH --> TEAMADMIN --> PORTAL
+    PB2 --> RUNTIME --> CONTAINERS --> DEMO --> PC2
     AUTH & ELO --> RESULTS
     WEBBASE & AUTH & ELO --> LEADERBOARD
     PLAN & WORKER --> REP23 --> REP24 --> REP25 --> REP26 --> VIEW
@@ -185,7 +190,7 @@ flowchart LR
     classDef done fill:#123d2a,stroke:#39d98a,color:#ffffff,stroke-width:2px;
     classDef gate stroke-width:3px;
     class PC,T21,I1,OCI,CO,DB,RBAC,AUTHC,TEAM,WORKER,BENCH,ELO,PA2,PLAN,WEBBASE,WEB,AUTH,TEAMADMIN,PORTAL,RESULTS,LEADERBOARD,REP23,REP24,REP25,REP26,VIEW,E2E,FLOW done;
-    class PC,PA2,PB2 gate;
+    class PC,PA2,PB2,PC2 gate;
 ```
 
 `✅` chỉ gắn cho node có task/checkpoint đã hoàn tất trong `tasks/todo.md` và có bằng chứng verification. Hiện tại toàn bộ `P1-T01`, `P1-T02`, `P1-L01`–`P1-L08`, `P1-N01`–`P1-N06`, `P1-D02`–`P1-D11`, Checkpoint `P1-A`, `P1-B` và `P1-C` đã hoàn tất. Khi một task hoặc checkpoint được xác nhận, thêm `✅` vào đầu nhãn node và đưa node đó vào `class ... done`.
@@ -615,7 +620,7 @@ Như vậy Đạt không bị block toàn bộ. Chỉ E2E cuối cùng phụ thu
 
 ### Phân công tải công việc Phase 2
 
-Thuận sở hữu toàn bộ Phase 2 local theo chuỗi `P2-T01`–`P2-T29`:
+Thuận sở hữu toàn bộ Phase 2 local theo chuỗi `P2-T01`–`P2-T37`:
 
 1. Local Docker Compose.
 2. Data model, authentication/RBAC, Team/Submission API và S3-compatible storage.
@@ -624,8 +629,12 @@ Thuận sở hữu toàn bộ Phase 2 local theo chuỗi `P2-T01`–`P2-T29`:
 5. React/Vite foundation, authentication UI, team/BTC portal, results và leaderboard.
 6. Replay publication API, BTC console và spectator player.
 7. Qualification E2E và local runbook.
+8. API/worker runtime hosts, lifecycle coordinator và Docker images.
+9. Full-stack Compose, demo accounts/scripts và browser qualification.
 
 Backend `P2-T01`–`P2-T15`, rebaseline `P2-T16`, web workspace `P2-T17A`, app shell `P2-T17B`, login/session/role guard `P2-T18`, BTC team provisioning `P2-T19`, team OCI submission portal `P2-T20`, results UI `P2-T21`, public leaderboard UI `P2-T22`, replay persistence/catalog repository `P2-T23`, replay publication/public artifact API `P2-T24`, BTC replay catalog/publication console `P2-T25`, spectator replay client/integrity verification `P2-T26`, spectator replay player `P2-T27`, isolated qualification harness `P2-T28` và full-flow qualification `P2-T29` đã hoàn tất theo verification trong `tasks/todo.md`. Checkpoint `P2-B` đạt sau detached clean-worktree verification; mỗi task dùng branch riêng, test → docs/status → commit → merge `main`.
+
+`P2-T30`–`P2-T37` đang mở để cung cấp committed runtime entrypoints, coordinator, Docker images, full-stack Compose, demo-only accounts CSV, one-command operations và browser E2E. Thứ tự dependency và trạng thái duy nhất nằm tại `tasks/todo.md`; kết thúc bằng Checkpoint `P2-C`.
 
 Phần Thuận có thể làm tiếp ngay:
 
@@ -638,6 +647,7 @@ Ranh giới tuần tự bắt buộc:
 - `P2-T19`–`P2-T21` chờ auth UI `P2-T18` (đã hoàn tất).
 - `P2-T24` replay HTTP API, `P2-T25` console BTC, `P2-T26` verified spectator client và `P2-T27` read-only replay player đã hoàn tất; `P2-T28` nay đủ dependency.
 - `P2-T28` harness chạy sạch hai lần; `P2-T29` full flow và detached clean-worktree verification đã pass trong Compose isolated; Checkpoint `P2-B` đạt.
+- `P2-T30`/`P2-T31` có thể bắt đầu sau P2-B; `P2-T32` chờ cả hai. Images/Compose/account/scripts/browser E2E theo thứ tự `P2-T33` → `P2-T37`.
 - Deploy cloud, production secrets và CI/CD không thuộc chuỗi task này.
 
 ## 11. Thứ tự triển khai

@@ -2,7 +2,7 @@
 
 > Trạng thái: **Đã tự động duyệt**
 > Mức khuyến nghị: **HIGH RECOMMEND**
-> Vai trò: owner duy nhất toàn bộ Phase 2 local — backend, frontend, replay, E2E và checkpoint
+> Vai trò: owner duy nhất toàn bộ Phase 2 local — backend, frontend, replay, runtime Docker demo, E2E và checkpoint
 
 ## 1. Cách dùng ngay
 
@@ -10,7 +10,7 @@ Mở AI tại repository root, đính kèm file này và gửi đúng câu sau:
 
 ```text
 Đọc toàn bộ file docs/ai-context/dinh-duc-thuan.md và dùng nó làm context điều hành.
-Tiếp tục tự động toàn bộ task Phase 2 của tôi đến khi Checkpoint P2-B hoàn thành.
+Tiếp tục tự động toàn bộ task Phase 2 của tôi đến khi Checkpoint P2-C hoàn thành.
 Không dừng giữa các task: mỗi vòng chọn task ID nhỏ nhất đã đủ dependency, tạo branch từ main,
 test, cập nhật docs/status, commit và merge lại main rồi chuyển task kế tiếp.
 Chỉ dừng khi có blocker thật sự; báo evidence và phương án. Không push hoặc deploy cloud.
@@ -25,7 +25,7 @@ AI phải đọc file này cùng tài liệu nguồn; không chỉ dựa vào l�
 - Branch dùng prefix `thuandd/`, ví dụ task tiếp theo `thuandd/feat-p2-t17a-web-workspace`.
 - Không code trực tiếp trên `main`.
 - Khi task pass verification, commit nguyên tử và merge vào `main`; chỉ push khi người dùng yêu cầu riêng.
-- Duyệt checkpoint trên `main`; Phase 2 hiện tại dừng ở local qualification E2E/runbook.
+- Duyệt checkpoint trên `main`; Phase 2 hiện tại dừng ở clean-checkout browser demo/Checkpoint P2-C.
 - `develop` là nhánh legacy, không dùng để tạo branch, nhận PR hoặc deploy.
 
 ```bash
@@ -40,7 +40,7 @@ Nếu `origin/main` chưa tồn tại hoặc working tree đang có thay đổi 
 
 - `P1-T01` đã hoàn tất; bảo vệ các contract/ADR đã khóa khỏi thay đổi không được review.
 - Xác nhận contract/checkpoint và xử lý mâu thuẫn giữa các tài liệu.
-- `P2-T01`–`P2-T29` đã hoàn tất; không còn task implementation Phase 2 local đang mở. Kiểm tra clean checkout và xác nhận Checkpoint `P2-B` là bước cuối.
+- `P2-T01`–`P2-T29` đã hoàn tất; tiếp tục `P2-T30`–`P2-T37` để tạo committed runtime/Docker demo stack và xác nhận Checkpoint `P2-C`.
 - Dùng [Solution Architecture Phase 2](../architecture/solution-architecture-phase-2.md), [SAD OCI Bot Submission](../architecture/sad-oci-bot-submissions.md), ADR-0005 và ADR-0006 làm ranh giới thực thi; `P2-T15` là cổng benchmark resource profile trước khi mở nhận bot của đội thi.
 - Phase 2 local và Checkpoint `P2-B` đã hoàn tất sau detached clean-worktree verification; deploy cloud bị loại khỏi phạm vi.
 - Không thêm CI/CD, cloud infrastructure, production secrets hoặc deploy stage vào Phase 2 hiện tại.
@@ -71,8 +71,10 @@ Nếu có mâu thuẫn, AI phải nêu rõ hai nguồn và đề xuất lựa ch
 | `P2-T01` — khóa quyết định Phase 2 | `P1-D11` hoàn tất |
 | `P2-T02`–`P2-T15` — backend local | Đã hoàn tất và Checkpoint `P2-A` đã đạt |
 | `P2-T16` — rebaseline ownership/execution loop | Đã hoàn tất ngày 13/10/2026 |
-| `P2-T17A`–`P2-T29` — frontend, replay, E2E local | Đã hoàn tất; không tạo task mới ngoài phạm vi đã duyệt |
+| `P2-T17A`–`P2-T29` — frontend, replay, qualification E2E | Đã hoàn tất |
+| `P2-T30`–`P2-T37` — runtime hosts, Docker/Compose, demo accounts/scripts, browser E2E | Đang mở; làm tuần tự theo `tasks/todo.md` |
 | Duyệt Checkpoint `P2-B` | Đã hoàn tất; detached clean-worktree verification pass |
+| Duyệt Checkpoint `P2-C` | Chờ `P2-T30`–`P2-T37` và clean-checkout browser qualification |
 
 Sơ đồ hai phase: `docs/team-assignment-phase-1-2.md` mục 4.2. Sau khi duyệt task hoặc checkpoint, thêm `✅` vào node tương ứng trong sơ đồ.
 
@@ -138,9 +140,9 @@ Hãy:
 5. Nếu là decision gate như P2-T01, lập bảng: quyết định, lựa chọn, khuyến nghị, lý do, ảnh hưởng và nơi ghi nhận.
 6. Nếu là checkpoint, đối chiếu từng acceptance criterion với bằng chứng test/build thực tế.
 7. Dùng GitNexus trước khi sửa file hiện có và detect-changes trước khi đề xuất commit.
-8. Với Phase 2, chọn task ID nhỏ nhất chưa hoàn tất trong `P2-T17A`–`P2-T29` có đủ dependency; làm tuần tự đến Checkpoint `P2-B`.
+8. Với Phase 2, chọn task ID nhỏ nhất chưa hoàn tất trong `P2-T30`–`P2-T37` có đủ dependency; làm tuần tự đến Checkpoint `P2-C`.
 9. Mỗi task phải test, cập nhật docs/status, commit và merge vào `main`; không push hoặc deploy cloud nếu chưa được yêu cầu.
-10. Sau merge, đọc lại `tasks/todo.md` và tự bắt đầu task khả dụng kế tiếp; chỉ kết thúc khi Checkpoint `P2-B` đạt hoặc có blocker thật sự kèm evidence/phương án.
+10. Sau merge, đọc lại `tasks/todo.md` và tự bắt đầu task khả dụng kế tiếp; chỉ kết thúc khi Checkpoint `P2-C` đạt hoặc có blocker thật sự kèm evidence/phương án.
 
 Trước khi sửa, hãy trả về task đã chọn, dependency, assumption, file dự kiến sửa và verification plan.
 ```

@@ -255,10 +255,28 @@ Phase 1 complete
 - [x] `P2-T27` — Spectator replay player và presentation page; verified public route, read-only event projection, accessible controls/board, web 64/64 và root tests/typecheck/build pass; Vite route smoke HTTP 200 (2026-10-13).
 - [x] `P2-T28` — Qualification E2E harness và deterministic fixtures; isolated Compose PostgreSQL/Redis/SeaweedFS, migrations + 2 canary submissions, hai lượt liên tiếp 4/4 và teardown sạch (2026-10-13).
 - [x] `P2-T29` — Qualification full-flow E2E/local handoff; BTC provisioning → team auth/upload → real OCI sandbox preflight → BullMQ/worker/finalization → series/Elo/results → replay publish/tamper rejection/client timeline, retry idempotency verified (2026-10-13).
+- [ ] `P2-T30` — API runtime host, environment wiring, health và graceful shutdown.
+- [ ] `P2-T31` — Worker runtime host, execution-plane wiring và graceful shutdown.
+- [ ] `P2-T32` — Local lifecycle coordinator cho preflight, explicit round start, outbox, settlement và Elo.
+- [ ] `P2-T33` — Multi-stage API/worker/web Docker images và same-origin web gateway.
+- [ ] `P2-T34` — Full-stack local Compose wiring; chỉ gateway public ra LAN.
+- [ ] `P2-T35` — Demo-only BTC + hai team accounts và generated gitignored CSV (`ABC123`, local only).
+- [ ] `P2-T36` — One-command `demo.sh` operations cho up/status/accounts/logs/round/stop/reset.
+- [ ] `P2-T37` — Detached clean-checkout browser demo qualification và LAN replay smoke.
+
+Chuỗi phụ thuộc phần mở rộng runtime:
+
+```text
+P2-T30 API host ─┬────────► P2-T33 images ─┐
+P2-T31 Worker ───┤                         ├──► P2-T34 Compose ─► P2-T35 demo accounts
+                 └──► P2-T32 coordinator ─┘                           │
+                                                                      ▼
+                                      P2-T36 demo operations ─► P2-T37 browser E2E ─► Checkpoint P2-C
+```
 
 ## 9. Cảnh báo tải Phase 2
 
-Thuận là owner duy nhất của `P2-T01`–`P2-T29`. Toàn bộ task Phase 2 local và Checkpoint `P2-B` đã hoàn tất sau qualification, root gates và detached clean-worktree verification pass (`404195f`, 2026-10-13). Deploy cloud không nằm trong Definition of Done. Không mở nhiều branch chạm chung `src/platform/web` hoặc replay schema trong cùng lúc.
+Thuận là owner duy nhất của `P2-T01`–`P2-T37`. Core feature scope `P2-T01`–`P2-T29` và Checkpoint `P2-B` đã hoàn tất sau qualification, root gates và detached clean-worktree verification pass (`404195f`, 2026-10-13). `P2-T30`–`P2-T37` là phần mở rộng local runtime để biến các module/test harness thành stack demo chạy lâu dài và kết thúc tại Checkpoint `P2-C`. Deploy cloud không nằm trong Definition of Done. Mỗi task dùng branch riêng; không mở nhiều branch chạm cùng composition root/Compose trong cùng lúc.
 
 1. Hạ tầng local và database.
 2. Authentication/RBAC, team và submission.
@@ -266,8 +284,10 @@ Thuận là owner duy nhất của `P2-T01`–`P2-T29`. Toàn bộ task Phase 2 
 4. Result finalization, scheduling và Elo.
 5. Web shell/login, team portal, BTC credential console, results UI và replay UI.
 6. Qualification E2E.
+7. API/worker runtime hosts, lifecycle coordinator và container images.
+8. Full-stack Compose, demo identities, one-command operations và browser qualification.
 
-Phase 2 kết thúc tại local qualification E2E và runbook. Không thêm CI/CD, cloud infrastructure, production credential hoặc deploy stage vào các task `P2-T17A`, `P2-T17B`, `P2-T18`–`P2-T29`.
+Phase 2 runtime extension kết thúc tại local browser qualification và runbook. Không thêm CI/CD, cloud infrastructure, production credential hoặc deploy stage vào `P2-T30`–`P2-T37`. Fixed credential `ABC123` là public demo fixture chỉ có hiệu lực với `OTT_DEMO_MODE=true`; production provisioning vẫn sinh credential ngẫu nhiên.
 
 ## 10. Rủi ro
 
@@ -279,17 +299,21 @@ Phase 2 kết thúc tại local qualification E2E và runbook. Không thêm CI/C
 | Child process treo/rò rỉ | Cao | Cleanup trong `finally`, timeout monotonic, test còn PID/open handle |
 | Một owner xử lý toàn bộ Phase 2 còn lại | Cao | Task S/M, một branch/task, checkpoint sau từng cụm và full gate tại `P2-T29` |
 | Task vượt 5 file | Trung bình | Tách task trước khi bắt đầu; không mở rộng scope trong cùng PR |
+| Docker socket làm tăng quyền worker | Cao | Chỉ trusted worker mount socket; API/web/coordinator không mount; bot container tiếp tục no-network/no-mount/no-socket |
+| CSV demo làm lộ hoặc tái sử dụng mật khẩu | Cao | Public demo-only `ABC123`, bắt buộc `OTT_DEMO_MODE=true`, cấm production, file `0600` dưới path gitignored và không log nội dung |
+| Compose xanh nhưng flow browser hỏng | Cao | Checkpoint P2-C yêu cầu clean-checkout browser E2E qua gateway, không chấp nhận chỉ module injection/test harness |
 
 ## 11. Open questions không chặn Phase 1
 
 - Exact leaderboard tie vẫn cần BTC ra quyết định nghiệp vụ; UI chỉ hiển thị `BTC_REQUIRED`, không tự đặt luật phụ.
 - Bracket/finals ngoài qualification flow phải được đặc tả riêng; không tự thêm vào `P2-T17A`, `P2-T17B`, `P2-T18`–`P2-T29`.
+- Số account demo khóa tại một BTC và hai team cho Checkpoint P2-C; số đội thật vẫn được BTC provision qua console với credential ngẫu nhiên.
 
 ## 12. Plan verification
 
 - [x] Mỗi task có owner.
 - [x] Task chi tiết có acceptance criteria, verification, dependency và file dự kiến trong `tasks/todo.md`.
-- [x] Mỗi implementation task còn mở dự kiến là một lát S/M; package/workspace bootstrap có thể vượt 5 file vì phải cập nhật root lock/workspace, hai TypeScript configs và smoke test cùng nhau.
+- [x] Mỗi implementation task còn mở dự kiến là một lát S/M, tối đa 5 file dự kiến; docs/status đồng bộ trong cùng task branch.
 - [x] Có checkpoint sau contract, sau ba lane và sau E2E.
 - [x] Plan cũ và plan mới là cùng phạm vi nên được cập nhật tại chỗ.
 - [x] Plan đạt `HIGH RECOMMEND` và được Đinh Đức Thuận tự động duyệt.
