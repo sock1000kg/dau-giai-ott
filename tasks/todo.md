@@ -705,14 +705,15 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 **DOCS UPDATED:** `src/platform/web/README.md`, this task card, `tasks/plan.md`, `docs/team-assignment-phase-1-2.md`.
 **Ước lượng:** M (4 file)
 
-### [ ] P2-T28 — Qualification E2E harness và deterministic fixtures
+### [x] P2-T28 — Qualification E2E harness và deterministic fixtures
 
 **Owner:** Đinh Đức Thuận
 **Mô tả:** Tạo một command chuẩn dựng local dependencies, migrate, seed canary và cleanup cô lập cho qualification E2E.
 **Acceptance criteria:** (1) harness dùng PostgreSQL/Redis/SeaweedFS/Docker local với namespace riêng; (2) setup/teardown idempotent, không xóa dữ liệu ngoài namespace và không để active job/process; (3) command fail-fast nếu corpus/profile/dependency thiếu.
-**Verification:** `npm run test:e2e:qualification -- --runInBand --testNamePattern harness` hai lần liên tiếp.
+**Verification:** `npm run test:e2e:qualification -- --runInBand --testNamePattern harness` hai lần liên tiếp: mỗi lượt 4/4 pass; PostgreSQL/Redis/SeaweedFS healthy, áp dụng đủ migration `0001`–`0006`, seed đúng hai submission canary; project Compose, containers, volumes và network của lượt chạy được teardown. `npm run typecheck`, `npm test`, `npm run build`, `git diff --check`, `bash -n scripts/run-local-qualification.sh` pass; default root Vitest excludes this environment-bound E2E test, while the dedicated config includes it. Shared local containers không bị đụng tới. GitNexus direct impact của fixture seeder là `UNKNOWN`/không có resolved callers; xác nhận invocation qua `qualification-run.ts` và shell script. detect-changes thấy 2 file nhưng không có indexed symbol overlap; không xem kết quả đó là all-clear vì E2E CLI/config chưa được GitNexus biểu diễn thành symbol.
 **Dependencies:** `P2-T15`, `P2-T20`, `P2-T22`, `P2-T25`, `P2-T27`.
-**Files dự kiến:** `tests/e2e/qualification.config.ts`, `tests/e2e/qualification-fixtures.ts`, `tests/e2e/helpers.ts`, `scripts/run-local-qualification.sh`, `package.json`
+**Files:** `tests/e2e/qualification.config.ts`, `tests/e2e/qualification-fixtures.ts`, `tests/e2e/qualification-harness.test.ts`, `tests/e2e/qualification-run.ts`, `tests/e2e/helpers.ts`, `scripts/run-local-qualification.sh`, `vitest.config.ts`, `package.json`, `package-lock.json`.
+**DOCS UPDATED:** `docs/runbooks/phase-2-local.md`, this task card, `tasks/plan.md`, `docs/team-assignment-phase-1-2.md`.
 **Ước lượng:** M (5 file)
 
 ### [ ] P2-T29 — Qualification full-flow E2E và local handoff

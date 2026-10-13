@@ -26,6 +26,32 @@ quota. Do not open team registration based on a single developer-machine run;
 registration remains closed until repeated measurements on representative
 hosts establish fairness/isolation and the tournament owner approves D-08.
 
+## Isolated qualification harness
+
+Run the deterministic qualification fixture harness from the repository root:
+
+```bash
+npm run test:e2e:qualification -- --runInBand --testNamePattern harness
+```
+
+The command requires Node.js 22, Docker Engine/Compose, installed npm
+dependencies, the checked-in sandbox profile and all corpus archives with
+matching SHA-256 digests. It preflights those inputs before creating resources,
+then starts PostgreSQL, Redis and SeaweedFS with an unpredictable Compose
+project name, loopback-only ephemeral host ports, per-run credentials, and
+isolated volumes. It applies migrations and seeds a BTC account, two team
+accounts and exactly two active Python canary submissions. The harness tests
+fail-fast validation, safe Compose scoping, loopback port parsing and fixture
+seed state.
+
+An exit trap tears down only that Compose project and its volumes, checks that
+its containers/volumes are gone, and removes its temporary credential file.
+Never replace the generated Compose project name with a shared/local project or
+point these tests at a shared database. `--runInBand` is accepted as a
+compatibility alias and maps to Vitest's no-file-parallelism option.
+This environment-bound E2E file is excluded from the default root `npm test`
+and is selected by the dedicated qualification config used by the command above.
+
 ## Match result finalization
 
 `P2-T11` requires a disposable PostgreSQL database for its integration test; the

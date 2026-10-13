@@ -253,12 +253,12 @@ Phase 1 complete
 - [x] `P2-T25` — BTC replay catalog và publication console; replay-admin UI 5/5, web suite 49/49, typecheck/build pass (2026-10-13).
 - [x] `P2-T26` — Spectator replay client và integrity verification; 10 focused tests, full web 59/59, root tests/typecheck/build pass (2026-10-13).
 - [x] `P2-T27` — Spectator replay player và presentation page; verified public route, read-only event projection, accessible controls/board, web 64/64 và root tests/typecheck/build pass; Vite route smoke HTTP 200 (2026-10-13).
-- [ ] `P2-T28` — Qualification E2E harness và deterministic fixtures.
+- [x] `P2-T28` — Qualification E2E harness và deterministic fixtures; isolated Compose PostgreSQL/Redis/SeaweedFS, migrations + 2 canary submissions, hai lượt liên tiếp 4/4 và teardown sạch (2026-10-13).
 - [ ] `P2-T29` — Qualification full-flow E2E và local handoff.
 
 ## 9. Cảnh báo tải Phase 2
 
-Thuận là owner duy nhất của `P2-T01`–`P2-T29`. `P2-T01`–`P2-T16` đã hoàn tất; vòng lặp AI tiếp tục từ `P2-T17A`, mỗi lần chọn đúng một task có dependency đã xanh, tạo branch riêng, test, cập nhật docs/status, commit và merge vào `main` trước task kế tiếp. Không mở nhiều branch chạm chung `src/platform/web` hoặc replay schema trong cùng lúc.
+Thuận là owner duy nhất của `P2-T01`–`P2-T29`. `P2-T01`–`P2-T28` đã hoàn tất; vòng lặp AI tiếp tục từ `P2-T29`, mỗi lần chọn đúng một task có dependency đã xanh, tạo branch riêng, test, cập nhật docs/status, commit và merge vào `main` trước task kế tiếp. Không mở nhiều branch chạm chung `src/platform/web` hoặc replay schema trong cùng lúc.
 
 1. Hạ tầng local và database.
 2. Authentication/RBAC, team và submission.

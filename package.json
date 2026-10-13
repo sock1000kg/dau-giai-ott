@@ -9,9 +9,11 @@
     "db:migrate": "npm run db:migrate --workspace @ott/platform-api",
     "typecheck": "npm run typecheck --workspaces && tsc -p tsconfig.json",
     "test": "npm run test --workspaces && vitest run",
+    "test:e2e:qualification": "bash scripts/run-local-qualification.sh",
     "build": "npm run build --workspaces"
   },
   "devDependencies": {
+    "@aws-sdk/client-s3": "3.1149.0",
     "@types/node": "22.20.5",
     "@vitest/coverage-v8": "5.0.3",
     "tsx": "4.23.15",
