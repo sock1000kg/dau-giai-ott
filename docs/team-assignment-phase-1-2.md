@@ -158,7 +158,7 @@ flowchart LR
     REP24["✅ P2-T24 (Thuận)<br/>Replay publication + public artifact API"]
     REP25["✅ P2-T25 (Thuận)<br/>BTC replay catalog + publication console"]
     REP26["✅ P2-T26 (Thuận)<br/>Spectator replay client + integrity verification"]
-    VIEW["P2-T27 (Thuận)<br/>Spectator replay player"]
+    VIEW["✅ P2-T27 (Thuận)<br/>Spectator replay player"]
     E2E["P2-T28…T29 (Thuận)<br/>Qualification E2E local"]
     PB2["Checkpoint P2-B<br/>Phase 2 local hoàn tất"]
 
@@ -183,7 +183,7 @@ flowchart LR
 
     classDef done fill:#123d2a,stroke:#39d98a,color:#ffffff,stroke-width:2px;
     classDef gate stroke-width:3px;
-    class PC,T21,I1,OCI,CO,DB,RBAC,AUTHC,TEAM,WORKER,BENCH,ELO,PA2,PLAN,WEBBASE,WEB,AUTH,TEAMADMIN,PORTAL,RESULTS,LEADERBOARD,REP23,REP24,REP25,REP26 done;
+    class PC,T21,I1,OCI,CO,DB,RBAC,AUTHC,TEAM,WORKER,BENCH,ELO,PA2,PLAN,WEBBASE,WEB,AUTH,TEAMADMIN,PORTAL,RESULTS,LEADERBOARD,REP23,REP24,REP25,REP26,VIEW done;
     class PC,PA2,PB2 gate;
 ```
 
@@ -624,7 +624,7 @@ Thuận sở hữu toàn bộ Phase 2 local theo chuỗi `P2-T01`–`P2-T29`:
 6. Replay publication API, BTC console và spectator player.
 7. Qualification E2E và local runbook.
 
-Backend `P2-T01`–`P2-T15`, rebaseline `P2-T16`, web workspace `P2-T17A`, app shell `P2-T17B`, login/session/role guard `P2-T18`, BTC team provisioning `P2-T19`, team OCI submission portal `P2-T20`, results UI `P2-T21`, public leaderboard UI `P2-T22`, replay persistence/catalog repository `P2-T23`, replay publication/public artifact API `P2-T24`, BTC replay catalog/publication console `P2-T25` và spectator replay client/integrity verification `P2-T26` đã hoàn tất. Tiếp theo là `P2-T27`; mỗi task dùng một branch riêng, chỉ bắt đầu khi dependencies trong `tasks/todo.md` đã xanh, rồi test → docs/status → commit → merge `main` trước task kế tiếp.
+Backend `P2-T01`–`P2-T15`, rebaseline `P2-T16`, web workspace `P2-T17A`, app shell `P2-T17B`, login/session/role guard `P2-T18`, BTC team provisioning `P2-T19`, team OCI submission portal `P2-T20`, results UI `P2-T21`, public leaderboard UI `P2-T22`, replay persistence/catalog repository `P2-T23`, replay publication/public artifact API `P2-T24`, BTC replay catalog/publication console `P2-T25`, spectator replay client/integrity verification `P2-T26` và spectator replay player `P2-T27` đã hoàn tất. Tiếp theo là `P2-T28`; mỗi task dùng một branch riêng, chỉ bắt đầu khi dependencies trong `tasks/todo.md` đã xanh, rồi test → docs/status → commit → merge `main` trước task kế tiếp.
 
 Phần Thuận có thể làm tiếp ngay:
 
@@ -635,7 +635,7 @@ Phần Thuận có thể làm tiếp ngay:
 Ranh giới tuần tự bắt buộc:
 
 - `P2-T19`–`P2-T21` chờ auth UI `P2-T18` (đã hoàn tất).
-- `P2-T24` replay HTTP API, `P2-T25` console BTC và `P2-T26` verified spectator client đã hoàn tất; `P2-T27` nay đủ dependency.
+- `P2-T24` replay HTTP API, `P2-T25` console BTC, `P2-T26` verified spectator client và `P2-T27` read-only replay player đã hoàn tất; `P2-T28` nay đủ dependency.
 - `P2-T28` chỉ bắt đầu sau các UI/replay feature; `P2-T29` là full-flow gate cuối.
 - Deploy cloud, production secrets và CI/CD không thuộc chuỗi task này.
 

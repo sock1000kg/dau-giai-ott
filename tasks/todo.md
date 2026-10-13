@@ -694,14 +694,15 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 **Files:** `src/platform/web/src/features/spectator/{api.ts,replay-schema.ts,verify-replay.ts,verify-replay.test.ts}`, `src/platform/web/README.md`, `tasks/todo.md`
 **Ước lượng:** M (4 file)
 
-### [ ] P2-T27 — Spectator replay player và presentation page
+### [x] P2-T27 — Spectator replay player và presentation page
 
 **Owner:** Đinh Đức Thuận
 **Mô tả:** Tạo player chỉ đọc để BTC trình chiếu replay đã publish cho khán giả sau trận.
 **Acceptance criteria:** (1) play/pause/seek event/speed 0.5x-1x-2x và replay end deterministic; (2) hiển thị đội/map/action/fault/result nhưng không có live socket/control; (3) responsive, keyboard/focus/screen-reader labels và tests dùng verified model từ `P2-T26`.
-**Verification:** `npm test --workspace @ott/platform-web -- spectator-player && npm run build --workspace @ott/platform-web`.
+**Verification:** `npm test --workspace @ott/platform-web -- ReplayPlayer` (5/5 focused; full web 64/64); `npm run typecheck --workspace @ott/platform-web`; `npm run build --workspace @ott/platform-web`; root `npm test`, `npm run typecheck`, `npm run build` all pass. Vite HTTP smoke: public replay SPA route returned 200 and page module transformed. Build has no Node crypto externalization warning. Chrome DevTools MCP is unavailable in this session, so no real-browser screenshot/assertion was run. GitNexus compare-to-main reports CRITICAL across 16 flows because the shared `App` route entrypoint and newly indexed page/tests participate in application traces; direct `SpectatorReplayPage` and `createReplayTimeline` impact are LOW/exact. The reported paths include public replay fetch/schema/error handling plus existing leaderboard and App error paths; full web regression suite covers App shell, auth, leaderboard and replay admin, and a dedicated route test proves no auth request is started. One `engineVersion` test-fixture match is a graph naming collision, not a code path. Global flow inventory is incomplete: 75/275 candidate entry points and 351 callees were truncated, so absent flows are not considered unaffected.
 **Dependencies:** `P2-T26`.
-**Files dự kiến:** `src/platform/web/src/features/spectator/replay-state.ts`, `src/platform/web/src/features/spectator/ReplayPlayer.tsx`, `src/platform/web/src/pages/SpectatorReplayPage.tsx`, `src/platform/web/src/features/spectator/ReplayPlayer.test.tsx`
+**Files:** `src/platform/web/src/features/spectator/replay-state.ts`, `src/platform/web/src/features/spectator/ReplayPlayer.tsx`, `src/platform/web/src/pages/SpectatorReplayPage.tsx`, `src/platform/web/src/features/spectator/ReplayPlayer.test.tsx`, `src/platform/web/src/app/App.tsx`, `src/platform/web/src/app/styles.css`, `src/platform/web/package.json` (direct type dependency on `@ott/game-core`). The browser player deliberately imports only game-core types: its Node-only hash implementation is not browser-compatible, as confirmed by the initial production build warning; runtime board frames are projected from verified recorded events instead.
+**DOCS UPDATED:** `src/platform/web/README.md`, this task card, `tasks/plan.md`, `docs/team-assignment-phase-1-2.md`.
 **Ước lượng:** M (4 file)
 
 ### [ ] P2-T28 — Qualification E2E harness và deterministic fixtures

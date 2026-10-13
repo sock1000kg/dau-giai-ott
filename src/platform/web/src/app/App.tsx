@@ -2,9 +2,13 @@ import './styles.css';
 import { AuthProvider } from '../features/auth/AuthProvider.tsx';
 import { AuthRoutes } from './routes.tsx';
 import { LeaderboardPage } from '../features/leaderboard/LeaderboardPage.tsx';
+import { SpectatorReplayPage } from '../pages/SpectatorReplayPage.tsx';
 
 export function App() {
   const isPublicLeaderboard = window.location.pathname === '/leaderboard';
+  const replayMatch = window.location.pathname.match(/^\/spectator\/replays\/([^/]+)$/);
+  const isPublicReplay = replayMatch !== null;
+  const replayMatchId = replayMatch?.[1] ?? '';
   return (
     <div className="app-shell">
       <header className="app-header">
@@ -16,7 +20,9 @@ export function App() {
         <a className="public-nav-link" href="/leaderboard">Bảng xếp hạng</a>
       </header>
 
-      {isPublicLeaderboard ? <LeaderboardPage /> : <AuthProvider><AuthRoutes /></AuthProvider>}
+      {isPublicLeaderboard ? <LeaderboardPage />
+        : isPublicReplay ? <SpectatorReplayPage matchId={replayMatchId} />
+          : <AuthProvider><AuthRoutes /></AuthProvider>}
 
       <footer className="app-footer">
         <span>OTT Arena</span>

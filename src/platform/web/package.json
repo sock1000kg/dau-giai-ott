@@ -13,6 +13,7 @@
     "build": "tsc -p tsconfig.build.json && vite build"
   },
   "dependencies": {
+    "@ott/game-core": "*",
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },

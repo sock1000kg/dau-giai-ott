@@ -94,3 +94,25 @@ fields; the replay player must receive this verified model rather than raw JSON.
 
 Verification: `npm test --workspace @ott/platform-web -- verify-replay` and
 `npm run typecheck --workspace @ott/platform-web`.
+
+## Public spectator replay player (`P2-T27`)
+
+Anyone can open `/spectator/replays/:matchId` without starting a team/BTC
+session. The page fetches only the public artifact through the T26 verifier,
+then builds a read-only board timeline from the verified map and recorded
+events. It offers play/pause, previous/next, direct seek, restart and 0.5x/1x/2x
+playback. At the last event playback stops deterministically. The UI does not
+open a live socket, issue game commands, or infer team names not present in the
+public replay contract; participants are shown as sides X and O.
+
+The event projection checks that each entry's first event matches its recorded
+input and that the terminal event agrees with the public result. It is a
+presentation projection, not a second authoritative game engine; the API's
+published replay and checksum remain the data source. The board is responsive,
+keyboard-operable, and uses table captions, labeled controls, focus indicators,
+and live playback status.
+
+Verification: `npm test --workspace @ott/platform-web -- ReplayPlayer`,
+`npm run typecheck --workspace @ott/platform-web`,
+`npm run build --workspace @ott/platform-web`, and root `npm test`,
+`npm run typecheck`, `npm run build`.
