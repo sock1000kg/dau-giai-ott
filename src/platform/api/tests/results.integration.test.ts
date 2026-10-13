@@ -78,8 +78,8 @@ integration('P2-T13C authenticated results API', () => {
           [matchId, seriesIds[index], submissionIds[x], submissionIds[o], game + 1, `PRIVATE-MATCH-SEED-${index}-${game}`],
         );
         await database.query(
-          'INSERT INTO match_results (match_id,winner_side,reason,turn_count,final_state_hash,event_log_key,event_log_sha256) VALUES ($1,$2,\'TURN_LIMIT\',4,$3,$4,$5)',
-          [matchId, game === 0 ? 'X' : 'O', String(index + 1).repeat(64), `private/replay/${matchId}.json`, `sha256:${String(index + 1).repeat(64)}`],
+          'INSERT INTO match_results (match_id,winner_side,reason,turn_count,final_state_hash,event_log_key,event_log_sha256,faults) VALUES ($1,$2,\'TURN_LIMIT\',4,$3,$4,$5,$6::jsonb)',
+          [matchId, game === 0 ? 'X' : 'O', String(index + 1).repeat(64), `private/replay/${matchId}.json`, `sha256:${String(index + 1).repeat(64)}`, JSON.stringify({ X: { recoverableTotal: 0, recoverableConsecutive: 0, lastErrorCode: null }, O: { recoverableTotal: 0, recoverableConsecutive: 0, lastErrorCode: null } })],
         );
       }
     }
@@ -144,5 +144,6 @@ integration('P2-T13C authenticated results API', () => {
     expect(first.json().data.items[0]).not.toHaveProperty('seed');
     expect(first.json().data.items[0]).not.toHaveProperty('eventLogKey');
     expect(first.json().data.items[0]).not.toHaveProperty('objectKey');
+    expect(first.json().data.items[0].faults).toMatchObject({ X: { recoverableTotal: 0 }, O: { recoverableTotal: 0 } });
   });
 });

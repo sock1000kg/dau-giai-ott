@@ -119,6 +119,23 @@ describe('authentication routes', () => {
     expect(screen.queryByText('private-team-id')).toBeNull();
   });
 
+  it('routes results to both roles and keeps the admin-only page blocked from team accounts', async () => {
+    mockFetch(
+      response(200, { data: { role: 'TEAM_ACCOUNT', teamId: 'team-1' } }),
+      response(200, { data: { items: [], pagination: { page: 1, pageSize: 10, total: 0, totalPages: 0 } } }),
+    );
+    window.history.replaceState({}, '', '/team/results');
+    const { unmount } = render(<App />);
+    expect(await screen.findByRole('heading', { name: /kết quả thi đấu/i })).toBeTruthy();
+    expect(screen.queryByLabelText('Đội thi')).toBeNull();
+    unmount();
+
+    mockFetch(response(200, { data: { role: 'TEAM_ACCOUNT', teamId: 'team-1' } }));
+    window.history.replaceState({}, '', '/admin/results');
+    render(<App />);
+    expect(await screen.findByRole('heading', { name: /không có quyền truy cập/i })).toBeTruthy();
+  });
+
   it('restores a BTC session only into the BTC area', async () => {
     mockFetch(response(200, { data: { role: 'BTC_ADMIN' } }));
     window.history.replaceState({}, '', '/');

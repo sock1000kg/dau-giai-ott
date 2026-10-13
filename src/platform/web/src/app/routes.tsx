@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { TeamProvisionPage } from '../features/admin-teams/TeamProvisionPage.tsx';
 import { SubmissionForm } from '../features/submissions/SubmissionForm.tsx';
 import { LoginPage } from '../features/auth/LoginPage.tsx';
+import { MatchResultsPage } from '../features/results/MatchResultsPage.tsx';
 import { useAuth } from '../features/auth/AuthProvider.tsx';
 
 function SessionUnavailable({ retry }: Readonly<{ retry: () => void }>) {
@@ -47,6 +48,7 @@ function Workspace({ role, onLogout }: Readonly<{ role: 'BTC_ADMIN' | 'TEAM_ACCO
       <p className="welcome-copy">{role === 'BTC_ADMIN' ? 'Tài khoản Ban tổ chức.' : 'Tài khoản đội thi.'}</p>
       {role === 'BTC_ADMIN' && <a href="/admin/teams">Quản lý đội thi</a>}
       {role === 'TEAM_ACCOUNT' && <a href="/team/submissions">Nộp bot và xem trạng thái</a>}
+      <a href={role === 'BTC_ADMIN' ? '/admin/results' : '/team/results'}>Kết quả thi đấu</a>
       {logoutFailed && <p role="alert">Không thể đăng xuất lúc này. Vui lòng thử lại.</p>}
       <button type="button" disabled={loggingOut} onClick={() => void handleLogout()}>
         {loggingOut ? 'Đang đăng xuất…' : 'Đăng xuất'}
@@ -68,8 +70,10 @@ export function AuthRoutes() {
   const expectedPath = role === 'BTC_ADMIN' ? '/admin' : '/team';
   const isTeamAdminPage = role === 'BTC_ADMIN' && path === '/admin/teams';
   const isTeamSubmissionPage = role === 'TEAM_ACCOUNT' && path === '/team/submissions';
-  if (path !== '/' && path !== '/login' && path !== expectedPath && !isTeamAdminPage && !isTeamSubmissionPage) return <AccessDenied />;
+  const isResultsPage = (role === 'BTC_ADMIN' && path === '/admin/results') || (role === 'TEAM_ACCOUNT' && path === '/team/results');
+  if (path !== '/' && path !== '/login' && path !== expectedPath && !isTeamAdminPage && !isTeamSubmissionPage && !isResultsPage) return <AccessDenied />;
   if (isTeamAdminPage) return <TeamProvisionPage />;
   if (isTeamSubmissionPage) return <SubmissionForm />;
+  if (isResultsPage) return <MatchResultsPage isAdmin={role === 'BTC_ADMIN'} />;
   return <Workspace role={role} onLogout={auth.logout} />;
 }

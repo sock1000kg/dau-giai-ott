@@ -31,6 +31,7 @@ export async function finalizeMatchResult(options: FinalizeMatchResultOptions): 
     events: options.report.events,
     eventLogKey,
     eventLogSha256,
+    faults: options.report.faults,
   });
   return { ...persisted, eventLogKey, eventLogSha256 };
 }

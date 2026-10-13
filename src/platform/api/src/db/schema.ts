@@ -12,6 +12,7 @@ const migrationFiles = [
   { id: '0002_match_execution_finalization', source: new URL('../../migrations/0002_match_execution_finalization.sql', import.meta.url) },
   { id: '0003_round_scheduling', source: new URL('../../migrations/0003_round_scheduling.sql', import.meta.url) },
   { id: '0004_round_rating_application', source: new URL('../../migrations/0004_round_rating_application.sql', import.meta.url) },
+  { id: '0005_match_fault_summary', source: new URL('../../migrations/0005_match_fault_summary.sql', import.meta.url) },
 ] as const;
 
 export async function loadMigrations(): Promise<readonly Migration[]> {

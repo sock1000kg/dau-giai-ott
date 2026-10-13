@@ -136,8 +136,8 @@ integration('P2-T11 worker match finalization', () => {
     releaseFactory();
     const first = await firstPromise;
     const retry = await runMatchJob({ job: state.job, ...dependencies });
-    const result = await database.query<{ reason: string; turn_count: number; final_state_hash: string; event_log_key: string; event_log_sha256: string }>(
-      'SELECT reason, turn_count, final_state_hash, event_log_key, event_log_sha256 FROM match_results WHERE match_id = $1', [state.matchId],
+    const result = await database.query<{ reason: string; turn_count: number; final_state_hash: string; event_log_key: string; event_log_sha256: string; faults: unknown }>(
+      'SELECT reason, turn_count, final_state_hash, event_log_key, event_log_sha256, faults FROM match_results WHERE match_id = $1', [state.matchId],
     );
     const events = await database.query<{ count: string }>('SELECT count(*)::text AS count FROM match_events WHERE match_id = $1', [state.matchId]);
     const outbox = await database.query<{ count: string }>("SELECT count(*)::text AS count FROM match_outbox WHERE match_id = $1 AND event_type = 'MATCH_FINALIZED'", [state.matchId]);
@@ -152,6 +152,7 @@ integration('P2-T11 worker match finalization', () => {
     expect(row.final_state_hash).toBe(first.outcome.finalStateHash);
     expect(row.event_log_sha256).toBe(checksum(logBytes));
     expect(row.event_log_key).toContain(row.event_log_sha256);
+    expect(row.faults).toMatchObject({ X: { recoverableTotal: 0, recoverableConsecutive: 0 }, O: { recoverableTotal: 0, recoverableConsecutive: 0 } });
     expect(Number(events.rows[0]!.count)).toBeGreaterThan(0);
     expect(Number(outbox.rows[0]!.count)).toBe(1);
     expect(match.rows[0]!.status).toBe('FINALIZED');
@@ -200,13 +201,14 @@ integration('P2-T11 worker match finalization', () => {
       storage: state.storage,
       createBotPort: async () => factoryCalls++ === 0 ? new StartupFailureBot() : new FirstLegalBot(),
     });
-    const persisted = await database.query<{ winner_side: string | null; reason: string; final_state_hash: string }>(
-      'SELECT winner_side, reason, final_state_hash FROM match_results WHERE match_id = $1', [state.matchId],
+    const persisted = await database.query<{ winner_side: string | null; reason: string; final_state_hash: string; faults: unknown }>(
+      'SELECT winner_side, reason, final_state_hash, faults FROM match_results WHERE match_id = $1', [state.matchId],
     );
     const attempt = await database.query<{ status: string }>('SELECT status FROM match_attempts WHERE match_id = $1', [state.matchId]);
 
     expect(result.outcome).toMatchObject({ winnerSide: 'O', reason: 'FORFEIT', forfeitedSide: 'X', turnCount: 0 });
     expect(persisted.rows[0]).toMatchObject({ winner_side: 'O', reason: 'FORFEIT', final_state_hash: result.outcome.finalStateHash });
+    expect(persisted.rows[0]!.faults).toMatchObject({ X: { recoverableTotal: 0, lastErrorCode: 'BOT_CRASHED' }, O: { recoverableTotal: 0, lastErrorCode: null } });
     expect(attempt.rows[0]!.status).toBe('SUCCEEDED');
   }, 30_000);
 

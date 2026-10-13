@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import type { MatchJobV1 } from '@ott/job-contract';
 import type { GameConfig, GameResult, MapDefinition } from '@ott/game-core';
-import { DEFAULT_LIMITS } from '@ott/bot-protocol';
+import { DEFAULT_LIMITS, type FaultSummary } from '@ott/bot-protocol';
+import type { PlayerSide } from '@ott/game-core';
 import type { Database } from '@ott/platform-api';
 
 export interface MatchAttemptLease {
@@ -218,6 +219,7 @@ export async function persistFinalizedResult(
     readonly events: readonly MatchReportEvent[];
     readonly eventLogKey: string;
     readonly eventLogSha256: string;
+    readonly faults: Readonly<Record<PlayerSide, FaultSummary>>;
   },
 ): Promise<{ readonly alreadyFinalized: boolean }> {
   return database.transaction(async (transaction) => {
@@ -241,8 +243,8 @@ export async function persistFinalizedResult(
     if (lease.rows.length === 0) throw new Error('MATCH_LEASE_LOST');
 
     await transaction.query(
-      'INSERT INTO match_results (match_id, winner_side, reason, turn_count, final_state_hash, event_log_key, event_log_sha256) VALUES ($1,$2,$3,$4,$5,$6,$7)',
-      [input.claim.config.matchId, input.result.winnerSide, input.result.reason, input.result.turnCount, input.result.finalStateHash, input.eventLogKey, input.eventLogSha256],
+      'INSERT INTO match_results (match_id, winner_side, reason, turn_count, final_state_hash, event_log_key, event_log_sha256, faults) VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb)',
+      [input.claim.config.matchId, input.result.winnerSide, input.result.reason, input.result.turnCount, input.result.finalStateHash, input.eventLogKey, input.eventLogSha256, JSON.stringify(input.faults)],
     );
     for (const event of input.events) {
       await transaction.query(

@@ -634,15 +634,15 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 **Files dự kiến:** `docs/contracts/oci-submission-v1.md`, `src/platform/api/src/modules/submissions/routes.ts`, `src/platform/api/tests/submissions.routes.test.ts`, `src/platform/web/README.md`, `src/platform/web/src/app/routes.tsx`, `src/platform/web/src/app/styles.css`, `src/platform/web/src/features/auth/auth.test.tsx`, và `src/platform/web/src/features/submissions/{api.ts,api.test.ts,SubmissionForm.tsx,SubmissionForm.test.tsx,SubmissionStatus.tsx}`.
 **Ước lượng:** M (12 implementation/test/docs files plus task-status docs)
 
-### [ ] P2-T21 — Team/BTC match và series results UI
+### [x] P2-T21 — Team/BTC match và series results UI
 
 **Owner:** Đinh Đức Thuận
 **Mô tả:** Hiển thị match/series terminal results theo server-side RBAC và pagination của `P2-T13C`.
 **Acceptance criteria:** (1) team chỉ thấy scope API trả về, BTC có filter team; (2) outcome/reason/fault/pagination/order được render mà không lộ seed/object key; (3) loading/empty/error/forbidden và mapping tests đầy đủ.
-**Verification:** `npm test --workspace @ott/platform-web -- results && npm run build --workspace @ott/platform-web`.
+**Verification:** Pass 2026-10-13: root `npm test` (40 web tests; 17 API and 5 worker environment-gated integration cases skipped in this root invocation), `npm run typecheck`, and `npm run build` pass. Isolated-service checks: results UI 7/7, auth UI 11/11, API routes 2/2, API PostgreSQL/Redis integration 2/2, and worker PostgreSQL finalization integration 5/5. Migration 0005 was applied by both integration suites; stored runner fault summaries were asserted for normal completion and a BOT_CRASHED forfeit. API/UI tests cover server-owned team scope, BTC team filter, outcome/reason/fault display, pagination, no seed/object key, fault JSON allowlisting, and loading/empty/forbidden/error states. A mutation reversing the BTC-role filter made the API route test fail; after restoration the route/UI suites passed. Local Vite HTTP smoke returned the `/team/results` SPA and transformed the results page module. GitNexus staged/compare reported CRITICAL, 147 changed symbols, 20 files and 26 affected flows; all 26 returned flows were inspected, with no `partial`/`truncated` response flag. Global flow inventory remains incomplete (23/223 entrypoint candidates and 294 callees omitted), so it is not evidence of zero impact. Browser DevTools MCP is unavailable; no visual browser inspection. No cloud deployment.
 **Dependencies:** `P2-T18`, `P2-T13C`.
-**Files dự kiến:** `src/platform/web/src/features/results/api.ts`, `src/platform/web/src/features/results/MatchResultsPage.tsx`, `src/platform/web/src/features/results/SeriesResults.tsx`, `src/platform/web/src/features/results/results.test.tsx`
-**Ước lượng:** M (4 file)
+**Files:** `src/platform/api/migrations/0005_match_fault_summary.sql`, `src/platform/api/src/db/schema.ts`, results API, worker finalization persistence, route/worker tests and docs, plus results UI/auth routes/styles/tests.
+**Ước lượng:** M (cross-layer persistence/API/UI slice)
 
 ### [ ] P2-T22 — Public leaderboard UI
 
@@ -661,7 +661,7 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 **Acceptance criteria:** (1) một publication row/match với state transition bất biến và idempotency constraint; (2) chỉ match terminal có verified replay identity mới được stage; (3) actor/reason/time audit lưu được nhưng không chứa credential/object body.
 **Verification:** `npm test --workspace @ott/platform-api -- --run tests/replay-publication-repository.integration.test.ts` với PostgreSQL thật.
 **Dependencies:** `P2-T04`, `P2-T11`, `P2-T16`.
-**Files dự kiến:** `src/platform/api/migrations/0005_replay_publication.sql`, `src/platform/api/src/modules/replays/types.ts`, `src/platform/api/src/modules/replays/repository.ts`, `src/platform/api/tests/replay-publication-repository.integration.test.ts`
+**Files dự kiến:** `src/platform/api/migrations/0006_replay_publication.sql`, `src/platform/api/src/modules/replays/types.ts`, `src/platform/api/src/modules/replays/repository.ts`, `src/platform/api/tests/replay-publication-repository.integration.test.ts`
 **Ước lượng:** M (4 file)
 
 ### [ ] P2-T24 — Replay publication và public artifact HTTP API

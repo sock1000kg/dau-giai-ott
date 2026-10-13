@@ -73,6 +73,9 @@ may browse all participating teams or filter by `teamId`. Both endpoints list
 terminal outcomes only, order newest terminal result first with UUID as a
 stable final key, validate bounded `page`/`pageSize`, and omit private seeds,
 storage object keys, event-log keys and submission archive references.
+Match rows also expose the runner's fault summary for X and O
+(`recoverableTotal`, `recoverableConsecutive`, `lastErrorCode`), without raw bot
+output or private artifact data.
 
 Run rating logic and PostgreSQL integration tests against a disposable database
 with the API migrations applied:

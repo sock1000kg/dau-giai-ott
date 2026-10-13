@@ -33,6 +33,7 @@ interface MatchResultRow extends PageRow {
   readonly reason: string | null;
   readonly turn_count: number | null;
   readonly finalized_at: Date | null;
+  readonly faults: unknown;
 }
 
 interface SeriesResultRow extends PageRow {
@@ -49,6 +50,33 @@ interface SeriesResultRow extends PageRow {
   readonly winner_team_id: string | null;
   readonly cancellation_reason: string | null;
   readonly finalized_at: Date | null;
+}
+
+interface PublicFault {
+  readonly recoverableTotal: number;
+  readonly recoverableConsecutive: number;
+  readonly lastErrorCode: string | null;
+}
+
+function publicFault(value: unknown): PublicFault | null {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return null;
+  const row = value as Record<string, unknown>;
+  if (!Number.isSafeInteger(row.recoverableTotal) || Number(row.recoverableTotal) < 0
+    || !Number.isSafeInteger(row.recoverableConsecutive) || Number(row.recoverableConsecutive) < 0
+    || !(row.lastErrorCode === null || (typeof row.lastErrorCode === 'string' && /^[A-Z][A-Z0-9_]{0,63}$/.test(row.lastErrorCode)))) return null;
+  return {
+    recoverableTotal: Number(row.recoverableTotal),
+    recoverableConsecutive: Number(row.recoverableConsecutive),
+    lastErrorCode: row.lastErrorCode as string | null,
+  };
+}
+
+function publicFaults(value: unknown): Readonly<{ X: PublicFault; O: PublicFault }> | null {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return null;
+  const row = value as Record<string, unknown>;
+  const X = publicFault(row.X);
+  const O = publicFault(row.O);
+  return X === null || O === null ? null : { X, O };
 }
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -98,7 +126,7 @@ const matchSql = `
     sx.team_id AS x_team_id, tx.name AS x_team_name,
     so.team_id AS o_team_id, too.name AS o_team_name,
     CASE result.winner_side WHEN 'X' THEN sx.team_id WHEN 'O' THEN so.team_id END AS winner_team_id,
-    result.winner_side, result.reason, result.turn_count, result.finalized_at
+    result.winner_side, result.reason, result.turn_count, result.finalized_at, result.faults
   FROM matches m
   JOIN series s ON s.id = m.series_id
   JOIN submissions sx ON sx.id = m.x_submission_id
@@ -170,6 +198,7 @@ export function registerResultRoutes(app: FastifyInstance, options: ResultRoutes
           reason: row.reason,
           turnCount: row.turn_count,
           finalizedAt: row.finalized_at,
+          faults: publicFaults(row.faults),
         })),
         pagination: { page: filters.page, pageSize: filters.pageSize, total, totalPages: Math.ceil(total / filters.pageSize) },
       },

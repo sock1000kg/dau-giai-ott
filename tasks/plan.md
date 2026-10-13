@@ -208,7 +208,7 @@ Phase 1 complete
     P2-T16 Ownership/execution rebaseline
       ├──► P2-T17A…T17B Web foundation ──► P2-T18 Auth UI ─┬──► P2-T19 BTC team console
       │                                               ├──► P2-T20 Team submission
-      │                                               └──► P2-T21 Results UI
+      ├──► P2-T18 + P2-T13C ──────────────────────────────► P2-T21 Results UI
       ├──► P2-T17B + P2-T13B ────────────────────────────► P2-T22 Leaderboard UI
       └──► P2-T23 Replay persistence ──► P2-T24 Replay HTTP/integrity
                                            ├──► P2-T25 BTC replay console
@@ -246,7 +246,7 @@ Phase 1 complete
 - [x] `P2-T18` — Login, session restore và role authorization UI; auth suite 9/9, shell test/typecheck/build pass (2026-10-13).
 - [x] `P2-T19` — BTC team-account provisioning console; component/API-client suite 10/10, workspace checks/build pass (2026-10-13).
 - [x] `P2-T20` — Team OCI submission portal with paginated, session-team-scoped submission history; web 32/32, API 17 pass + 17 service-gated skips, root tests/typecheck/build pass (2026-10-13).
-- [ ] `P2-T21` — Team/BTC match và series results UI.
+- [x] `P2-T21` — Team/BTC match/series results UI; fault summaries persisted MatchRunner → PostgreSQL → API and rendered with server-scoped filters; root checks and isolated PostgreSQL/Redis integration 7/7 pass (2026-10-13).
 - [ ] `P2-T22` — Public leaderboard UI.
 - [ ] `P2-T23` — Replay publication persistence và catalog repository.
 - [ ] `P2-T24` — Replay publication và public artifact HTTP API.
