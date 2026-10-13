@@ -13,7 +13,7 @@
 
 `GET /api/v1/public/replays/{matchId}` is anonymous. It returns `404 REPLAY_NOT_FOUND` for missing, private, or staged matches, so publication state is not exposed. A published but unreadable or modified artifact returns `409 REPLAY_INTEGRITY_FAILED` without replay data.
 
-The successful response uses media type `application/vnd.ott.spectator-replay+json;version=1`. Its UTF-8 body is a deterministic allowlisted projection with this top-level shape:
+The successful response uses media type `application/vnd.ott.spectator-replay+json` with exactly one `version=1` parameter. HTTP-equivalent formatting (parameter whitespace/quotes and a `charset` parameter added by the server framework) is valid; clients reject a missing, duplicate or unsupported version. Its UTF-8 body is a deterministic allowlisted projection with this top-level shape:
 
 ```json
 {

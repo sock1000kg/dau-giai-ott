@@ -72,6 +72,14 @@ describe('spectator replay integrity client', () => {
     expect(replay.entries[0]?.input.kind).toBe('skip');
   });
 
+  it('accepts Fastify-normalized media type parameters while requiring replay version 1', async () => {
+    const body = `${JSON.stringify(validReplay(), null, 2)}\n`;
+    const replay = await verifyReplayResponse(response(body, {
+      contentType: 'application/vnd.ott.spectator-replay+json; version="1"; charset=utf-8',
+    }));
+    expect(replay.matchId).toBe(matchId);
+  });
+
   it('rejects a modified response before exposing any replay data', async () => {
     const canonicalBody = `${JSON.stringify(validReplay(), null, 2)}\n`;
     const tamperedBody = canonicalBody.replace('TURN_LIMIT', 'FORFEIT__');

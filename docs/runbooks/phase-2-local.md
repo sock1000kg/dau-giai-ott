@@ -52,6 +52,36 @@ compatibility alias and maps to Vitest's no-file-parallelism option.
 This environment-bound E2E file is excluded from the default root `npm test`
 and is selected by the dedicated qualification config used by the command above.
 
+## Full qualification handoff
+
+Run the complete local gate (harness plus end-to-end flow) from the repository
+root:
+
+```bash
+npm run test:e2e:qualification
+npm run typecheck
+npm test
+npm run build
+```
+
+The full-flow test creates and logs into BTC-provisioned team accounts, uploads
+the checked-in Python OCI canaries through the authenticated API, runs the
+worker's `preflightSubmission` against the real Docker sandbox, schedules a
+BO2 round, publishes its outbox jobs to a run-named BullMQ queue, and runs the
+actual worker/finalization path. It then verifies series settlement, Elo,
+team/BTC results, leaderboard, BTC replay stage/publish, tamper rejection, and
+the public spectator client's checksum/schema/timeline projection. Stable
+schedule, preflight, job, settlement, rating and publication retries are
+asserted not to duplicate their records.
+
+For isolation, the E2E creates a random PostgreSQL schema and queue name, uses
+only the Compose services from this script, and removes its schema, exact S3
+objects, Redis sessions, queues, sandbox containers and temporary local stack.
+The worker preflight and scheduling are invoked through their service APIs by
+the local harness; they are not separate HTTP endpoints. The public submission
+route intentionally stops at `PREFLIGHT`; run this gate only with disposable
+local services and never point it at a shared/production database.
+
 ## Match result finalization
 
 `P2-T11` requires a disposable PostgreSQL database for its integration test; the

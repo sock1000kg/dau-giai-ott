@@ -5,8 +5,21 @@ import {
   type SpectatorReplayV1,
 } from './replay-schema.ts';
 
-const mediaType = 'application/vnd.ott.spectator-replay+json;version=1';
+const mediaType = 'application/vnd.ott.spectator-replay+json';
 const checksumPattern = /^sha256:[0-9a-f]{64}$/;
+
+function supportsReplayV1(value: string | null): boolean {
+  if (value === null) return false;
+  const [type, ...parameters] = value.split(';');
+  if (type?.trim().toLowerCase() !== mediaType) return false;
+  const versions = parameters.flatMap((parameter) => {
+    const separator = parameter.indexOf('=');
+    if (separator < 0 || parameter.slice(0, separator).trim().toLowerCase() !== 'version') return [];
+    const raw = parameter.slice(separator + 1).trim();
+    return [raw.startsWith('"') && raw.endsWith('"') ? raw.slice(1, -1) : raw];
+  });
+  return versions.length === 1 && versions[0] === '1';
+}
 
 async function sha256(bytes: Uint8Array): Promise<string> {
   const digestInput = new ArrayBuffer(bytes.byteLength);
@@ -24,8 +37,7 @@ export async function verifyReplayResponse(response: Response): Promise<Spectato
   if (response.status === 404) throw new SpectatorReplayError('REPLAY_NOT_FOUND');
   if (!response.ok) throw new SpectatorReplayError('REPLAY_UNAVAILABLE');
 
-  const responseType = response.headers.get('content-type')?.split(',')[0]?.trim().toLowerCase();
-  if (responseType !== mediaType) throw new SpectatorReplayError('UNSUPPORTED_SCHEMA');
+  if (!supportsReplayV1(response.headers.get('content-type'))) throw new SpectatorReplayError('UNSUPPORTED_SCHEMA');
 
   const expectedChecksum = response.headers.get('x-replay-sha256');
   if (expectedChecksum === null || !checksumPattern.test(expectedChecksum)) throw new SpectatorReplayError('CHECKSUM_MISMATCH');

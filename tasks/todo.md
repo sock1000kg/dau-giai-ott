@@ -716,14 +716,15 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 **DOCS UPDATED:** `docs/runbooks/phase-2-local.md`, this task card, `tasks/plan.md`, `docs/team-assignment-phase-1-2.md`.
 **Ước lượng:** M (5 file)
 
-### [ ] P2-T29 — Qualification full-flow E2E và local handoff
+### [x] P2-T29 — Qualification full-flow E2E và local handoff
 
 **Owner:** Đinh Đức Thuận
 **Mô tả:** Chứng minh toàn bộ Phase 2 local từ BTC provision đến spectator replay và ghi runbook vận hành tái lập.
 **Acceptance criteria:** (1) BTC create team → team login → OCI upload/preflight → schedule/worker/finalize → series/rating/results; (2) BTC stage/publish → public replay player, tamper bị từ chối; (3) retry/restart không duplicate result/ledger/publication và runbook cho clean checkout tái lập được.
-**Verification:** `npm run test:e2e:qualification && npm run typecheck && npm test && npm run build`; sau test không còn job/process ngoài fixture.
+**Verification:** `npm run test:e2e:qualification` chạy cả harness và full flow: 2 test pass; hai đội được BTC provision/login, upload OCI canary thật (~19.5 MiB), worker sandbox preflight ACTION + idempotent activation, schedule/outbox → BullMQ worker → Docker sandbox/MatchRunner → finalize 2 game, settle series/Elo, results/leaderboard, BTC stage/publish và public replay client timeline. Tamper bị từ chối; repeat schedule/preflight/job/settlement/rating/publication không tạo duplicate result/ledger/event. Sau run, queue active/waiting/delayed/failed = 0; Compose containers/volumes/network được xóa. Root `npm run typecheck`, `npm test`, `npm run build`, `git diff --check` và `bash -n scripts/run-local-qualification.sh` pass. E2E phát hiện và sửa bodyLimit upload OCI (19.5 MiB) cùng media-type normalization replay.
 **Dependencies:** `P2-T19`–`P2-T28`.
-**Files dự kiến:** `tests/e2e/qualification.test.ts`, `tests/e2e/qualification-retry.test.ts`, `docs/runbooks/phase-2-local.md`, `package.json`
+**Files:** `tests/e2e/qualification.test.ts`, `src/platform/worker/src/preflight-submission.ts`, `src/platform/worker/src/index.ts`, `src/platform/api/src/modules/submissions/routes.ts`, `src/platform/web/src/features/spectator/verify-replay.ts`, `src/platform/web/src/features/spectator/verify-replay.test.ts`, `docs/contracts/oci-submission-v1.md`, `docs/contracts/spectator-replay-v1.md`, `docs/runbooks/phase-2-local.md`, this task card, `tasks/plan.md`, `docs/team-assignment-phase-1-2.md`, `docs/ai-context/dinh-duc-thuan.md`.
+**DOCS UPDATED:** OCI/replay contracts, Phase 2 local runbook, plan/status, assignment graph and Thuận AI context.
 **Ước lượng:** M (4 file)
 
 ## Checkpoint P2-A — Backend local
@@ -734,6 +735,6 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 
 ## Checkpoint P2-B — Phase 2 local hoàn tất
 
-- [ ] `P2-T17A`, `P2-T17B` và `P2-T18`–`P2-T29` hoàn tất; qualification E2E pass gồm BTC provision → team login → submission và replay publication/spectator flow.
+- [x] `P2-T17A`, `P2-T17B` và `P2-T18`–`P2-T29` hoàn tất; qualification E2E pass gồm BTC provision → team login → submission và replay publication/spectator flow.
 - [ ] `npm run typecheck && npm test && npm run build` pass từ clean checkout.
-- [ ] Runbook, env contract và artifact format local tái lập được; deploy cloud không thuộc phạm vi Phase 2 này.
+- [x] Runbook, env contract và artifact format local tái lập được; deploy cloud không thuộc phạm vi Phase 2 này.

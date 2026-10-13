@@ -53,7 +53,7 @@ export function registerSubmissionRoutes(app: FastifyInstance, options: Submissi
       totalPages: Math.ceil(Number(count.rows[0]?.total ?? '0') / pageSize),
     } };
   });
-  app.post<{ Body: Buffer }>('/api/v1/submissions', async (request, reply) => {
+  app.post<{ Body: Buffer }>('/api/v1/submissions', { bodyLimit: limits.maxArchiveBytes }, async (request, reply) => {
     const principal = requireRole(requireAuthenticated(request.principal), 'TEAM_ACCOUNT');
     const archive = request.body;
     if (!(archive instanceof Buffer) || archive.byteLength === 0 || archive.byteLength > limits.maxArchiveBytes) return reply.status(400).send({ error: { code: 'ARCHIVE_TOO_LARGE', message: 'Invalid OCI archive' } });
