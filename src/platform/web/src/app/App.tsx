@@ -1,3 +1,7 @@
+import './styles.css';
+import { AuthProvider } from '../features/auth/AuthProvider.tsx';
+import { AuthRoutes } from './routes.tsx';
+
 export function App() {
   return (
     <div className="app-shell">
@@ -9,15 +13,9 @@ export function App() {
         <span className="header-label">NỀN TẢNG GIẢI ĐẤU</span>
       </header>
 
-      <main id="main" className="welcome-panel">
-        <div className="eyebrow"><span aria-hidden="true" /> HỆ THỐNG GIẢI ĐẤU OTT</div>
-        <h1>Giải đấu OTT</h1>
-        <p className="welcome-copy">
-          Nền tảng quản lý đội thi và trình chiếu các trận đấu bot.
-        </p>
-        <div className="panel-divider" />
-        <p className="shell-note">Giao diện nền đã sẵn sàng.</p>
-      </main>
+      <AuthProvider>
+        <AuthRoutes />
+      </AuthProvider>
 
       <footer className="app-footer">
         <span>OTT Arena</span>

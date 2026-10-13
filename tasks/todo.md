@@ -604,15 +604,15 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 **Files dự kiến:** `src/platform/web/package.json`, root `package-lock.json`, `src/platform/web/vite.config.ts`, `src/platform/web/index.html`, `src/platform/web/src/main.tsx`, `src/platform/web/src/app/App.tsx`, `src/platform/web/src/app/App.test.tsx`, `src/platform/web/src/test/setup.ts`
 **Ước lượng:** M (8 files; shell, React transform and jsdom harness)
 
-### [ ] P2-T18 — Login, session restore và route authorization UI
+### [x] P2-T18 — Login, session restore và route authorization UI
 
 **Owner:** Đinh Đức Thuận
 **Mô tả:** Hoàn thiện login/logout/current-session và route guard cho `BTC_ADMIN`/`TEAM_ACCOUNT`, không self-register/reset.
 **Acceptance criteria:** (1) Session restore chặn nội dung riêng tư cho đến khi biết principal; (2) generic login failure, logout và role guard dùng cookie session contract; (3) keyboard/label/focus/loading/error states và component tests phủ anonymous/team/BTC/expired session.
-**Verification:** `npm test --workspace @ott/platform-web -- auth && npm run build --workspace @ott/platform-web`.
+**Verification:** Pass 2026-10-13: auth suite 9/9 and App shell test 1/1; root tests/typecheck/build pass; verified login sends same-origin cookie credentials, expired session shows login, server roles choose the appropriate area, cross-role UI route is denied, generic 401/rate-limit messages, successful/retryable logout, and server-error session restore keeps private content hidden. A role inversion mutation made the route test fail, then was reverted and the auth suite passed 9/9. GitNexus all/compare reports `CRITICAL` because 17 affected flows traverse the new auth composition (restore/session, login/credential parsing, error states, logout); each is an intended auth path, no backend authorization code changed, and tests exercise the key success/failure branches. This graph warning was reviewed, not waived using `riskSharedAxes`. Browser DevTools MCP unavailable; component tests run in jsdom.
 **Dependencies:** `P2-T17B`, `P2-T05`.
-**Files dự kiến:** `src/platform/web/src/features/auth/api.ts`, `src/platform/web/src/features/auth/AuthProvider.tsx`, `src/platform/web/src/features/auth/LoginPage.tsx`, `src/platform/web/src/app/routes.tsx`, `src/platform/web/src/features/auth/auth.test.tsx`
-**Ước lượng:** M (5 file)
+**Files dự kiến:** `src/platform/web/README.md`, `src/platform/web/src/features/auth/api.ts`, `src/platform/web/src/features/auth/AuthProvider.tsx`, `src/platform/web/src/features/auth/LoginPage.tsx`, `src/platform/web/src/app/routes.tsx`, `src/platform/web/src/app/App.tsx`, `src/platform/web/src/app/App.test.tsx`, `src/platform/web/src/app/styles.css`, `src/platform/web/src/features/auth/auth.test.tsx`
+**Ước lượng:** M (9 files; contract client, auth state, routing and accessible login shell)
 
 ### [ ] P2-T19 — BTC team-account provisioning console
 

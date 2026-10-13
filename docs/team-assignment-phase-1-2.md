@@ -149,7 +149,7 @@ flowchart LR
     PLAN["✅ P2-T16 (Thuận)<br/>Rebaseline single-owner"]
     WEBBASE["✅ P2-T17A (Thuận)<br/>Web workspace foundation"]
     WEB["✅ P2-T17B (Thuận)<br/>React app shell + tests"]
-    AUTH["P2-T18 (Thuận)<br/>Login + session/role guard"]
+    AUTH["✅ P2-T18 (Thuận)<br/>Login + session/role guard"]
     PORTAL["P2-T19…T22 (Thuận)<br/>BTC/team/results/leaderboard UI"]
     REP["P2-T23…T24 (Thuận)<br/>Replay persistence + HTTP API"]
     VIEW["P2-T25…T27 (Thuận)<br/>BTC console + spectator player"]
@@ -175,7 +175,7 @@ flowchart LR
 
     classDef done fill:#123d2a,stroke:#39d98a,color:#ffffff,stroke-width:2px;
     classDef gate stroke-width:3px;
-    class PC,T21,I1,OCI,CO,DB,RBAC,AUTHC,TEAM,WORKER,BENCH,ELO,PA2,PLAN done;
+    class PC,T21,I1,OCI,CO,DB,RBAC,AUTHC,TEAM,WORKER,BENCH,ELO,PA2,PLAN,WEBBASE,WEB,AUTH done;
     class PC,PA2,PB2 gate;
 ```
 
@@ -616,13 +616,13 @@ Thuận sở hữu toàn bộ Phase 2 local theo chuỗi `P2-T01`–`P2-T29`:
 6. Replay publication API, BTC console và spectator player.
 7. Qualification E2E và local runbook.
 
-Backend `P2-T01`–`P2-T15`, rebaseline `P2-T16`, web workspace `P2-T17A` và app shell/test harness `P2-T17B` đã hoàn tất. Vòng lặp tiếp theo bắt đầu ở `P2-T18`; mỗi task dùng một branch riêng, chỉ bắt đầu khi dependencies trong `tasks/todo.md` đã xanh, rồi test → docs/status → commit → merge `main` trước task kế tiếp.
+Backend `P2-T01`–`P2-T15`, rebaseline `P2-T16`, web workspace `P2-T17A`, app shell `P2-T17B` và login/session/role guard `P2-T18` đã hoàn tất. Vòng lặp tiếp theo bắt đầu ở `P2-T19`; mỗi task dùng một branch riêng, chỉ bắt đầu khi dependencies trong `tasks/todo.md` đã xanh, rồi test → docs/status → commit → merge `main` trước task kế tiếp.
 
 Phần Thuận có thể làm tiếp ngay:
 
-- `P2-T17A` web workspace và `P2-T17B` app shell/test harness đã xanh; tiếp theo `P2-T18` auth UI.
+- `P2-T17A` web workspace, `P2-T17B` app shell/test harness và `P2-T18` auth UI đã xanh; tiếp theo `P2-T19` BTC team-account console.
 - `P2-T23` replay persistence có thể làm sau `P2-T16`; không cần chờ UI.
-- Sau `P2-T17B`, `P2-T18` và `P2-T22` theo dependencies tương ứng.
+- `P2-T20`–`P2-T22` tiếp tục theo dependency `P2-T18`/API tương ứng.
 
 Ranh giới tuần tự bắt buộc:
 

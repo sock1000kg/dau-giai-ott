@@ -1,12 +1,19 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App.tsx';
 
 describe('App shell', () => {
-  it('renders the tournament identity and an accessible main landmark', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('renders an accessible login shell for an anonymous session', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: async () => ({ error: { code: 'UNAUTHENTICATED' } }),
+    }));
     render(<App />);
 
-    expect(screen.getByRole('heading', { name: /giải đấu ott/i })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: /đăng nhập/i })).toBeTruthy();
     expect(screen.getByRole('main')).toBeTruthy();
   });
 });
