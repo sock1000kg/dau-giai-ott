@@ -473,8 +473,15 @@ vận hành được với 2.000–4.000 người.
 
 - BTC PHẢI có chức năng **nhập hàng loạt** (CSV) từ danh sách đăng ký đã duyệt; mỗi dòng vẫn tạo đúng một
   `TEAM_ACCOUNT` với username và mật khẩu do server sinh (tương thích D-13).
-- Credential được phát hàng loạt bằng **link đặt mật khẩu dùng một lần**, gửi tới email đã xác minh của
-  người đại diện (D-20). Link có hạn dùng ngắn và hết hiệu lực sau lần dùng đầu; BTC có thể gửi lại link. Credential không được nằm trong file xuất lưu lâu dài.
+- Phát credential hàng loạt (D-20): sau khi nhập CSV, hệ thống trả về **một file credential tải được đúng
+  một lần**, gồm tên đội, email người đại diện, username và mật khẩu của từng đội. BTC tự gửi bằng mail merge
+  (Gmail hoặc hệ thống mail của trường), giống tinh thần D-13: credential được gửi ngoài hệ thống.
+  - Hệ thống không gửi email và không cần hạ tầng mail riêng.
+  - Server chỉ lưu password hash. File được sinh tại thời điểm tải và không được lưu lại trên server hay
+    trong log; mất file thì BTC dùng chức năng reset (từng đội hoặc hàng loạt) để sinh mật khẩu mới.
+  - File chứa mật khẩu dạng rõ, nên BTC PHẢI xóa file ngay sau khi gửi xong. Audit chỉ ghi ai nhập/tải, lúc
+    nào, bao nhiêu đội; không ghi mật khẩu.
+  - Đổi lại, cách này không cần endpoint đặt mật khẩu qua email: luồng đăng nhập của đội giữ nguyên.
 - Danh sách đăng ký (CÓ THỂ thu bằng Google Forms) PHẢI xác minh mỗi thành viên bằng **email do trường cấp**
   (giải nội bộ, mục 1.3), để hạn chế một người lập nhiều đội (mục 17.6). Một email chỉ thuộc một đội.
 - Mỗi đội có số thành viên tối đa và một người đại diện chịu trách nhiệm; quy chế do BTC công bố.
@@ -926,8 +933,16 @@ Ranh giới module, transaction/outbox, contract job, trust boundary và thứ t
 - [v0.5 – DRAFT] Hardening cho hệ thống công khai có hàng nghìn người dùng, trong đó có người sẽ cố tấn công:
   - Laptop của BTC KHÔNG ĐƯỢC mở cổng trực tiếp ra Internet. Lưu lượng vào đi qua reverse proxy/tunnel có
     WAF và chống DDoS (ví dụ bậc miễn phí của một CDN), D-25.
-  - Admin console và API quản trị **chỉ truy cập được qua LAN hoặc VPN**, không bao giờ công khai. Tài khoản
-    BTC PHẢI có xác thực hai lớp (TOTP); đây là phần mở rộng của D-13 (D-28).
+  - Admin console và API quản trị **chỉ truy cập được từ các mạng được phép** (LAN hoặc VPN). Tài khoản BTC
+    dùng **xác thực hai lớp (TOTP)**: sau mật khẩu, nhập mã 6 số từ ứng dụng authenticator, có mã khôi phục
+    khi mất điện thoại. Đây là phần mở rộng của D-13 (D-28).
+  - Cả hai là **cấu hình bật/tắt** (ví dụ danh sách mạng được phép và cờ bắt buộc TOTP), để giai đoạn thử
+    nghiệm dễ tiếp cận nhất:
+    - Môi trường dev/test/thử nghiệm: **tắt mặc định**. Danh sách mạng trống nghĩa là admin truy cập được từ
+      mọi nơi, như hiện nay; BTC đăng nhập bằng mật khẩu như cũ.
+    - Môi trường giải chính thức (production): **bắt buộc bật**, là một mục trong checklist trước khi mở đăng
+      ký. Ứng dụng ở chế độ production PHẢI từ chối khởi động nếu TOTP tắt hoặc danh sách mạng trống.
+    - Test tự động (kể cả qualification E2E) chạy được với TOTP bật bằng secret thử nghiệm đã biết.
   - Trang công khai là site tĩnh chỉ-đọc, tách khỏi portal đội, để giảm bề mặt tấn công.
   - Rate limit theo IP và theo tài khoản cho login, upload, test run và mọi API ghi; giới hạn kích thước body
     ở proxy; dùng header bảo mật (CSP, HSTS, `X-Content-Type-Options`, frame-ancestors).
@@ -1047,6 +1062,7 @@ Với hàng nghìn người, phần lớn áp lực lên BTC đến từ câu h�
 | AC-20 [v0.5] | Gói kết quả chung kết bị sửa một byte hoặc sai chữ ký | Web online từ chối toàn bộ gói |
 | AC-21 [v0.5] | Test run khi round chính thức đang chạy | Test run chờ; không làm chậm trận chính thức; không ảnh hưởng Elo |
 | AC-22 [v0.5] | Hai đội nộp image trùng digest | Hệ thống gắn cờ cho BTC |
+| AC-23 [v0.5] | Khởi động ở chế độ production khi TOTP tắt hoặc danh sách mạng admin trống | Ứng dụng từ chối khởi động; ở môi trường thử nghiệm cấu hình tắt vẫn đăng nhập bình thường |
 
 ### 18.3 Definition of Done toàn hệ thống
 
@@ -1079,7 +1095,7 @@ Với hàng nghìn người, phần lớn áp lực lên BTC đến từ câu h�
   và ưu tiên (mục 10.3–10.4); giữ chỗ bằng hash khi nộp (mục 8.5); nhập tài khoản hàng loạt (mục 8.6); test run
   (mục 8.4); trang công khai tĩnh và trang luật tuần (mục 13.4–13.5); hardening (mục 17.1); chống gian lận
   (mục 17.6).
-- Cổng nghiệm thu: AC-13 đến AC-19, AC-21, AC-22 pass, kèm một round thử nghiệm với người dùng thật quy mô nhỏ.
+- Cổng nghiệm thu: AC-13 đến AC-19, AC-21 đến AC-23 pass, kèm một round thử nghiệm với người dùng thật quy mô nhỏ.
 
 ### Giai đoạn 3 — Chung kết và trình diễn
 
@@ -1129,7 +1145,7 @@ triển KHÔNG ĐƯỢC triển khai phần đó cho tới khi BTC duyệt **và
 | D-17 | Test run | Đối thủ: bot tham chiếu của BTC + submission khác của chính đội; **không** đấu thử với bot của đội khác. Quota mặc định 2 run/đội/ngày, BTC chỉnh được; không chạy trong lúc round chính thức | — | ĐÃ CHỌN – CHỜ DUYỆT | Trước mở đăng ký |
 | D-18 | Trần dung lượng image và retention | Trần dung lượng archive do BTC đặt trong trang cấu hình, áp dụng từ round sau; phát hành base image chính thức; lưu layer theo digest; giữ submission `ACTIVE` + bản đã dùng trong trận chính thức + 3 bản gần nhất mỗi đội | D-07/ADR-0006 (bổ sung giới hạn cấu hình được, không đổi định dạng) | ĐÃ CHỌN – CHỜ DUYỆT | Trước mở đăng ký |
 | D-19 | Chống dồn upload sát hạn | Đội chỉ bấm "Nộp" một lần; portal tự gửi hash giữ chỗ trước rồi truyền file; file truyền xong trong ân hạn với đúng hash được tính đúng hạn. **Không** dùng Google Forms để nhận bot | — (giữ ADR-0006, mục 8.2) | ĐÃ CHỌN – CHỜ DUYỆT | Trước mở đăng ký |
-| D-20 | Cấp và phát credential hàng loạt | Nhập CSV từ danh sách đăng ký đã duyệt; hệ thống gửi link đặt mật khẩu dùng một lần tới email đã xác minh | D-13 (credential do BTC gửi ngoài hệ thống, hiển thị một lần) | ĐÃ CHỌN – CHỜ DUYỆT | Trước mở đăng ký |
+| D-20 | Cấp và phát credential hàng loạt | Nhập CSV; hệ thống trả file credential tải đúng một lần; BTC gửi bằng mail merge ngoài hệ thống; hệ thống không gửi email; BTC xóa file sau khi gửi | Mở rộng nhỏ D-13/Platform Auth v1 (thêm endpoint nhập/reset hàng loạt trả credential một lần; luồng đăng nhập không đổi) | ĐÃ CHỌN – CHỜ DUYỆT | Trước mở đăng ký |
 | D-21 | Replay vòng loại | Khán giả không xem replay vòng loại, chỉ xem replay chung kết. Hai đội trong trận được xem riêng replay + danh sách nước đi của trận mình ngay sau integrity check | — (quyền xem riêng tư, không đổi D-11) | ĐÃ CHỌN – CHỜ DUYỆT | Trước Giai đoạn 2B |
 | D-22 | Độ tin cậy Elo | Gác cổng: đạt ≥ 1 điểm trong 2 game đổi phía với `capture_first_bot`; K = 64 trong 5 series đầu rồi K = 32; tối thiểu 5 series để được xét chung kết. Không thêm series cho Top N | D-03 (K cố định 32) | ĐÃ CHỌN – CHỜ DUYỆT | Trước mở đăng ký |
 | D-23 | Thể thức chung kết theo bảng | Hoãn sang phase sau: số bảng, số đội/bảng, số đội đi tiếp, có/không vòng knock-out sau bảng. Quyết định này thay luôn D-01, D-02, D-05 | Mục 12 hiện hành (bracket), D-01, D-02, D-05 | HOÃN | Phase sau, trước công bố thể lệ chung kết |
@@ -1137,7 +1153,7 @@ triển KHÔNG ĐƯỢC triển khai phần đó cho tới khi BTC duyệt **và
 | D-25 | Hosting trang công khai và edge | Static hosting/CDN bậc miễn phí + tunnel có WAF; laptop không mở cổng ra Internet | — | ĐÃ CHỌN – CHỜ DUYỆT | Trước Giai đoạn 2B |
 | D-26 | Mục tiêu năng lực | Chờ load test AC-13 trên hạ tầng thật | — | HOÃN | Sau khi dựng hạ tầng |
 | D-27 | Seed trong `INIT` | Protocol v2 ngừng gửi seed thật của trận cho bot (gửi seed riêng cho bot hoặc bỏ field) | Bot Protocol v1 (`INIT.seed`) | ĐÃ CHỌN – CHỜ DUYỆT | Cùng D-15 |
-| D-28 | Bảo mật tài khoản BTC | TOTP bắt buộc cho `BTC_ADMIN`; admin console/API chỉ truy cập qua LAN/VPN | Mở rộng D-13 và Platform Auth v1 | ĐÃ CHỌN – CHỜ DUYỆT | Trước mở đăng ký |
+| D-28 | Bảo mật tài khoản BTC | TOTP cho `BTC_ADMIN` và giới hạn admin theo mạng được phép (LAN/VPN), đều là cấu hình: tắt ở dev/test/thử nghiệm, bắt buộc ở production (không khởi động nếu tắt) | Mở rộng D-13 và Platform Auth v1 (thêm bước TOTP vào đăng nhập BTC) | ĐÃ CHỌN – CHỜ DUYỆT | Trước mở đăng ký |
 | D-29 | Đối tượng tham gia và dữ liệu cá nhân | Giải nội bộ trường đại học; không điều kiện độ tuổi; xác minh bằng email trường; thu dữ liệu tối thiểu | — | ĐÃ CHỌN – CHỜ DUYỆT | Trước mở đăng ký |
 | D-30 | Nơi kiểm tra giới hạn bộ nhớ | Thực thi bằng cgroup ở worker/sandbox; Prometheus chỉ giám sát; `game-core` giữ thuần | — (khớp ADR-0002) | ĐÃ CHỌN – CHỜ DUYỆT | Trước Giai đoạn 2B |
 
