@@ -1,6 +1,7 @@
 export interface TeamSummary {
   readonly id: string;
   readonly name: string;
+  readonly representativeEmail?: string | null;
 }
 
 export interface TeamCredential {
@@ -8,16 +9,40 @@ export interface TeamCredential {
   readonly password: string;
 }
 
+export interface ApiRowError {
+  readonly row: number;
+  readonly column?: string;
+  readonly code: string;
+  readonly relatedRow?: number;
+}
+
 export class TeamApiError extends Error {
   public readonly status: number;
   public readonly code: string | null;
+  public readonly errors?: readonly ApiRowError[] | undefined;
+  public readonly missingIndexes?: readonly number[] | undefined;
 
-  public constructor(status: number, code: string | null) {
+  public constructor(
+    status: number,
+    code: string | null,
+    errors?: readonly ApiRowError[],
+    missingIndexes?: readonly number[],
+  ) {
     super('Team administration request failed');
+    Object.setPrototypeOf(this, new.target.prototype);
     this.name = 'TeamApiError';
     this.status = status;
     this.code = code;
+    this.errors = errors;
+    this.missingIndexes = missingIndexes;
   }
+}
+
+export function isTeamApiError(error: unknown): error is TeamApiError {
+  return (
+    error instanceof TeamApiError ||
+    (typeof error === 'object' && error !== null && 'name' in error && error.name === 'TeamApiError')
+  );
 }
 
 async function request(path: string, init: RequestInit = {}): Promise<unknown> {
@@ -32,7 +57,9 @@ async function request(path: string, init: RequestInit = {}): Promise<unknown> {
   if (!response.ok) {
     const error = typeof body === 'object' && body !== null && 'error' in body ? body.error : null;
     const code = typeof error === 'object' && error !== null && 'code' in error ? error.code : null;
-    throw new TeamApiError(response.status, typeof code === 'string' ? code : null);
+    const errors = typeof error === 'object' && error !== null && 'errors' in error && Array.isArray(error.errors) ? error.errors : undefined;
+    const missingIndexes = typeof error === 'object' && error !== null && 'missingIndexes' in error && Array.isArray(error.missingIndexes) ? error.missingIndexes : undefined;
+    throw new TeamApiError(response.status, typeof code === 'string' ? code : null, errors, missingIndexes);
   }
   return body;
 }
@@ -59,7 +86,16 @@ function teamOf(value: unknown): TeamSummary {
     || typeof value.name !== 'string' || value.name.trim().length === 0 || value.name.length > 100) {
     throw new Error('Invalid team API response');
   }
-  return { id: value.id, name: value.name };
+  const representativeEmail = 'representativeEmail' in value && typeof value.representativeEmail === 'string'
+    ? value.representativeEmail
+    : null;
+  return { id: value.id, name: value.name, representativeEmail };
+}
+
+function extractFilename(header: string | null): string {
+  if (!header) return 'team-credentials.csv';
+  const match = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(header);
+  return match && match[1] ? match[1].trim() : 'team-credentials.csv';
 }
 
 export async function listTeams(): Promise<readonly TeamSummary[]> {
@@ -83,4 +119,46 @@ export async function resetTeamCredential(teamId: string): Promise<TeamCredentia
     throw new Error('Invalid team credential response');
   }
   return credentialOf(data.credential);
+}
+
+export async function bulkImportTeams(csv: string): Promise<{ blob: Blob; filename: string }> {
+  const response = await fetch('/api/v1/admin/teams/bulk-import', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ csv }),
+  });
+  if (!response.ok) {
+    const body: unknown = await response.json().catch(() => undefined);
+    const error = typeof body === 'object' && body !== null && 'error' in body ? body.error : null;
+    const code = typeof error === 'object' && error !== null && 'code' in error ? error.code : null;
+    const errors = typeof error === 'object' && error !== null && 'errors' in error && Array.isArray(error.errors)
+      ? error.errors
+      : undefined;
+    throw new TeamApiError(response.status, typeof code === 'string' ? code : null, errors);
+  }
+  const filename = extractFilename(response.headers.get('content-disposition'));
+  const blob = await response.blob();
+  return { blob, filename };
+}
+
+export async function bulkResetTeamCredentials(teamIds: readonly string[]): Promise<{ blob: Blob; filename: string }> {
+  const response = await fetch('/api/v1/admin/teams/bulk-reset', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ teamIds }),
+  });
+  if (!response.ok) {
+    const body: unknown = await response.json().catch(() => undefined);
+    const error = typeof body === 'object' && body !== null && 'error' in body ? body.error : null;
+    const code = typeof error === 'object' && error !== null && 'code' in error ? error.code : null;
+    const missingIndexes = typeof error === 'object' && error !== null && 'missingIndexes' in error && Array.isArray(error.missingIndexes)
+      ? error.missingIndexes
+      : undefined;
+    throw new TeamApiError(response.status, typeof code === 'string' ? code : null, undefined, missingIndexes);
+  }
+  const filename = extractFilename(response.headers.get('content-disposition'));
+  const blob = await response.blob();
+  return { blob, filename };
 }
