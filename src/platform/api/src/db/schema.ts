@@ -14,6 +14,7 @@ const migrationFiles = [
   { id: '0004_round_rating_application', source: new URL('../../migrations/0004_round_rating_application.sql', import.meta.url) },
   { id: '0005_match_fault_summary', source: new URL('../../migrations/0005_match_fault_summary.sql', import.meta.url) },
   { id: '0006_replay_publication', source: new URL('../../migrations/0006_replay_publication.sql', import.meta.url) },
+  { id: '0007_round_rules', source: new URL('../../migrations/0007_round_rules.sql', import.meta.url) },
 ] as const;
 
 export async function loadMigrations(): Promise<readonly Migration[]> {
