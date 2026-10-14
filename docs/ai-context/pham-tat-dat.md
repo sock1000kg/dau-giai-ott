@@ -2,7 +2,7 @@
 
 > Trạng thái: **Đã tự động duyệt**
 > Mức khuyến nghị: **HIGH RECOMMEND**
-> Vai trò: MatchRunner/BotProcess/CLI/E2E Phase 1; review compatibility khi Thuận yêu cầu
+> Vai trò: MatchRunner Phase 1; Phase 3 control plane, privileged workflow và finals sync
 
 ## 1. Cách dùng ngay
 
@@ -20,7 +20,7 @@ Không commit, push, deploy hoặc sửa game rules/bot strategy nếu tôi chư
 - Base branch: `main`.
 - Mỗi task dùng branch riêng với prefix `datpt/`, ví dụ `datpt/feat-p1-d02-ports`.
 - Không code trực tiếp trên `main`.
-- Một branch chỉ chứa một task `P1-Dxx`; Phase 2 thuộc Thuận.
+- Một branch chỉ chứa một task `P1-Dxx` hoặc `P3-Dxx`; Phase 2 thuộc Thuận.
 - Hoàn tất thì push branch và tạo PR target `main` để chạy integration/E2E.
 
 ```bash
@@ -43,6 +43,10 @@ Phase 1:
 
 Phase 2 local không còn task implementation của Đạt; `P2-D13`–`P2-D16` đã hủy và phát hành lại thành `P2-T23`–`P2-T29` cho Thuận.
 
+Phase 3 giao Đạt `P3-D01`–`P3-D10`: round/control plane, admin/submission/account workflow, replay
+authorization, auth hardening, privileged operations và finals/result sync/public UI. `P3-T01` đã hoàn tất;
+`P3-D01` sẵn sàng.
+
 Đạt không sở hữu game rules hoặc chiến thuật bot.
 
 ## 4. Task theo giai đoạn
@@ -58,9 +62,24 @@ Phase 2 local không còn task implementation của Đạt; `P2-D13`–`P2-D16` 
 
 ### Phase 2 local
 
-Không chọn task `P2-Dxx`. Toàn bộ Phase 2 còn mở là `P2-T17A`, `P2-T17B`, `P2-T18`–`P2-T29` của Thuận. Đạt chỉ review contract tương thích với event log/replay verifier Phase 1 khi có yêu cầu cụ thể.
+Không chọn task `P2-Dxx`. Toàn bộ Phase 2 đã hoàn tất dưới lane `P2-T*` của Thuận. Đạt chỉ review contract tương thích với event log/replay verifier Phase 1 khi có yêu cầu cụ thể.
 
-Checkpoint liên quan: Phase 1 có `P1-A` sau `P1-D02`, `P1-B` sau `P1-D08`, `P1-C` sau `P1-D11`. Phase 2 do Thuận duyệt `P2-A`/`P2-B`. Sơ đồ hai phase: `docs/team-assignment-phase-1-2.md` mục 4.2.
+### Phase 3
+
+| Thứ tự | Task | Dependency chính |
+| --- | --- | --- |
+| 1 | `P3-D01` — RoundRuleSet/lifecycle | `P3-T01` |
+| 2 | `P3-D02` — admin round/operations console | `P3-D01` |
+| 3 | `P3-D03` — upload reservation/backpressure | `P3-D01`, `P3-N02` |
+| 4 | `P3-D04` — bulk team provisioning | `P3-T01` |
+| 5 | `P3-D05` — qualification replay private từ dữ liệu đầu tiên | `P3-T01`, `P3-D01` |
+| 6 | `P3-D06` — TOTP/network allowlist/hosted startup guard | `P3-T01`, `P3-D04` |
+| 7 | `P3-D07` — privileged operations/cases | `P3-D01`, `P3-N02`, `P3-N04` |
+| 8 | `P3-D08` — finals control/LAN cutoff | `P3-L06`, `P3-D01`, `P3-D03` |
+| 9 | `P3-D09` — signed ResultBundle | `P3-D08`, `P3-N07` |
+| 10 | `P3-D10` — finals bracket/verified public UI | `P3-D09`, `P3-L05`, `P3-L06` |
+
+Checkpoint liên quan: Phase 1 có `P1-A`/`P1-B`/`P1-C`; Phase 3 có `P3-A`–`P3-2B`, `P3-F1` và `P3-F`. Đọc dependency/trạng thái hiện hành tại `tasks/todo.md`. Sơ đồ ba phase: `docs/team-assignment.md` mục 4.2.
 
 ## 5. Tài liệu AI phải đọc
 
@@ -68,12 +87,13 @@ Checkpoint liên quan: Phase 1 có `P1-A` sau `P1-D02`, `P1-B` sau `P1-D08`, `P1
 2. `docs/README.md` để xác định nguồn sự thật.
 3. Task đang chọn trong `tasks/todo.md`.
 4. Lane Đạt và dependency graph trong `tasks/plan.md`.
-5. Ranh giới MatchRunner/platform trong `docs/team-assignment-phase-1-2.md`.
+5. Lane Đạt theo phase trong `docs/team-assignment.md`.
 6. Section liên quan trong `docs/tai-lieu-yeu-cau.md`.
 7. ADR liên quan, gồm ADR-0001, ADR-0003 và ADR-0004 nếu làm Phase 2.
 8. Bot Protocol/schema/fixtures khi làm runner; job/result contract khi làm worker.
 9. `docs/conventions/module-package.md` khi tạo hoặc sửa `package.json`, hoặc import `@ott/game-core`/`@ott/bot-protocol`.
-10. Source/test hiện có trước khi sửa.
+10. `docs/architecture/solution-architecture-phase-3.md` khi làm `P3-D*`.
+11. Source/test hiện có trước khi sửa.
 
 ## 6. Ranh giới bắt buộc
 
@@ -81,13 +101,14 @@ Checkpoint liên quan: Phase 1 có `P1-A` sau `P1-D02`, `P1-B` sau `P1-D08`, `P1
 
 - Chỉ `package.json` của `src/match-runner`; workspace/config gốc (`P1-T02`) thuộc Thuận.
 - `src/match-runner/**` trong Phase 1.
+- Các file API/web/migration/contract được liệt kê trong đúng task card `P3-D*`.
 
 Không được sửa:
 
 - Game rules trong `src/game-core/**`.
 - Bot Protocol/schema thuộc Long, trừ khi có review/ủy quyền rõ.
 - Python bot strategy/fault bots thuộc Nguyên.
-- Toàn bộ `src/platform/**`, Phase 2 E2E và local runbook thuộc Thuận.
+- Protocol/timing/rating/finals rules thuộc Long; worker/sandbox/ops/deploy thuộc Nguyên, trừ shared file được task/dependency review nêu rõ.
 - Cấu hình cloud hoặc production secret.
 
 Khi core chưa sẵn sàng, dùng `FakeGame`. Khi bot chưa sẵn sàng, dùng `ScriptedBot`. Không copy luật game vào fake.
@@ -133,19 +154,19 @@ Sau khi cài xong, báo tôi mở phiên mới.
 ## 8. Prompt triển khai sẵn dùng
 
 ```text
-Tôi là Phạm Tất Đạt, owner MatchRunner/BotProcess/CLI/E2E Phase 1.
+Tôi là Phạm Tất Đạt, owner lane `P3-D*` về control plane và finals sync.
 
-Hãy chọn task P1-Dxx đầu tiên chưa hoàn tất và đã đủ dependency.
+Hãy chọn task `P3-Dxx` đầu tiên chưa hoàn tất và đã đủ dependency.
 Chỉ thực hiện đúng một task, tối đa phạm vi file ghi trong task card.
 
 Quy trình bắt buộc:
 1. Đọc rules, task card, dependency contract và code/test liên quan.
 2. Kiểm tra git status và xác nhận branch `datpt/feat-<task-id>-<slug>` tạo từ main; không làm trực tiếp trên main.
 3. Dùng GitNexus context/impact trước khi sửa symbol/file hiện có.
-4. Nếu core/bot thật chưa sẵn sàng, dùng ports/fakes; không invent game rules/protocol.
+4. Nếu decision/contract hoặc dependency chưa merge, báo blocked; không invent game rules/protocol/security policy.
 5. Viết test trước hoặc cùng implementation; ưu tiên thin vertical slice.
-6. Với child process: timeout bằng server clock, cleanup trong finally, không dùng shell string.
-7. Không triển khai task Phase 2 của Thuận; không commit secret.
+6. Với privileged workflow: enforce server-side RBAC, audit, idempotency và secret handling theo task.
+7. Không sửa protocol/rating/finals rules hoặc worker/deployment của owner khác; không commit secret.
 8. Chạy verification command của task, typecheck/build liên quan và review diff.
 9. Chạy GitNexus detect-changes; chỉ đề xuất PR vào main, không deploy.
 

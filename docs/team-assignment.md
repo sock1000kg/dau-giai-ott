@@ -1,6 +1,8 @@
-# Đặc tả công việc cho nhóm Dev — Phase 1 và Phase 2
+# Đặc tả công việc cho nhóm Dev — Phase 1 đến Phase 3
 
-> Owner/range trong file này là nguồn phân công chính thức. Task ID, dependency và trạng thái thực tế phải đọc từ `tasks/todo.md`; contract exact phải đọc từ `docs/contracts/`.
+> Owner/range trong file này là nguồn phân công chính thức cho Phase 1–3. Task ID, dependency và trạng thái
+> thực tế phải đọc từ `tasks/todo.md`; requirement exact đọc từ `docs/tai-lieu-yeu-cau.md`; contract exact
+> phải đọc từ `docs/contracts/`.
 
 ## 1. Mục tiêu phân công
 
@@ -10,7 +12,10 @@ Ba thành viên Dev phát triển độc lập trên `localhost`:
 - **Đỗ Khôi Nguyên:** viết các bot mẫu và bot lỗi để kiểm thử.
 - **Phạm Tất Đạt:** viết chương trình chạy trận, nối core với hai bot và kiểm thử end-to-end local.
 
-**Đinh Đức Thuận** sở hữu decision gate và toàn bộ Phase 2 local. Backend `P2-T01`–`P2-T15` đã hoàn tất; frontend, replay và E2E còn lại được phát hành lại thành `P2-T17A`, `P2-T17B`, `P2-T18`–`P2-T29` ngày 2026-10-13. Phase 2 kết thúc ở qualification E2E/runbook local; CI/CD và triển khai cloud bị loại khỏi phạm vi hiện tại.
+**Đinh Đức Thuận** sở hữu decision gate và toàn bộ Phase 2 local. Backend `P2-T01`–`P2-T15`, frontend, replay và E2E `P2-T17A`–`P2-T29` đã hoàn tất; Phase 2 đóng tại qualification E2E/runbook local. CI/CD và triển khai cloud không thuộc Definition of Done Phase 2.
+
+Ở Phase 3, Thuận là approver cho decision/checkpoint; Long, Nguyên và Đạt nhận các lane implementation
+`P3-L*`, `P3-N*`, `P3-D*`. Gate `P3-0`/`P3-T01` đã hoàn tất ngày 14/10/2026; ba task Wave 1 sẵn sàng.
 
 ## 2. Hiện trạng đã kiểm tra
 
@@ -38,7 +43,7 @@ Các điểm chưa phù hợp với bot:
 
 > Quyết định đã khóa: chỉ dùng repository trên làm nguồn đối chiếu hành vi tại commit đã pin; không sao chép source vì repository tham chiếu chưa công bố license. Xem `docs/decisions/0002-phase-1-engine-and-bot-protocol-v1.md`.
 
-## 3. Ranh giới công việc
+## 3. Ranh giới công việc Phase 1–2
 
 ### Long Trần — Core Game và Bot Protocol Owner
 
@@ -82,7 +87,7 @@ Long Trần không làm bot Python, process runner, Fastify API, database, queue
 
 ### 4.2 Luồng phát triển và tích hợp
 
-Sơ đồ gồm hai phase nối tiếp. Mũi tên liền là dependency phải xong trước; mũi tên nét đứt trỏ vào checkpoint chỉ là mốc duyệt, không chặn task tiếp theo trong lane. Chi tiết dependency từng task nằm tại `tasks/todo.md`.
+Sơ đồ gồm ba phase nối tiếp. Mũi tên liền là dependency phải xong trước; mũi tên nét đứt trỏ vào checkpoint chỉ là mốc duyệt, không chặn task tiếp theo trong lane. Chi tiết dependency từng task nằm tại `tasks/todo.md`.
 
 #### Phase 1 — Hai bot chơi một trận trên localhost
 
@@ -184,11 +189,59 @@ flowchart LR
 
     classDef done fill:#123d2a,stroke:#39d98a,color:#ffffff,stroke-width:2px;
     classDef gate stroke-width:3px;
-    class PC,T21,I1,OCI,CO,DB,RBAC,AUTHC,TEAM,WORKER,BENCH,ELO,PA2,PLAN,WEBBASE,WEB,AUTH,TEAMADMIN,PORTAL,RESULTS,LEADERBOARD,REP23,REP24,REP25,REP26,VIEW,E2E,FLOW done;
+    class PC,T21,I1,OCI,CO,DB,RBAC,AUTHC,TEAM,WORKER,BENCH,ELO,PA2,PLAN,WEBBASE,WEB,AUTH,TEAMADMIN,PORTAL,RESULTS,LEADERBOARD,REP23,REP24,REP25,REP26,VIEW,E2E,FLOW,PB2 done;
     class PC,PA2,PB2 gate;
 ```
 
-`✅` chỉ gắn cho node có task/checkpoint đã hoàn tất trong `tasks/todo.md` và có bằng chứng verification. Hiện tại toàn bộ `P1-T01`, `P1-T02`, `P1-L01`–`P1-L08`, `P1-N01`–`P1-N06`, `P1-D02`–`P1-D11`, Checkpoint `P1-A`, `P1-B` và `P1-C` đã hoàn tất. Khi một task hoặc checkpoint được xác nhận, thêm `✅` vào đầu nhãn node và đưa node đó vào `class ... done`.
+#### Phase 3 — Qualification hosted PoC-ready và finals offline
+
+Kiến trúc và trust boundary: [Solution Architecture Phase 3](architecture/solution-architecture-phase-3.md).
+`P3-T01` đã hoàn tất; Wave 1 sẵn sàng, các wave sau chờ dependency/checkpoint tương ứng.
+
+```mermaid
+flowchart TB
+    PB2["Checkpoint P2-B<br/>Phase 2 local hoàn tất"]
+    T31["✅ P3-T01 (Thuận)<br/>Decision, ADR và contract gate"]
+
+    subgraph QUAL["P3-2B — Qualification hosted PoC-ready"]
+        W1["Wave 1<br/>P3-L01 / P3-D01 / P3-N01<br/>Protocol, rules, resource metrics"]
+        W2["Wave 2<br/>P3-L02 / P3-N02 / P3-D02<br/>Timing, single-host admission, admin"]
+        W3["Wave 3<br/>P3-D03 / P3-D04 / P3-N03<br/>Upload, accounts, test run"]
+        W4["Wave 4<br/>P3-N04 / P3-L03 / P3-D05<br/>OCI, rating, replay privacy"]
+        W5["Wave 5<br/>P3-L04 / P3-L05 / P3-D06<br/>Replay, public snapshot, auth"]
+        W6["Wave 6<br/>P3-N05 / P3-D07 / P3-N06<br/>Operations, cases, server-lab pilot"]
+        GA["Checkpoint P3-A<br/>Contract foundation"]
+        GB["Checkpoint P3-B<br/>Round lock/run"]
+        GC["Checkpoint P3-C<br/>Participant workflows"]
+        GD["Checkpoint P3-D<br/>Fairness/data policy"]
+        GE["Checkpoint P3-E<br/>Public/security boundary"]
+        QG["Checkpoint P3-2B<br/>Thuận duyệt qualification"]
+        W1 --> GA --> W2 --> GB --> W3 --> GC --> W4 --> GD --> W5 --> GE --> W6 --> QG
+    end
+
+    subgraph FINALS["P3-F — Finals offline-ready"]
+        W7["Wave 7<br/>P3-L06 / P3-D08 / P3-N07<br/>Finals domain, LAN control"]
+        F1["Checkpoint P3-F1<br/>Finals chạy hoàn toàn trong LAN"]
+        W8["Wave 8<br/>P3-D09 / P3-D10 / P3-N08<br/>Signed sync, public UI, rehearsal"]
+        FG["Checkpoint P3-F<br/>Thuận duyệt Phase 3"]
+        W7 --> F1 --> W8 --> FG
+    end
+
+    PB2 --> T31 --> W1
+    QG --> W7
+
+    classDef done fill:#123d2a,stroke:#39d98a,color:#ffffff,stroke-width:2px;
+    classDef ready fill:#123047,stroke:#38bdf8,color:#ffffff,stroke-width:2px;
+    classDef blocked fill:#3b2a12,stroke:#f59e0b,color:#ffffff,stroke-width:2px;
+    classDef gate stroke-width:3px;
+    class PB2,T31 done;
+    class W1 ready;
+    class GA,W2,GB,W3,GC,W4,GD,W5,GE,W6,QG,W7,F1,W8,FG blocked;
+    class T31,GA,GB,GC,GD,GE,QG,F1,FG gate;
+```
+
+`✅` chỉ gắn cho node có task/checkpoint đã hoàn tất trong `tasks/todo.md` và có bằng chứng verification.
+Phase 1, Phase 2/P2-B và `P3-T01` đã hoàn tất; Wave 1 sẵn sàng, các node Phase 3 khác còn chờ dependency.
 
 Các điểm đồng bộ bắt buộc:
 
@@ -627,11 +680,11 @@ Thuận sở hữu toàn bộ Phase 2 local theo chuỗi `P2-T01`–`P2-T29`:
 
 Backend `P2-T01`–`P2-T15`, rebaseline `P2-T16`, web workspace `P2-T17A`, app shell `P2-T17B`, login/session/role guard `P2-T18`, BTC team provisioning `P2-T19`, team OCI submission portal `P2-T20`, results UI `P2-T21`, public leaderboard UI `P2-T22`, replay persistence/catalog repository `P2-T23`, replay publication/public artifact API `P2-T24`, BTC replay catalog/publication console `P2-T25`, spectator replay client/integrity verification `P2-T26`, spectator replay player `P2-T27`, isolated qualification harness `P2-T28` và full-flow qualification `P2-T29` đã hoàn tất theo verification trong `tasks/todo.md`. Checkpoint `P2-B` đạt sau detached clean-worktree verification; mỗi task dùng branch riêng, test → docs/status → commit → merge `main`.
 
-Phần Thuận có thể làm tiếp ngay:
+Trạng thái bàn giao Phase 2:
 
-- `P2-T17A` web workspace, `P2-T17B` app shell/test harness, `P2-T18` auth UI, `P2-T19` BTC team-account console, `P2-T20` team submission portal, `P2-T21` results UI và `P2-T22` public leaderboard UI đã xanh.
-- `P2-T23` replay persistence có thể làm sau `P2-T16`; đã hoàn tất mà không cần chờ UI.
-- `P2-T21`–`P2-T22` tiếp tục theo dependency `P2-T18`/API tương ứng; cả hai đã xong.
+- `P2-T17A`–`P2-T22` web/auth/portal/results/leaderboard đã hoàn tất.
+- `P2-T23`–`P2-T27` replay persistence, publication và spectator presentation đã hoàn tất.
+- `P2-T28`–`P2-T29` qualification E2E/handoff và Checkpoint `P2-B` đã hoàn tất; không còn task Phase 2 để chọn.
 
 Ranh giới tuần tự bắt buộc:
 
@@ -713,3 +766,87 @@ Skill theo phần:
 - [x] Source root `src/`; module layout được khóa tại `src/README.md`.
 
 Chi tiết và rationale: `docs/decisions/0002-phase-1-engine-and-bot-protocol-v1.md`.
+
+## 15. Phân công Phase 3 — Phase 2B carry-over và chung kết offline
+
+> Trạng thái: **Đã duyệt baseline tại Gate `P3-0`; implementation Wave 1 sẵn sàng.**
+
+Phase 3 gộp hai phần nhưng nghiệm thu riêng:
+
+1. Hoàn thiện hosted PoC vòng loại trên một server lab, có UI/ops/hardening và tải vừa phải (`P3-2B`).
+2. Xây chung kết offline qua LAN theo bracket 8 đội và đồng bộ ResultBundle có chữ ký (`P3-F`).
+
+Đinh Đức Thuận giữ vai trò Product/Technical approver: chốt decision, review pull request và duyệt checkpoint.
+Toàn bộ implementation được giao cho Long Trần, Đỗ Khôi Nguyên và Phạm Tất Đạt.
+
+## 16. Owner và ranh giới Phase 3
+
+### Long Trần — Protocol, deterministic domain và public read models (`P3-L*`)
+
+- Bot Protocol v2, time-budget semantics và MatchRunner/replay compatibility.
+- Qualification eligibility, adaptive Elo và finals competition rules/scoring.
+- Replay move-list và static public presentation đọc snapshot đã phát hành.
+
+Long không tự đổi quyết định timing/Elo/finals, không sửa auth/admin write API và không vận hành worker pool.
+
+### Đỗ Khôi Nguyên — Sandbox, single-host worker và operations readiness (`P3-N*`)
+
+- Resource enforcement/metrics, queue priority, worker heartbeat/capacity và test-run execution.
+- OCI layer lifecycle/base images, backup/restore, observability và server-lab smoke/load/recovery evidence.
+- LAN deployment/recovery và full event rehearsal.
+
+Nguyên không sửa luật game/rating/finals và không tự mở public endpoint hoặc thay đổi RBAC.
+
+### Phạm Tất Đạt — Control plane, privileged workflows và finals sync (`P3-D*`)
+
+- `RoundRuleSet`/round lifecycle API, admin console, upload reservation và bulk account provisioning.
+- Replay authorization, authentication hardening, privileged operations và hosted startup guard.
+- Finals persistence/API, LAN cutoff, signed `ResultBundle` và finals public UI.
+
+Đạt không đổi protocol/timing/rating/finals rules nếu contract của Long và decision của Thuận chưa merge.
+
+### Đinh Đức Thuận — Decision và checkpoint (`P3-T01`, checkpoints)
+
+- Đã duyệt D-14–D-30 và ADR/contract tại `P3-T01`; tiếp tục review amendment nếu baseline đổi.
+- Review integration/security evidence và quyết định qua checkpoint.
+- Là người duy nhất quyết định deploy; Phase 3 plan không tự cho phép deploy.
+
+## 17. Task allocation Phase 3
+
+| Owner | Tasks | Deliverable chính |
+| --- | --- | --- |
+| Long Trần | `P3-L01`–`P3-L06` | Protocol v2, timing, rating eligibility, replay/public snapshot UI, finals domain |
+| Đỗ Khôi Nguyên | `P3-N01`–`P3-N08` | Sandbox/metrics, single-host admission/test run, OCI lifecycle, ops/load, LAN/rehearsal |
+| Phạm Tất Đạt | `P3-D01`–`P3-D10` | Round/admin/submission/auth/operations APIs and UI, finals control/result sync/presentation |
+| Đinh Đức Thuận | `P3-T01`; `P3-A`, `P3-B`, `P3-C`, `P3-D`, `P3-E`, `P3-2B`, `P3-F1`, `P3-F` | Decision gate, review và acceptance |
+
+Chi tiết acceptance criteria, verification, dependency và file dự kiến nằm duy nhất tại
+[`tasks/todo.md`](../tasks/todo.md). Dependency graph và wave plan nằm tại
+[`tasks/plan.md`](../tasks/plan.md).
+
+## 18. Workflow Phase 3
+
+- Mỗi task dùng branch riêng từ `main`: `longt/feat-<task-id>-<slug>`,
+  `nguyendk/feat-<task-id>-<slug>` hoặc `datpt/feat-<task-id>-<slug>`.
+- Mỗi pull request chứa đúng một task và target `main`; không dùng `develop`.
+- Owner API/contract merge trước consumer. Fixture/schema phải được bàn giao để lane khác phát triển độc lập.
+- Trước sửa symbol phải chạy GitNexus impact; trước commit phải chạy `detect-changes --scope all` và review
+  đầy đủ kết quả `UNKNOWN`, `partial` hoặc `truncated`.
+- Chỉ tick task/checkpoint sau acceptance, fresh verification và docs sync. Handoff ghi `DOCS UPDATED`.
+
+## 19. Phối hợp tránh xung đột Phase 3
+
+| Shared area | Owner chính | Quy tắc |
+| --- | --- | --- |
+| Bot protocol/MatchRunner event schema | Long | Đạt/Nguyên chỉ consume contract đã merge |
+| PostgreSQL migrations và API composition root | Đạt | Mỗi migration có số riêng; không mở hai PR cùng sửa `app.ts` |
+| Queue names/job payload/worker composition | Nguyên | Thay contract job phải được Đạt review và có backward fixture |
+| Public snapshot/replay presentation | Long | Đạt cung cấp signed/versioned read model; UI không tự tính rank/standings |
+| Security config, secret và signing key | Đạt + Nguyên review | Không commit secret; verification dùng secret fixture cô lập |
+
+## 20. Acceptance ownership Phase 3
+
+- Long chịu trách nhiệm determinism/compatibility evidence cho Protocol v2, rating và finals rules.
+- Nguyên chịu trách nhiệm sandbox/isolation, server-lab load/recovery, backup/restore và LAN evidence.
+- Đạt chịu trách nhiệm RBAC/audit/idempotency của privileged workflows và result synchronization.
+- Thuận duyệt `P3-2B` trước finals implementation và duyệt `P3-F` trước mọi deployment.

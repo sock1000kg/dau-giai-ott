@@ -2,7 +2,7 @@
 
 > Trạng thái: **Đã tự động duyệt**
 > Mức khuyến nghị: **HIGH RECOMMEND**
-> Vai trò: Core Game API và owner Bot Protocol v1
+> Vai trò: Core Game/Bot Protocol; Phase 3 protocol, deterministic domain và public read models
 
 ## 1. Cách dùng ngay
 
@@ -20,7 +20,7 @@ Không commit, push hoặc sửa phạm vi của người khác nếu tôi chưa
 - Base branch: `main`.
 - Mỗi task dùng branch riêng với prefix `longt/`, ví dụ `longt/feat-p1-l01-game-baseline`.
 - Không code trực tiếp trên `main`.
-- Một branch chỉ chứa một task `P1-Lxx`; không trộn core/protocol với phạm vi Phase 2 của Thuận.
+- Một branch chỉ chứa một task `P1-Lxx` hoặc `P3-Lxx`; không trộn task/lane.
 - Hoàn tất thì push branch và tạo PR target `main` để integration test.
 
 ```bash
@@ -46,6 +46,9 @@ Long là owner duy nhất của:
 
 Long không còn task implementation Phase 2; `P2-L02`/`P2-L03` đã hủy và phát hành lại thành `P2-T17A`/`P2-T17B`/`P2-T18`/`P2-T20` cho Thuận.
 
+Phase 3 giao Long `P3-L01`–`P3-L06`: Protocol v2, timing runtime, qualification/rating eligibility, replay
+move list, static public snapshot/site và finals deterministic domain. `P3-T01` đã hoàn tất; `P3-L01` sẵn sàng.
+
 ## 4. Task theo thứ tự bắt buộc
 
 | Thứ tự | Task | Dependency |
@@ -61,7 +64,18 @@ Long không còn task implementation Phase 2; `P2-L02`/`P2-L03` đã hủy và p
 
 Mỗi phiên AI chỉ làm một task. Nguyên đã có thể làm `P1-N01` từ schema/fixtures khóa tại `P1-T01`; Đạt bắt đầu `P1-D02` khi `P1-L02` và `P1-L03` hoàn tất. `P1-L04` là executable validator baseline, không phải thời điểm phát hành contract lần đầu.
 
-Checkpoint liên quan: `P1-A` sau `P1-L01`–`P1-L04` (Đạt dựa vào public types để làm runner); `P1-B` sau `P1-L08`. Phase 2 thuộc Thuận; Long chỉ review core/protocol compatibility khi được yêu cầu. Sơ đồ hai phase: `docs/team-assignment-phase-1-2.md` mục 4.2.
+### Phase 3
+
+| Thứ tự | Task | Dependency chính |
+| --- | --- | --- |
+| 1 | `P3-L01` — Bot Protocol v2 | `P3-T01` |
+| 2 | `P3-L02` — chess-clock/dynamic timing | `P3-L01`, `P3-D01`, `P3-N01` |
+| 3 | `P3-L03` — qualification/adaptive Elo/eligibility | `P3-T01`, `P3-D01` |
+| 4 | `P3-L04` — replay move list/version compatibility | `P3-L02`, `P3-D05` |
+| 5 | `P3-L05` — static public snapshot/site | `P3-D01`, `P3-N02`, `P3-L03`, `P3-D05` |
+| 6 | `P3-L06` — finals 8-team bracket/game-adapter scoring | `P3-T01`, Checkpoint `P3-2B`, `P3-L03` |
+
+Checkpoint liên quan: Phase 1 có `P1-A`/`P1-B`; Phase 3 có `P3-A`, `P3-B`, `P3-D`, `P3-E`, `P3-2B` và `P3-F1`. Đọc dependency/trạng thái hiện hành tại `tasks/todo.md`. Sơ đồ ba phase: `docs/team-assignment.md` mục 4.2.
 
 ## 5. Tài liệu AI phải đọc
 
@@ -69,11 +83,12 @@ Checkpoint liên quan: `P1-A` sau `P1-L01`–`P1-L04` (Đạt dựa vào public 
 2. `docs/README.md` để xác định nguồn sự thật.
 3. Task đang chọn trong `tasks/todo.md`.
 4. Lane Long và checkpoint trong `tasks/plan.md`.
-5. Phần Core Game/Bot Protocol trong `docs/team-assignment-phase-1-2.md`.
+5. Lane Long theo phase trong `docs/team-assignment.md`.
 6. Phần game rules, protocol, determinism và error policy trong `docs/tai-lieu-yeu-cau.md`.
 7. ADR và contract liên quan.
 8. `docs/conventions/module-package.md` khi tạo hoặc sửa `package.json` của `game-core`/`bot-protocol`/web.
-9. Source core, public types và test liên quan trước khi sửa.
+9. `docs/architecture/solution-architecture-phase-3.md` khi làm `P3-L*`.
+10. Source, public types và test liên quan trước khi sửa.
 
 Hành vi tham chiếu phải được đối chiếu với commit core đã pin. Không tự “cải tiến luật” ngoài tài liệu.
 
@@ -84,13 +99,14 @@ Hành vi tham chiếu phải được đối chiếu với commit core đã pin.
 - `src/game-core/**`
 - `src/bot-protocol/**`
 - Tài liệu protocol/core liên quan
+- Các file Phase 3 được liệt kê trong đúng task card `P3-L*`, gồm rating/finals API hoặc web public/replay khi task giao rõ.
 
 Không được sửa nếu chưa phối hợp owner:
 
 - `src/bots/python/**` của Nguyên.
-- `src/match-runner/**` của Đạt.
-- Fastify, PostgreSQL, Redis/BullMQ, S3-compatible storage, cloud.
-- `src/platform/**` thuộc toàn bộ lane Phase 2 của Thuận.
+- `src/match-runner/**` ngoài phạm vi `P3-L02` hoặc khi chưa phối hợp Đạt về compatibility.
+- Fastify, PostgreSQL, Redis/BullMQ hoặc S3-compatible storage ngoài file được task `P3-L*` giao rõ.
+- Admin write API, auth, worker pool và operations thuộc lane `P3-D*`/`P3-N*`.
 
 Nếu test của consumer phát hiện contract sai, sửa tại core/protocol và cập nhật schema/fixtures; không vá trực tiếp code consumer.
 
@@ -136,9 +152,9 @@ Nếu project đã có `.agents/skills/<skill>/SKILL.md`, ưu tiên dùng bản 
 ## 8. Prompt triển khai sẵn dùng
 
 ```text
-Tôi là Long Trần, owner Core Game API/Bot Protocol v1 Phase 1.
+Tôi là Long Trần, owner lane `P3-L*` của Phase 3.
 
-Hãy chọn task P1-Lxx đầu tiên chưa hoàn tất và đã đủ dependency trong tasks/todo.md.
+Hãy chọn task `P3-Lxx` đầu tiên chưa hoàn tất và đã đủ dependency trong tasks/todo.md.
 Chỉ thực hiện đúng một task.
 
 Quy trình bắt buộc:
@@ -150,7 +166,7 @@ Quy trình bắt buộc:
 6. Triển khai tối thiểu, không tạo game rules thứ hai cho bot.
 7. Chạy focused test, typecheck và verification command của task.
 8. Review diff, chạy GitNexus detect-changes và báo risk thực tế.
-9. Không sửa bot Python, MatchRunner hoặc bất kỳ phạm vi Phase 2 nào của Thuận.
+9. Chỉ sửa file trong task card; không sửa worker, auth/admin write workflow hoặc task Phase 3 của Nguyên/Đạt.
 10. Chỉ đề xuất PR vào main; không merge/commit nếu tôi chưa yêu cầu.
 
 Trước khi code, trả về: task được chọn, dependency, assumption, public API bị ảnh hưởng, file dự kiến sửa và test plan.

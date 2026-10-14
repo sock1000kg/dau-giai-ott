@@ -6,6 +6,9 @@
 >
 > **Nguồn quyết định:** [ADR-0001](../decisions/0001-technology-stack-and-local-development.md), [ADR-0003](../decisions/0003-replay-publication-after-match.md), [ADR-0004](../decisions/0004-phase-2-team-account-authentication.md), [ADR-0005](../decisions/0005-phase-2-modular-monolith-and-execution-boundary.md).
 
+> Đây vẫn là baseline đã Accepted cho implementation Phase 2. [Solution Architecture Phase 3](solution-architecture-phase-3.md)
+> là baseline mở rộng đã duyệt ngày 14/10/2026 bằng ADR/contract version mới; không sửa ngược artifact v1.
+
 ## 1. Mục tiêu và phạm vi
 
 Phase 2 biến các package Phase 1 đã chạy local thành nền tảng giải đấu local: đội đăng nhập/nộp bot, worker chạy trận trong sandbox, BTC vận hành kết quả và công bố replay sau khi trận đã terminal. Đây là **modular monolith control plane** kết hợp một **execution worker** riêng; không phải microservice phân tán.
@@ -171,4 +174,6 @@ Minimum telemetry has correlation fields `tournamentId`, `roundId`, `seriesId`, 
 
 ## 10. Deferred decisions
 
-Finalist count, bracket type, finals turn limit and finals-draw policy remain BTC policy (`D-01`, `D-02`, `D-05`, `D-06`) and do not block the local qualification backend. They require their own ADR/config version before finals implementation.
+Finalist count, bracket type, finals turn limit and finals-draw policy did not block the Phase 2 local
+qualification backend. They were accepted for Phase 3 at `P3-T01`; see
+[Solution Architecture Phase 3](solution-architecture-phase-3.md), ADR-0008–0010 and the versioned Phase 3 contracts.

@@ -2,7 +2,7 @@
 
 > Trạng thái: **Đã tự động duyệt**
 > Mức khuyến nghị: **HIGH RECOMMEND**
-> Vai trò: owner duy nhất toàn bộ Phase 2 local — backend, frontend, replay, E2E và checkpoint
+> Vai trò: owner Phase 2 local; approver decision/ADR/contract và checkpoint Phase 3
 
 ## 1. Cách dùng ngay
 
@@ -10,10 +10,10 @@ Mở AI tại repository root, đính kèm file này và gửi đúng câu sau:
 
 ```text
 Đọc toàn bộ file docs/ai-context/dinh-duc-thuan.md và dùng nó làm context điều hành.
-Tiếp tục tự động toàn bộ task Phase 2 của tôi đến khi Checkpoint P2-B hoàn thành.
-Không dừng giữa các task: mỗi vòng chọn task ID nhỏ nhất đã đủ dependency, tạo branch từ main,
-test, cập nhật docs/status, commit và merge lại main rồi chuyển task kế tiếp.
-Chỉ dừng khi có blocker thật sự; báo evidence và phương án. Không push hoặc deploy cloud.
+Gate P3-0/P3-T01 đã đạt ngày 14/10/2026. Đối chiếu checkpoint Phase 3 đang được yêu cầu với
+tasks/todo.md, requirement, ADR-0008–0010 và contract liên quan.
+Không nhận implementation P3-L*, P3-N* hoặc P3-D* thay ba owner.
+Không push hoặc deploy nếu tôi chưa yêu cầu.
 ```
 
 AI phải đọc file này cùng tài liệu nguồn; không chỉ dựa vào lịch sử conversation.
@@ -22,7 +22,7 @@ AI phải đọc file này cùng tài liệu nguồn; không chỉ dựa vào l�
 
 - `main` là branch tích hợp chung.
 - Mỗi task dùng branch riêng của owner, tạo từ `main`.
-- Branch dùng prefix `thuandd/`, ví dụ task tiếp theo `thuandd/feat-p2-t17a-web-workspace`.
+- Branch dùng prefix `thuandd/`, ví dụ `thuandd/docs-p3-t01-decisions`.
 - Không code trực tiếp trên `main`.
 - Khi task pass verification, commit nguyên tử và merge vào `main`; chỉ push khi người dùng yêu cầu riêng.
 - Duyệt checkpoint trên `main`; Phase 2 hiện tại dừng ở local qualification E2E/runbook.
@@ -44,6 +44,9 @@ Nếu `origin/main` chưa tồn tại hoặc working tree đang có thay đổi 
 - Dùng [Solution Architecture Phase 2](../architecture/solution-architecture-phase-2.md), [SAD OCI Bot Submission](../architecture/sad-oci-bot-submissions.md), ADR-0005 và ADR-0006 làm ranh giới thực thi; `P2-T15` là cổng benchmark resource profile trước khi mở nhận bot của đội thi.
 - Phase 2 local và Checkpoint `P2-B` đã hoàn tất sau detached clean-worktree verification; deploy cloud bị loại khỏi phạm vi.
 - Không thêm CI/CD, cloud infrastructure, production secrets hoặc deploy stage vào Phase 2 hiện tại.
+- `P3-T01` đã hoàn tất; implementation `P3-L*`, `P3-N*`, `P3-D*` thuộc Long, Nguyên và Đạt.
+- D-14–D-30 đã duyệt. Thuận review amendment và các checkpoint `P3-A`–`P3-F`; không tick bằng báo cáo chưa có verification.
+- Dùng [Solution Architecture Phase 3](../architecture/solution-architecture-phase-3.md), ADR-0008–0010 và contract Phase 3 làm baseline review.
 
 ## 4. Tài liệu AI phải đọc
 
@@ -52,10 +55,11 @@ Nếu `origin/main` chưa tồn tại hoặc working tree đang có thay đổi 
 3. Task/checkpoint liên quan trong `tasks/todo.md`.
 4. `tasks/plan.md`.
 5. `docs/tai-lieu-yeu-cau.md`, ưu tiên phần yêu cầu đang cần quyết định.
-6. `docs/team-assignment-phase-1-2.md`.
+6. `docs/team-assignment.md`.
 7. `docs/architecture/solution-architecture-phase-2.md` khi làm Phase 2.
-8. `docs/decisions/` và `docs/huong-dan-tham-gia-du-an-voi-ai.md`.
-9. `git status --short` và source/test liên quan nếu đang review bàn giao.
+8. `docs/architecture/solution-architecture-phase-3.md` khi review Phase 3.
+9. `docs/decisions/`, `docs/contracts/` và `docs/huong-dan-tham-gia-du-an-voi-ai.md`.
+10. `git status --short` và source/test liên quan nếu đang review bàn giao.
 
 Nếu có mâu thuẫn, AI phải nêu rõ hai nguồn và đề xuất lựa chọn; không tự chọn âm thầm.
 
@@ -73,8 +77,11 @@ Nếu có mâu thuẫn, AI phải nêu rõ hai nguồn và đề xuất lựa ch
 | `P2-T16` — rebaseline ownership/execution loop | Đã hoàn tất ngày 13/10/2026 |
 | `P2-T17A`–`P2-T29` — frontend, replay, E2E local | Đã hoàn tất; không tạo task mới ngoài phạm vi đã duyệt |
 | Duyệt Checkpoint `P2-B` | Đã hoàn tất; detached clean-worktree verification pass |
+| `P3-T01` — khóa D-14–D-30, ADR và contract | Đã hoàn tất ngày 14/10/2026; Wave 1 sẵn sàng |
+| Duyệt `P3-A`–`P3-2B` | Chỉ sau task/checkpoint dependency có fresh test/build/security evidence |
+| Duyệt `P3-F1` và `P3-F` | Chỉ sau `P3-2B`, LAN recovery/signed bundle rehearsal và docs sync |
 
-Sơ đồ hai phase: `docs/team-assignment-phase-1-2.md` mục 4.2. Sau khi duyệt task hoặc checkpoint, thêm `✅` vào node tương ứng trong sơ đồ.
+Sơ đồ ba phase: `docs/team-assignment.md` mục 4.2. Sau khi duyệt task hoặc checkpoint, thêm `✅` vào node tương ứng trong sơ đồ.
 
 Deploy cloud không thuộc checklist hoặc Definition of Done Phase 2. AI không tự tạo task cloud trong vòng lặp này.
 
@@ -90,7 +97,7 @@ Deploy cloud không thuộc checklist hoặc Definition of Done Phase 2. AI khô
 
 Đầu ra phải đủ rõ để Long, Nguyên và Đạt code mà không tạo ba cách hiểu khác nhau.
 
-Các quyết định còn mở của Phase 2 không được lẫn vào Phase 1. D-13 authentication/RBAC đã khóa tại ADR-0004: BTC provision tài khoản team username/password, không self-register. `P2-T01` vẫn phải khóa runtime image/artifact policy, CPU/RAM/PID quota, K-factor/rating khởi tạo và series đổi phía trước các task phụ thuộc.
+Các quyết định Phase 2 không được lẫn vào Phase 1. D-13 authentication/RBAC đã khóa tại ADR-0004: BTC provision tài khoản team username/password, không self-register. `P2-T01` đã khóa runtime image/artifact policy, baseline CPU/RAM/PID, K-factor/rating khởi tạo và series đổi phía. Mọi thay đổi tương ứng trong Phase 3 phải đi qua `P3-T01`, không sửa ngược contract Phase 2 âm thầm.
 
 ## 7. Skill cần dùng và bước cài nếu thiếu
 
@@ -128,19 +135,19 @@ Nếu AI không hỗ trợ installer nhưng file có trong `.agents/skills/`, y�
 ## 8. Prompt điều hành sẵn dùng
 
 ```text
-Tôi là Đinh Đức Thuận, owner duy nhất của toàn bộ Phase 2 local.
+Tôi là Đinh Đức Thuận, approver decision/checkpoint của Phase 3.
 
 Hãy:
 1. Đọc rules, tasks/plan.md, tasks/todo.md và các tài liệu liên quan.
 2. Kiểm tra git status; giữ nguyên thay đổi không thuộc công việc hiện tại.
 3. Xác nhận branch `thuandd/feat-<task-id>-<slug>` tạo từ main; không làm trực tiếp trên main.
-4. Mỗi vòng chọn đúng một task/checkpoint đã đủ dependency; hoàn tất và merge xong mới chuyển task kế tiếp.
-5. Nếu là decision gate như P2-T01, lập bảng: quyết định, lựa chọn, khuyến nghị, lý do, ảnh hưởng và nơi ghi nhận.
+4. Chỉ xử lý amendment quyết định hoặc một checkpoint Phase 3 đã đủ dependency; không nhận implementation của ba lane còn lại.
+5. Dùng baseline D-14–D-30 đã duyệt; nếu yêu cầu mới làm đổi baseline, tạo decision amendment và đồng bộ ADR/contract.
 6. Nếu là checkpoint, đối chiếu từng acceptance criterion với bằng chứng test/build thực tế.
 7. Dùng GitNexus trước khi sửa file hiện có và detect-changes trước khi đề xuất commit.
-8. Với Phase 2, chọn task ID nhỏ nhất chưa hoàn tất trong `P2-T17A`–`P2-T29` có đủ dependency; làm tuần tự đến Checkpoint `P2-B`.
-9. Mỗi task phải test, cập nhật docs/status, commit và merge vào `main`; không push hoặc deploy cloud nếu chưa được yêu cầu.
-10. Sau merge, đọc lại `tasks/todo.md` và tự bắt đầu task khả dụng kế tiếp; chỉ kết thúc khi Checkpoint `P2-B` đạt hoặc có blocker thật sự kèm evidence/phương án.
+8. Không tự duyệt thay đổi nghiệp vụ mới và không sửa code implementation để né mâu thuẫn requirement–ADR–contract.
+9. Sau khi amendment được tôi xác nhận, đồng bộ requirement, ADR, contract, SA, plan/task và diagram trong cùng branch.
+10. Không push, merge hoặc deploy nếu chưa được yêu cầu; nêu rõ task nào được unblock sau mỗi lần duyệt.
 
 Trước khi sửa, hãy trả về task đã chọn, dependency, assumption, file dự kiến sửa và verification plan.
 ```
@@ -151,6 +158,8 @@ Trước khi sửa, hãy trả về task đã chọn, dependency, assumption, fi
 - Không thay đổi Phase 1 core/protocol/bot/MatchRunner ngoài dependency cần thiết và đã được impact-review.
 - Không đưa secret hoặc cấu hình production vào repository.
 - Không thêm hoặc thực hiện deploy cloud trong Phase 2 hiện tại.
+- Không nhận hoặc code thay các task `P3-L*`, `P3-N*`, `P3-D*`; Thuận chỉ quyết định, review và duyệt checkpoint.
+- Không coi SA/plan là bằng chứng implementation; task chỉ hoàn tất sau fresh verification.
 - Không duyệt checkpoint chỉ dựa trên báo cáo của AI; phải có command và output thực tế.
 
 ## 10. Definition of Done và handoff

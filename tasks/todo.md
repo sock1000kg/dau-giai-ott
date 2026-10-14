@@ -1,9 +1,9 @@
-# Task Checklist: Phase 1–2
+# Task Checklist: Phase 1–3
 
-**Trạng thái:** Đã tự động duyệt — có thể bắt đầu theo dependency
-**Mức khuyến nghị:** Cao (`HIGH RECOMMEND`)
+**Trạng thái:** Phase 1–2 hoàn tất; Phase 3 baseline đã duyệt tại `P3-T01`, Wave 1 sẵn sàng
+**Mức khuyến nghị Phase 3:** Cần Đinh Đức Thuận duyệt thủ công
 **Plan:** `tasks/plan.md`
-**Nguồn:** `docs/team-assignment-phase-1-2.md`
+**Nguồn:** `docs/team-assignment.md`
 
 > Chỉ bắt đầu khi dependency đã xong. Mỗi task là một PR nhỏ; nếu dự kiến vượt 5 file thì tách task trước khi code.
 >
@@ -580,7 +580,7 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 **Acceptance criteria:** (1) Không còn task Phase 2 mở mang owner khác Thuận; (2) ID cũ được ghi hủy và không tái sử dụng; (3) plan, assignment, AI context và diagram cùng một dependency graph, mỗi task mới có acceptance/verification/files.
 **Verification:** `git diff --check`; `rg -n '^### \[ \] P2-' tasks/todo.md` chỉ trả task `P2-Txx`, và text search không còn owner Phase 2 mở ngoài Thuận.
 **Dependencies:** `P2-T01`–`P2-T15`.
-**Files:** `tasks/todo.md`, `tasks/plan.md`, `docs/team-assignment-phase-1-2.md`, `docs/README.md`, `docs/ai-context/*.md`
+**Files:** `tasks/todo.md`, `tasks/plan.md`, `docs/team-assignment.md`, `docs/README.md`, `docs/ai-context/*.md`
 **Ước lượng:** M (docs governance)
 **Hoàn tất:** 2026-10-13 — toàn bộ scope Phase 2 còn lại được phát hành lại thành `P2-T17A`, `P2-T17B`, `P2-T18`–`P2-T29`; deploy cloud bị loại khỏi Definition of Done Phase 2 local.
 
@@ -702,7 +702,7 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 **Verification:** `npm test --workspace @ott/platform-web -- ReplayPlayer` (5/5 focused; full web 64/64); `npm run typecheck --workspace @ott/platform-web`; `npm run build --workspace @ott/platform-web`; root `npm test`, `npm run typecheck`, `npm run build` all pass. Vite HTTP smoke: public replay SPA route returned 200 and page module transformed. Build has no Node crypto externalization warning. Chrome DevTools MCP is unavailable in this session, so no real-browser screenshot/assertion was run. GitNexus compare-to-main reports CRITICAL across 16 flows because the shared `App` route entrypoint and newly indexed page/tests participate in application traces; direct `SpectatorReplayPage` and `createReplayTimeline` impact are LOW/exact. The reported paths include public replay fetch/schema/error handling plus existing leaderboard and App error paths; full web regression suite covers App shell, auth, leaderboard and replay admin, and a dedicated route test proves no auth request is started. One `engineVersion` test-fixture match is a graph naming collision, not a code path. Global flow inventory is incomplete: 75/275 candidate entry points and 351 callees were truncated, so absent flows are not considered unaffected.
 **Dependencies:** `P2-T26`.
 **Files:** `src/platform/web/src/features/spectator/replay-state.ts`, `src/platform/web/src/features/spectator/ReplayPlayer.tsx`, `src/platform/web/src/pages/SpectatorReplayPage.tsx`, `src/platform/web/src/features/spectator/ReplayPlayer.test.tsx`, `src/platform/web/src/app/App.tsx`, `src/platform/web/src/app/styles.css`, `src/platform/web/package.json` (direct type dependency on `@ott/game-core`). The browser player deliberately imports only game-core types: its Node-only hash implementation is not browser-compatible, as confirmed by the initial production build warning; runtime board frames are projected from verified recorded events instead.
-**DOCS UPDATED:** `src/platform/web/README.md`, this task card, `tasks/plan.md`, `docs/team-assignment-phase-1-2.md`.
+**DOCS UPDATED:** `src/platform/web/README.md`, this task card, `tasks/plan.md`, `docs/team-assignment.md`.
 **Ước lượng:** M (4 file)
 
 ### [x] P2-T28 — Qualification E2E harness và deterministic fixtures
@@ -713,7 +713,7 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 **Verification:** `npm run test:e2e:qualification -- --runInBand --testNamePattern harness` hai lần liên tiếp: mỗi lượt 4/4 pass; PostgreSQL/Redis/SeaweedFS healthy, áp dụng đủ migration `0001`–`0006`, seed đúng hai submission canary; project Compose, containers, volumes và network của lượt chạy được teardown. `npm run typecheck`, `npm test`, `npm run build`, `git diff --check`, `bash -n scripts/run-local-qualification.sh` pass; default root Vitest excludes this environment-bound E2E test, while the dedicated config includes it. Shared local containers không bị đụng tới. GitNexus direct impact của fixture seeder là `UNKNOWN`/không có resolved callers; xác nhận invocation qua `qualification-run.ts` và shell script. detect-changes thấy 2 file nhưng không có indexed symbol overlap; không xem kết quả đó là all-clear vì E2E CLI/config chưa được GitNexus biểu diễn thành symbol.
 **Dependencies:** `P2-T15`, `P2-T20`, `P2-T22`, `P2-T25`, `P2-T27`.
 **Files:** `tests/e2e/qualification.config.ts`, `tests/e2e/qualification-fixtures.ts`, `tests/e2e/qualification-harness.test.ts`, `tests/e2e/qualification-run.ts`, `tests/e2e/helpers.ts`, `scripts/run-local-qualification.sh`, `vitest.config.ts`, `package.json`, `package-lock.json`.
-**DOCS UPDATED:** `docs/runbooks/phase-2-local.md`, this task card, `tasks/plan.md`, `docs/team-assignment-phase-1-2.md`.
+**DOCS UPDATED:** `docs/runbooks/phase-2-local.md`, this task card, `tasks/plan.md`, `docs/team-assignment.md`.
 **Ước lượng:** M (5 file)
 
 ### [x] P2-T29 — Qualification full-flow E2E và local handoff
@@ -723,7 +723,7 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 **Acceptance criteria:** (1) BTC create team → team login → OCI upload/preflight → schedule/worker/finalize → series/rating/results; (2) BTC stage/publish → public replay player, tamper bị từ chối; (3) retry/restart không duplicate result/ledger/publication và runbook cho clean checkout tái lập được.
 **Verification:** `npm run test:e2e:qualification` chạy cả harness và full flow: 2 test pass; hai đội được BTC provision/login, upload OCI canary thật (~19.5 MiB), worker sandbox preflight ACTION + idempotent activation, schedule/outbox → BullMQ worker → Docker sandbox/MatchRunner → finalize 2 game, settle series/Elo, results/leaderboard, BTC stage/publish và public replay client timeline. Tamper bị từ chối; repeat schedule/preflight/job/settlement/rating/publication không tạo duplicate result/ledger/event. Sau run, queue active/waiting/delayed/failed = 0; Compose containers/volumes/network được xóa. Root `npm run typecheck`, `npm test`, `npm run build`, `git diff --check` và `bash -n scripts/run-local-qualification.sh` pass. E2E phát hiện và sửa bodyLimit upload OCI (19.5 MiB) cùng media-type normalization replay.
 **Dependencies:** `P2-T19`–`P2-T28`.
-**Files:** `tests/e2e/qualification.test.ts`, `src/platform/worker/src/preflight-submission.ts`, `src/platform/worker/src/index.ts`, `src/platform/api/src/modules/submissions/routes.ts`, `src/platform/web/src/features/spectator/verify-replay.ts`, `src/platform/web/src/features/spectator/verify-replay.test.ts`, `docs/contracts/oci-submission-v1.md`, `docs/contracts/spectator-replay-v1.md`, `docs/runbooks/phase-2-local.md`, this task card, `tasks/plan.md`, `docs/team-assignment-phase-1-2.md`, `docs/ai-context/dinh-duc-thuan.md`.
+**Files:** `tests/e2e/qualification.test.ts`, `src/platform/worker/src/preflight-submission.ts`, `src/platform/worker/src/index.ts`, `src/platform/api/src/modules/submissions/routes.ts`, `src/platform/web/src/features/spectator/verify-replay.ts`, `src/platform/web/src/features/spectator/verify-replay.test.ts`, `docs/contracts/oci-submission-v1.md`, `docs/contracts/spectator-replay-v1.md`, `docs/runbooks/phase-2-local.md`, this task card, `tasks/plan.md`, `docs/team-assignment.md`, `docs/ai-context/dinh-duc-thuan.md`.
 **DOCS UPDATED:** OCI/replay contracts, Phase 2 local runbook, plan/status, assignment graph and Thuận AI context.
 **Ước lượng:** M (4 file)
 
@@ -738,3 +738,322 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 - [x] `P2-T17A`, `P2-T17B` và `P2-T18`–`P2-T29` hoàn tất; qualification E2E pass gồm BTC provision → team login → submission và replay publication/spectator flow.
 - [x] Từ detached clean worktree của `404195f`, `npm ci`, build corpus, qualification E2E, `npm run typecheck`, `npm test`, `npm run build`, `git diff --check` và `bash -n scripts/run-local-qualification.sh` đều pass; OCI canary archives được build từ source bằng Docker, Compose harness dọn sạch resource. Root tests: 19 passed, 5 skipped (service-gated); web 65/65; các workspace khác đều xanh.
 - [x] Runbook, env contract và artifact format local tái lập được; runbook ghi rõ build corpus archive bị ignore trước qualification; deploy cloud không thuộc phạm vi Phase 2 này.
+
+## Phase 3 — Gate P3-0: decision và contract approval
+
+> `P3-T01` đã duyệt requirement/ADR/contract ngày 14/10/2026. Task implementation chỉ hoàn tất sau acceptance/verification riêng; Wave 1 có thể bắt đầu trên branch task từ `main`.
+
+### [x] P3-T01 — Khóa quyết định, ADR và contract Phase 3
+
+**Owner:** Đinh Đức Thuận (decision/review only)
+**Mô tả:** Duyệt D-14–D-30, giải quyết mâu thuẫn với nguồn đã khóa và xác nhận ranh giới hosted PoC/finals trước khi ba implementation lane bắt đầu.
+**Acceptance criteria:** (1) mọi decision in-scope có giá trị cuối, trạng thái, ngày và người duyệt; (2) D-15/D-27, D-22, D-20/D-28 và D-23 được đồng bộ vào ADR/contract liên quan; (3) chốt replay private từ dữ liệu đầu tiên, finals 8 đội, configurable finite caps, game-adapter scoring và Ed25519/RFC 8785 `ResultBundle`.
+**Verification:** D-14–D-30 không còn `CHỜ DUYỆT/HOÃN`; requirement ↔ ADR-0008–0010 ↔ contract v2/finals review không còn hai nghĩa; validator kiểm 118 Markdown links/fences, Phase 3 sync 25 task/8 checkpoint, `git diff --check`, root typecheck/build và GitNexus detect-changes (`risk: low`, không partial/truncated) pass ngày 14/10/2026. Root test: core/protocol/runner/API/web/corpus pass; lệnh tổng exit 1 tại worker integration vì Redis `127.0.0.1:16379` không chạy, không phải regression của docs.
+**Dependencies:** Checkpoint `P2-B`.
+**Files likely touched:** `docs/tai-lieu-yeu-cau.md`, `docs/decisions/`, `docs/contracts/bot-protocol-v2.md`, `docs/contracts/platform-auth-v2.md`, `docs/contracts/finals-result-bundle-v1.md`.
+**Estimated scope:** M (documentation/decision gate; không implementation)
+**DOCS UPDATED:** requirement v0.5.0, ADR-0008–0010, Protocol/Auth v2 design contract, Finals Format/ResultBundle v1, Phase 3 SA, plan/todo, assignment/AI contexts.
+
+## Phase 3 — Wave 1: contract và foundation
+
+### [ ] P3-L01 — Bot Protocol v2: time budget và private seed
+
+**Owner:** Long Trần
+**Mô tả:** Hiện thực Bot Protocol v2 đã duyệt để mỗi lượt mang time budget đã pin và mỗi bot chỉ nhận HMAC-derived `botSeed` riêng.
+**Acceptance criteria:** (1) schema/types/fixtures v2 định nghĩa per-turn/remaining total budget, finite wall cap, opaque `matchId` và `botSeed` không lộ opponent/`engineSeed`; (2) v1 fixture vẫn validate bằng validator v1, v2 từ chối field/version sai; (3) compatibility guide nêu negotiation và lỗi tương thích.
+**Verification:** `npm test --workspace @ott/bot-protocol`; `npm run typecheck --workspace @ott/bot-protocol`; contract fixture mutation phải fail.
+**Dependencies:** `P3-T01`.
+**Files likely touched:** `docs/contracts/bot-protocol-v2.md`, `docs/contracts/bot-protocol-v2.schema.json`, `src/bot-protocol/src/messages.ts`, `src/bot-protocol/src/validate.ts`, `src/bot-protocol/tests/schema-v2.test.ts`.
+**Estimated scope:** M (5 files)
+
+### [ ] P3-D01 — RoundRuleSet và lifecycle round version hóa
+
+**Owner:** Phạm Tất Đạt
+**Mô tả:** Thêm persistence/service cho `RoundRuleSet` bất biến và state machine round tuần từ draft đến published.
+**Acceptance criteria:** (1) mỗi save tạo version mới và round đã mở submission không sửa rule; (2) start idempotent, chỉ sau close, đóng băng submission/schedule snapshot và có audit; (3) pause/resume/publish tuân transition và Elo chỉ apply một lần sau terminal series.
+**Verification:** `npm test --workspace @ott/platform-api -- round-rules`; PostgreSQL integration mutation transition/audit phải fail; `npm run typecheck --workspace @ott/platform-api`.
+**Dependencies:** `P3-T01`.
+**Files likely touched:** `src/platform/api/migrations/0007_round_rules.sql`, `src/platform/api/src/modules/rounds/types.ts`, `src/platform/api/src/modules/rounds/service.ts`, `src/platform/api/src/modules/rounds/routes.ts`, `src/platform/api/tests/rounds.integration.test.ts`.
+**Estimated scope:** M (5 files)
+
+### [ ] P3-N01 — Resource profile, cgroup peak và Prometheus metrics
+
+**Owner:** Đỗ Khôi Nguyên
+**Mô tả:** Enforce resource profile theo round ở sandbox và ghi CPU/RAM peak từ cgroup v2 cho từng attempt.
+**Acceptance criteria:** (1) memory/CPU/PID/tmpfs policy lấy từ job đã pin, không từ client; (2) vượt `memory.max` thành bot forfeit và `memory.peak` được lưu; (3) metrics không chứa source, credential hoặc raw stderr.
+**Verification:** `npm test --workspace @ott/platform-worker -- sandbox`; corpus memory/fork/cpu pass; Prometheus scrape fixture và AC-16 assertion pass.
+**Dependencies:** `P3-T01`.
+**Files likely touched:** `src/platform/worker/src/sandbox/policy.ts`, `src/platform/worker/src/sandbox/oci-runtime.ts`, `src/platform/worker/src/metrics.ts`, `src/platform/worker/src/run-match-job.ts`, `src/platform/worker/tests/resource-metrics.integration.test.ts`.
+**Estimated scope:** M (5 files)
+
+## [ ] Checkpoint P3-A — Contract foundation
+
+- [ ] `P3-L01`, `P3-D01`, `P3-N01` pass focused tests/typecheck/build.
+- [ ] Protocol, round rules và resource profile đều version hóa/pin được; không còn decision ngầm trong code.
+- [ ] Đinh Đức Thuận duyệt trước Wave 2.
+
+## Phase 3 — Wave 2: runtime và vận hành round
+
+### [ ] P3-L02 — Chess-clock/dynamic timing trong MatchRunner và replay
+
+**Owner:** Long Trần
+**Mô tả:** Thực thi per-turn limit, tổng thời gian mỗi bot và wall-clock cap theo Protocol v2, đồng thời ghi timing decision vào event log/replay.
+**Acceptance criteria:** (1) `Dynamic` deterministic theo turn và total budget dùng monotonic clock; (2) exhausted budget áp dụng đúng timeout/forfeit policy; (3) cùng transcript/rule set cho cùng timing events và replay verification.
+**Verification:** `npm test --workspace @ott/match-runner -- timing`; fake-clock boundary/mutation tests pass; `npm run typecheck --workspace @ott/match-runner`.
+**Dependencies:** `P3-L01`, `P3-D01`, `P3-N01`.
+**Files likely touched:** `src/match-runner/src/timing-policy.ts`, `src/match-runner/src/match-runner.ts`, `src/match-runner/src/event-log.ts`, `src/match-runner/src/replay.ts`, `src/match-runner/tests/timing-policy.test.ts`.
+**Estimated scope:** M (5 files)
+
+### [ ] P3-N02 — Priority queue, worker heartbeat/capacity và pause/resume
+
+**Owner:** Đỗ Khôi Nguyên
+**Mô tả:** Điều phối official → preflight → test run trên một server lab, có lease/heartbeat, adaptive concurrency mặc định tối đa 4 game và pause nhận job mới.
+**Acceptance criteria:** (1) mức thấp không chạy khi official đang chờ và admission tự giảm theo CPU/RAM; (2) worker mất heartbeat/restart làm attempt retryable, không duplicate result; (3) pause không hủy job đang chạy và resume giữ thứ tự deterministic/audit.
+**Verification:** `npm test --workspace @ott/platform-worker -- worker-pool`; Redis/PostgreSQL integration mô phỏng mất worker/restart; queue active/waiting/failed trở về trạng thái mong đợi.
+**Dependencies:** `P3-D01`, `P3-N01`.
+**Files likely touched:** `src/platform/job-contract/src/queue-names.ts`, `src/platform/api/src/queue/match-queue.ts`, `src/platform/worker/src/worker-pool.ts`, `src/platform/worker/src/worker.ts`, `src/platform/worker/tests/worker-pool.integration.test.ts`.
+**Estimated scope:** M (5 files)
+
+### [ ] P3-D02 — Admin round-rule và operations console
+
+**Owner:** Phạm Tất Đạt
+**Mô tả:** Cung cấp UI BTC để version/lock rule set, ước tính thời lượng và thực hiện open/close/start/pause/resume/publish có confirmation.
+**Acceptance criteria:** (1) form phủ timing/resource/game/schedule/test-run fields và hiển thị worst-case estimate; (2) locked/running rule read-only, invalid transition bị server từ chối và UI reconcile; (3) start có two-step confirmation, reason và duplicate-click safety.
+**Verification:** `npm test --workspace @ott/platform-web -- RoundAdmin`; `npm run typecheck --workspace @ott/platform-web`; browser smoke desktop/mobile và keyboard labels.
+**Dependencies:** `P3-D01`.
+**Files likely touched:** `src/platform/web/src/features/round-admin/api.ts`, `src/platform/web/src/features/round-admin/RoundRuleForm.tsx`, `src/platform/web/src/features/round-admin/RoundOperations.tsx`, `src/platform/web/src/features/round-admin/round-admin.test.tsx`, `src/platform/web/src/app/routes.tsx`.
+**Estimated scope:** M (5 files)
+
+## [ ] Checkpoint P3-B — Round có thể khóa và chạy
+
+- [ ] Protocol v2 game dùng đúng frozen `RoundRuleSet`; AC-17/18 focused tests pass.
+- [ ] Pause/resume và mất worker không làm duplicate job/result.
+- [ ] Đinh Đức Thuận duyệt trước Wave 3.
+
+## Phase 3 — Wave 3: submission và test run ở quy mô lớn
+
+### [ ] P3-D03 — Hash reservation, upload throttling và preflight visibility
+
+**Owner:** Phạm Tất Đạt
+**Mô tả:** Thêm one-click client hashing/reservation, grace-window upload và backpressure/queue position cho submission.
+**Acceptance criteria:** (1) reservation trước deadline chỉ chấp nhận đúng SHA-256 trong grace window; (2) global/per-team concurrency trả retry-after thay vì treo; (3) portal hiển thị progress/preflight position và retry cùng file idempotent.
+**Verification:** API+web focused suites; AC-15 burst test với clock giả; wrong-hash/late/no-reservation mutations bị từ chối.
+**Dependencies:** `P3-D01`, `P3-N02`.
+**Files likely touched:** `src/platform/api/migrations/0008_submission_reservations.sql`, `src/platform/api/src/modules/submissions/reservations.ts`, `src/platform/api/src/modules/submissions/routes.ts`, `src/platform/web/src/features/submissions/SubmissionForm.tsx`, `src/platform/api/tests/submission-reservations.integration.test.ts`.
+**Estimated scope:** M (5 files)
+
+### [ ] P3-D04 — CSV team provisioning và credential file tải một lần
+
+**Owner:** Phạm Tất Đạt
+**Mô tả:** Import danh sách đội đã duyệt và stream file credential plaintext đúng một lần mà không persist nội dung.
+**Acceptance criteria:** (1) validate CSV/email trường/uniqueness atomically với error theo dòng; (2) password chỉ tồn tại trong response stream, DB giữ hash và audit chỉ ghi count/actor; (3) retry không phát lại credential cũ, hỗ trợ bulk reset tạo file mới.
+**Verification:** `npm test --workspace @ott/platform-api -- bulk-teams`; log/audit/storage secret scan; download-once concurrency test và malformed CSV tests.
+**Dependencies:** `P3-T01`.
+**Files likely touched:** `src/platform/api/src/modules/teams/bulk.ts`, `src/platform/api/src/modules/teams/routes.ts`, `src/platform/api/tests/teams-bulk.integration.test.ts`, `src/platform/web/src/features/admin-teams/BulkProvision.tsx`, `src/platform/web/src/features/admin-teams/BulkProvision.test.tsx`.
+**Estimated scope:** M (5 files)
+
+### [ ] P3-N03 — Test-run quota, opponent policy và private artifacts
+
+**Owner:** Đỗ Khôi Nguyên
+**Mô tả:** Tạo flow test run ưu tiên thấp, chỉ đấu bot tham chiếu hoặc submission khác cùng đội, không ảnh hưởng Elo.
+**Acceptance criteria:** (1) quota tính khi start và hoàn lại cho infra failure; (2) test run đứng chờ khi official round chạy và không nhận bot đội khác; (3) result/replay/truncated stderr chỉ owner team/BTC đọc được.
+**Verification:** API/worker integration và AC-21 pass; RBAC tests cross-team/anonymous; rating ledger không đổi sau test run.
+**Dependencies:** `P3-D01`, `P3-L02`, `P3-N02`.
+**Files likely touched:** `src/platform/api/migrations/0009_test_runs.sql`, `src/platform/api/src/modules/test-runs/service.ts`, `src/platform/api/src/modules/test-runs/routes.ts`, `src/platform/worker/src/run-test-job.ts`, `src/platform/worker/tests/test-run.integration.test.ts`.
+**Estimated scope:** M (5 files)
+
+## [ ] Checkpoint P3-C — Participant workflows
+
+- [ ] AC-15 và AC-21 pass; overload có backpressure rõ ràng.
+- [ ] Credential plaintext không persist/log; test run không ảnh hưởng Elo hoặc lộ dữ liệu đội khác.
+- [ ] Đinh Đức Thuận duyệt trước Wave 4.
+
+## Phase 3 — Wave 4: OCI lifecycle, ranking và replay privacy
+
+### [ ] P3-N04 — OCI layer dedup, retention, base image và duplicate flag
+
+**Owner:** Đỗ Khôi Nguyên
+**Mô tả:** Quản lý layer theo digest, retention policy và official base images; flag submission trùng hệt mà không tự kết luận gian lận.
+**Acceptance criteria:** (1) shared layers lưu một bản và garbage collection không xóa artifact đã pin/ACTIVE/3 bản gần nhất; (2) base image/starter kit build reproducible, digest và hướng dẫn/FAQ được công bố; (3) manifest/config/non-base layer duplicate tạo review flag/audit cho BTC.
+**Verification:** storage integration/reference-count race tests; AC-22 pass; dry-run retention report khớp fixture trước delete.
+**Dependencies:** `P3-D03`.
+**Files likely touched:** `src/platform/api/migrations/0010_oci_layers.sql`, `src/platform/api/src/modules/submissions/layers.ts`, `src/platform/worker/src/artifacts.ts`, `src/bots/starter-kits/`, `src/platform/api/tests/oci-retention.integration.test.ts`.
+**Estimated scope:** M (5 files)
+
+### [ ] P3-L03 — Qualification gate, adaptive K và minimum-series eligibility
+
+**Owner:** Long Trần
+**Mô tả:** Thực thi capture-first gate, K=64 cho 5 series đầu rồi K=32 và nhãn chưa đủ điều kiện finals.
+**Acceptance criteria:** (1) submission cần ≥1 điểm/2 game đổi phía với gate bot đã pin; (2) rating rebuild cho kết quả giống incremental apply với adaptive K; (3) dưới minimum series không vào finals eligibility nhưng vẫn hiện leaderboard có nhãn.
+**Verification:** `npm test --workspace @ott/platform-api -- ratings`; property/rebuild/mutation tests; gate fixture hai phía pass/fail deterministic.
+**Dependencies:** `P3-T01`, `P3-D01`.
+**Files likely touched:** `src/platform/api/src/modules/ratings/elo.ts`, `src/platform/api/src/modules/ratings/service.ts`, `src/platform/api/src/modules/scheduling/eligibility.ts`, `src/platform/api/tests/ratings-v2.test.ts`, `src/platform/api/tests/qualification-gate.integration.test.ts`.
+**Estimated scope:** M (5 files)
+
+### [ ] P3-D05 — Qualification replay authorization từ dữ liệu đầu tiên
+
+**Owner:** Phạm Tất Đạt
+**Mô tả:** Áp dụng team-private qualification replay từ record đầu tiên và giới hạn anonymous public replay cho finals đã publish; dự án chưa có dữ liệu public cũ cần migration.
+**Acceptance criteria:** (1) hai team trong match và BTC đọc qualification replay sau integrity; (2) anonymous chỉ đọc finals replay `PUBLISHED`; (3) policy được enforce server-side ngay khi tạo/publish record và không lộ seed/object key.
+**Verification:** `npm test --workspace @ott/platform-api -- replays`; cross-team/anonymous/stage matrix; mutation bỏ stage guard phải fail.
+**Dependencies:** `P3-T01`, `P3-D01`.
+**Files likely touched:** `src/platform/api/migrations/0011_replay_visibility.sql`, `src/platform/api/src/modules/replays/service.ts`, `src/platform/api/src/modules/replays/routes.ts`, `src/platform/api/tests/replay-authorization.integration.test.ts`, `docs/contracts/spectator-replay-v2.md`.
+**Estimated scope:** M (5 files)
+
+## [ ] Checkpoint P3-D — Fairness và data policy
+
+- [ ] AC-22 pass; rating ledger rebuild deterministic với policy đã duyệt.
+- [ ] Anonymous không đọc được qualification replay kể cả biết `matchId`.
+- [ ] Đinh Đức Thuận duyệt trước Wave 5.
+
+## Phase 3 — Wave 5: public experience và authentication hardening
+
+### [ ] P3-L04 — Replay move list, seek và historical-version compatibility
+
+**Owner:** Long Trần
+**Mô tả:** Bổ sung danh sách nước đi đồng bộ player và adapter đọc replay theo engine/protocol/rule version cũ.
+**Acceptance criteria:** (1) click move seek đúng event/snapshot và keyboard/screen-reader dùng được; (2) unsupported/tampered version fail trước render; (3) replay v1/v2 fixtures cũ vẫn dựng đúng kết quả, không dùng luật mới để tính lại.
+**Verification:** `npm test --workspace @ott/platform-web -- ReplayPlayer`; compatibility fixtures và checksum mutation pass; production build không kéo Node-only runtime.
+**Dependencies:** `P3-L02`, `P3-D05`.
+**Files likely touched:** `src/platform/web/src/features/spectator/replay-schema.ts`, `src/platform/web/src/features/spectator/replay-state.ts`, `src/platform/web/src/features/spectator/MoveList.tsx`, `src/platform/web/src/features/spectator/ReplayPlayer.tsx`, `src/platform/web/src/features/spectator/ReplayPlayer.test.tsx`.
+**Estimated scope:** M (5 files)
+
+### [ ] P3-L05 — Static public snapshots, queue/results/rules/status site
+
+**Owner:** Long Trần
+**Mô tả:** Xuất và hiển thị last-known-good static snapshot cho round, queue order/ETA, results, leaderboard, current rules, announcements và stale state.
+**Acceptance criteria:** (1) public site chỉ đọc versioned/checksummed files và polling cache, không gọi DB/worker/control write API; (2) qualification không có replay link, finals có sau sync, đồng thời có lịch/rules/FAQ/announcement/status; (3) snapshot cũ vẫn phục vụ kèm updated-at/stale warning và ETA sự cố khi publisher lỗi.
+**Verification:** static publisher tests + `npm test --workspace @ott/platform-web -- public-site`; network contract assertion không có execution endpoint; load test artifact dùng cho AC-14.
+**Dependencies:** `P3-D01`, `P3-N02`, `P3-L03`, `P3-D05`.
+**Files likely touched:** `src/platform/api/src/modules/public-snapshots/publisher.ts`, `src/platform/web/src/features/public/PublicTournamentPage.tsx`, `src/platform/web/src/features/public/RulesPage.tsx`, `src/platform/web/src/features/public/public-site.test.tsx`, `docs/contracts/public-snapshot-v1.md`.
+**Estimated scope:** M (5 files)
+
+### [ ] P3-D06 — TOTP, admin network allowlist và hosted startup guard
+
+**Owner:** Phạm Tất Đạt
+**Mô tả:** Hardening authentication/admin ingress có cấu hình dev/test và fail-closed ở hosted PoC/production, kèm rate/security headers.
+**Acceptance criteria:** (1) BTC login hỗ trợ TOTP/recovery code, secret mã hóa và không log; (2) admin API kiểm tra trusted proxy/network allowlist server-side; (3) hosted/production từ chối start khi TOTP tắt/allowlist rỗng, dev/test vẫn chạy password-only theo cấu hình.
+**Verification:** auth integration, known test TOTP và recovery replay tests; AC-23 pass; header/rate-limit/proxy spoof tests pass.
+**Dependencies:** `P3-T01`, `P3-D04`.
+**Files likely touched:** `src/platform/api/migrations/0012_admin_mfa.sql`, `src/platform/api/src/modules/auth/totp.ts`, `src/platform/api/src/modules/auth/plugin.ts`, `src/platform/api/src/config/security.ts`, `src/platform/api/tests/auth-hardening.integration.test.ts`.
+**Estimated scope:** M (5 files)
+
+## [ ] Checkpoint P3-E — Public/security boundary
+
+- [ ] AC-14/17/18/23 focused evidence pass; static public traffic không chạm execution plane.
+- [ ] Replay compatibility và auth production guard được mutation-test.
+- [ ] Đinh Đức Thuận duyệt trước Wave 6.
+
+## Phase 3 — Wave 6: operations readiness
+
+### [ ] P3-N05 — Metrics/alerts, backup-restore và incident runbooks
+
+**Owner:** Đỗ Khôi Nguyên
+**Mô tả:** Hoàn thiện quan sát hệ thống và quy trình phục hồi/ứng phó cho control plane, queue, storage và worker pool.
+**Acceptance criteria:** (1) dashboard/alerts phủ queue age, heartbeat, infra failure, finalize stuck, sandbox resource; (2) backup ngoài máy và restore sang laptop khác giữ checksum/audit; (3) incident/OWASP checklist có owner/action cho pause upload, read-only public mode, secret rotation và thông báo sự cố.
+**Verification:** alert fixture tests; restore drill script trên namespace cô lập; dependency/secret scan, OWASP self-assessment và runbook tabletop checklist được Thuận ký.
+**Dependencies:** `P3-N01`, `P3-N02`, `P3-D06`.
+**Files likely touched:** `ops/prometheus/rules.yml`, `ops/grafana/dashboards/tournament.json`, `scripts/backup-local.sh`, `scripts/restore-local.sh`, `docs/runbooks/production-operations.md`.
+**Estimated scope:** M (5 files)
+
+### [ ] P3-D07 — Privileged operations, anti-cheat review và appeal workflow
+
+**Owner:** Phạm Tất Đạt
+**Mô tả:** Hoàn thiện thao tác BTC còn thiếu: revoke/suspend, retry/cancel lỗi hạ tầng, review anomaly/duplicate và xử lý khiếu nại mà không sửa lịch sử.
+**Acceptance criteria:** (1) mọi privileged action có RBAC, reason, correlation ID và append-only before/after audit; (2) rerun chỉ cho infra failure, không duplicate result/Elo, queue override được công khai; (3) anomaly/duplicate/appeal case có evidence/status/decision, round hash được công bố và lịch sử không bị xóa.
+**Verification:** `npm test --workspace @ott/platform-api -- operations`; unauthorized/invalid-rerun/audit immutability mutations fail; export audit/case fixtures không chứa seed, credential hoặc private stderr.
+**Dependencies:** `P3-D01`, `P3-N02`, `P3-N04`.
+**Files likely touched:** `src/platform/api/migrations/0013_operations_cases.sql`, `src/platform/api/src/modules/operations/service.ts`, `src/platform/api/src/modules/operations/routes.ts`, `src/platform/api/tests/operations.integration.test.ts`, `src/platform/web/src/features/operations/OperationsConsole.tsx`.
+**Estimated scope:** M (5 files)
+
+### [ ] P3-N06 — Single-server smoke/load và pilot qualification round
+
+**Owner:** Đỗ Khôi Nguyên
+**Mô tả:** Chạy smoke/load mức vừa trên đúng server lab và một pilot round để chứng minh hosted PoC hoạt động, không tuyên bố production scale.
+**Acceptance criteria:** (1) fixture ~200 đội, ~100 session, 4 game adaptive, ~1.000 public clients qua CDN/static và burst 50 upload/reservation có evidence; (2) overload có queue position/`Retry-After`, ưu tiên thấp bị hoãn, không mất submission/result; (3) restart worker/server + restore/retry không duplicate result/Elo và report ghi capacity/bottleneck thật.
+**Verification:** signed run report kèm commit/config/host inventory; DB/result/ledger integrity queries; root `npm test`, `npm run typecheck`, `npm run build` từ clean checkout.
+**Dependencies:** `P3-N03`, `P3-N04`, `P3-L03`, `P3-L04`, `P3-L05`, `P3-D06`, `P3-D07`, `P3-N05`.
+**Files likely touched:** `tests/load/qualification-round.ts`, `tests/e2e/worker-recovery.test.ts`, `scripts/run-lab-server-pilot.sh`, `docs/reports/phase-3-capacity.md`, `docs/runbooks/hosted-poc-operations.md`.
+**Estimated scope:** M (5 files plus external test evidence)
+
+## [ ] Checkpoint P3-2B — Qualification hosted PoC-ready
+
+- [ ] AC-13–AC-19 và AC-21–AC-23 pass hoặc có biên bản BTC duyệt.
+- [ ] D-08/D-26 có report số đo server lab; pilot round, backup/restore và restart recovery drill hoàn tất.
+- [ ] Đinh Đức Thuận duyệt trước mọi finals implementation.
+
+## Phase 3 — Wave 7: finals domain và LAN control plane
+
+### [ ] P3-L06 — Finals 8-team bracket/BO3/game-adapter scoring
+
+**Owner:** Long Trần
+**Mô tả:** Hiện thực Finals Format v1: 8 unique seed, no-group single-elimination BO3, optional bronze, map/side policy và versioned game-adapter score breakdown.
+**Acceptance criteria:** (1) cùng locked ranking/seed/config tạo cùng bracket `1–8/4–5/2–7/3–6`; (2) side swap, map non-repeat, adapter criteria và qualification-seed fallback theo contract; (3) finalized result mới advance bracket và override có audit evidence.
+**Verification:** property tests cho bracket/schedule/scoring; AC-09 fixture pass; mutation tie-break/seed/side swap/adapter version phải fail.
+**Dependencies:** `P3-T01`, Checkpoint `P3-2B`, `P3-L03`.
+**Files likely touched:** `src/platform/api/src/modules/finals/seeding.ts`, `src/platform/api/src/modules/finals/scheduling.ts`, `src/platform/api/src/modules/finals/scoring.ts`, `src/platform/api/tests/finals-domain.test.ts`, `docs/contracts/finals-format-v1.md`.
+**Estimated scope:** M (5 files)
+
+### [ ] P3-D08 — Finals control plane, seeding và LAN submission cutoff
+
+**Owner:** Phạm Tất Đạt
+**Mô tả:** Thêm model/API cho finals rule set, group/series, LAN submission window và pin artifact trước giải.
+**Acceptance criteria:** (1) chỉ eligible locked ranking được seed; (2) finals submission qua LAN vẫn preflight và fallback qualification ACTIVE chỉ khi tương thích; (3) close cutoff pin artifact/rules/map pool, retry idempotent và audit đầy đủ.
+**Verification:** PostgreSQL/API integration cho seed/cutoff/RBAC; incompatible/finalized mutation rejected; `npm run typecheck --workspace @ott/platform-api`.
+**Dependencies:** `P3-L06`, `P3-D01`, `P3-D03`.
+**Files likely touched:** `src/platform/api/migrations/0014_finals.sql`, `src/platform/api/src/modules/finals/service.ts`, `src/platform/api/src/modules/finals/routes.ts`, `src/platform/api/tests/finals.integration.test.ts`, `docs/contracts/finals-api-v1.md`.
+**Estimated scope:** M (5 files)
+
+### [ ] P3-N07 — Isolated LAN deployment và single-server local recovery
+
+**Owner:** Đỗ Khôi Nguyên
+**Mô tả:** Đóng gói topology finals không Internet trên server lab, tách participant/audience network và có backup/restore/control-plane recovery tại chỗ.
+**Acceptance criteria:** (1) LAN stack chạy không Internet, worker không accessible từ máy đội; (2) restart/rejoin dùng heartbeat/capacity và ngừng admission an toàn; (3) local DB/artifact restore và rerun infra failure không duplicate result.
+**Verification:** network isolation tests; restart/recovery drill; restore checksum/result integrity report và no-egress evidence.
+**Dependencies:** `P3-D08`, `P3-N05`.
+**Files likely touched:** `deploy/lan/compose.yml`, `deploy/lan/.env.example`, `scripts/lan-smoke.sh`, `tests/e2e/lan-recovery.test.ts`, `docs/runbooks/finals-lan.md`.
+**Estimated scope:** M (5 files)
+
+## [ ] Checkpoint P3-F1 — Finals chạy hoàn toàn trong LAN
+
+- [ ] Finals submission/rules/schedule được pin và deterministic.
+- [ ] Network isolation, restart/recovery và local restore drill pass.
+- [ ] Đinh Đức Thuận duyệt trước result synchronization.
+
+## Phase 3 — Wave 8: result sync và trình diễn
+
+### [ ] P3-D09 — Signed ResultBundle export/import idempotent
+
+**Owner:** Phạm Tất Đạt
+**Mô tả:** Xuất bracket/results/event logs với RFC 8785 manifest, SHA-256 và Ed25519; online import theo all-or-nothing versioned transaction.
+**Acceptance criteria:** (1) exporter ký canonical manifest bằng private key chỉ ở offline/finals, online giữ allowlisted public key; (2) importer verify signature/checksum/completeness và từ chối toàn bundle nếu một byte sai; (3) same bundle idempotent, corrected bundle cần version/reason/audit mới và public proof metadata có `VERIFIED`.
+**Verification:** API integration và AC-20 valid/tamper/wrong-key/missing-file tests; test-key fixture; no partial publication query.
+**Dependencies:** `P3-D08`, `P3-N07`.
+**Files likely touched:** `src/platform/api/migrations/0015_result_bundles.sql`, `src/platform/api/src/modules/result-bundles/exporter.ts`, `src/platform/api/src/modules/result-bundles/importer.ts`, `src/platform/api/src/modules/result-bundles/routes.ts`, `src/platform/api/tests/result-bundles.integration.test.ts`.
+**Estimated scope:** M (5 files)
+
+### [ ] P3-D10 — Finals bracket, schedule/results và verified replay public UI
+
+**Owner:** Phạm Tất Đạt
+**Mô tả:** Hiển thị snapshot online sau import cho bracket, schedule/result, proof metadata và replay finals đã publish.
+**Acceptance criteria:** (1) UI giữ nguyên bracket/score breakdown từ server, không tự tính winner/advancement; (2) bundle/key/checksum/version/imported-at/`VERIFIED` và stale state rõ ràng; (3) replay chỉ xuất hiện sau verified import và publication, responsive/accessibility states đủ.
+**Verification:** `npm test --workspace @ott/platform-web -- Finals`; static bundle fixtures/tamper state; browser smoke desktop/mobile/keyboard.
+**Dependencies:** `P3-D09`, `P3-L05`, `P3-L06`.
+**Files likely touched:** `src/platform/web/src/features/finals/api.ts`, `src/platform/web/src/features/finals/GroupStandings.tsx`, `src/platform/web/src/features/finals/FinalsSchedule.tsx`, `src/platform/web/src/features/finals/finals.test.tsx`, `src/platform/web/src/app/routes.tsx`.
+**Estimated scope:** M (5 files)
+
+### [ ] P3-N08 — Full event rehearsal, tamper/recovery và handoff
+
+**Owner:** Đỗ Khôi Nguyên
+**Mô tả:** Diễn tập toàn sự kiện từ finals cutoff trong LAN đến signed sync/public replay và bàn giao runbook/checklist.
+**Acceptance criteria:** (1) AC-09/20 pass end-to-end; (2) worker/server restart, control-plane restore và tampered bundle đều có expected recovery/no-publication; (3) cleanup, operator roles, keys, rollback và communication checklist được xác nhận.
+**Verification:** `npm run test:e2e:finals`; root test/typecheck/build/security scan từ clean checkout; rehearsal report có commit, config hashes và Thuận sign-off.
+**Dependencies:** `P3-D09`, `P3-D10`, `P3-N07`.
+**Files likely touched:** `tests/e2e/finals.test.ts`, `tests/e2e/finals.config.ts`, `scripts/run-finals-rehearsal.sh`, `docs/runbooks/finals-lan.md`, `docs/reports/finals-rehearsal.md`.
+**Estimated scope:** M (5 files)
+
+## [ ] Checkpoint P3-F — Phase 3 hoàn tất
+
+- [ ] AC-09 và AC-20 pass; full LAN → signed bundle → online publication rehearsal hoàn tất.
+- [ ] Tất cả task acceptance/verification/docs sync xong; GitNexus change review không còn HIGH/CRITICAL chưa xử lý.
+- [ ] Đinh Đức Thuận duyệt. Không deploy nếu chưa có yêu cầu riêng.

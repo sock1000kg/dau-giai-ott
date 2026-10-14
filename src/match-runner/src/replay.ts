@@ -1,7 +1,7 @@
 /**
  * P1-D07 — Pure in-memory replay verifier over GamePort.
  *
- * Sources of truth: `docs/team-assignment-phase-1-2.md` §8.5, `docs/contracts/engine-api-v1.md` §4/§8,
+ * Sources of truth: `docs/team-assignment.md` §8.5, `docs/contracts/engine-api-v1.md` §4/§8,
  * and `docs/contracts/bot-protocol-v1.md` §11.
  *
  * Pure, no I/O, no runtime imports from @ott/game-core, no filesystem imports.

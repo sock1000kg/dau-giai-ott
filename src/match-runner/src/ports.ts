@@ -6,7 +6,7 @@
  * reused from `@ott/game-core` / `@ott/bot-protocol`; no type is copied or redefined
  * here, and nothing in this module is imported at runtime.
  *
- * Two deliberate deviations from the sketch in `docs/team-assignment-phase-1-2.md`
+ * Two deliberate deviations from the sketch in `docs/team-assignment.md`
  * section 8.2: there is no `viewFor` (the bot projection `PublicGameState` is built by
  * the runner, not by the game), and `listLegalActions`/`forfeit`/`hash` are exposed
  * because Engine API v1 sections 5, 6 and 8 require them.

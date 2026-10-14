@@ -1,7 +1,7 @@
 /**
  * P1-D07 — the match event log: the runner's own artifact format.
  *
- * Sources of truth: `docs/team-assignment-phase-1-2.md` §8.5 (metadata, revision order,
+ * Sources of truth: `docs/team-assignment.md` §8.5 (metadata, revision order,
  * result + finalStateHash, a reader that rebuilds and checks the final hash, and "editing one
  * event makes the hash check fail"), `docs/tai-lieu-yeu-cau.md` §13.1 and
  * `docs/contracts/engine-api-v1.md` §3/§8.

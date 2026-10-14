@@ -2,7 +2,7 @@
 
 > Trạng thái: **Đã tự động duyệt**
 > Mức khuyến nghị: **HIGH RECOMMEND**
-> Vai trò: bot Python hợp lệ, bot lỗi và contract tests phía bot
+> Vai trò: bot Python Phase 1; Phase 3 sandbox, single-host worker và operations readiness
 
 ## 1. Cách dùng ngay
 
@@ -20,7 +20,7 @@ Không commit, push hoặc sửa core/runner nếu tôi chưa yêu cầu.
 - Base branch: `main`.
 - Mỗi task dùng branch riêng với prefix `nguyendk/`, ví dụ `nguyendk/feat-p1-n01-bot-sdk`.
 - Không code trực tiếp trên `main`.
-- Một branch chỉ chứa một task `P1-Nxx`; Phase 2 thuộc Thuận.
+- Một branch chỉ chứa một task `P1-Nxx` hoặc `P3-Nxx`; Phase 2 thuộc Thuận.
 - Hoàn tất thì push branch và tạo PR target `main` để chạy contract/integration tests.
 
 ```bash
@@ -44,6 +44,10 @@ Tạo các bot Python làm consumer độc lập của Bot Protocol v1:
 
 Bot phải hoạt động từ schema/fixtures của Long, không được import implementation TypeScript của core hoặc runner.
 
+Phase 3 giao Nguyên `P3-N01`–`P3-N08`: resource enforcement/metrics, single-host worker, test run, OCI
+lifecycle, observability/backup, server-lab load/recovery, LAN deployment và rehearsal. `P3-T01` đã hoàn tất;
+`P3-N01` sẵn sàng.
+
 ## 4. Task theo thứ tự và nhánh song song
 
 | Task | Dependency |
@@ -57,7 +61,20 @@ Bot phải hoạt động từ schema/fixtures của Long, không được impor
 
 Sau `P1-N01`, các task `P1-N02`–`P1-N05` độc lập về logic nhưng một người chỉ nên làm từng task/phiên để tránh trộn diff.
 
-Checkpoint liên quan: `P1-A` sau `P1-N01`; `P1-B` sau `P1-N06`. Bot của Nguyên được dùng trong `P1-D10` (E2E). Toàn bộ Phase 2, gồm các ID cũ `P2-N14`/`P2-N15`, đã chuyển cho Thuận. Sơ đồ hai phase: `docs/team-assignment-phase-1-2.md` mục 4.2.
+### Phase 3
+
+| Thứ tự | Task | Dependency chính |
+| --- | --- | --- |
+| 1 | `P3-N01` — resource profile/cgroup/metrics | `P3-T01` |
+| 2 | `P3-N02` — priority queue/single-host adaptive admission | `P3-D01`, `P3-N01` |
+| 3 | `P3-N03` — private test run | `P3-D01`, `P3-L02`, `P3-N02` |
+| 4 | `P3-N04` — OCI lifecycle/dedup/retention | `P3-D03` |
+| 5 | `P3-N05` — metrics/backup/incident runbook | `P3-N01`, `P3-N02`, `P3-D06` |
+| 6 | `P3-N06` — lab-server smoke/load/recovery pilot | toàn bộ slice `P3-2B` theo task card |
+| 7 | `P3-N07` — isolated finals LAN/recovery | `P3-D08`, `P3-N05` |
+| 8 | `P3-N08` — full event rehearsal | `P3-D09`, `P3-D10`, `P3-N07` |
+
+Checkpoint liên quan: Phase 1 có `P1-A`/`P1-B`; Phase 3 có `P3-A`–`P3-2B`, `P3-F1` và `P3-F`. Đọc dependency/trạng thái hiện hành tại `tasks/todo.md`. Sơ đồ ba phase: `docs/team-assignment.md` mục 4.2.
 
 ## 5. Tài liệu AI phải đọc
 
@@ -65,10 +82,11 @@ Checkpoint liên quan: `P1-A` sau `P1-N01`; `P1-B` sau `P1-N06`. Bot của Nguy�
 2. `docs/README.md` để xác định nguồn sự thật.
 3. Task đang chọn trong `tasks/todo.md`.
 4. Bot Protocol v1, JSON Schema và fixtures do Long phát hành.
-5. Lane Nguyên trong `docs/team-assignment-phase-1-2.md`.
+5. Lane Nguyên theo phase trong `docs/team-assignment.md`.
 6. Error/timeout/sandbox requirements liên quan trong `docs/tai-lieu-yeu-cau.md`.
 7. `tasks/plan.md` để kiểm tra checkpoint/dependency.
-8. Python bot/test hiện có trước khi sửa.
+8. `docs/architecture/solution-architecture-phase-3.md` khi làm `P3-N*`.
+9. Source/test/runbook liên quan trước khi sửa.
 
 Nếu schema và tài liệu protocol khác nhau, không tự chọn. Tạo test case tái hiện và chuyển lại Long xử lý.
 
@@ -78,13 +96,14 @@ Nếu schema và tài liệu protocol khác nhau, không tự chọn. Tạo test
 
 - `src/bots/python/**`
 - README/test fixtures thuộc bot
+- Các file worker, ops, deployment, script và test được liệt kê trong đúng task card `P3-N*`.
 
 Không được sửa:
 
 - `src/game-core/**`
 - `src/bot-protocol/**` nếu chưa có yêu cầu từ Long
-- `src/match-runner/**`
-- Toàn bộ `src/platform/**` và phạm vi Phase 2 của Thuận
+- `src/match-runner/**` ngoài contract được task giao và Long review.
+- Round/rating/finals rules, auth/admin write API và public site/snapshot endpoint thuộc lane Long/Đạt.
 
 Bot không tự tính lại game rules. Nếu `STATE_UPDATE` có `legalActions`, bot chọn từ danh sách đó theo contract.
 
@@ -126,19 +145,19 @@ Nếu skill có sẵn trong `.agents/skills`, dùng bản trong repo. Nếu AI k
 ## 8. Prompt triển khai sẵn dùng
 
 ```text
-Tôi là Đỗ Khôi Nguyên, owner bot Python/contract tests Phase 1.
+Tôi là Đỗ Khôi Nguyên, owner lane `P3-N*` về sandbox/worker/operations readiness.
 
-Hãy chọn task P1-Nxx đầu tiên chưa hoàn tất và đã đủ dependency.
+Hãy chọn task `P3-Nxx` đầu tiên chưa hoàn tất và đã đủ dependency.
 Chỉ thực hiện đúng một task.
 
 Quy trình bắt buộc:
 1. Đọc rules, task card, Bot Protocol schema/fixtures và Python code/test liên quan.
 2. Xác nhận branch `nguyendk/feat-<task-id>-<slug>` được tạo từ main; không làm trực tiếp trên main.
-3. Kiểm tra protocol/schema đã khóa; nếu chưa, báo blocked và không invent message fields.
+3. `P3-T01` đã hoàn tất; kiểm tra contract/rule/job schema và dependency riêng của task đã merge, nếu chưa thì báo blocked và không invent field/policy.
 4. Dùng GitNexus impact trước khi sửa file hiện có.
 5. Viết unittest cho behavior hoặc fault mode trước/cùng implementation.
 6. Với bot giữ stdout chỉ có NDJSON protocol.
-7. Không import hoặc sửa core TypeScript/MatchRunner/API server.
+7. Chỉ sửa file trong task card; không đổi game/rating/finals rules hoặc auth/admin API của owner khác.
 8. Không chạy payload network/fork/CPU/memory nguy hiểm ngoài sandbox/harness đã giới hạn.
 9. Chạy verification command của task và toàn bộ bot contract tests liên quan.
 10. Review diff, chạy detect-changes và chỉ đề xuất PR vào main.

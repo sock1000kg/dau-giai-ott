@@ -1,6 +1,6 @@
 # Tài liệu dự án đấu giải OTT
 
-> Cập nhật: 12/10/2026
+> Cập nhật: 14/10/2026
 >
 > Đây là mục lục và quy tắc quản trị tài liệu chính thức. AI phải đọc file này trước khi kết hợp nhiều tài liệu.
 
@@ -13,8 +13,9 @@ Không dùng một thứ tự ưu tiên duy nhất cho mọi vấn đề. Mỗi 
 | Cách AI/Git làm việc | `AGENTS.md`, `CLAUDE.md` | Chỉ giải thích thêm, không nới lỏng rules |
 | Nghiệp vụ, luật game, phạm vi sản phẩm | [Đặc tả yêu cầu](tai-lieu-yeu-cau.md) | Plan/task chỉ triển khai một phần đã nêu |
 | Quyết định kiến trúc đã chấp nhận | [ADRs](decisions/) | Tài liệu khác phải dẫn link, không quyết định lại |
-| Engine API, Bot Protocol, Platform Auth và Spectator Replay API v1 | [Engine API](contracts/engine-api-v1.md), [Bot Protocol](contracts/bot-protocol-v1.md), [JSON Schema](contracts/bot-protocol-v1.schema.json), [Platform Auth](contracts/platform-auth-v1.md), [Spectator Replay](contracts/spectator-replay-v1.md) | Phần tóm tắt không được thay đổi field/semantics |
-| Owner và ranh giới module | [Phân công Phase 1–2](team-assignment-phase-1-2.md) | AI context chỉ lọc phần liên quan cho từng người |
+| Bức tranh kiến trúc và ranh giới component | [SA Phase 2](architecture/solution-architecture-phase-2.md), [SA Phase 3](architecture/solution-architecture-phase-3.md) | Mô tả cách ghép hệ thống; SA không được thay exact semantics trong ADR/contract Accepted |
+| Engine/Bot/Auth/Replay/Finals contract | [Engine API v1](contracts/engine-api-v1.md), [Bot Protocol v1](contracts/bot-protocol-v1.md), [Bot Protocol v2](contracts/bot-protocol-v2.md), [Platform Auth v1](contracts/platform-auth-v1.md), [Platform Auth v2](contracts/platform-auth-v2.md), [Spectator Replay v1](contracts/spectator-replay-v1.md), [Finals Format v1](contracts/finals-format-v1.md), [ResultBundle v1](contracts/finals-result-bundle-v1.md) | Phần tóm tắt không được thay đổi field/semantics; schema v2 được triển khai trong task owner tương ứng |
+| Owner và ranh giới module | [Phân công Phase 1–3](team-assignment.md) | Chọn đúng mục theo phase; AI context chỉ lọc phần liên quan cho từng người |
 | Package, phiên bản công cụ, liên kết module và lệnh chạy | [Convention package module](conventions/module-package.md) | Task card chỉ dẫn lệnh theo convention, không pin phiên bản riêng |
 | Dependency, checkpoint và trạng thái task | [Task checklist](../tasks/todo.md) | [Implementation plan](../tasks/plan.md) chỉ cung cấp bức tranh tổng thể |
 | Cách một thành viên bắt đầu với AI | [AI context pack](ai-context/) | Không phải nguồn để thay đổi requirement/contract/task |
@@ -30,6 +31,9 @@ Nếu hai nguồn sự thật khác loại mâu thuẫn nhau, AI phải dừng t
 - Các feature branch remote hiện có đều đã là tổ tiên của `main`; `main` còn chứa validator protocol, lifecycle/hash/event core, BotProcess và CLI mới hơn `develop`.
 - Source root là [`src/`](../src/README.md); Phase 1 đã có implementation cho game-core, bot-protocol, MatchRunner và Python bots.
 - Kế hoạch GitNexus ngày 08/10 trong `docs/plans/` đã bị supersede; không dùng task ID hoặc owner trong tài liệu đó.
+- Phase 3 đã được Đinh Đức Thuận duyệt baseline requirement/ADR/contract tại `P3-T01` ngày 14/10/2026.
+  Wave 1 (`P3-L01`, `P3-D01`, `P3-N01`) sẵn sàng nhận việc; mọi implementation/checkpoint còn lại vẫn mở
+  và chỉ được tick sau verification trong `tasks/todo.md`.
 
 ## 3. Quy trình branch thống nhất
 
@@ -69,7 +73,7 @@ Quy tắc:
 
 1. [Hướng dẫn thành viên mới tham gia dự án với AI](huong-dan-tham-gia-du-an-voi-ai.md).
 2. [Đặc tả yêu cầu hệ thống](tai-lieu-yeu-cau.md).
-3. [Phân công Phase 1–2](team-assignment-phase-1-2.md).
+3. [Phân công Phase 1–3](team-assignment.md).
 4. [Implementation plan](../tasks/plan.md).
 5. [Task checklist](../tasks/todo.md).
 
@@ -82,14 +86,21 @@ Quy tắc:
 - [ADR-0005 — Modular monolith và execution worker Phase 2](decisions/0005-phase-2-modular-monolith-and-execution-boundary.md).
 - [ADR-0006 — OCI image submission cho bot đa ngôn ngữ](decisions/0006-oci-image-submissions-for-language-neutral-bots.md).
 - [ADR-0007 — SeaweedFS S3-compatible cho local Phase 2](decisions/0007-seaweedfs-local-s3-compatible-storage.md).
+- [ADR-0008 — Protocol v2 và game adapter Phase 3](decisions/0008-phase-3-protocol-v2-and-game-adapter-boundary.md).
+- [ADR-0009 — Hosted PoC một server lab](decisions/0009-single-server-hosted-poc-topology.md).
+- [ADR-0010 — Finals bracket và signed ResultBundle](decisions/0010-finals-bracket-and-signed-result-bundle.md).
 - [Engine API v1](contracts/engine-api-v1.md).
 - [Bot Protocol v1](contracts/bot-protocol-v1.md), [JSON Schema](contracts/bot-protocol-v1.schema.json) và [fixtures](contracts/fixtures/).
+- [Bot Protocol v2 design contract](contracts/bot-protocol-v2.md).
 - [Platform Authentication Contract v1](contracts/platform-auth-v1.md).
+- [Platform Authentication Contract v2](contracts/platform-auth-v2.md).
 - [Spectator Replay API v1](contracts/spectator-replay-v1.md).
+- [Finals Format v1](contracts/finals-format-v1.md) và [Finals ResultBundle v1](contracts/finals-result-bundle-v1.md).
 
 ## 6. Kiến trúc
 
 - [Solution Architecture — Phase 2 local](architecture/solution-architecture-phase-2.md).
+- [Solution Architecture — Phase 3](architecture/solution-architecture-phase-3.md) — baseline Accepted; implementation vẫn theo trạng thái task/checkpoint.
 - [SAD — OCI bot submission và sandbox execution](architecture/sad-oci-bot-submissions.md).
 
 ## 7. AI Context Pack theo thành viên

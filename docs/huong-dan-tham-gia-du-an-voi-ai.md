@@ -48,11 +48,12 @@ Nguyên tắc ngắn gọn: **một task ID, một phạm vi, một phiên AI t�
 | 1 | `AGENTS.md` hoặc `CLAUDE.md` | Quy tắc bắt buộc khi AI đọc, sửa và review repository |
 | 2 | `docs/README.md` | Xác định nguồn sự thật cho đúng loại thông tin |
 | 3 | `docs/tai-lieu-yeu-cau.md` | Hiểu mục tiêu hệ thống, luật nghiệp vụ và phạm vi |
-| 4 | `docs/decisions/` và `docs/contracts/` liên quan | Biết quyết định kiến trúc và exact interface đã khóa |
-| 5 | `docs/team-assignment-phase-1-2.md` | Biết phạm vi của từng thành viên và ranh giới không được sửa |
-| 6 | `tasks/plan.md` | Hiểu dependency graph và checkpoint tổng thể |
-| 7 | `tasks/todo.md` | Lấy task, trạng thái, dependency, acceptance criteria và verification chính thức |
-| 8 | Source code và test liên quan | Hiểu implementation hiện tại trước khi sửa |
+| 4 | `docs/architecture/solution-architecture-phase-2.md` hoặc `docs/architecture/solution-architecture-phase-3.md` | Hiểu baseline/target và ranh giới component của phase đang làm |
+| 5 | `docs/decisions/` và `docs/contracts/` liên quan | Biết quyết định kiến trúc và exact interface đã khóa |
+| 6 | `docs/team-assignment.md` | Biết phạm vi của từng thành viên và ranh giới không được sửa |
+| 7 | `tasks/plan.md` | Hiểu dependency graph và checkpoint tổng thể |
+| 8 | `tasks/todo.md` | Lấy task, trạng thái, dependency, acceptance criteria và verification chính thức |
+| 9 | Source code và test liên quan | Hiểu implementation hiện tại trước khi sửa |
 
 Không đưa toàn bộ tài liệu dài vào prompt nếu task chỉ liên quan một phần nhỏ. Yêu cầu AI đọc rules, task card và đúng section liên quan trong yêu cầu/kiến trúc.
 
@@ -130,8 +131,8 @@ Repository:
 Trước khi làm:
 1. Đọc AGENTS.md hoặc CLAUDE.md.
 2. Đọc docs/README.md và task <TASK_ID> trong tasks/todo.md.
-3. Đọc phần liên quan trong docs/team-assignment-phase-1-2.md,
-   docs/tai-lieu-yeu-cau.md và ADR liên quan.
+3. Đọc phần liên quan trong docs/team-assignment.md,
+   docs/tai-lieu-yeu-cau.md, Solution Architecture của phase và ADR liên quan.
 4. Kiểm tra git status và giữ nguyên thay đổi không thuộc task.
 5. Xác nhận branch đúng prefix owner, được tạo từ main.
 6. Dùng GitNexus để hiểu context và chạy impact trước khi sửa.
