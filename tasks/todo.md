@@ -930,7 +930,7 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 **Files likely touched:** `src/platform/api/src/modules/public-snapshots/publisher.ts`, `src/platform/web/src/features/public/PublicTournamentPage.tsx`, `src/platform/web/src/features/public/RulesPage.tsx`, `src/platform/web/src/features/public/public-site.test.tsx`, `docs/contracts/public-snapshot-v1.md`.
 **Estimated scope:** M (5 files)
 
-### [ ] P3-D06 — TOTP, admin network allowlist và hosted startup guard
+### [x] P3-D06 — TOTP, admin network allowlist và hosted startup guard
 
 **Owner:** Phạm Tất Đạt
 **Mô tả:** Hardening authentication/admin ingress có cấu hình dev/test và fail-closed ở hosted PoC/production, kèm rate/security headers.
@@ -939,6 +939,7 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 **Dependencies:** `P3-T01`, `P3-D04`.
 **Files likely touched:** `src/platform/api/migrations/0012_admin_mfa.sql`, `src/platform/api/src/modules/auth/totp.ts`, `src/platform/api/src/modules/auth/plugin.ts`, `src/platform/api/src/config/security.ts`, `src/platform/api/tests/auth-hardening.integration.test.ts`.
 **Estimated scope:** M (5 files)
+**Hoàn tất:** 2026-10-15 — `config/security.ts`: `OTT_DEPLOYMENT_MODE` bắt buộc; startup guard (AC-23) cho hosted/production từ chối khởi động khi TOTP tắt, allowlist admin rỗng, trusted proxy chưa cấu hình/quá rộng hoặc thiếu khóa mã hóa; dev/test mặc định password-only như cũ. IP client thật chỉ tin `X-Forwarded-For` từ trusted proxy (chống spoof); `/api/v1/admin/*` ngoài allowlist → 403 `ADMIN_NETWORK_FORBIDDEN`. BTC login hai bước: mật khẩu → challenge `ott_mfa` → `POST /api/v1/auth/login/mfa` với TOTP RFC 6238 (chống replay theo step) hoặc recovery code dùng một lần; secret mã hóa AES-256-GCM (migration `0012_admin_mfa.sql`), lỗi chung `INVALID_CREDENTIALS`. Enrollment qua `OTT_BOOTSTRAP_BTC_TOTP_SECRET` + API tự phục vụ (rotate secret, sinh recovery code sau lần đăng nhập MFA đầu). Header bảo mật, body limit 1 MiB, rate limit ghi theo IP/account. Web: bước nhập mã trên trang đăng nhập. `auth-hardening` 54/54 trên PostgreSQL + Redis (integration 15/15, chạy lại liền hai lần đều pass), platform-api 200 pass/2 env-skip, platform-web 74 pass, typecheck sạch; mutation replay TOTP, rò recovery code vào audit, dùng lại recovery code đều làm test fail. Còn mở: UI enrollment, entrypoint server/deploy (Nguyên).
 
 ## [ ] Checkpoint P3-E — Public/security boundary
 

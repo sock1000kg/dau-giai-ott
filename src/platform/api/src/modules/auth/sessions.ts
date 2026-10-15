@@ -45,7 +45,7 @@ function isSessionPrincipal(value: unknown): value is SessionPrincipal {
     return false;
   }
   if (candidate.role === 'BTC_ADMIN') {
-    return candidate.teamId === undefined;
+    return candidate.teamId === undefined && (candidate.mfa === undefined || typeof candidate.mfa === 'boolean');
   }
   return candidate.role === 'TEAM_ACCOUNT' && typeof candidate.teamId === 'string';
 }

@@ -1,5 +1,12 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { getCurrentSession, login as submitLogin, logout as submitLogout, type AuthPrincipal } from './api.ts';
+import {
+  getCurrentSession,
+  login as submitLogin,
+  loginMfa as submitLoginMfa,
+  logout as submitLogout,
+  type AuthPrincipal,
+  type LoginResult,
+} from './api.ts';
 
 type AuthState =
   | Readonly<{ status: 'loading' }>
@@ -9,7 +16,8 @@ type AuthState =
 
 interface AuthContextValue {
   readonly state: AuthState;
-  readonly login: (username: string, password: string) => Promise<void>;
+  readonly login: (username: string, password: string) => Promise<LoginResult>;
+  readonly loginMfa: (payload: { code?: string; recoveryCode?: string }) => Promise<AuthPrincipal>;
   readonly logout: () => Promise<void>;
   readonly restoreSession: () => Promise<void>;
 }
@@ -33,9 +41,18 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
     void restoreSession();
   }, [restoreSession]);
 
-  const login = useCallback(async (username: string, password: string) => {
-    const principal = await submitLogin(username, password);
+  const login = useCallback(async (username: string, password: string): Promise<LoginResult> => {
+    const result = await submitLogin(username, password);
+    if (!result.mfaRequired) {
+      setState({ status: 'authenticated', principal: result.principal });
+    }
+    return result;
+  }, []);
+
+  const loginMfa = useCallback(async (payload: { code?: string; recoveryCode?: string }): Promise<AuthPrincipal> => {
+    const principal = await submitLoginMfa(payload);
     setState({ status: 'authenticated', principal });
+    return principal;
   }, []);
 
   const logout = useCallback(async () => {
@@ -43,7 +60,10 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
     setState({ status: 'anonymous' });
   }, []);
 
-  const value = useMemo(() => ({ state, login, logout, restoreSession }), [state, login, logout, restoreSession]);
+  const value = useMemo(
+    () => ({ state, login, loginMfa, logout, restoreSession }),
+    [state, login, loginMfa, logout, restoreSession],
+  );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

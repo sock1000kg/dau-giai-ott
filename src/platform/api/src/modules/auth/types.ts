@@ -1,7 +1,7 @@
 export type AccountRole = 'BTC_ADMIN' | 'TEAM_ACCOUNT';
 
 export type SessionPrincipal =
-  | Readonly<{ accountId: string; role: 'BTC_ADMIN'; teamId: undefined }>
+  | Readonly<{ accountId: string; role: 'BTC_ADMIN'; teamId: undefined; mfa?: boolean }>
   | Readonly<{ accountId: string; role: 'TEAM_ACCOUNT'; teamId: string }>;
 
 export interface PasswordHasher {
