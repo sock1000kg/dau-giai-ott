@@ -47,7 +47,9 @@ Long là owner duy nhất của:
 Long không còn task implementation Phase 2; `P2-L02`/`P2-L03` đã hủy và phát hành lại thành `P2-T17A`/`P2-T17B`/`P2-T18`/`P2-T20` cho Thuận.
 
 Phase 3 giao Long `P3-L01`–`P3-L06`: Protocol v2, timing runtime, qualification/rating eligibility, replay
-move list, static public snapshot/site và finals deterministic domain. `P3-T01` đã hoàn tất; `P3-L01` sẵn sàng.
+move list, static public snapshot/site và finals deterministic domain. Phân công hiện tại ngày 15/10/2026:
+`P3-L01` đã được giao cho Long và đủ dependency để bắt đầu; chưa tick hoàn tất. Sau `P3-L01`, chờ
+`P3-N01` và Checkpoint `P3-A` trước khi nhận `P3-L02`.
 
 ## 4. Task theo thứ tự bắt buộc
 

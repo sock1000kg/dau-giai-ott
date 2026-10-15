@@ -45,8 +45,9 @@ Tạo các bot Python làm consumer độc lập của Bot Protocol v1:
 Bot phải hoạt động từ schema/fixtures của Long, không được import implementation TypeScript của core hoặc runner.
 
 Phase 3 giao Nguyên `P3-N01`–`P3-N08`: resource enforcement/metrics, single-host worker, test run, OCI
-lifecycle, observability/backup, server-lab load/recovery, LAN deployment và rehearsal. `P3-T01` đã hoàn tất;
-`P3-N01` sẵn sàng.
+lifecycle, observability/backup, server-lab load/recovery, LAN deployment và rehearsal. Phân công hiện tại
+ngày 15/10/2026: `P3-N01` đã được giao cho Nguyên và đủ dependency để bắt đầu; chưa tick hoàn tất. Sau
+`P3-N01`, chờ Checkpoint `P3-A` trước khi nhận `P3-N02`.
 
 ## 4. Task theo thứ tự và nhánh song song
 

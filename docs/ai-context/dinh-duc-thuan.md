@@ -45,6 +45,9 @@ Nếu `origin/main` chưa tồn tại hoặc working tree đang có thay đổi 
 - Phase 2 local và Checkpoint `P2-B` đã hoàn tất sau detached clean-worktree verification; deploy cloud bị loại khỏi phạm vi.
 - Không thêm CI/CD, cloud infrastructure, production secrets hoặc deploy stage vào Phase 2 hiện tại.
 - `P3-T01` đã hoàn tất; implementation `P3-L*`, `P3-N*`, `P3-D*` thuộc Long, Nguyên và Đạt.
+- Phân công hiện tại ngày 15/10/2026: Long nhận `P3-L01`, Nguyên nhận `P3-N01`; Đạt đã hoàn tất
+  `P3-D01`/`P3-D04` và xếp hàng `P3-D02` sau `P3-A`. Thuận chưa duyệt `P3-A` cho đến khi `P3-L01`,
+  `P3-D01`, `P3-N01` có đủ fresh verification evidence.
 - D-14–D-30 đã duyệt. Thuận review amendment và các checkpoint `P3-A`–`P3-F`; không tick bằng báo cáo chưa có verification.
 - Dùng [Solution Architecture Phase 3](../architecture/solution-architecture-phase-3.md), ADR-0008–0010 và contract Phase 3 làm baseline review.
 
@@ -77,7 +80,9 @@ Nếu có mâu thuẫn, AI phải nêu rõ hai nguồn và đề xuất lựa ch
 | `P2-T16` — rebaseline ownership/execution loop | Đã hoàn tất ngày 13/10/2026 |
 | `P2-T17A`–`P2-T29` — frontend, replay, E2E local | Đã hoàn tất; không tạo task mới ngoài phạm vi đã duyệt |
 | Duyệt Checkpoint `P2-B` | Đã hoàn tất; detached clean-worktree verification pass |
-| `P3-T01` — khóa D-14–D-30, ADR và contract | Đã hoàn tất ngày 14/10/2026; Wave 1 sẵn sàng |
+| `P3-T01` — khóa D-14–D-30, ADR và contract | Đã hoàn tất ngày 14/10/2026 |
+| Theo dõi Wave 1 | `P3-D01` đã hoàn tất; `P3-L01` giao Long và `P3-N01` giao Nguyên ngày 15/10/2026 |
+| Duyệt Checkpoint `P3-A` | Chờ `P3-L01` và `P3-N01` có fresh evidence; sau khi duyệt mới mở `P3-D02` và phần còn lại của Wave 2 |
 | Duyệt `P3-A`–`P3-2B` | Chỉ sau task/checkpoint dependency có fresh test/build/security evidence |
 | Duyệt `P3-F1` và `P3-F` | Chỉ sau `P3-2B`, LAN recovery/signed bundle rehearsal và docs sync |
 

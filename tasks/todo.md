@@ -1,6 +1,6 @@
 # Task Checklist: Phase 1–3
 
-**Trạng thái:** Phase 1–2 hoàn tất; Phase 3 baseline đã duyệt tại `P3-T01`, Wave 1 sẵn sàng
+**Trạng thái:** Phase 1–2 hoàn tất; Phase 3 đang thực hiện — `P3-D01` và `P3-D04` đã hoàn tất, `P3-L01`/`P3-N01` đã giao, Checkpoint `P3-A` chưa đạt
 **Mức khuyến nghị Phase 3:** Cần Đinh Đức Thuận duyệt thủ công
 **Plan:** `tasks/plan.md`
 **Nguồn:** `docs/team-assignment.md`
@@ -742,6 +742,17 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 ## Phase 3 — Gate P3-0: decision và contract approval
 
 > `P3-T01` đã duyệt requirement/ADR/contract ngày 14/10/2026. Task implementation chỉ hoàn tất sau acceptance/verification riêng; Wave 1 có thể bắt đầu trên branch task từ `main`.
+
+### Phân công hiện hành — 15/10/2026
+
+| Nhân sự | Công việc hiện tại | Trạng thái giao việc | Công việc kế tiếp |
+| --- | --- | --- | --- |
+| Long Trần | `P3-L01` — Bot Protocol v2 | Đã giao, đủ dependency để bắt đầu | `P3-L02` sau `P3-L01`, `P3-D01`, `P3-N01` và Checkpoint `P3-A` |
+| Đỗ Khôi Nguyên | `P3-N01` — resource profile/cgroup/metrics | Đã giao, đủ dependency để bắt đầu | `P3-N02` sau `P3-D01`, `P3-N01` và Checkpoint `P3-A` |
+| Phạm Tất Đạt | `P3-D01`, `P3-D04` | Đã hoàn tất; chưa giao thêm task đang chạy | Xếp hàng `P3-D02`, chỉ bắt đầu sau Checkpoint `P3-A` |
+| Đinh Đức Thuận | Checkpoint `P3-A` | Chờ `P3-L01` và `P3-N01`; `P3-D01` đã hoàn tất | Duyệt `P3-A` bằng fresh test/typecheck/build evidence |
+
+“Đã giao” chỉ xác nhận owner và task được phép bắt đầu, không có nghĩa task đang được code hoặc đã hoàn tất. Trạng thái hoàn tất vẫn chỉ theo checkbox và evidence trong file này.
 
 ### [x] P3-T01 — Khóa quyết định, ADR và contract Phase 3
 

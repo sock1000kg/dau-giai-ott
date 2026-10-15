@@ -44,8 +44,9 @@ Phase 1:
 Phase 2 local không còn task implementation của Đạt; `P2-D13`–`P2-D16` đã hủy và phát hành lại thành `P2-T23`–`P2-T29` cho Thuận.
 
 Phase 3 giao Đạt `P3-D01`–`P3-D10`: round/control plane, admin/submission/account workflow, replay
-authorization, auth hardening, privileged operations và finals/result sync/public UI. `P3-T01` đã hoàn tất;
-`P3-D01` sẵn sàng.
+authorization, auth hardening, privileged operations và finals/result sync/public UI. Trạng thái ngày
+15/10/2026: `P3-D01` và `P3-D04` đã hoàn tất trên `main`; chưa có task mới đang chạy. `P3-D02` là task
+kế tiếp được xếp hàng và chỉ bắt đầu sau khi Thuận duyệt Checkpoint `P3-A`.
 
 Đạt không sở hữu game rules hoặc chiến thuật bot.
 
@@ -156,7 +157,8 @@ Sau khi cài xong, báo tôi mở phiên mới.
 ```text
 Tôi là Phạm Tất Đạt, owner lane `P3-D*` về control plane và finals sync.
 
-Hãy chọn task `P3-Dxx` đầu tiên chưa hoàn tất và đã đủ dependency.
+Hãy chọn task `P3-Dxx` đầu tiên chưa hoàn tất, đã đủ dependency và đã qua checkpoint mở wave tương ứng.
+Hiện tại `P3-D02` đang xếp hàng sau Checkpoint `P3-A`; nếu `P3-A` chưa được tick thì báo blocked.
 Chỉ thực hiện đúng một task, tối đa phạm vi file ghi trong task card.
 
 Quy trình bắt buộc:
