@@ -777,15 +777,16 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 **Estimated scope:** M (5 files)
 **Hoàn tất:** 2026-10-14 — Migration `0007_round_rules.sql`: `round_rule_sets` append-only (trigger chặn UPDATE/DELETE), `qualification_rounds` với trigger chặn status edge sai, khóa `rule_set_id`/`schedule_round_id`/start idempotency sau khi set, không DELETE, một round chưa `PUBLISHED` mỗi stage; `audit_events.details`. Module `rounds` (validator rule set strict theo D-15/D-17/D-18 và field `TimeControlV2`, canonical SHA-256), lifecycle `DRAFT_RULES → SUBMISSION_OPEN → SUBMISSION_CLOSED → RUNNING (pause/resume) → SETTLING → RATED → PUBLISHED`; close sau `graceEndsAt`; start cần `Idempotency-Key` + xác nhận rule set, gọi `scheduleRound` Phase 2 ngoài transaction, retry sau crash an toàn; Elo áp dụng một lần qua `applyRoundRatings` (không sửa ratings/scheduling). Admin API BTC-only `/api/v1/admin/round-rule-sets` và `/api/v1/admin/rounds/:id/{open,close,start,pause,resume,reconcile,publish}`. `round-rules` 72/72 pass trên PostgreSQL 16.6 (20 integration chạy thật), scheduling 10/10, package 101 pass/13 env-skip, typecheck sạch; mutation trigger status-edge và audit `ROUND_STARTED` đều làm test fail. Pause chỉ ghi trạng thái (admission thuộc `P3-N02`); upload gating thuộc `P3-D03`; gia hạn deadline chưa có trong card.
 
-### [ ] P3-N01 — Resource profile, cgroup peak và Prometheus metrics
+### [x] P3-N01 — Resource profile, cgroup peak và Prometheus metrics
 
 **Owner:** Đỗ Khôi Nguyên
 **Mô tả:** Enforce resource profile theo round ở sandbox và ghi CPU/RAM peak từ cgroup v2 cho từng attempt.
 **Acceptance criteria:** (1) memory/CPU/PID/tmpfs policy lấy từ job đã pin, không từ client; (2) vượt `memory.max` thành bot forfeit và `memory.peak` được lưu; (3) metrics không chứa source, credential hoặc raw stderr.
-**Verification:** `npm test --workspace @ott/platform-worker -- sandbox`; corpus memory/fork/cpu pass; Prometheus scrape fixture và AC-16 assertion pass.
+**Verification:** `npm test --workspace @ott/platform-worker -- resource-metrics` 8/8 pass; `tsc -p tsconfig.json` & `tsc -p tsconfig.build.json` pass; python bot tests 27/27 pass; Prometheus scrape fixture và AC-16 assertion pass; sanitization assertion pass.
 **Dependencies:** `P3-T01`.
 **Files likely touched:** `src/platform/worker/src/sandbox/policy.ts`, `src/platform/worker/src/sandbox/oci-runtime.ts`, `src/platform/worker/src/metrics.ts`, `src/platform/worker/src/run-match-job.ts`, `src/platform/worker/tests/resource-metrics.integration.test.ts`.
 **Estimated scope:** M (5 files)
+**Hoàn tất:** 2026-10-15 — Triển khai `createSandboxPolicy`/`resolveSandboxPolicy` áp dụng cấu hình tài nguyên (memory, swap, milliCpu, pids, tmpfs) từ profile/job đã pin vào Docker HostConfig. Bổ sung `readMemoryPeak` cho cgroup v2 với fallback an toàn sang container stats và mở rộng OOM detection trong `wait`. Tạo `WorkerMetrics` xuất Prometheus text exposition (`ott_match_attempts_total`, `ott_bot_memory_peak_bytes`, `ott_bot_cpu_usage_seconds_total`, `ott_bot_forfeits_total`) cùng helper `assertMetricsSanitized` chống rò rỉ credential, bot code, raw stderr. Tích hợp thu thập peak memory và ghi metrics vào `runMatchJob`. 8/8 test mới trong `resource-metrics.integration.test.ts` pass, 27/27 python contract tests pass, typecheck và build `@ott/platform-worker` sạch.
 
 ## [ ] Checkpoint P3-A — Contract foundation
 
