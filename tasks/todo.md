@@ -843,7 +843,7 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 **Files likely touched:** `src/platform/api/migrations/0008_submission_reservations.sql`, `src/platform/api/src/modules/submissions/reservations.ts`, `src/platform/api/src/modules/submissions/routes.ts`, `src/platform/web/src/features/submissions/SubmissionForm.tsx`, `src/platform/api/tests/submission-reservations.integration.test.ts`.
 **Estimated scope:** M (5 files)
 
-### [ ] P3-D04 — CSV team provisioning và credential file tải một lần
+### [x] P3-D04 — CSV team provisioning và credential file tải một lần
 
 **Owner:** Phạm Tất Đạt
 **Mô tả:** Import danh sách đội đã duyệt và stream file credential plaintext đúng một lần mà không persist nội dung.
@@ -852,6 +852,7 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 **Dependencies:** `P3-T01`.
 **Files likely touched:** `src/platform/api/src/modules/teams/bulk.ts`, `src/platform/api/src/modules/teams/routes.ts`, `src/platform/api/tests/teams-bulk.integration.test.ts`, `src/platform/web/src/features/admin-teams/BulkProvision.tsx`, `src/platform/web/src/features/admin-teams/BulkProvision.test.tsx`.
 **Estimated scope:** M (5 files)
+**Hoàn tất:** 2026-10-14 — `POST /api/v1/admin/teams/bulk-import` nhận CSV `team_name,representative_email` (RFC 4180, BOM/CRLF, 1–500 dòng), validate toàn bộ và trả lỗi theo dòng/cột không echo giá trị; trùng tên/email trong file và với DB bị từ chối nguyên khối; credential sinh và stream một lần trong response `text/csv` (`no-store`, attachment, chống formula injection), DB chỉ giữ argon2 hash, audit chỉ ghi actor/`count=N`. `POST /api/v1/admin/teams/bulk-reset` theo `teamIds` tạo file mới và revoke session cũ. Theo quyết định của Đạt (14/10/2026), migration `0008_team_representative_email.sql` lưu email người đại diện (lowercase, unique, nullable, chỉ BTC thấy). UI BTC: nhập CSV, chọn đội để cấp lại hàng loạt, file tải trực tiếp không hiển thị mật khẩu. `bulk-teams` 34/34 pass trên PostgreSQL 16.6 + Redis (8 integration chạy thật), platform-api 74 pass/2 env-skip, platform-web 72 pass, typecheck sạch; mutation ghi mật khẩu vào audit và bỏ revoke session đều làm test fail. Hạn chế: retry trùng username trong transaction không dùng SAVEPOINT (xác suất trùng ~2^-32).
 
 ### [ ] P3-N03 — Test-run quota, opponent policy và private artifacts
 

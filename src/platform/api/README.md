@@ -182,3 +182,31 @@ npm test --workspace @ott/platform-api -- round-rules
 DATABASE_URL="$YOUR_DISPOSABLE_POSTGRES_URL" \
   npm test --workspace @ott/platform-api -- --run tests/round-rules.integration.test.ts
 ```
+
+## Bulk team provisioning (`P3-D04`)
+
+`P3-D04` adds bulk team import via CSV and bulk credential reset for `BTC_ADMIN`:
+
+- **Endpoints**:
+  - `POST /api/v1/admin/teams/bulk-import`: accepts strict JSON `{ "csv": string }` (body limit 512 KiB). Validates CSV atomically, hashes credentials before the transaction, acquires an advisory lock, pre-checks uniqueness against DB, inserts teams and accounts, and streams a one-time CSV download.
+  - `POST /api/v1/admin/teams/bulk-reset`: accepts strict JSON `{ "teamIds": string[] }` (1–500 UUIDs). Pre-hashes new passwords, updates accounts transactionally, revokes all active Redis sessions for those accounts, and streams a new credential file.
+  - `GET /api/v1/admin/teams`: includes `representativeEmail` (string or null) for BTC operators.
+
+- **CSV Format & Validation**:
+  - Pure RFC 4180 parser with UTF-8 BOM stripping, CRLF/LF line endings, and quoted field handling.
+  - Header: exactly `team_name,representative_email` (case-insensitive, trimmed).
+  - Rows: 1–500 data rows. Each row must have exactly 2 fields.
+  - `team_name`: trimmed, 1–100 chars, no control characters.
+  - `representative_email`: trimmed, lowercased, ≤254 chars, valid email format.
+  - Error codes: `CSV_HEADER_INVALID`, `CSV_EMPTY`, `CSV_TOO_MANY_ROWS`, `ROW_FIELD_COUNT`, `TEAM_NAME_INVALID`, `EMAIL_INVALID`, `DUPLICATE_TEAM_NAME`, `DUPLICATE_EMAIL` (with `relatedRow`), `TEAM_NAME_TAKEN`, `EMAIL_TAKEN`, `TEAM_NOT_FOUND`. All errors collected at once; cell values are never echoed in error objects.
+
+- **One-time Credential File & Security**:
+  - Password plaintext exists only in the response stream. DB persists only Argon2id hashes.
+  - Audit events record only `TEAM_CREATED` per team and `TEAM_BULK_IMPORTED` / `TEAM_BULK_CREDENTIAL_RESET` with `target_type: 'TEAM_BATCH'` and `reason: 'count=<n>'`. Plaintext passwords never enter DB, logs, metrics, or audit rows.
+  - Download once: no credential file is stored on the server. If the BTC operator loses the file ("mất file"), they must invoke bulk reset (or single reset) to issue fresh credentials.
+  - CSV injection protection: output cells starting with `=`, `+`, `-`, `@`, tab or CR receive a leading `'`.
+  - Representative email is personal data: stored via migration `0008_team_representative_email.sql` (case check constraint and partial unique index); BTC-only; never disclosed to team accounts, public leaderboards, or audit rows.
+
+- **Verification**:
+  - Unit/route tests: `npm test --workspace @ott/platform-api -- bulk-teams`
+  - Integration tests: `tests/bulk-teams.integration.test.ts` (gated on `DATABASE_URL` and `REDIS_URL`).

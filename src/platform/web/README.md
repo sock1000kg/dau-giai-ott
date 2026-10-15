@@ -26,16 +26,19 @@ The browser host must route `/api/v1` to the platform API on the same origin.
 Production secrets and API credentials must never be embedded in the Vite
 client bundle.
 
-## BTC team provisioning (`P2-T19`)
+## BTC team provisioning (`P2-T19`, `P3-D04`)
 
-The BTC-only screen uses the existing `P2-T06` routes: `GET /api/v1/admin/teams`,
-`POST /api/v1/admin/teams` with only `{ name }`, and
-`POST /api/v1/admin/teams/:id/reset-credential`. The server remains responsible
-for role checks, account creation, password generation/hashing and session
-revocation. The create/reset response credential is held in React memory only;
-the screen clears it when dismissed or when the page is left, and it is never
-written to storage or logs. The BTC operator must send it to the team through a
-separate private channel.
+The BTC-only screen uses `GET /api/v1/admin/teams`, `POST /api/v1/admin/teams` with only `{ name }`,
+`POST /api/v1/admin/teams/:id/reset-credential`, and `P3-D04` bulk endpoints:
+`POST /api/v1/admin/teams/bulk-import` and `POST /api/v1/admin/teams/bulk-reset`.
+The server remains responsible for role checks, account creation, password generation/hashing and session
+revocation. For single team creation/reset, credentials are held in React memory only and cleared on dismiss or navigation.
+For bulk operations (`BulkProvision`), the client uploads a CSV file (`File.text()`) and receives a one-time credential file
+as a `Blob`. The client triggers an immediate download using a temporary object URL and revokes it immediately;
+plaintext credentials never enter React state or the DOM. If the file is invalid or contains collisions, a row-error table is displayed.
+Bulk reset allows selecting multiple teams, requires explicit confirmation naming the count, revokes active sessions,
+and downloads the updated credentials. The team list also displays `representativeEmail` (or "—").
+
 
 ## Team submission portal (`P2-T20`)
 
