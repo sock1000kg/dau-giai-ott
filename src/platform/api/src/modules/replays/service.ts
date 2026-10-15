@@ -22,10 +22,10 @@ export interface PublicReplayArtifact {
 }
 
 export class ReplayApiError extends Error {
-  public readonly statusCode: 400 | 404 | 409;
+  public readonly statusCode: 400 | 401 | 404 | 409;
   public readonly code: string;
 
-  public constructor(statusCode: 400 | 404 | 409, code: string, message: string) {
+  public constructor(statusCode: 400 | 401 | 404 | 409, code: string, message: string) {
     super(message);
     this.statusCode = statusCode;
     this.code = code;
@@ -36,6 +36,58 @@ const replayChecksum = /^sha256:[0-9a-f]{64}$/;
 const maxArtifactBytes = 16 * 1024 * 1024;
 
 export type ReplayTransitionCommand = Omit<ReplayTransitionInput, 'verifiedEventLogSha256'>;
+
+interface MatchStageRow {
+  readonly tournament_stage: string;
+}
+
+async function getMatchStage(database: Database, matchId: string): Promise<string> {
+  const result = await database.query<MatchStageRow>(`
+    SELECT s.tournament_stage
+    FROM matches m
+    JOIN series s ON s.id = m.series_id
+    WHERE m.id = $1`, [matchId]);
+  return result.rows[0]?.tournament_stage ?? '';
+}
+
+async function assertFinalsStage(database: Database, matchId: string): Promise<void> {
+  const stage = await getMatchStage(database, matchId);
+  if (stage !== 'FINALS') {
+    throw new ReplayApiError(409, 'REPLAY_NOT_PUBLIC_STAGE', 'Replay publication is only allowed for FINALS stage matches');
+  }
+}
+
+export interface PrivateReplayPrincipal {
+  readonly accountId: string;
+  readonly role: 'BTC_ADMIN' | 'TEAM_ACCOUNT';
+  readonly teamId: string | null;
+}
+
+async function assertPrivateReplayAccess(
+  database: Database,
+  matchId: string,
+  principal: PrivateReplayPrincipal,
+): Promise<void> {
+  if (principal.role === 'BTC_ADMIN') return;
+
+  const result = await database.query<{ readonly x_submission_id: string; readonly o_submission_id: string }>(`
+    SELECT m.x_submission_id, m.o_submission_id
+    FROM matches m
+    WHERE m.id = $1`, [matchId]);
+  const match = result.rows[0];
+  if (match === undefined) {
+    throw new ReplayApiError(404, 'REPLAY_NOT_FOUND', 'Replay is not available');
+  }
+
+  if (principal.role === 'TEAM_ACCOUNT' && principal.teamId !== null) {
+    const submissionResult = await database.query<{ readonly team_id: string }>(`
+      SELECT team_id FROM submissions WHERE id IN ($1, $2)`, [match.x_submission_id, match.o_submission_id]);
+    const teamIds = submissionResult.rows.map((row) => row.team_id);
+    if (teamIds.includes(principal.teamId)) return;
+  }
+
+  throw new ReplayApiError(404, 'REPLAY_NOT_FOUND', 'Replay is not available');
+}
 
 function failIntegrity(): never {
   throw new ReplayApiError(409, 'REPLAY_INTEGRITY_FAILED', 'Replay integrity verification failed');
@@ -154,10 +206,13 @@ async function storedReplay(database: Database, matchId: string, publishedOnly: 
     LEFT JOIN replay_publications p ON p.match_id = m.id
     WHERE m.id = $1`, [matchId]);
   const row = result.rows[0];
-  if (publishedOnly && (row?.status !== 'FINALIZED' || row.publication_state !== 'PUBLISHED')) {
+  if (row === undefined) {
     throw new ReplayApiError(404, 'REPLAY_NOT_FOUND', 'Replay is not available');
   }
-  if (row?.status !== 'FINALIZED' || row.event_log_key === null || row.event_log_sha256 === null || row.final_state_hash === null) {
+  if (publishedOnly && (row.status !== 'FINALIZED' || row.publication_state !== 'PUBLISHED')) {
+    throw new ReplayApiError(404, 'REPLAY_NOT_FOUND', 'Replay is not available');
+  }
+  if (row.status !== 'FINALIZED' || row.event_log_key === null || row.event_log_sha256 === null || row.final_state_hash === null) {
     throw new ReplayApiError(409, 'REPLAY_NOT_ELIGIBLE', 'Match does not have a verified terminal replay');
   }
   if (!replayChecksum.test(row.event_log_sha256) || row.event_log_key !== `match-results/${matchId}/event-log/${row.event_log_sha256}.json`) failIntegrity();
@@ -199,6 +254,7 @@ export async function stageReplayPublication(
   storage: ObjectStorage,
   input: ReplayTransitionCommand,
 ): Promise<ReplayPublication> {
+  await assertFinalsStage(database, input.matchId);
   const verified = await loadVerifiedReplay(database, storage, input.matchId);
   return stageReplay(database, { ...input, verifiedEventLogSha256: verified.checksum });
 }
@@ -208,6 +264,7 @@ export async function publishReplayPublication(
   storage: ObjectStorage,
   input: ReplayTransitionCommand,
 ): Promise<ReplayPublication> {
+  await assertFinalsStage(database, input.matchId);
   const verified = await loadVerifiedReplay(database, storage, input.matchId);
   return publishReplay(database, { ...input, verifiedEventLogSha256: verified.checksum });
 }
@@ -217,7 +274,29 @@ export async function getPublicReplay(
   storage: ObjectStorage,
   matchId: string,
 ): Promise<PublicReplayArtifact> {
+  const stage = await getMatchStage(database, matchId);
+  if (stage !== 'FINALS') {
+    throw new ReplayApiError(404, 'REPLAY_NOT_FOUND', 'Replay is not available');
+  }
   await storedReplay(database, matchId, true);
+  const verified = await loadVerifiedReplay(database, storage, matchId);
+  const safeReplay = publicEventLog(verified.log, matchId, verified.finalStateHash);
+  const body = `${JSON.stringify(safeReplay, null, 2)}\n`;
+  return { body, checksum: `sha256:${createHash('sha256').update(body, 'utf8').digest('hex')}` };
+}
+
+export interface PrivateReplayArtifact {
+  readonly body: string;
+  readonly checksum: string;
+}
+
+export async function getPrivateReplay(
+  database: Database,
+  storage: ObjectStorage,
+  matchId: string,
+  principal: PrivateReplayPrincipal,
+): Promise<PrivateReplayArtifact> {
+  await assertPrivateReplayAccess(database, matchId, principal);
   const verified = await loadVerifiedReplay(database, storage, matchId);
   const safeReplay = publicEventLog(verified.log, matchId, verified.finalStateHash);
   const body = `${JSON.stringify(safeReplay, null, 2)}\n`;

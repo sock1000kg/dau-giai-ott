@@ -15,3 +15,14 @@ export async function fetchPublicReplay(matchId: string): Promise<SpectatorRepla
   }
   return verifyReplayResponse(response);
 }
+
+export async function fetchPrivateReplay(matchId: string): Promise<SpectatorReplayV1> {
+  if (!uuidPattern.test(matchId)) throw new Error('Invalid replay match ID');
+  let response: Response;
+  try {
+    response = await fetch(`/api/v1/replays/${encodeURIComponent(matchId)}`, { credentials: 'include' });
+  } catch {
+    throw new SpectatorReplayError('REPLAY_UNAVAILABLE');
+  }
+  return verifyReplayResponse(response);
+}

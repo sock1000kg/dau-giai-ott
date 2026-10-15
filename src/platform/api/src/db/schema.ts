@@ -16,6 +16,7 @@ const migrationFiles = [
   { id: '0006_replay_publication', source: new URL('../../migrations/0006_replay_publication.sql', import.meta.url) },
   { id: '0007_round_rules', source: new URL('../../migrations/0007_round_rules.sql', import.meta.url) },
   { id: '0008_team_representative_email', source: new URL('../../migrations/0008_team_representative_email.sql', import.meta.url) },
+  { id: '0011_replay_visibility', source: new URL('../../migrations/0011_replay_visibility.sql', import.meta.url) },
 ] as const;
 
 export async function loadMigrations(): Promise<readonly Migration[]> {

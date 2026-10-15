@@ -892,7 +892,7 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 **Files likely touched:** `src/platform/api/src/modules/ratings/elo.ts`, `src/platform/api/src/modules/ratings/service.ts`, `src/platform/api/src/modules/scheduling/eligibility.ts`, `src/platform/api/tests/ratings-v2.test.ts`, `src/platform/api/tests/qualification-gate.integration.test.ts`.
 **Estimated scope:** M (5 files)
 
-### [ ] P3-D05 — Qualification replay authorization từ dữ liệu đầu tiên
+### [x] P3-D05 — Qualification replay authorization từ dữ liệu đầu tiên
 
 **Owner:** Phạm Tất Đạt
 **Mô tả:** Áp dụng team-private qualification replay từ record đầu tiên và giới hạn anonymous public replay cho finals đã publish; dự án chưa có dữ liệu public cũ cần migration.
@@ -901,6 +901,7 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 **Dependencies:** `P3-T01`, `P3-D01`.
 **Files likely touched:** `src/platform/api/migrations/0011_replay_visibility.sql`, `src/platform/api/src/modules/replays/service.ts`, `src/platform/api/src/modules/replays/routes.ts`, `src/platform/api/tests/replay-authorization.integration.test.ts`, `docs/contracts/spectator-replay-v2.md`.
 **Estimated scope:** M (5 files)
+**Hoàn tất:** 2026-10-15 — Qualification replay private từ record đầu tiên: `GET /api/v1/replays/:matchId` (cần session) cho hai đội trong trận và BTC sau integrity check, `Cache-Control: private, no-store`, đội khác nhận 404, anonymous 401; `GET /api/v1/public/replays/:matchId` chỉ trả finals (`FINALS`) `PUBLISHED`. Stage/publish replay không phải `FINALS` bị từ chối `409 REPLAY_NOT_PUBLIC_STAGE` ở service và trigger `0011_replay_visibility.sql`; không có migration dữ liệu cũ. Projection v1 không đổi (không lộ seed/object key); contract `docs/contracts/spectator-replay-v2.md`. Web: nút Replay trên kết quả trận của đội/BTC mở player riêng tư; catalog BTC ẩn nút công khai cho vòng loại. E2E qualification của Thuận cập nhật theo D-21 (theo quyết định của Đạt). platform-api 157 pass trên PostgreSQL (replays-authorization integration 5/5, routes 6/6), platform-web 78 pass, root typecheck sạch; mutation bỏ FINALS check ở trigger và ở public read đều làm test fail. E2E `npm run test:e2e:qualification` chưa chạy được tới phần replay trên máy local (fail sớm ở preflight `PREFLIGHT_START_BOT_SPAWN_FAILED`, line 200, trước đoạn đã sửa) — cần chạy lại trên môi trường sandbox chuẩn.
 
 ## [ ] Checkpoint P3-D — Fairness và data policy
 

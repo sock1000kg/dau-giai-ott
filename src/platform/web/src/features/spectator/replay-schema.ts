@@ -69,7 +69,7 @@ export interface SpectatorReplayV1 {
 }
 
 export type SpectatorReplayErrorCode =
-  | 'REPLAY_NOT_FOUND' | 'REPLAY_UNAVAILABLE' | 'CHECKSUM_MISMATCH' | 'UNSUPPORTED_SCHEMA' | 'INVALID_REPLAY';
+  | 'REPLAY_NOT_FOUND' | 'REPLAY_UNAVAILABLE' | 'CHECKSUM_MISMATCH' | 'UNSUPPORTED_SCHEMA' | 'INVALID_REPLAY' | 'UNAUTHENTICATED';
 
 export class SpectatorReplayError extends Error {
   public readonly code: SpectatorReplayErrorCode;

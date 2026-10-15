@@ -280,9 +280,12 @@ integration('P2-T29 qualification full flow', () => {
       method: 'POST', url: `/api/v1/admin/replays/${matchId}/stage`,
       headers: { cookie: btcCookie!, 'idempotency-key': stageKey }, payload: { reason: 'Qualification replay review' },
     });
-    const [staged, stagedRetry] = await Promise.all([stageReplay(), stageReplay()]);
-    expect(staged.statusCode).toBe(200);
-    expect(stagedRetry.json()).toEqual(staged.json());
+    const stageAttempt = await stageReplay();
+    expect(stageAttempt.statusCode).toBe(409);
+    expect(stageAttempt.json()).toEqual({ error: { code: 'REPLAY_NOT_PUBLIC_STAGE', message: 'Replay publication is only allowed for FINALS stage matches' } });
+
+    const publicStillUnavailable = await app.inject({ method: 'GET', url: `/api/v1/public/replays/${matchId}` });
+    expect(publicStillUnavailable.statusCode).toBe(404);
 
     const artifact = await database.query<{ readonly event_log_key: string }>('SELECT event_log_key FROM match_results WHERE match_id = $1', [matchId]);
     const objectStorage = createS3Storage({ client: s3Client, bucket: s3Bucket });
@@ -290,34 +293,34 @@ integration('P2-T29 qualification full flow', () => {
     const changedBytes = Buffer.from(originalBytes);
     changedBytes[0] = changedBytes[0]! ^ 1;
     await objectStorage.put(artifact.rows[0]!.event_log_key, changedBytes);
-    const publishKey = `qualification-publish-${namespace}`;
-    const publishReplay = () => app!.inject({
-      method: 'POST', url: `/api/v1/admin/replays/${matchId}/publish`,
-      headers: { cookie: btcCookie!, 'idempotency-key': publishKey }, payload: { reason: 'Qualification replay approved' },
-    });
-    const tamperedPublish = await publishReplay();
-    expect(tamperedPublish.statusCode).toBe(409);
-    expect(tamperedPublish.body).not.toContain('entries');
-    const tamperedPublic = await app.inject({ method: 'GET', url: `/api/v1/public/replays/${matchId}` });
-    expect(tamperedPublic.statusCode).toBe(404);
+
+    const tamperedPrivate = await app.inject({ method: 'GET', url: `/api/v1/replays/${matchId}`, headers: { cookie: btcCookie! } });
+    expect(tamperedPrivate.statusCode).toBe(409);
+    expect(tamperedPrivate.json()).toEqual({ error: { code: 'REPLAY_INTEGRITY_FAILED', message: 'Replay integrity verification failed' } });
     await objectStorage.put(artifact.rows[0]!.event_log_key, originalBytes);
 
-    const [published, publishedRetry] = await Promise.all([publishReplay(), publishReplay()]);
-    expect(published.statusCode).toBe(200);
-    expect(publishedRetry.json()).toEqual(published.json());
-    const publicReplay = await app.inject({ method: 'GET', url: `/api/v1/public/replays/${matchId}` });
-    expect(publicReplay.statusCode).toBe(200);
-    expect(publicReplay.headers['content-type']).toBe('application/vnd.ott.spectator-replay+json; version="1"; charset=utf-8');
-    const projected = await verifyReplayResponse(replayResponse(publicReplay));
-    const timeline = createReplayTimeline(projected);
-    expect(timeline.events.length).toBeGreaterThan(0);
-    expect(timeline.frames.at(-1)?.finished).toBe(true);
+    for (const teamCookie of teamCookies) {
+      const privateReplay = await app.inject({ method: 'GET', url: `/api/v1/replays/${matchId}`, headers: { cookie: teamCookie } });
+      expect(privateReplay.statusCode).toBe(200);
+      expect(privateReplay.headers['content-type']).toContain('application/vnd.ott.spectator-replay+json');
+      expect(privateReplay.headers['cache-control']).toBe('private, no-store');
+      const projected = await verifyReplayResponse(replayResponse(privateReplay));
+      const timeline = createReplayTimeline(projected);
+      expect(timeline.events.length).toBeGreaterThan(0);
+      expect(timeline.frames.at(-1)?.finished).toBe(true);
+    }
+
+    const btcPrivateReplay = await app.inject({ method: 'GET', url: `/api/v1/replays/${matchId}`, headers: { cookie: btcCookie! } });
+    expect(btcPrivateReplay.statusCode).toBe(200);
+    expect(btcPrivateReplay.headers['cache-control']).toBe('private, no-store');
+    const btcProjected = await verifyReplayResponse(replayResponse(btcPrivateReplay));
+    expect(createReplayTimeline(btcProjected).events.length).toBeGreaterThan(0);
 
     const dedupe = await database.query<{ readonly results: string; readonly finalizedEvents: string; readonly publicationEvents: string }>(`
       SELECT (SELECT count(*) FROM match_results WHERE match_id = ANY($1::uuid[]))::text AS results,
         (SELECT count(*) FROM match_outbox WHERE match_id = ANY($1::uuid[]) AND event_type = 'MATCH_FINALIZED')::text AS "finalizedEvents",
         (SELECT count(*) FROM replay_publication_events WHERE match_id = $2)::text AS "publicationEvents"`, [scheduled.matchIds, matchId]);
-    expect(dedupe.rows[0]).toEqual({ results: '2', finalizedEvents: '2', publicationEvents: '2' });
+    expect(dedupe.rows[0]).toEqual({ results: '2', finalizedEvents: '2', publicationEvents: '0' });
     const pending = await inspector!.getJobCounts('waiting', 'active', 'delayed', 'failed');
     expect(pending).toMatchObject({ waiting: 0, active: 0, delayed: 0, failed: 0 });
 

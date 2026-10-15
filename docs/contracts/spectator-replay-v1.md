@@ -2,6 +2,8 @@
 
 **Status:** Accepted for Phase 2 local (`P2-T24`).
 
+> **Note:** Superseded by [Spectator Replay API v2](spectator-replay-v2.md) for authorization rules, private endpoint, and `REPLAY_NOT_PUBLIC_STAGE` error. v1 representation, headers, and base errors remain valid.
+
 ## BTC control plane
 
 - `GET /api/v1/admin/replays/catalog?page=1&pageSize=25` requires a valid BTC session and lists eligible terminal matches. Rows may include match/team names, finalization time, publication state, and stored event-log checksum; they never include seed or storage key.

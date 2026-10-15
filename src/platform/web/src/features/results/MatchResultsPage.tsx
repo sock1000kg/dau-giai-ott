@@ -61,6 +61,11 @@ export function MatchResultsPage({ isAdmin }: Readonly<{ isAdmin: boolean }>) {
         <p className="result-outcome">{match.winnerSide ? `Thắng: ${match.winnerSide === 'X' ? match.teams.x.name : match.teams.o.name}` : match.reason === 'TURN_LIMIT' ? 'Hòa · hết giới hạn lượt' : 'Không có đội thắng'} · {match.reason ?? 'Chưa có lý do'}{match.turnCount === null ? '' : ` · ${match.turnCount} lượt`}</p>
         {match.faults ? <div className="fault-summary" aria-label="Tóm tắt lỗi bot"><span>X: {match.faults.X.recoverableTotal} lỗi{match.faults.X.lastErrorCode ? ` (${match.faults.X.lastErrorCode})` : ''}</span><span>O: {match.faults.O.recoverableTotal} lỗi{match.faults.O.lastErrorCode ? ` (${match.faults.O.lastErrorCode})` : ''}</span></div> : <p className="result-date">Không có fault summary cho kết quả này.</p>}
         <p className="result-date">{match.finalizedAt ? new Date(match.finalizedAt).toLocaleString() : 'Thời điểm chưa có'}</p>
+        {match.status === 'FINALIZED' && (
+          <div className="result-actions">
+            <a className="secondary-button" href={isAdmin ? `/admin/replays/${match.matchId}/view` : `/team/replays/${match.matchId}`}>Replay</a>
+          </div>
+        )}
       </article>)}</div>}
       {!loading && !error && kind === 'series' && series.length > 0 && <SeriesResults items={series} />}
       <nav className="results-pagination" aria-label="Phân trang kết quả"><button className="secondary-button" disabled={loading || page <= 1} onClick={() => setPage(page - 1)}>Trang trước</button><span>Trang {page}{totalPages ? ` / ${totalPages}` : ''}</span><button className="secondary-button" disabled={loading || totalPages === 0 || page >= totalPages} onClick={() => setPage(page + 1)}>Trang sau</button></nav>

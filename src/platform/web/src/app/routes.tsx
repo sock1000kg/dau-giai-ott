@@ -4,6 +4,7 @@ import { SubmissionForm } from '../features/submissions/SubmissionForm.tsx';
 import { LoginPage } from '../features/auth/LoginPage.tsx';
 import { MatchResultsPage } from '../features/results/MatchResultsPage.tsx';
 import { ReplayCatalog } from '../features/replay-admin/ReplayCatalog.tsx';
+import { PrivateReplayPage } from '../pages/PrivateReplayPage.tsx';
 import { useAuth } from '../features/auth/AuthProvider.tsx';
 
 function SessionUnavailable({ retry }: Readonly<{ retry: () => void }>) {
@@ -74,10 +75,20 @@ export function AuthRoutes() {
   const isTeamSubmissionPage = role === 'TEAM_ACCOUNT' && path === '/team/submissions';
   const isReplayAdminPage = role === 'BTC_ADMIN' && path === '/admin/replays';
   const isResultsPage = (role === 'BTC_ADMIN' && path === '/admin/results') || (role === 'TEAM_ACCOUNT' && path === '/team/results');
-  if (path !== '/' && path !== '/login' && path !== expectedPath && !isTeamAdminPage && !isTeamSubmissionPage && !isReplayAdminPage && !isResultsPage) return <AccessDenied />;
+  const isTeamReplayPage = role === 'TEAM_ACCOUNT' && path.startsWith('/team/replays/');
+  const isAdminReplayViewPage = role === 'BTC_ADMIN' && path.startsWith('/admin/replays/') && path.endsWith('/view');
+  if (path !== '/' && path !== '/login' && path !== expectedPath && !isTeamAdminPage && !isTeamSubmissionPage && !isReplayAdminPage && !isResultsPage && !isTeamReplayPage && !isAdminReplayViewPage) return <AccessDenied />;
   if (isTeamAdminPage) return <TeamProvisionPage />;
   if (isTeamSubmissionPage) return <SubmissionForm />;
   if (isReplayAdminPage) return <ReplayCatalog />;
   if (isResultsPage) return <MatchResultsPage isAdmin={role === 'BTC_ADMIN'} />;
+  if (isTeamReplayPage) {
+    const matchId = path.slice('/team/replays/'.length);
+    return <PrivateReplayPage matchId={matchId} />;
+  }
+  if (isAdminReplayViewPage) {
+    const matchId = path.slice('/admin/replays/'.length, -'/view'.length);
+    return <PrivateReplayPage matchId={matchId} />;
+  }
   return <Workspace role={role} onLogout={auth.logout} />;
 }

@@ -45,11 +45,11 @@ integration('P2-T23 replay publication repository', () => {
     );
     for (const [index, submissionId] of submissionIds.entries()) {
       await database.query(
-        "INSERT INTO submissions (id,team_id,tournament_stage,archive_sha256,oci_manifest_digest,oci_config_digest,object_key,status) VALUES ($1,$2,'REPLAY_TEST',$3,$4,$5,$6,'VALID')",
+        "INSERT INTO submissions (id,team_id,tournament_stage,archive_sha256,oci_manifest_digest,oci_config_digest,object_key,status) VALUES ($1,$2,'FINALS',$3,$4,$5,$6,'VALID')",
         [submissionId, teamId, `sha256:${String(index + 1).repeat(64)}`, `sha256:${String(index + 3).repeat(64)}`, `sha256:${String(index + 5).repeat(64)}`, `private/${submissionId}`],
       );
     }
-    await database.query("INSERT INTO series (id,tournament_stage,status) VALUES ($1,'REPLAY_TEST','FINALIZED')", [seriesId]);
+    await database.query("INSERT INTO series (id,tournament_stage,status) VALUES ($1,'FINALS','FINALIZED')", [seriesId]);
     await database.query(
       "INSERT INTO matches (id,series_id,x_submission_id,o_submission_id,status,game_number,seed) VALUES ($1,$2,$3,$4,'FINALIZED',1,'private-seed'),($5,$2,$3,$4,'RUNNING',2,'private-seed')",
       [finalizedMatchId, seriesId, submissionIds[0], submissionIds[1], runningMatchId],
