@@ -134,6 +134,55 @@ DATABASE_URL="$YOUR_DISPOSABLE_POSTGRES_URL" REDIS_URL="$YOUR_LOCAL_REDIS_URL" \
   npm test --workspace @ott/platform-api -- --run tests/replays.integration.test.ts
 ```
 
+## Versioned round rule sets and round lifecycle (`P3-D01`)
+
+`POST /api/v1/admin/round-rule-sets` persists an immutable
+`round_rule_sets` version (`migrations/0007_round_rules.sql`): every save
+creates a new `version` for the same `tournament_stage`, even when the
+canonical-JSON `rules_sha256` is unchanged, and an UPDATE/DELETE trigger
+rejects any later edit (AC1). Rules are validated by the strict
+`RoundRuleSetRulesV1` validator in `src/modules/rounds/types.ts` (unknown
+keys, `NONE`/30s per-turn modes and out-of-bounds values are rejected).
+
+`qualification_rounds` drives the lifecycle state machine
+`DRAFT_RULES → SUBMISSION_OPEN → SUBMISSION_CLOSED → RUNNING → SETTLING →
+RATED → PUBLISHED`. `POST /api/v1/admin/rounds` creates the draft; `POST
+/api/v1/admin/rounds/:id/{open|close|start|pause|resume|reconcile|publish}`
+applies one transition per request with a 1–500 char `reason` (except
+`reconcile`). Every transition locks the round row `FOR UPDATE`, re-checks
+the edge in service and in a DB trigger, and writes exactly one audit row
+in the same transaction. A round past `SUBMISSION_OPEN` can no longer
+change its rule set: `rule_set_id` is written once at `open` and is
+immutable afterwards.
+
+`start` requires the `Idempotency-Key` header (1–200 chars) and body
+`{ruleSetId, reason}`; the request hash is `sha256({roundId, ruleSetId})`.
+Same key + same hash replays the stored result (`replayed: true`, no second
+schedule or audit); same key + different hash → `IDEMPOTENCY_KEY_REUSED`.
+`start` freezes the schedule snapshot by calling `scheduleRound`, which
+keeps its own Phase 2 transaction (AC2). `reconcile` moves `RUNNING →
+SETTLING` only when every linked series is terminal, then applies
+`applyRoundRatings` exactly once before `SETTLING → RATED` (AC3).
+
+Routes are BTC-admin only (`requireRole(requireAuthenticated(...),
+'BTC_ADMIN')`) and registered in `createAuthApp` with no storage
+dependency. Stable error codes: `ROUND_TRANSITION_INVALID` (409),
+`RULE_SET_NOT_FOUND` (404), `RULE_SET_STAGE_MISMATCH` (409),
+`ROUND_ALREADY_EXISTS_IN_STAGE` (409), `IDEMPOTENCY_KEY_INVALID` (400),
+`IDEMPOTENCY_KEY_REUSED` (409), `INVALID_REASON`/`RULE_SET_INVALID`/
+`TOURNAMENT_STAGE_INVALID` (400), `ROUND_NOT_FOUND` (404).
+
+Notes: `pause` only records state and an audit row — actual queue
+admission stop belongs to `P3-N02`. Submission uploads are not yet gated by
+this lifecycle (`P3-D03`). Deadline extension ("gia hạn") is not part of
+`P3-D01`.
+
+```bash
+npm test --workspace @ott/platform-api -- round-rules
+DATABASE_URL="$YOUR_DISPOSABLE_POSTGRES_URL" \
+  npm test --workspace @ott/platform-api -- --run tests/round-rules.integration.test.ts
+```
+
 ## Bulk team provisioning (`P3-D04`)
 
 `P3-D04` adds bulk team import via CSV and bulk credential reset for `BTC_ADMIN`:

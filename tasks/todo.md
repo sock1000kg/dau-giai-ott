@@ -766,7 +766,7 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 **Files likely touched:** `docs/contracts/bot-protocol-v2.md`, `docs/contracts/bot-protocol-v2.schema.json`, `src/bot-protocol/src/messages.ts`, `src/bot-protocol/src/validate.ts`, `src/bot-protocol/tests/schema-v2.test.ts`.
 **Estimated scope:** M (5 files)
 
-### [ ] P3-D01 — RoundRuleSet và lifecycle round version hóa
+### [x] P3-D01 — RoundRuleSet và lifecycle round version hóa
 
 **Owner:** Phạm Tất Đạt
 **Mô tả:** Thêm persistence/service cho `RoundRuleSet` bất biến và state machine round tuần từ draft đến published.
@@ -775,6 +775,7 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 **Dependencies:** `P3-T01`.
 **Files likely touched:** `src/platform/api/migrations/0007_round_rules.sql`, `src/platform/api/src/modules/rounds/types.ts`, `src/platform/api/src/modules/rounds/service.ts`, `src/platform/api/src/modules/rounds/routes.ts`, `src/platform/api/tests/rounds.integration.test.ts`.
 **Estimated scope:** M (5 files)
+**Hoàn tất:** 2026-10-14 — Migration `0007_round_rules.sql`: `round_rule_sets` append-only (trigger chặn UPDATE/DELETE), `qualification_rounds` với trigger chặn status edge sai, khóa `rule_set_id`/`schedule_round_id`/start idempotency sau khi set, không DELETE, một round chưa `PUBLISHED` mỗi stage; `audit_events.details`. Module `rounds` (validator rule set strict theo D-15/D-17/D-18 và field `TimeControlV2`, canonical SHA-256), lifecycle `DRAFT_RULES → SUBMISSION_OPEN → SUBMISSION_CLOSED → RUNNING (pause/resume) → SETTLING → RATED → PUBLISHED`; close sau `graceEndsAt`; start cần `Idempotency-Key` + xác nhận rule set, gọi `scheduleRound` Phase 2 ngoài transaction, retry sau crash an toàn; Elo áp dụng một lần qua `applyRoundRatings` (không sửa ratings/scheduling). Admin API BTC-only `/api/v1/admin/round-rule-sets` và `/api/v1/admin/rounds/:id/{open,close,start,pause,resume,reconcile,publish}`. `round-rules` 72/72 pass trên PostgreSQL 16.6 (20 integration chạy thật), scheduling 10/10, package 101 pass/13 env-skip, typecheck sạch; mutation trigger status-edge và audit `ROUND_STARTED` đều làm test fail. Pause chỉ ghi trạng thái (admission thuộc `P3-N02`); upload gating thuộc `P3-D03`; gia hạn deadline chưa có trong card.
 
 ### [ ] P3-N01 — Resource profile, cgroup peak và Prometheus metrics
 
