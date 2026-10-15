@@ -177,6 +177,25 @@ admission stop belongs to `P3-N02`. Submission uploads are not yet gated by
 this lifecycle (`P3-D03`). Deadline extension ("gia hạn") is not part of
 `P3-D01`.
 
+## Admin round-rule and operations console (`P3-D02`)
+
+Small additive UI-serving changes on the D01 module (no migration, no
+transition-logic change):
+
+- `GET /api/v1/admin/round-rule-sets/:ruleSetId` now also returns `rules`
+  (the stored JSONB) and `tournamentStage`. The list endpoint stays
+  summary-only.
+- `POST /api/v1/admin/round-rule-sets` with invalid rules returns
+  `400 { error: { code: 'RULE_SET_INVALID', message, details } }` where
+  `details` is `ValidationError[]` (`{ path, code }` from
+  `validateRoundRuleSetRules`; no submitted values are echoed).
+  `createRuleSet` throws the typed `RuleSetInvalidError` carrying the
+  errors; success behaviour is unchanged.
+- Round JSON (`GET /rounds`, `GET /rounds/:id`, every transition response)
+  now carries `allowedActions: RoundAction[]` computed server-side from
+  `status` (+ `pausedAt`: `pause` only when not paused, `resume` only when
+  paused) via `getAllowedActions`, reusing `ALLOWED_TRANSITIONS`.
+
 ```bash
 npm test --workspace @ott/platform-api -- round-rules
 DATABASE_URL="$YOUR_DISPOSABLE_POSTGRES_URL" \

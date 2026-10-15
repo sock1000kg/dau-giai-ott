@@ -411,3 +411,40 @@ button, a { -webkit-tap-highlight-color: transparent; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
 }
+
+.round-rule-form fieldset, .round-operations {
+  margin-top: 20px;
+  padding: clamp(18px, 3vw, 26px);
+  border: 1px solid rgba(177, 204, 224, 0.16);
+  border-radius: 14px;
+  background: rgba(22, 35, 50, 0.9);
+}
+
+.round-rule-form fieldset { display: grid; gap: 12px; }
+.round-rule-form legend { padding-inline: 6px; color: #dce6ef; font-size: 14px; font-weight: 700; }
+.round-rule-form fieldset > div { display: grid; gap: 6px; min-width: 0; }
+.round-rule-form label { color: #dce6ef; font-size: 13px; font-weight: 600; }
+.round-rule-form input, .round-rule-form select, .round-rule-form textarea {
+  width: 100%;
+  min-height: 44px;
+  padding: 9px 11px;
+  border: 1px solid #34495d;
+  border-radius: 9px;
+  background: #0e1926;
+  color: #f3f6fb;
+}
+.round-rule-form input[type="checkbox"] { width: auto; min-height: 0; accent-color: #80e4d0; }
+.round-rule-form textarea { min-height: 96px; resize: vertical; font: inherit; }
+.round-rule-form input[aria-invalid="true"], .round-rule-form select[aria-invalid="true"], .round-rule-form textarea[aria-invalid="true"] { border-color: #ee7c77; }
+.round-rule-form fieldset ul { display: grid; gap: 12px; margin: 12px 0 0; padding: 0; list-style: none; }
+.round-rule-form fieldset li { display: grid; gap: 6px; padding-top: 12px; border-top: 1px solid rgba(190, 211, 228, 0.1); }
+.round-rule-form > div[role="alert"] { margin-top: 14px; color: #ffb6ad; }
+.round-rule-form p[role="alert"] { color: #ffb6ad; }
+.round-rule-form button[type="submit"] { margin-top: 16px; }
+
+.round-operations ul { display: grid; gap: 12px; margin: 18px 0 0; padding: 0; list-style: none; }
+.round-operations li { display: grid; gap: 8px; padding: 16px; border: 1px solid rgba(177, 204, 224, 0.16); border-radius: 12px; background: rgba(22, 35, 50, 0.9); }
+.round-operations li h3 { margin: 0; }
+.round-operations li p { margin: 0; color: #a8b8c8; font-size: 13px; }
+.round-operations li > div { display: flex; flex-wrap: wrap; gap: 8px; }
+.round-operations li button { margin: 0; min-height: 40px; }

@@ -20,6 +20,6 @@ export { calculateEloDelta, expectedScore } from './modules/ratings/elo.ts';
 export { applyRoundRatings, rebuildRatingLedger } from './modules/ratings/service.ts';
 export { createS3Storage, type ObjectStorage, type S3StorageOptions } from './storage/s3.ts';
 export { MatchQueue, MATCH_QUEUE_NAME, type MatchQueueOptions, type EnqueuedMatch } from './queue/match-queue.ts';
-export { createRuleSet, listRuleSets, getRuleSet, createRound, listRounds, getRound, executeTransition, getAllowedTransitions, type RoundServiceOptions, type RuleSetSummary, type RoundSummary } from './modules/rounds/service.ts';
+export { createRuleSet, listRuleSets, getRuleSet, createRound, listRounds, getRound, executeTransition, getAllowedTransitions, getAllowedActions, RuleSetInvalidError, type RoundServiceOptions, type RuleSetSummary, type RuleSetDetail, type RoundSummary, type RoundActionType } from './modules/rounds/service.ts';
 export { registerRoundRoutes, type RoundRoutesOptions } from './modules/rounds/routes.ts';
 export { validateRoundRuleSetRules, computeRulesSha256, canonicalJson, assertTransition, ALLOWED_TRANSITIONS, ROUND_RULE_SET_SCHEMA_VERSION, type RoundRuleSetRulesV1, type RoundStatus, type RoundAction, type ValidationError } from './modules/rounds/types.ts';

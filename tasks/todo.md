@@ -824,6 +824,7 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 **Dependencies:** `P3-D01`.
 **Files likely touched:** `src/platform/web/src/features/round-admin/api.ts`, `src/platform/web/src/features/round-admin/RoundRuleForm.tsx`, `src/platform/web/src/features/round-admin/RoundOperations.tsx`, `src/platform/web/src/features/round-admin/round-admin.test.tsx`, `src/platform/web/src/app/routes.tsx`.
 **Estimated scope:** M (5 files)
+**Trạng thái 2026-10-15:** đã implement trên `datpt/feat-p3-d02-round-admin` — trang `/admin/rounds` (form RoundRuleSet đủ nhóm thời gian/tài nguyên/luật game/lịch giờ Việt Nam/test run, mặc định D-15/D-17/D-18, ước tính xấu nhất `ceil(2·floor(T/2)/C)·matchWallClockMs` khớp §10.4, cảnh báo vượt khung phải xác nhận; bộ luật đã khóa chỉ đọc; nút thao tác chỉ theo `allowedActions` của server, 409 → tải lại trạng thái; start hai bước với reason + gõ số round, một idempotency key cho mỗi lần xác nhận, chống double-click). API bổ sung: `GET round-rule-sets/:id` trả `rules`, 400 `RULE_SET_INVALID` có `details[]`, round có `allowedActions`. `RoundAdmin` 28/28, platform-web 93/93, platform-api 117 pass trên PostgreSQL (round-rules integration 20/20), typecheck/build sạch; mutation idempotency/allowedActions/double-click/estimate/details đều làm test fail. **Còn thiếu để tick:** browser smoke desktop/mobile + keyboard (chưa có browser trong môi trường chạy).
 
 ## [ ] Checkpoint P3-B — Round có thể khóa và chạy
 
