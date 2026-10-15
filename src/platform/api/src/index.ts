@@ -1,6 +1,16 @@
 export { createDatabase, runMigrations, type Database, type DatabaseOptions } from './db/client.ts';
 export { loadMigrations, type Migration } from './db/schema.ts';
 export { createAuthApp, type CreateAuthAppOptions } from './app.ts';
+export {
+  loadSecurityConfig,
+  assertSecurityConfig,
+  devSecurityConfig,
+  effectiveClientIp,
+  parseCidr,
+  type SecurityConfig,
+  type DeploymentMode,
+  type Cidr,
+} from './config/security.ts';
 export { bootstrapBtcAdmin, type BootstrapBtcAdminOptions, type BootstrapBtcAdminResult } from './modules/auth/bootstrap.ts';
 export { requireAuthenticated, requireRole, requireTeamAccess, AuthorizationError } from './modules/auth/authorize.ts';
 export { createPasswordHasher, type PasswordHashPolicy } from './modules/auth/passwords.ts';

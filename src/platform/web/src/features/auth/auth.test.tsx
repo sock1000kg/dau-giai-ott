@@ -169,4 +169,62 @@ describe('authentication routes', () => {
     expect(await screen.findByRole('alert')).toBeTruthy();
     expect(screen.getByRole('heading', { name: /khu vực btc/i })).toBeTruthy();
   });
+
+  it('prompts for 6-digit TOTP code when login requires MFA and submits to login/mfa', async () => {
+    const fetchMock = mockFetch(
+      response(401, { error: { code: 'UNAUTHENTICATED' } }),
+      response(200, { data: { mfaRequired: true } }),
+      response(200, { data: { role: 'BTC_ADMIN' } }),
+    );
+    render(<App />);
+
+    fireEvent.change(await screen.findByLabelText(/tên đăng nhập/i), { target: { value: 'btc-admin' } });
+    fireEvent.change(screen.getByLabelText(/mật khẩu/i), { target: { value: 'admin-password' } });
+    fireEvent.submit(screen.getByRole('form', { name: 'Đăng nhập' }));
+
+    // MFA prompt is displayed
+    expect(await screen.findByRole('heading', { name: /xác thực 2 bước/i })).toBeTruthy();
+    const mfaInput = screen.getByLabelText(/mã xác thực/i);
+    expect(mfaInput).toBeTruthy();
+    expect(mfaInput.getAttribute('inputmode')).toBe('numeric');
+    expect(mfaInput.getAttribute('autocomplete')).toBe('one-time-code');
+    expect(screen.getByRole('button', { name: /dùng mã khôi phục/i })).toBeTruthy();
+
+    // Enter 6-digit code and submit
+    fireEvent.change(mfaInput, { target: { value: '123456' } });
+    fireEvent.submit(screen.getByRole('form', { name: 'Xác thực 2 bước' }));
+
+    expect(await screen.findByRole('heading', { name: /khu vực btc/i })).toBeTruthy();
+    expect(fetchMock.mock.calls[2]?.[0]).toBe('/api/v1/auth/login/mfa');
+    expect(JSON.parse(fetchMock.mock.calls[2]?.[1]?.body as string)).toEqual({ code: '123456' });
+  });
+
+  it('supports toggling to recovery code and shows generic error on invalid MFA code', async () => {
+    const fetchMock = mockFetch(
+      response(401, { error: { code: 'UNAUTHENTICATED' } }),
+      response(200, { data: { mfaRequired: true } }),
+      response(401, { error: { code: 'INVALID_CREDENTIALS', message: 'Invalid code' } }),
+    );
+    render(<App />);
+
+    fireEvent.change(await screen.findByLabelText(/tên đăng nhập/i), { target: { value: 'btc-admin' } });
+    fireEvent.change(screen.getByLabelText(/mật khẩu/i), { target: { value: 'admin-password' } });
+    fireEvent.submit(screen.getByRole('form', { name: 'Đăng nhập' }));
+
+    expect(await screen.findByRole('heading', { name: /xác thực 2 bước/i })).toBeTruthy();
+
+    // Toggle to recovery code
+    fireEvent.click(screen.getByRole('button', { name: /dùng mã khôi phục/i }));
+    const recoveryInput = await screen.findByLabelText(/mã khôi phục/i);
+    expect(recoveryInput).toBeTruthy();
+
+    // Enter recovery code and submit
+    fireEvent.change(recoveryInput, { target: { value: 'ABCD-EFGH-IJKL-MNOP' } });
+    fireEvent.submit(screen.getByRole('form', { name: 'Xác thực 2 bước' }));
+
+    expect(await screen.findByRole('alert')).toBeTruthy();
+    expect(screen.getByRole('alert').textContent).toMatch(/mã không đúng hoặc đã hết hạn/i);
+    expect(fetchMock.mock.calls[2]?.[0]).toBe('/api/v1/auth/login/mfa');
+    expect(JSON.parse(fetchMock.mock.calls[2]?.[1]?.body as string)).toEqual({ recoveryCode: 'ABCD-EFGH-IJKL-MNOP' });
+  });
 });

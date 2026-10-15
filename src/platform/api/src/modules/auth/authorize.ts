@@ -22,6 +22,9 @@ export function requireAuthenticated(principal: SessionPrincipal | null): Sessio
   return principal;
 }
 
+export function requireRole(principal: SessionPrincipal, role: 'BTC_ADMIN'): Extract<SessionPrincipal, { role: 'BTC_ADMIN' }>;
+export function requireRole(principal: SessionPrincipal, role: 'TEAM_ACCOUNT'): Extract<SessionPrincipal, { role: 'TEAM_ACCOUNT' }>;
+export function requireRole(principal: SessionPrincipal, role: AccountRole): SessionPrincipal;
 export function requireRole(principal: SessionPrincipal, role: AccountRole): SessionPrincipal {
   if (principal.role !== role) {
     throw new AuthorizationError('FORBIDDEN', 403, 'You are not allowed to access this resource');
