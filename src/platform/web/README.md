@@ -116,3 +116,31 @@ Verification: `npm test --workspace @ott/platform-web -- ReplayPlayer`,
 `npm run typecheck --workspace @ott/platform-web`,
 `npm run build --workspace @ott/platform-web`, and root `npm test`,
 `npm run typecheck`, `npm run build`.
+
+## Admin round-rule and operations console (`P3-D02`)
+
+BTC operators open `/admin/rounds` (BTC workspace link "Vận hành round", same
+route gating as `/admin/replays`). The stage selector defaults to
+`QUALIFICATION`. The page composes `features/round-admin/*`:
+
+- `RoundRuleForm` covers timing/resource/game/schedule/test-run fields with
+  visible labels, prefills the latest rule-set version of the stage (or the
+  approved defaults when none exists), and maps server `details[]`
+  (`{ path, code }`) to the matching field with `aria-invalid`/`aria-describedby`;
+  unknown paths are listed in a `role="alert"` summary. A rule set locked into
+  a non-draft round renders read-only with no save button.
+- `RoundOperations` renders action buttons only from the server's
+  `allowedActions`, asks for a reason (except reconcile), and reconciles from
+  the server after every transition. Starting a round needs a two-step
+  confirmation (reason + typed round number) with one `crypto.randomUUID()`
+  idempotency key per confirmation.
+- The worst-case estimate (`estimate.ts`) uses `series = floor(T/2)`,
+  `games = 2·series`, `worstMs = ceil(games / C) · matchWallClockMs`; the team
+  count defaults to `GET /api/v1/admin/teams` and concurrency defaults to 4,
+  which is an assumption — worker capacity is not yet measured (`P3-N02`).
+  An estimate beyond `runMaxHours` blocks saving until the operator checks
+  the explicit acknowledgement.
+
+Verification: `npm test --workspace @ott/platform-web -- RoundAdmin`,
+`npm run typecheck --workspace @ott/platform-web`, plus desktop/mobile
+browser smoke and keyboard tab order over the form and start confirmation.
