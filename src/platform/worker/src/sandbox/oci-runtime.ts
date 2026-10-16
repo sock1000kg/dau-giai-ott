@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises';
 import { request, type IncomingMessage, type ClientRequest } from 'node:http';
 import type { Duplex } from 'node:stream';
 import { SANDBOX_POLICY_V1, dockerSandboxHostConfig, type SandboxPolicy } from './policy.ts';
@@ -5,7 +6,11 @@ import { SANDBOX_POLICY_V1, dockerSandboxHostConfig, type SandboxPolicy } from '
 const API = '/v1.41';
 const SOCKET = '/var/run/docker.sock';
 
-export interface DockerRuntimeOptions { readonly socketPath?: string; readonly policy?: SandboxPolicy }
+export interface DockerRuntimeOptions {
+  readonly socketPath?: string;
+  readonly policy?: SandboxPolicy;
+  readonly cgroupRoot?: string | undefined;
+}
 export interface RunningContainer { readonly id: string; readonly stream: Duplex }
 export interface ContainerSandboxSnapshot {
   readonly user: string;
@@ -50,9 +55,11 @@ type DockerImage = { readonly Id: string; readonly Config?: { readonly Entrypoin
 export class DockerOciRuntime {
   private readonly socketPath: string;
   private readonly policy: SandboxPolicy;
+  private readonly cgroupRoot?: string | undefined;
   constructor(options: DockerRuntimeOptions = {}) {
     this.socketPath = options.socketPath ?? SOCKET;
     this.policy = options.policy ?? SANDBOX_POLICY_V1;
+    this.cgroupRoot = options.cgroupRoot;
   }
 
   async loadAndVerify(archive: Uint8Array, manifestDigest: string, configDigest: string, entrypoint: readonly string[]): Promise<string> {
@@ -159,10 +166,46 @@ export class DockerOciRuntime {
     };
   }
 
+  /** Reads cgroup v2 memory.peak for container or falls back to Docker stats. */
+  async readMemoryPeak(id: string): Promise<number | null> {
+    const candidatePaths: string[] = [];
+    if (this.cgroupRoot) {
+      candidatePaths.push(
+        `${this.cgroupRoot}/system.slice/docker-${id}.scope/memory.peak`,
+        `${this.cgroupRoot}/docker/${id}/memory.peak`,
+        `${this.cgroupRoot}/${id}/memory.peak`,
+        `${this.cgroupRoot}/memory.peak`,
+      );
+    }
+    candidatePaths.push(
+      `/sys/fs/cgroup/system.slice/docker-${id}.scope/memory.peak`,
+      `/sys/fs/cgroup/docker/${id}/memory.peak`,
+      `/sys/fs/cgroup/${id}/memory.peak`,
+    );
+
+    for (const p of candidatePaths) {
+      try {
+        const text = await readFile(p, 'utf8');
+        const parsed = parseInt(text.trim(), 10);
+        if (!Number.isNaN(parsed) && parsed > 0) return parsed;
+      } catch {
+        // try next
+      }
+    }
+
+    try {
+      const stats = await this.benchmarkStats(id);
+      return stats.memoryMaxUsageBytes ?? (stats.memoryUsageBytes > 0 ? stats.memoryUsageBytes : null);
+    } catch {
+      return null;
+    }
+  }
+
   async wait(id: string): Promise<{ readonly statusCode: number; readonly oomKilled: boolean }> {
     const value = await this.requestJson<{ readonly StatusCode: number }>('POST', `${API}/containers/${id}/wait?condition=not-running`);
-    const inspect = await this.requestJson<{ readonly State?: { readonly OOMKilled?: boolean } }>('GET', `${API}/containers/${id}/json`);
-    return { statusCode: value.StatusCode, oomKilled: inspect.State?.OOMKilled === true };
+    const inspect = await this.requestJson<{ readonly State?: { readonly OOMKilled?: boolean; readonly ExitCode?: number } }>('GET', `${API}/containers/${id}/json`);
+    const oomKilled = inspect.State?.OOMKilled === true || value.StatusCode === 137 || inspect.State?.ExitCode === 137;
+    return { statusCode: value.StatusCode, oomKilled };
   }
 
   async remove(id: string): Promise<void> {
