@@ -1,14 +1,39 @@
 import { createHash } from 'node:crypto';
 
 import { Queue } from 'bullmq';
-import { MATCH_QUEUE_NAME, validateMatchJob, type MatchJobV1 } from '@ott/job-contract';
+import {
+  DEAD_LETTER_QUEUE_NAME,
+  MATCH_QUEUE_NAME,
+  PREFLIGHT_QUEUE_NAME,
+  QUEUE_PRIORITY,
+  TEST_RUN_QUEUE_NAME,
+  priorityForCategory,
+  validateMatchJob,
+  type JobQueueCategory,
+  type MatchJobV1,
+  type QueuePriority,
+} from '@ott/job-contract';
 import { createRedisConnection } from './redis-connection.ts';
 
-export { MATCH_QUEUE_NAME } from '@ott/job-contract';
+export {
+  DEAD_LETTER_QUEUE_NAME,
+  MATCH_QUEUE_NAME,
+  PREFLIGHT_QUEUE_NAME,
+  QUEUE_PRIORITY,
+  TEST_RUN_QUEUE_NAME,
+  priorityForCategory,
+  type JobQueueCategory,
+  type QueuePriority,
+} from '@ott/job-contract';
 
 export interface MatchQueueOptions {
   readonly redisUrl: string;
   readonly queueName?: string;
+}
+
+export interface EnqueueMatchOptions {
+  readonly category?: JobQueueCategory;
+  readonly priority?: QueuePriority;
 }
 
 export interface EnqueuedMatch {
@@ -67,7 +92,7 @@ export class MatchQueue {
     });
   }
 
-  public async enqueue(job: MatchJobV1): Promise<EnqueuedMatch> {
+  public async enqueue(job: MatchJobV1, options?: EnqueueMatchOptions): Promise<EnqueuedMatch> {
     if (!validateMatchJob(job).ok) throw new Error('MATCH_JOB_INVALID');
     const jobId = `match-${job.matchId}`;
     const existing = await this.queue.getJob(jobId) as QueueJob | undefined;
@@ -78,7 +103,8 @@ export class MatchQueue {
       return { jobId };
     }
 
-    await this.queue.add('run-match', job, { jobId });
+    const priority = options?.priority ?? (options?.category ? priorityForCategory(options.category) : QUEUE_PRIORITY.OFFICIAL);
+    await this.queue.add('run-match', job, { jobId, priority });
     // Re-read after add to detect a concurrent producer that won this ID.
     const created = await this.queue.getJob(jobId) as QueueJob | undefined;
     if (created === undefined) throw new Error('MATCH_JOB_ENQUEUE_FAILED');
@@ -86,6 +112,48 @@ export class MatchQueue {
       throw new Error('MATCH_IDEMPOTENCY_CONFLICT');
     }
     return { jobId };
+  }
+
+  public async pause(): Promise<void> {
+    await this.queue.pause();
+  }
+
+  public async resume(): Promise<void> {
+    await this.queue.resume();
+  }
+
+  public async isPaused(): Promise<boolean> {
+    return this.queue.isPaused();
+  }
+
+  public async getWaitingCount(): Promise<number> {
+    return this.queue.getWaitingCount();
+  }
+
+  public async getActiveCount(): Promise<number> {
+    return this.queue.getActiveCount();
+  }
+
+  public async getCounts(): Promise<{
+    waiting: number;
+    active: number;
+    completed: number;
+    failed: number;
+    delayed: number;
+    paused: boolean;
+  }> {
+    const [counts, paused] = await Promise.all([
+      this.queue.getJobCounts('waiting', 'active', 'completed', 'failed', 'delayed'),
+      this.queue.isPaused(),
+    ]);
+    return {
+      waiting: counts.waiting ?? 0,
+      active: counts.active ?? 0,
+      completed: counts.completed ?? 0,
+      failed: counts.failed ?? 0,
+      delayed: counts.delayed ?? 0,
+      paused,
+    };
   }
 
   public async close(): Promise<void> {

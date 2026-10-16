@@ -806,7 +806,7 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 **Files likely touched:** `src/match-runner/src/timing-policy.ts`, `src/match-runner/src/match-runner.ts`, `src/match-runner/src/event-log.ts`, `src/match-runner/src/replay.ts`, `src/match-runner/tests/timing-policy.test.ts`.
 **Estimated scope:** M (5 files)
 
-### [ ] P3-N02 — Priority queue, worker heartbeat/capacity và pause/resume
+### [x] P3-N02 — Priority queue, worker heartbeat/capacity và pause/resume
 
 **Owner:** Đỗ Khôi Nguyên
 **Mô tả:** Điều phối official → preflight → test run trên một server lab, có lease/heartbeat, adaptive concurrency mặc định tối đa 4 game và pause nhận job mới.
@@ -815,6 +815,7 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 **Dependencies:** `P3-D01`, `P3-N01`.
 **Files likely touched:** `src/platform/job-contract/src/queue-names.ts`, `src/platform/api/src/queue/match-queue.ts`, `src/platform/worker/src/worker-pool.ts`, `src/platform/worker/src/worker.ts`, `src/platform/worker/tests/worker-pool.integration.test.ts`.
 **Estimated scope:** M (5 files)
+**Hoàn tất:** 2026-10-16 — Chuẩn hóa các hằng số hàng đợi và độ ưu tiên nghiêm ngặt (`QUEUE_PRIORITY`: official=1, preflight=2, test-run=3) tại `queue-names.ts` và re-export qua `@ott/job-contract`. Mở rộng `MatchQueue` hỗ trợ enqueue theo priority/category, kiểm tra và truy vấn trạng thái hàng đợi. Xây dựng `WorkerPool` quản lý adaptive concurrency (mặc định 4 game, tự động điều chỉnh theo tải CPU/RAM thông qua `CapacityProbe`), kiểm soát admission ưu tiên ngăn chặn starvation của job official (AC-21), định kỳ phát heartbeat lên Redis kèm TTL và hỗ trợ pause/resume không drop các job đang thực thi. Mở rộng `createMatchWorker` hỗ trợ cấu hình concurrency, workerId, pause/resume và xử lý kết nối an toàn. 18/18 test mới trong `worker-pool.integration.test.ts` pass, 27/27 test python pass, toàn bộ typecheck và build pass.
 
 ### [ ] P3-D02 — Admin round-rule và operations console
 
