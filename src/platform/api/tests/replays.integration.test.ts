@@ -54,7 +54,8 @@ integration('P2-T24 replay publication and public artifact API', () => {
   let teamCookie: string;
   const suffix = randomUUID();
   const schemaName = `replays_api_${suffix.replaceAll('-', '')}`;
-  const stageName = `REPLAY_API_${suffix.replaceAll('-', '').slice(0, 12).toUpperCase()}`;
+  const stageName = 'FINALS';
+  const teamPrefix = `REPLAY_API_${suffix.replaceAll('-', '').slice(0, 12).toUpperCase()}`;
   const teamIds = [randomUUID(), randomUUID()];
   const accountIds = [randomUUID(), randomUUID(), randomUUID()];
   const submissionIds = [randomUUID(), randomUUID()];
@@ -80,7 +81,7 @@ integration('P2-T24 replay publication and public artifact API', () => {
     }
     await runMigrations(database);
 
-    await database.query('INSERT INTO teams (id,name) VALUES ($1,$2),($3,$4)', [teamIds[0], `${stageName}-X`, teamIds[1], `${stageName}-O`]);
+    await database.query('INSERT INTO teams (id,name) VALUES ($1,$2),($3,$4)', [teamIds[0], `${teamPrefix}-X`, teamIds[1], `${teamPrefix}-O`]);
     await database.query(
       "INSERT INTO accounts (id,username,password_hash,role) VALUES ($1,$2,'test-hash','BTC_ADMIN')",
       [accountIds[0], usernames[0]],

@@ -6,10 +6,12 @@ export type ReplayAction = 'stage' | 'publish';
 export function PublicationControls({
   state,
   busy,
+  stage,
   onBegin,
 }: Readonly<{
   state: ReplayPublicationState;
   busy: boolean;
+  stage?: string;
   onBegin: (action: ReplayAction, reason: string, idempotencyKey: string) => Promise<void>;
 }>) {
   const [action, setAction] = useState<ReplayAction | null>(null);
@@ -50,6 +52,14 @@ export function PublicationControls({
     } finally {
       setSubmitting(false);
     }
+  }
+
+  if (stage !== undefined && stage !== 'FINALS') {
+    return (
+      <div className="replay-publication-controls">
+        <span className="qualification-private-note">Vòng loại: replay riêng tư — không công khai</span>
+      </div>
+    );
   }
 
   return (

@@ -34,6 +34,7 @@ async function sha256(bytes: Uint8Array): Promise<string> {
 }
 
 export async function verifyReplayResponse(response: Response): Promise<SpectatorReplayV1> {
+  if (response.status === 401) throw new SpectatorReplayError('UNAUTHENTICATED');
   if (response.status === 404) throw new SpectatorReplayError('REPLAY_NOT_FOUND');
   if (!response.ok) throw new SpectatorReplayError('REPLAY_UNAVAILABLE');
 

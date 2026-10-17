@@ -3,7 +3,7 @@ import type { FastifyInstance, FastifyReply } from 'fastify';
 import type { Database } from '../../db/client.ts';
 import { requireAuthenticated, requireRole } from '../auth/authorize.ts';
 import type { ObjectStorage } from '../../storage/s3.ts';
-import { getPublicReplay, getReplayCatalog, publishReplayPublication, ReplayApiError, stageReplayPublication } from './service.ts';
+import { getPrivateReplay, getPublicReplay, getReplayCatalog, publishReplayPublication, ReplayApiError, stageReplayPublication, type PrivateReplayPrincipal } from './service.ts';
 
 export interface ReplayRoutesOptions {
   readonly database: Database;
@@ -48,6 +48,9 @@ function sendReplayError(reply: FastifyReply, error: unknown) {
     return reply.status(error.statusCode).send({ error: { code: error.code, message: error.message } });
   }
   if (!(error instanceof Error)) throw error;
+  if (error.message.includes('replay publication requires FINALS stage')) {
+    return reply.status(409).send({ error: { code: 'REPLAY_NOT_PUBLIC_STAGE', message: 'Replay publication is only allowed for FINALS stage matches' } });
+  }
   const clientErrors: Readonly<Record<string, Readonly<{ statusCode: number; code: string; message: string }>>> = {
     BTC_ADMIN_REQUIRED: { statusCode: 403, code: 'FORBIDDEN', message: 'You are not allowed to access this resource' },
     INVALID_IDEMPOTENCY_KEY: { statusCode: 400, code: 'INVALID_TRANSITION', message: 'Invalid replay transition request' },
@@ -57,6 +60,7 @@ function sendReplayError(reply: FastifyReply, error: unknown) {
     REPLAY_NOT_ELIGIBLE: { statusCode: 409, code: 'REPLAY_NOT_ELIGIBLE', message: 'Match does not have a verified terminal replay' },
     REPLAY_NOT_PRIVATE: { statusCode: 409, code: 'REPLAY_STATE_CONFLICT', message: 'Replay is not private' },
     REPLAY_NOT_STAGED: { statusCode: 409, code: 'REPLAY_STATE_CONFLICT', message: 'Replay is not staged' },
+    REPLAY_NOT_PUBLIC_STAGE: { statusCode: 409, code: 'REPLAY_NOT_PUBLIC_STAGE', message: 'Replay publication is only allowed for FINALS stage matches' },
     IDEMPOTENCY_KEY_REUSED: { statusCode: 409, code: 'IDEMPOTENCY_KEY_REUSED', message: 'Idempotency key was already used for another request' },
   };
   const clientError = clientErrors[error.message];
@@ -110,6 +114,27 @@ export function registerReplayRoutes(app: FastifyInstance, options: ReplayRoutes
         .header('content-type', 'application/vnd.ott.spectator-replay+json;version=1')
         .header('x-replay-sha256', artifact.checksum)
         .header('cache-control', 'public, max-age=3600, immutable')
+        .header('x-content-type-options', 'nosniff')
+        .send(artifact.body);
+    } catch (error) {
+      return sendReplayError(reply, error);
+    }
+  });
+
+  app.get<{ Params: { matchId: string } }>('/api/v1/replays/:matchId', async (request, reply) => {
+    if (!uuidPattern.test(request.params.matchId)) return reply.status(404).send({ error: { code: 'REPLAY_NOT_FOUND', message: 'Replay is not available' } });
+    const principal = requireAuthenticated(request.principal);
+    const privatePrincipal: PrivateReplayPrincipal = {
+      accountId: principal.accountId,
+      role: principal.role as 'BTC_ADMIN' | 'TEAM_ACCOUNT',
+      teamId: principal.teamId ?? null,
+    };
+    try {
+      const artifact = await getPrivateReplay(options.database, options.storage, request.params.matchId, privatePrincipal);
+      return reply
+        .header('content-type', 'application/vnd.ott.spectator-replay+json;version=1')
+        .header('x-replay-sha256', artifact.checksum)
+        .header('cache-control', 'private, no-store')
         .header('x-content-type-options', 'nosniff')
         .send(artifact.body);
     } catch (error) {

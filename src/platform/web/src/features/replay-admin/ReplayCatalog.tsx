@@ -92,7 +92,7 @@ export function ReplayCatalog() {
                 <div><dt>Match ID</dt><dd><code>{item.matchId}</code></dd></div>
                 <div><dt>SHA-256 đã lưu</dt><dd><code>{item.eventLogSha256.slice(0, 23)}…</code></dd></div>
               </dl>
-              <PublicationControls state={item.state} busy={catalogUnavailable || busyMatch === item.matchId || busyMatch !== null} onBegin={(action, reason, key) => transition(item, action, reason, key)} />
+              <PublicationControls stage={item.stage} state={item.state} busy={catalogUnavailable || busyMatch === item.matchId || busyMatch !== null} onBegin={(action, reason, key) => transition(item, action, reason, key)} />
             </article>
           ))}
         </section>

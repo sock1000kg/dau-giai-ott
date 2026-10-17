@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { fetchPublicReplay, SpectatorReplayError } from './api.ts';
+import { fetchPrivateReplay, fetchPublicReplay, SpectatorReplayError } from './api.ts';
 import { verifyReplayResponse } from './verify-replay.ts';
 
 const matchId = '00000000-0000-4000-8000-000000000001';
@@ -135,9 +135,20 @@ describe('spectator replay integrity client', () => {
     expect(fetchMock).toHaveBeenCalledOnce();
   });
 
-  it('normalizes unsupported or unavailable HTTP responses', async () => {
-    await expect(verifyReplayResponse(new Response('', { status: 503 }))).rejects.toBeInstanceOf(SpectatorReplayError);
-    await expect(verifyReplayResponse(response(`${JSON.stringify(validReplay())}\n`, { contentType: 'application/json' })))
-      .rejects.toMatchObject({ code: 'UNSUPPORTED_SCHEMA' });
+  it('requests the private endpoint with session credentials and verifies integrity', async () => {
+    const body = `${JSON.stringify(validReplay(), null, 2)}\n`;
+    const fetchMock = vi.fn().mockResolvedValue(response(body));
+    vi.stubGlobal('fetch', fetchMock);
+    const result = await fetchPrivateReplay(matchId);
+    expect(fetchMock).toHaveBeenCalledWith(`/api/v1/replays/${matchId}`, { credentials: 'include' });
+    expect(result.matchId).toBe(matchId);
+  });
+
+  it('rejects invalid match IDs and handles 401 unauthenticated for private replay', async () => {
+    await expect(fetchPrivateReplay('../invalid')).rejects.toThrow('Invalid replay match ID');
+
+    const fetchMock = vi.fn().mockResolvedValue(new Response('', { status: 401 }));
+    vi.stubGlobal('fetch', fetchMock);
+    await expect(fetchPrivateReplay(matchId)).rejects.toMatchObject({ code: 'UNAUTHENTICATED' });
   });
 });

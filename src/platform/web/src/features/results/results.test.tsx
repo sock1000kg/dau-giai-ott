@@ -86,4 +86,32 @@ describe('results API and pages', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Trang sau' }));
     await waitFor(() => expect(fetch).toHaveBeenCalledWith(expect.stringContaining('page=2'), expect.anything()));
   });
+
+  it('renders a Replay link for finalized matches pointing to role-specific private routes', async () => {
+    const fetch = vi.fn().mockImplementation(async (url: string) => url.includes('/admin/teams')
+      ? { ok: true, json: async () => ({ data: [] }) }
+      : { ok: true, json: async () => matchResponse });
+    vi.stubGlobal('fetch', fetch);
+
+    // Team viewer
+    render(<MatchResultsPage isAdmin={false} />);
+    const teamReplayLink = await screen.findByRole('link', { name: 'Replay' });
+    expect(teamReplayLink.getAttribute('href')).toBe('/team/replays/m-1');
+    cleanup();
+
+    // BTC viewer
+    render(<MatchResultsPage isAdmin={true} />);
+    const btcReplayLink = await screen.findByRole('link', { name: 'Replay' });
+    expect(btcReplayLink.getAttribute('href')).toBe('/admin/replays/m-1/view');
+    cleanup();
+
+    // Non-finalized match does not have Replay link
+    const runningResponse = {
+      data: { items: [{ ...matchResponse.data.items[0], matchId: 'm-2', status: 'RUNNING' }], pagination: { page: 1, pageSize: 10, total: 1, totalPages: 1 } },
+    };
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => runningResponse }));
+    render(<MatchResultsPage isAdmin={false} />);
+    await screen.findByText('RUNNING');
+    expect(screen.queryByRole('link', { name: 'Replay' })).toBeNull();
+  });
 });

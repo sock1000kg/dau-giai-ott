@@ -6,10 +6,10 @@ function response(status: number, data?: unknown): Response {
   return { ok: status >= 200 && status < 300, status, json: async () => data } as Response;
 }
 
-function catalog(state = 'PRIVATE') {
+function catalog(state = 'PRIVATE', stage = 'FINALS') {
   return { data: { items: [{
     matchId: 'match-1', state, eventLogSha256: `sha256:${'a'.repeat(64)}`,
-    seriesId: 'series-1', stage: 'QUALIFICATION', finalizedAt: '2026-10-13T08:00:00.000Z',
+    seriesId: 'series-1', stage, finalizedAt: '2026-10-13T08:00:00.000Z',
     teamX: { id: 'team-x', name: 'Alpha' }, teamO: { id: 'team-o', name: 'Beta' },
   }], pagination: { page: 1, pageSize: 25, total: 1, totalPages: 1 } } };
 }
@@ -128,5 +128,19 @@ describe('BTC replay publication console', () => {
     expect(screen.getByRole('button', { name: /đưa vào duyệt/i }).hasAttribute('disabled')).toBe(true);
     fireEvent.click(screen.getByRole('button', { name: /thử lại/i }));
     expect(await screen.findByText(/chưa có replay đủ điều kiện/i)).toBeTruthy();
+  });
+
+  it('hides stage and publish controls for non-FINALS matches and shows private notice', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(adminSession())
+      .mockResolvedValueOnce(response(200, catalog('PRIVATE', 'QUALIFICATION')));
+    vi.stubGlobal('fetch', fetchMock);
+    window.history.replaceState({}, '', '/admin/replays');
+    render(<App />);
+
+    expect(await screen.findByRole('heading', { name: /phát hành replay/i })).toBeTruthy();
+    expect(await screen.findByText(/Vòng loại: replay riêng tư — không công khai/)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /đưa vào duyệt/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /công bố replay/i })).toBeNull();
   });
 });
