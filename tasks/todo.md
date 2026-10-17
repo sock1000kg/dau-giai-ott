@@ -756,7 +756,7 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 
 ## Phase 3 — Wave 1: contract và foundation
 
-### [ ] P3-L01 — Bot Protocol v2: time budget và private seed
+### [x] P3-L01 — Bot Protocol v2: time budget và private seed
 
 **Owner:** Long Trần
 **Mô tả:** Hiện thực Bot Protocol v2 đã duyệt để mỗi lượt mang time budget đã pin và mỗi bot chỉ nhận HMAC-derived `botSeed` riêng.
@@ -765,6 +765,7 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 **Dependencies:** `P3-T01`.
 **Files likely touched:** `docs/contracts/bot-protocol-v2.md`, `docs/contracts/bot-protocol-v2.schema.json`, `src/bot-protocol/src/messages.ts`, `src/bot-protocol/src/validate.ts`, `src/bot-protocol/tests/schema-v2.test.ts`.
 **Estimated scope:** M (5 files)
+**Hoàn tất:** 2026-10-17 — PR #29 merged. Machine schema `docs/contracts/bot-protocol-v2.schema.json` (self-contained, draft 2020-12, `additionalProperties: false` cho mọi object, 5 message giữ lifecycle v1, các `$defs` chia sẻ deep-equal với v1 nên hai version không drift) và fixtures `bot-protocol-v2-valid.ndjson` (5 dòng) + `bot-protocol-v2-invalid-cases.json` (9 case). Types additive trong `messages.ts`: `PROTOCOL_VERSION_V2`, `PerTurnPolicyV2`, `TimeControlV2`, `LimitsV2` (5 field của v1 trừ `startupTimeoutMs`/`turnTimeoutMs`, cộng `timeControl`), `InitMessageV2` (`botSeed`, không có `seed`/`engineSeed`), `TurnBudgetV2`, `StateUpdateMessageV2` (`timeBudget`), `ActionMessageV2`, `TurnResultMessageV2`, `MatchResultMessageV2`, `ProtocolMessageV2`, `AnyProtocolMessage`; v1 (`PROTOCOL_VERSION`, `ProtocolMessage`, `Limits`, `DEFAULT_LIMITS`, `validateBotMessage`, `compileProtocolValidator`) không đổi. `validateTimeControlV2` enforce `baseMs <= maxMs <= totalBotBudgetMs` (JSON Schema không so sánh được hai property) với mã lỗi trùng tên `P3-D01`; `validateBotMessageV2` fail closed bằng `SCHEMA_VIOLATION` nếu bị truyền validator v1. `startupMs` đặt trong `timeControl` để khớp field-by-field `RoundRuleSetRulesV1.timeControl`; mọi bound số (startup 1..60000, total 1..3.600.000, wall 1..7.200.000, everyTurns 1..10.000, fixed/base/step/max 1..3.600.000) mirror `P3-D01`; `botSeed` mirror ràng buộc v1 `seed` (1..128), không thêm luật mới. Ban riêng qualification (`FIXED 30s`, `FIXED 1min`, `NONE`) vẫn thuộc `RoundRuleSet`. Docs: `docs/contracts/bot-protocol-v2.md` (định nghĩa `LimitsV2`, machine contract, negotiation/compatibility guide, bảng error code), `src/bot-protocol/README.md`, `docs/README.md`. Verification: `@ott/bot-protocol` 55/55 pass (39 test v2, gồm matrix 9 case và mutation evidence), typecheck + build sạch; `@ott/match-runner` typecheck pass và test 134 pass/9 fail giống hệt baseline đo bằng `git stash -u` (e2e Python spawn `BOT_SPAWN_FAILED` trên máy Windows, không phải regression); GitNexus `detect-changes --scope all` 9 file/5 symbol/0 affected process, risk low. Còn mở để checkpoint `P3-A` xác nhận: cách đọc `LimitsV2` (đã chọn `startupMs` trong `timeControl`), việc PR chạm 9 file (> heuristic 5 file) và `TURN_RESULT`/`MATCH_RESULT` giữ shape v1; runtime chess-clock (`turnLimitMs`/`remainingBotBudgetMs` theo monotonic clock, timing event vào replay) thuộc `P3-L02`.
 
 ### [x] P3-D01 — RoundRuleSet và lifecycle round version hóa
 
@@ -793,6 +794,8 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 - [ ] `P3-L01`, `P3-D01`, `P3-N01` pass focused tests/typecheck/build.
 - [ ] Protocol, round rules và resource profile đều version hóa/pin được; không còn decision ngầm trong code.
 - [ ] Đinh Đức Thuận duyệt trước Wave 2.
+
+**Trạng thái 2026-10-17:** `P3-L01` đã merge (PR #29); `P3-D01` và `P3-N01` đã xong — cả ba task của Wave 1 hoàn tất, chỉ còn chờ Đinh Đức Thuận duyệt checkpoint. Không tick bullet nào ở đây; quyền duyệt thuộc Đinh Đức Thuận.
 
 ## Phase 3 — Wave 2: runtime và vận hành round
 
