@@ -1,0 +1,115 @@
+# Prometheus Alert Rules for OTT Tournament Infrastructure
+# Phase 3: Wave 6 - Operations Readiness (P3-N05)
+
+groups:
+  - name: ott_tournament_alerts
+    rules:
+      # 1. Queue Age: Match execution queue congestion
+      - alert: QueueAgeHigh
+        expr: ott_queue_oldest_job_age_seconds{queue="match_execution"} > 60
+        for: 1m
+        labels:
+          severity: warning
+          team: operations
+          component: queue
+        annotations:
+          summary: "Match execution queue age is high"
+          description: "Oldest pending match job in queue '{{ $labels.queue }}' has been waiting for {{ $value | humanizeDuration }} (threshold: > 60s)."
+          runbook: "docs/runbooks/production-operations.md#queue-congestion"
+
+      # 2. Worker Heartbeat: Silent or unresponsive worker
+      - alert: WorkerHeartbeatMissing
+        expr: (time() - ott_worker_last_heartbeat_timestamp_seconds) > 30
+        for: 30s
+        labels:
+          severity: critical
+          team: operations
+          component: worker
+        annotations:
+          summary: "Worker heartbeat lost"
+          description: "Worker instance '{{ $labels.worker_id }}' has not reported a heartbeat for more than 30s (last seen: {{ $value | humanizeDuration }} ago)."
+          runbook: "docs/runbooks/production-operations.md#worker-node-failure"
+
+      # 3. Infrastructure Failure Spike: Platform/Worker execution errors
+      - alert: InfraFailureSpike
+        expr: >
+          (
+            sum(rate(ott_match_attempts_total{status="failed"}[5m]))
+            /
+            sum(rate(ott_match_attempts_total[5m]))
+          ) * 100 > 5
+        for: 1m
+        labels:
+          severity: critical
+          team: operations
+          component: worker
+        annotations:
+          summary: "Infrastructure failure rate spike"
+          description: "Match attempt infrastructure failure rate is {{ $value | printf \"%.2f\" }}% over the last 5 minutes (threshold: > 5%)."
+          runbook: "docs/runbooks/production-operations.md#infrastructure-failure-spike"
+
+      # 4. Finalize Stuck: Unfinalized matches or lingering leases
+      - alert: FinalizeStuck
+        expr: ott_matches_pending_finalization_seconds > 120
+        for: 2m
+        labels:
+          severity: critical
+          team: operations
+          component: control-plane
+        annotations:
+          summary: "Match finalization pipeline stuck"
+          description: "Match {{ $labels.match_id }} has finished execution but has not finalized in {{ $value | humanizeDuration }} (threshold: > 120s)."
+          runbook: "docs/runbooks/production-operations.md#finalize-stuck"
+
+      # 5. Sandbox Resource Pressure: Bot memory peak near cgroup limit (512 MiB limit)
+      - alert: SandboxResourcePressure
+        expr: ott_bot_memory_peak_bytes > (512 * 1024 * 1024 * 0.90)
+        for: 30s
+        labels:
+          severity: warning
+          team: operations
+          component: sandbox
+        annotations:
+          summary: "Bot memory peak near sandbox limit"
+          description: "Bot on side {{ $labels.side }} in match {{ $labels.match_id }} reached peak memory {{ $value | humanize1024 }} bytes (> 90% of 512 MiB sandbox quota)."
+          runbook: "docs/runbooks/production-operations.md#sandbox-resource-pressure"
+
+      # 6. Dead Letter Queue: Poison pills or unrecoverable jobs
+      - alert: DeadLetterQueueNotEmpty
+        expr: ott_dead_letter_queue_size > 0
+        for: 30s
+        labels:
+          severity: critical
+          team: operations
+          component: queue
+        annotations:
+          summary: "Dead letter queue contains unrecoverable match jobs"
+          description: "There are {{ $value }} jobs in the match execution dead-letter queue requiring manual inspection."
+          runbook: "docs/runbooks/production-operations.md#dead-letter-investigation"
+
+      # 7. Bot Forfeits Spike: Abnormally high timeout or crash rate
+      - alert: BotForfeitSpike
+        expr: sum(rate(ott_bot_forfeits_total[5m])) > 10
+        for: 2m
+        labels:
+          severity: warning
+          team: operations
+          component: runner
+        annotations:
+          summary: "High rate of bot forfeits"
+          description: "Bot forfeit rate is {{ $value | printf \"%.2f\" }} forfeits/sec over 5m, indicating widespread timeouts or crashes."
+          runbook: "docs/runbooks/production-operations.md#bot-forfeits-spike"
+
+      # 8. Adaptive Capacity Throttling: Worker running at minimum concurrency
+      - alert: WorkerCapacityThrottled
+        expr: ott_worker_capacity == 1 and ott_worker_system_cpu_percent > 85
+        for: 3m
+        labels:
+          severity: warning
+          team: operations
+          component: worker
+        annotations:
+          summary: "Worker capacity throttled due to high host load"
+          description: "Worker '{{ $labels.worker_id }}' has reduced capacity to 1 due to sustained CPU load ({{ $value }}%)."
+          runbook: "docs/runbooks/production-operations.md#worker-capacity-throttled"
+
