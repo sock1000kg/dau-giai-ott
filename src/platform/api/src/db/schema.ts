@@ -7,7 +7,7 @@ export interface Migration {
   readonly sql: string;
 }
 
-const migrationFiles = [
+export const migrationFiles = [
   { id: '0001_initial', source: new URL('../../migrations/0001_initial.sql', import.meta.url) },
   { id: '0002_match_execution_finalization', source: new URL('../../migrations/0002_match_execution_finalization.sql', import.meta.url) },
   { id: '0003_round_scheduling', source: new URL('../../migrations/0003_round_scheduling.sql', import.meta.url) },
@@ -16,7 +16,9 @@ const migrationFiles = [
   { id: '0006_replay_publication', source: new URL('../../migrations/0006_replay_publication.sql', import.meta.url) },
   { id: '0007_round_rules', source: new URL('../../migrations/0007_round_rules.sql', import.meta.url) },
   { id: '0008_team_representative_email', source: new URL('../../migrations/0008_team_representative_email.sql', import.meta.url) },
+  { id: '0009_submission_reservations', source: new URL('../../migrations/0009_submission_reservations.sql', import.meta.url) },
   { id: '0011_replay_visibility', source: new URL('../../migrations/0011_replay_visibility.sql', import.meta.url) },
+  { id: '0012_admin_mfa', source: new URL('../../migrations/0012_admin_mfa.sql', import.meta.url) },
 ] as const;
 
 export async function loadMigrations(): Promise<readonly Migration[]> {

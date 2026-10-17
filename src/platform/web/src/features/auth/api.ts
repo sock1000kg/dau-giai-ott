@@ -2,6 +2,10 @@ export type AuthPrincipal =
   | Readonly<{ role: 'BTC_ADMIN' }>
   | Readonly<{ role: 'TEAM_ACCOUNT'; teamId: string }>;
 
+export type LoginResult =
+  | Readonly<{ mfaRequired: false; principal: AuthPrincipal }>
+  | Readonly<{ mfaRequired: true }>;
+
 interface ApiErrorBody {
   readonly error?: { readonly code?: unknown };
 }
@@ -44,13 +48,14 @@ function principalFrom(body: unknown): AuthPrincipal {
   if (typeof body !== 'object' || body === null || !('data' in body)) {
     throw new Error('Invalid authentication response');
   }
-  const data = body.data;
+  const data = (body as { data: unknown }).data;
   if (typeof data !== 'object' || data === null || !('role' in data)) {
     throw new Error('Invalid authentication response');
   }
-  if (data.role === 'BTC_ADMIN') return { role: 'BTC_ADMIN' };
-  if (data.role === 'TEAM_ACCOUNT' && 'teamId' in data && typeof data.teamId === 'string') {
-    return { role: 'TEAM_ACCOUNT', teamId: data.teamId };
+  const role = (data as { role: unknown }).role;
+  if (role === 'BTC_ADMIN') return { role: 'BTC_ADMIN' };
+  if (role === 'TEAM_ACCOUNT' && 'teamId' in data && typeof (data as { teamId: unknown }).teamId === 'string') {
+    return { role: 'TEAM_ACCOUNT', teamId: (data as { teamId: string }).teamId };
   }
   throw new Error('Invalid authentication response');
 }
@@ -64,11 +69,26 @@ export async function getCurrentSession(): Promise<AuthPrincipal | null> {
   }
 }
 
-export async function login(username: string, password: string): Promise<AuthPrincipal> {
-  return principalFrom(await request('login', {
+export async function login(username: string, password: string): Promise<LoginResult> {
+  const body = await request('login', {
     method: 'POST',
     body: JSON.stringify({ username, password }),
-  }));
+  });
+  if (typeof body === 'object' && body !== null && 'data' in body) {
+    const data = (body as { data: unknown }).data;
+    if (typeof data === 'object' && data !== null && 'mfaRequired' in data && (data as { mfaRequired: unknown }).mfaRequired === true) {
+      return { mfaRequired: true };
+    }
+  }
+  return { mfaRequired: false, principal: principalFrom(body) };
+}
+
+export async function loginMfa(payload: { code?: string; recoveryCode?: string }): Promise<AuthPrincipal> {
+  const body = await request('login/mfa', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+  return principalFrom(body);
 }
 
 export async function logout(): Promise<void> {

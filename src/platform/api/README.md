@@ -177,11 +177,75 @@ admission stop belongs to `P3-N02`. Submission uploads are not yet gated by
 this lifecycle (`P3-D03`). Deadline extension ("gia hạn") is not part of
 `P3-D01`.
 
+## Admin round-rule and operations console (`P3-D02`)
+
+Small additive UI-serving changes on the D01 module (no migration, no
+transition-logic change):
+
+- `GET /api/v1/admin/round-rule-sets/:ruleSetId` now also returns `rules`
+  (the stored JSONB) and `tournamentStage`. The list endpoint stays
+  summary-only.
+- `POST /api/v1/admin/round-rule-sets` with invalid rules returns
+  `400 { error: { code: 'RULE_SET_INVALID', message, details } }` where
+  `details` is `ValidationError[]` (`{ path, code }` from
+  `validateRoundRuleSetRules`; no submitted values are echoed).
+  `createRuleSet` throws the typed `RuleSetInvalidError` carrying the
+  errors; success behaviour is unchanged.
+- Round JSON (`GET /rounds`, `GET /rounds/:id`, every transition response)
+  now carries `allowedActions: RoundAction[]` computed server-side from
+  `status` (+ `pausedAt`: `pause` only when not paused, `resume` only when
+  paused) via `getAllowedActions`, reusing `ALLOWED_TRANSITIONS`.
+
 ```bash
 npm test --workspace @ott/platform-api -- round-rules
 DATABASE_URL="$YOUR_DISPOSABLE_POSTGRES_URL" \
   npm test --workspace @ott/platform-api -- --run tests/round-rules.integration.test.ts
 ```
+
+## Hash reservation, upload throttling and preflight queue position (`P3-D03`)
+
+`P3-D03` adds hash reservations, upload throttling backpressure, and preflight position tracking:
+
+- **Endpoints & Headers**:
+  - `POST /api/v1/submission-reservations` (Role: `TEAM_ACCOUNT`):
+    Accepts JSON body `{ "archiveSha256": "sha256:<64 hex>" }`.
+    Returns 201 (on creation) or 200 (idempotent re-reservation of identical hash) `{ data: { id, archiveSha256, roundId, reservedAt, graceEndsAt, status } }`.
+    Reservation is rejected after the round's `submissionDeadlineAt`.
+  - `GET /api/v1/submission-reservations/current` (Role: `TEAM_ACCOUNT`):
+    Returns the team's latest reservation in the currently open round, or `{ data: null }` if none exists.
+  - `POST /api/v1/submissions` (Role: `TEAM_ACCOUNT`):
+    Optional header: `X-Reservation-Id: <uuid>`.
+    Required when uploading during the round grace window (`submissionDeadlineAt < now <= graceEndsAt`).
+    Uploads before `submissionOpensAt` return 409 `SUBMISSION_NOT_OPEN`.
+    Uploads after `graceEndsAt` always return 403 `SUBMISSION_CLOSED`.
+    Archive hash must match reservation hash; mismatch returns 409 `RESERVATION_HASH_MISMATCH` and cleans up storage.
+    Retrying an upload of the same archive after completion returns 200 with the existing submission ID idempotently without duplicate storage or rows.
+  - `GET /api/v1/submissions` (Role: `TEAM_ACCOUNT`):
+    Each item in `PREFLIGHT` status gains `preflightPosition` (1-based rank among all `PREFLIGHT` submissions ordered by `(created_at, id)`). Non-`PREFLIGHT` items receive `null`.
+    Response root includes `preflightQueueLength` (total submissions currently in `PREFLIGHT`).
+
+- **Preflight Queue Position Note**:
+  No preflight background job enqueuer exists yet in the platform (submissions sit in `PREFLIGHT` until evaluated). `preflightPosition` and `preflightQueueLength` are therefore derived deterministically from PostgreSQL by counting submissions with `status = 'PREFLIGHT'` ordered by `(created_at, id)`.
+
+- **Concurrency Limiting**:
+  In-process concurrency limiter (`upload-limiter.ts`) guards `POST /api/v1/submissions` before buffering the 256 MiB body:
+  - Defaults: global max concurrent uploads = 8; per-team max concurrent uploads = 1; retry-after base = 5 seconds.
+  - When limits are exceeded, returns HTTP 429 `{ error: { code: 'UPLOAD_BUSY', message: '...' } }` with a `Retry-After` header (integer seconds >= 1, computed as base + queue position offset) instead of hanging.
+  - Slot acquired in `onRequest` hook and released on finish, error, or request abort.
+
+- **Stable Error Codes**:
+  - `SUBMISSION_NOT_OPEN` (409): Attempted reservation or upload when round is not `SUBMISSION_OPEN` or before `submissionOpensAt`.
+  - `SUBMISSION_DEADLINE_PASSED` (403): Attempted new reservation after `submissionDeadlineAt`.
+  - `RESERVATION_REQUIRED` (403): Upload during grace window without `X-Reservation-Id`.
+  - `RESERVATION_INVALID` (403): `X-Reservation-Id` does not exist or does not belong to the authenticated team and current round.
+  - `RESERVATION_HASH_MISMATCH` (409): Uploaded archive SHA-256 does not match the reserved hash.
+  - `SUBMISSION_CLOSED` (403): Upload attempted after `graceEndsAt`.
+  - `UPLOAD_BUSY` (429): Concurrency limit reached; `Retry-After` header indicates backoff seconds.
+  - `INVALID_ARCHIVE_SHA256` (400): Malformed SHA-256 format in reservation request body.
+
+- **Verification**:
+  - Unit tests: `npm test --workspace @ott/platform-api -- submission-reservations`
+  - Integration tests: `tests/submission-reservations.integration.test.ts` (gated on `DATABASE_URL`, `REDIS_URL`, and S3 environment variables).
 
 ## Bulk team provisioning (`P3-D04`)
 
@@ -210,3 +274,74 @@ DATABASE_URL="$YOUR_DISPOSABLE_POSTGRES_URL" \
 - **Verification**:
   - Unit/route tests: `npm test --workspace @ott/platform-api -- bulk-teams`
   - Integration tests: `tests/bulk-teams.integration.test.ts` (gated on `DATABASE_URL` and `REDIS_URL`).
+
+## Admin TOTP, network allowlist and hosted startup guard (`P3-D06`)
+
+`P3-D06` hardens control plane ingress with two-factor authentication (TOTP + recovery codes), an effective client IP spoofing defense with a server-side CIDR allowlist for admin endpoints, write rate limiting, security headers, and an AC-23 fail-closed startup guard.
+
+### Environment variables
+
+| Variable | Type / Format | Default | Description |
+|---|---|---|---|
+| `OTT_DEPLOYMENT_MODE` | `'dev' \| 'test' \| 'hosted' \| 'production'` | **Required** | Deployment environment mode. Missing/unknown throws. |
+| `OTT_ADMIN_TOTP_REQUIRED` | `'true' \| 'false'` | `false` | Whether BTC admin authentication requires TOTP. Must be `true` in `hosted`/`production`. |
+| `OTT_ADMIN_ALLOWLIST` | Comma-separated CIDRs | `[]` (allow all in dev/test) | Server-side CIDR allowlist for `/api/v1/admin/*` and `/api/v1/auth/mfa/*`. Must be non-empty in `hosted`/`production`. |
+| `OTT_TRUSTED_PROXIES` | Comma-separated CIDRs or `none` | `[]` (dev/test) | Explicit reverse proxies trusted to set `X-Forwarded-For`. Must be explicitly set in `hosted`/`production` (cannot contain `0.0.0.0/0` or `::/0`). |
+| `OTT_TOTP_ENCRYPTION_KEY` | Base64-encoded 32 bytes | `null` | AES-256-GCM key for encrypting TOTP secrets at rest in `admin_mfa`. Required whenever TOTP is enabled. |
+| `OTT_WRITE_RATE_LIMIT_IP` | Integer > 0 | `600` | Max write requests (POST/PUT/PATCH/DELETE) per minute per effective client IP. |
+| `OTT_WRITE_RATE_LIMIT_ACCOUNT` | Integer > 0 | `300` | Max write requests per minute per authenticated account. |
+| `OTT_BOOTSTRAP_BTC_TOTP_SECRET` | Base32 string | `undefined` | Optional known TOTP secret for initial bootstrap of BTC admin account. |
+
+### AC-23 Startup Guard
+
+`assertSecurityConfig` validates configuration before routes are mounted:
+- **`hosted` and `production`**: Fails startup immediately with a single error listing every violation if:
+  1. `OTT_ADMIN_TOTP_REQUIRED` is not `true`;
+  2. `OTT_ADMIN_ALLOWLIST` is empty;
+  3. `OTT_TRUSTED_PROXIES` is unset or ambiguous (`0.0.0.0/0` or `::/0`);
+  4. `OTT_TOTP_ENCRYPTION_KEY` is missing or not 32 bytes.
+- **`dev` and `test`**: Permissive mode for automated testing and local development (allows password-only BTC login, empty allowlist, no proxies); malformed values are still rejected.
+
+### Effective client IP & Spoofing Defense
+
+Fastify `trustProxy` is not enabled. Client IP is resolved in `onRequest` via `effectiveClientIp`:
+- If the socket remote address is not in `trustedProxies`, `X-Forwarded-For` is completely ignored.
+- If the socket is a trusted proxy, `X-Forwarded-For` is parsed right-to-left to identify the first untrusted upstream IP.
+- Client IP is used for network allowlist enforcement and login rate limiting.
+
+### Endpoints and Error Codes
+
+| Endpoint | Method | Role / Precondition | Description |
+|---|---|---|---|
+| `/api/v1/auth/login` | POST | Public | Authenticates credentials. If BTC admin and `totpRequired=true`, responds `{ data: { mfaRequired: true } }` and sets `ott_mfa` challenge cookie. |
+| `/api/v1/auth/login/mfa` | POST | Public (with challenge) | Verifies `{ code }` (6 digits) or `{ recoveryCode }` (base32), checks replay, marks recovery code used, sets `ott_session` cookie with `mfa: true`. |
+| `/api/v1/auth/mfa/enroll` | POST | `BTC_ADMIN` (allowlist applies) | Generates new random Base32 secret + `otpauth://` URI (returned once, `Cache-Control: no-store`). |
+| `/api/v1/auth/mfa/confirm` | POST | `BTC_ADMIN` (allowlist applies) | Confirms pending enrollment with `{ code }`, encrypts and stores in `admin_mfa`, generates 10 single-use recovery codes. |
+| `/api/v1/auth/mfa/recovery-codes` | POST | `BTC_ADMIN` (allowlist applies) | Invalidates unused recovery codes and generates 10 new recovery codes. |
+
+Stable error codes:
+- `INVALID_CREDENTIALS` (401): Returned uniformly for unknown username, wrong password, wrong TOTP code, replay, expired challenge, un-enrolled account, or missing challenge. Never reveals account or enrollment existence.
+- `ADMIN_NETWORK_FORBIDDEN` (403): Returned when an admin route is accessed from an IP not in `adminAllowlist`.
+- `LOGIN_RATE_LIMITED` (429): Returned when failed login attempts exceed the threshold per username + IP.
+- `RATE_LIMITED` (429): Returned with `Retry-After: 60` header when general write rate limits are exceeded.
+- `FORBIDDEN` (403): Insufficient role or non-MFA session attempting MFA administration.
+
+### Operator steps
+
+1. **Generate encryption key**:
+   ```bash
+   openssl rand -base64 32
+   ```
+2. **Bootstrap with TOTP secret**:
+   ```bash
+   export OTT_DEPLOYMENT_MODE=hosted
+   export OTT_ADMIN_TOTP_REQUIRED=true
+   export OTT_ADMIN_ALLOWLIST="10.0.0.0/8,192.168.1.0/24"
+   export OTT_TRUSTED_PROXIES="10.0.0.1"
+   export OTT_TOTP_ENCRYPTION_KEY="<base64-32-bytes>"
+   export OTT_BOOTSTRAP_BTC_USERNAME="admin"
+   export OTT_BOOTSTRAP_BTC_PASSWORD="<strong-password>"
+   export OTT_BOOTSTRAP_BTC_TOTP_SECRET="<base32-secret>"
+   ```
+3. **Generate recovery codes post-login**:
+   Bootstrap configures the initial TOTP secret. Upon first login with TOTP, the BTC operator calls `POST /api/v1/auth/mfa/recovery-codes` to generate and display the 10 emergency recovery codes.

@@ -10,6 +10,7 @@ import {
   getRuleSet,
   listRounds,
   listRuleSets,
+  RuleSetInvalidError,
   type CreateRuleSetInput,
   type TransitionInput,
 } from './service.ts';
@@ -135,6 +136,9 @@ export function registerRoundRoutes(app: FastifyInstance, options: RoundRoutesOp
       const result = await createRuleSet(options.database, { ...body, actorAccountId: actor.accountId });
       return reply.status(201).send({ data: { id: result.id, version: result.version, rulesSha256: result.rulesSha256 } });
     } catch (error) {
+      if (error instanceof RuleSetInvalidError) {
+        return reply.status(400).send({ error: { code: 'RULE_SET_INVALID', message: 'Invalid rule set', details: error.details } });
+      }
       return sendRoundError(reply, error);
     }
   });

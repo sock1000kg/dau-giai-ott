@@ -27,11 +27,28 @@ export interface RuleSetSummary {
   readonly createdAt: Date;
 }
 
+export interface RuleSetDetail extends RuleSetSummary {
+  readonly tournamentStage: string;
+  readonly rules: RoundRuleSetRulesV1;
+}
+
+export class RuleSetInvalidError extends Error {
+  public readonly details: readonly { readonly path: string; readonly code: string }[];
+
+  public constructor(details: readonly { readonly path: string; readonly code: string }[]) {
+    super('RULE_SET_INVALID');
+    this.name = 'RuleSetInvalidError';
+    this.details = details;
+  }
+}
+
 export interface CreateRoundInput {
   readonly tournamentStage: string;
   readonly reason: string;
   readonly actorAccountId: string;
 }
+
+export type RoundActionType = RoundAction['type'];
 
 export interface RoundSummary {
   readonly id: string;
@@ -42,6 +59,7 @@ export interface RoundSummary {
   readonly scheduleRoundId: string | null;
   readonly pausedAt: Date | null;
   readonly createdAt: Date;
+  readonly allowedActions: readonly RoundActionType[];
   readonly replayed?: boolean;
 }
 
@@ -90,7 +108,7 @@ export async function createRuleSet(
   validateTournamentStage(input.tournamentStage);
   const validation = validateRoundRuleSetRules(input.rules);
   if (validation.errors.length > 0) {
-    throw new Error('RULE_SET_INVALID');
+    throw new RuleSetInvalidError(validation.errors.map(({ path, code }) => ({ path, code })));
   }
   const rules = input.rules as RoundRuleSetRulesV1;
   const sha = computeRulesSha256(rules);
@@ -138,20 +156,25 @@ export async function listRuleSets(
 export async function getRuleSet(
   database: Database,
   ruleSetId: string,
-): Promise<RuleSetSummary | null> {
+): Promise<RuleSetDetail | null> {
   const result = await database.query<{
     readonly id: string;
+    readonly tournament_stage: string;
     readonly version: number;
+    readonly rules: RoundRuleSetRulesV1;
     readonly rules_sha256: string;
     readonly reason: string;
     readonly created_at: Date;
   }>(
-    'SELECT id, version, rules_sha256, reason, created_at FROM round_rule_sets WHERE id = $1',
+    'SELECT id, tournament_stage, version, rules, rules_sha256, reason, created_at FROM round_rule_sets WHERE id = $1',
     [ruleSetId],
   );
   const row = result.rows[0];
   if (!row) return null;
-  return { id: row.id, version: row.version, rulesSha256: row.rules_sha256, reason: row.reason, createdAt: row.created_at };
+  return {
+    id: row.id, tournamentStage: row.tournament_stage, version: row.version, rules: row.rules,
+    rulesSha256: row.rules_sha256, reason: row.reason, createdAt: row.created_at,
+  };
 }
 
 export async function createRound(
@@ -190,6 +213,7 @@ export async function createRound(
     return {
       id, tournamentStage: input.tournamentStage, roundNumber, status: 'DRAFT_RULES',
       ruleSetId: null, scheduleRoundId: null, pausedAt: null, createdAt: now,
+      allowedActions: getAllowedActions('DRAFT_RULES', null),
     };
   });
 }
@@ -215,6 +239,7 @@ export async function listRounds(
   return result.rows.map(({ id, tournament_stage, round_number, status, rule_set_id, schedule_round_id, paused_at, created_at }) => ({
     id, tournamentStage: tournament_stage, roundNumber: round_number, status,
     ruleSetId: rule_set_id, scheduleRoundId: schedule_round_id, pausedAt: paused_at, createdAt: created_at,
+    allowedActions: getAllowedActions(status, paused_at),
   }));
 }
 
@@ -240,6 +265,7 @@ export async function getRound(
   return {
     id: row.id, tournamentStage: row.tournament_stage, roundNumber: row.round_number, status: row.status,
     ruleSetId: row.rule_set_id, scheduleRoundId: row.schedule_round_id, pausedAt: row.paused_at, createdAt: row.created_at,
+    allowedActions: getAllowedActions(row.status, row.paused_at),
   };
 }
 
@@ -537,9 +563,17 @@ async function getRoundFromTx(tx: Database, roundId: string): Promise<RoundSumma
   return {
     id: row.id, tournamentStage: row.tournament_stage, roundNumber: row.round_number, status: row.status,
     ruleSetId: row.rule_set_id, scheduleRoundId: row.schedule_round_id, pausedAt: row.paused_at, createdAt: row.created_at,
+    allowedActions: getAllowedActions(row.status, row.paused_at),
   };
 }
 
 export function getAllowedTransitions(status: RoundStatus): readonly string[] {
   return ALLOWED_TRANSITIONS[status] ?? [];
+}
+
+export function getAllowedActions(status: RoundStatus, pausedAt: Date | null): readonly RoundActionType[] {
+  if (status === 'RUNNING') {
+    return pausedAt === null ? ['pause', 'reconcile'] : ['resume', 'reconcile'];
+  }
+  return [...(ALLOWED_TRANSITIONS[status] ?? [])];
 }

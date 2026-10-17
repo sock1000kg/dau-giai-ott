@@ -5,6 +5,7 @@ import { LoginPage } from '../features/auth/LoginPage.tsx';
 import { MatchResultsPage } from '../features/results/MatchResultsPage.tsx';
 import { ReplayCatalog } from '../features/replay-admin/ReplayCatalog.tsx';
 import { PrivateReplayPage } from '../pages/PrivateReplayPage.tsx';
+import { RoundAdminPage } from '../features/round-admin/RoundAdminPage.tsx';
 import { useAuth } from '../features/auth/AuthProvider.tsx';
 
 function SessionUnavailable({ retry }: Readonly<{ retry: () => void }>) {
@@ -50,6 +51,7 @@ function Workspace({ role, onLogout }: Readonly<{ role: 'BTC_ADMIN' | 'TEAM_ACCO
       <p className="welcome-copy">{role === 'BTC_ADMIN' ? 'Tài khoản Ban tổ chức.' : 'Tài khoản đội thi.'}</p>
       {role === 'BTC_ADMIN' && <a href="/admin/teams">Quản lý đội thi</a>}
       {role === 'BTC_ADMIN' && <a href="/admin/replays">Phát hành replay</a>}
+      {role === 'BTC_ADMIN' && <a href="/admin/rounds">Vận hành round</a>}
       {role === 'TEAM_ACCOUNT' && <a href="/team/submissions">Nộp bot và xem trạng thái</a>}
       <a href={role === 'BTC_ADMIN' ? '/admin/results' : '/team/results'}>Kết quả thi đấu</a>
       {logoutFailed && <p role="alert">Không thể đăng xuất lúc này. Vui lòng thử lại.</p>}
@@ -74,13 +76,15 @@ export function AuthRoutes() {
   const isTeamAdminPage = role === 'BTC_ADMIN' && path === '/admin/teams';
   const isTeamSubmissionPage = role === 'TEAM_ACCOUNT' && path === '/team/submissions';
   const isReplayAdminPage = role === 'BTC_ADMIN' && path === '/admin/replays';
+  const isRoundAdminPage = role === 'BTC_ADMIN' && path === '/admin/rounds';
   const isResultsPage = (role === 'BTC_ADMIN' && path === '/admin/results') || (role === 'TEAM_ACCOUNT' && path === '/team/results');
   const isTeamReplayPage = role === 'TEAM_ACCOUNT' && path.startsWith('/team/replays/');
   const isAdminReplayViewPage = role === 'BTC_ADMIN' && path.startsWith('/admin/replays/') && path.endsWith('/view');
-  if (path !== '/' && path !== '/login' && path !== expectedPath && !isTeamAdminPage && !isTeamSubmissionPage && !isReplayAdminPage && !isResultsPage && !isTeamReplayPage && !isAdminReplayViewPage) return <AccessDenied />;
+  if (path !== '/' && path !== '/login' && path !== expectedPath && !isTeamAdminPage && !isTeamSubmissionPage && !isReplayAdminPage && !isRoundAdminPage && !isResultsPage && !isTeamReplayPage && !isAdminReplayViewPage) return <AccessDenied />;
   if (isTeamAdminPage) return <TeamProvisionPage />;
   if (isTeamSubmissionPage) return <SubmissionForm />;
   if (isReplayAdminPage) return <ReplayCatalog />;
+  if (isRoundAdminPage) return <RoundAdminPage />;
   if (isResultsPage) return <MatchResultsPage isAdmin={role === 'BTC_ADMIN'} />;
   if (isTeamReplayPage) {
     const matchId = path.slice('/team/replays/'.length);

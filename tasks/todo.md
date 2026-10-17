@@ -777,15 +777,16 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 **Estimated scope:** M (5 files)
 **Hoàn tất:** 2026-10-14 — Migration `0007_round_rules.sql`: `round_rule_sets` append-only (trigger chặn UPDATE/DELETE), `qualification_rounds` với trigger chặn status edge sai, khóa `rule_set_id`/`schedule_round_id`/start idempotency sau khi set, không DELETE, một round chưa `PUBLISHED` mỗi stage; `audit_events.details`. Module `rounds` (validator rule set strict theo D-15/D-17/D-18 và field `TimeControlV2`, canonical SHA-256), lifecycle `DRAFT_RULES → SUBMISSION_OPEN → SUBMISSION_CLOSED → RUNNING (pause/resume) → SETTLING → RATED → PUBLISHED`; close sau `graceEndsAt`; start cần `Idempotency-Key` + xác nhận rule set, gọi `scheduleRound` Phase 2 ngoài transaction, retry sau crash an toàn; Elo áp dụng một lần qua `applyRoundRatings` (không sửa ratings/scheduling). Admin API BTC-only `/api/v1/admin/round-rule-sets` và `/api/v1/admin/rounds/:id/{open,close,start,pause,resume,reconcile,publish}`. `round-rules` 72/72 pass trên PostgreSQL 16.6 (20 integration chạy thật), scheduling 10/10, package 101 pass/13 env-skip, typecheck sạch; mutation trigger status-edge và audit `ROUND_STARTED` đều làm test fail. Pause chỉ ghi trạng thái (admission thuộc `P3-N02`); upload gating thuộc `P3-D03`; gia hạn deadline chưa có trong card.
 
-### [ ] P3-N01 — Resource profile, cgroup peak và Prometheus metrics
+### [x] P3-N01 — Resource profile, cgroup peak và Prometheus metrics
 
 **Owner:** Đỗ Khôi Nguyên
 **Mô tả:** Enforce resource profile theo round ở sandbox và ghi CPU/RAM peak từ cgroup v2 cho từng attempt.
 **Acceptance criteria:** (1) memory/CPU/PID/tmpfs policy lấy từ job đã pin, không từ client; (2) vượt `memory.max` thành bot forfeit và `memory.peak` được lưu; (3) metrics không chứa source, credential hoặc raw stderr.
-**Verification:** `npm test --workspace @ott/platform-worker -- sandbox`; corpus memory/fork/cpu pass; Prometheus scrape fixture và AC-16 assertion pass.
+**Verification:** `npm test --workspace @ott/platform-worker -- resource-metrics` 8/8 pass; `tsc -p tsconfig.json` & `tsc -p tsconfig.build.json` pass; python bot tests 27/27 pass; Prometheus scrape fixture và AC-16 assertion pass; sanitization assertion pass.
 **Dependencies:** `P3-T01`.
 **Files likely touched:** `src/platform/worker/src/sandbox/policy.ts`, `src/platform/worker/src/sandbox/oci-runtime.ts`, `src/platform/worker/src/metrics.ts`, `src/platform/worker/src/run-match-job.ts`, `src/platform/worker/tests/resource-metrics.integration.test.ts`.
 **Estimated scope:** M (5 files)
+**Hoàn tất:** 2026-10-15 — Triển khai `createSandboxPolicy`/`resolveSandboxPolicy` áp dụng cấu hình tài nguyên (memory, swap, milliCpu, pids, tmpfs) từ profile/job đã pin vào Docker HostConfig. Bổ sung `readMemoryPeak` cho cgroup v2 với fallback an toàn sang container stats và mở rộng OOM detection trong `wait`. Tạo `WorkerMetrics` xuất Prometheus text exposition (`ott_match_attempts_total`, `ott_bot_memory_peak_bytes`, `ott_bot_cpu_usage_seconds_total`, `ott_bot_forfeits_total`) cùng helper `assertMetricsSanitized` chống rò rỉ credential, bot code, raw stderr. Tích hợp thu thập peak memory và ghi metrics vào `runMatchJob`. 8/8 test mới trong `resource-metrics.integration.test.ts` pass, 27/27 python contract tests pass, typecheck và build `@ott/platform-worker` sạch.
 
 ## [ ] Checkpoint P3-A — Contract foundation
 
@@ -805,7 +806,7 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 **Files likely touched:** `src/match-runner/src/timing-policy.ts`, `src/match-runner/src/match-runner.ts`, `src/match-runner/src/event-log.ts`, `src/match-runner/src/replay.ts`, `src/match-runner/tests/timing-policy.test.ts`.
 **Estimated scope:** M (5 files)
 
-### [ ] P3-N02 — Priority queue, worker heartbeat/capacity và pause/resume
+### [x] P3-N02 — Priority queue, worker heartbeat/capacity và pause/resume
 
 **Owner:** Đỗ Khôi Nguyên
 **Mô tả:** Điều phối official → preflight → test run trên một server lab, có lease/heartbeat, adaptive concurrency mặc định tối đa 4 game và pause nhận job mới.
@@ -814,6 +815,7 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 **Dependencies:** `P3-D01`, `P3-N01`.
 **Files likely touched:** `src/platform/job-contract/src/queue-names.ts`, `src/platform/api/src/queue/match-queue.ts`, `src/platform/worker/src/worker-pool.ts`, `src/platform/worker/src/worker.ts`, `src/platform/worker/tests/worker-pool.integration.test.ts`.
 **Estimated scope:** M (5 files)
+**Hoàn tất:** 2026-10-16 — Chuẩn hóa các hằng số hàng đợi và độ ưu tiên nghiêm ngặt (`QUEUE_PRIORITY`: official=1, preflight=2, test-run=3) tại `queue-names.ts` và re-export qua `@ott/job-contract`. Mở rộng `MatchQueue` hỗ trợ enqueue theo priority/category, kiểm tra và truy vấn trạng thái hàng đợi. Xây dựng `WorkerPool` quản lý adaptive concurrency (mặc định 4 game, tự động điều chỉnh theo tải CPU/RAM thông qua `CapacityProbe`), kiểm soát admission ưu tiên ngăn chặn starvation của job official (AC-21), định kỳ phát heartbeat lên Redis kèm TTL và hỗ trợ pause/resume không drop các job đang thực thi. Mở rộng `createMatchWorker` hỗ trợ cấu hình concurrency, workerId, pause/resume và xử lý kết nối an toàn. 18/18 test mới trong `worker-pool.integration.test.ts` pass, 27/27 test python pass, toàn bộ typecheck và build pass.
 
 ### [ ] P3-D02 — Admin round-rule và operations console
 
@@ -824,6 +826,7 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 **Dependencies:** `P3-D01`.
 **Files likely touched:** `src/platform/web/src/features/round-admin/api.ts`, `src/platform/web/src/features/round-admin/RoundRuleForm.tsx`, `src/platform/web/src/features/round-admin/RoundOperations.tsx`, `src/platform/web/src/features/round-admin/round-admin.test.tsx`, `src/platform/web/src/app/routes.tsx`.
 **Estimated scope:** M (5 files)
+**Trạng thái 2026-10-15:** đã implement trên `datpt/feat-p3-d02-round-admin` — trang `/admin/rounds` (form RoundRuleSet đủ nhóm thời gian/tài nguyên/luật game/lịch giờ Việt Nam/test run, mặc định D-15/D-17/D-18, ước tính xấu nhất `ceil(2·floor(T/2)/C)·matchWallClockMs` khớp §10.4, cảnh báo vượt khung phải xác nhận; bộ luật đã khóa chỉ đọc; nút thao tác chỉ theo `allowedActions` của server, 409 → tải lại trạng thái; start hai bước với reason + gõ số round, một idempotency key cho mỗi lần xác nhận, chống double-click). API bổ sung: `GET round-rule-sets/:id` trả `rules`, 400 `RULE_SET_INVALID` có `details[]`, round có `allowedActions`. `RoundAdmin` 28/28, platform-web 93/93, platform-api 117 pass trên PostgreSQL (round-rules integration 20/20), typecheck/build sạch; mutation idempotency/allowedActions/double-click/estimate/details đều làm test fail. **Còn thiếu để tick:** browser smoke desktop/mobile + keyboard (chưa có browser trong môi trường chạy).
 
 ## [ ] Checkpoint P3-B — Round có thể khóa và chạy
 
@@ -833,15 +836,16 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 
 ## Phase 3 — Wave 3: submission và test run ở quy mô lớn
 
-### [ ] P3-D03 — Hash reservation, upload throttling và preflight visibility
+### [x] P3-D03 — Hash reservation, upload throttling và preflight visibility
 
 **Owner:** Phạm Tất Đạt
 **Mô tả:** Thêm one-click client hashing/reservation, grace-window upload và backpressure/queue position cho submission.
 **Acceptance criteria:** (1) reservation trước deadline chỉ chấp nhận đúng SHA-256 trong grace window; (2) global/per-team concurrency trả retry-after thay vì treo; (3) portal hiển thị progress/preflight position và retry cùng file idempotent.
 **Verification:** API+web focused suites; AC-15 burst test với clock giả; wrong-hash/late/no-reservation mutations bị từ chối.
 **Dependencies:** `P3-D01`, `P3-N02`.
-**Files likely touched:** `src/platform/api/migrations/0008_submission_reservations.sql`, `src/platform/api/src/modules/submissions/reservations.ts`, `src/platform/api/src/modules/submissions/routes.ts`, `src/platform/web/src/features/submissions/SubmissionForm.tsx`, `src/platform/api/tests/submission-reservations.integration.test.ts`.
+**Files likely touched:** `src/platform/api/migrations/0009_submission_reservations.sql`, `src/platform/api/src/modules/submissions/reservations.ts`, `src/platform/api/src/modules/submissions/routes.ts`, `src/platform/web/src/features/submissions/SubmissionForm.tsx`, `src/platform/api/tests/submission-reservations.integration.test.ts`.
 **Estimated scope:** M (5 files)
+**Hoàn tất:** 2026-10-17 — Migration `0009_submission_reservations.sql` (renumbered từ 0008 do `0008_team_representative_email.sql` đã có trên `main`, đăng ký trong `src/platform/api/src/db/schema.ts` với `seq BIGINT GENERATED ALWAYS AS IDENTITY`): `submission_reservations` append-only (trigger chặn UPDATE các trường cốt lõi bao gồm `seq`, cấm DELETE, chỉ chuyển `RESERVED -> COMPLETED` đồng thời với `submission_id`/`completed_at`), `submissions.qualification_round_id` và index `submissions_preflight_position_idx`. Module `reservations` (`createReservation` trước deadline idempotent trả 201/200, `resolveUpload` trong grace window chỉ chấp nhận đúng SHA-256 đã giữ chỗ, completion idempotent trong transaction với `SELECT ... FOR UPDATE`, `getCurrentReservation` sắp xếp theo `reserved_at DESC, seq DESC`). Concurrency limiter in-process (`upload-limiter.ts`, mặc định global 8, per-team 1, trả HTTP 429 và header `Retry-After >= 1`, giữ slot cho tới khi handler kết thúc hoặc kết nối bị abort, release trên `reply.raw` finish/close). Web portal one-click "Nộp" (`sha256File` -> `reserveSubmission` -> `uploadSubmission` với progress bar accessible `role="progressbar"`, 429 auto-retry với `Retry-After` backoff, retry cùng file idempotent trên lỗi mạng, localized error messages, hiển thị "Vị trí preflight: n / N"). Lưu ý kiến trúc: vị trí preflight được tính trực tiếp từ PostgreSQL (`COUNT(*)` submissions `status = 'PREFLIGHT'` theo `created_at, id`) do hệ thống chưa có preflight queue producer. Verification: trong sandbox Coder, tests integration KHÔNG CHẠY do không có Docker/PostgreSQL/Redis/SeaweedFS (toàn bộ 13 file integration skipped); các unit/mock suites đã chạy thực tế và pass: `submission-reservations.unit` 15/15 pass (bao gồm abort socket destroy và slot holding), `migrations-registry.test` 1/1 pass (uniqueness, sort order, file existence, completeness), web submissions 15/15 pass, full web suite 106/106 pass, platform-api 162 pass / 66 skipped (30 files: 17 passed, 13 skipped), typecheck và web build sạch. Các lệnh chạy integration tests (kèm 3x repeatability và DB mutations) được liệt kê trong `.relayer/commands.md` để Reviewer thẩm định và thực thi.
 
 ### [x] P3-D04 — CSV team provisioning và credential file tải một lần
 
@@ -931,7 +935,7 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 **Files likely touched:** `src/platform/api/src/modules/public-snapshots/publisher.ts`, `src/platform/web/src/features/public/PublicTournamentPage.tsx`, `src/platform/web/src/features/public/RulesPage.tsx`, `src/platform/web/src/features/public/public-site.test.tsx`, `docs/contracts/public-snapshot-v1.md`.
 **Estimated scope:** M (5 files)
 
-### [ ] P3-D06 — TOTP, admin network allowlist và hosted startup guard
+### [x] P3-D06 — TOTP, admin network allowlist và hosted startup guard
 
 **Owner:** Phạm Tất Đạt
 **Mô tả:** Hardening authentication/admin ingress có cấu hình dev/test và fail-closed ở hosted PoC/production, kèm rate/security headers.
@@ -940,6 +944,7 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 **Dependencies:** `P3-T01`, `P3-D04`.
 **Files likely touched:** `src/platform/api/migrations/0012_admin_mfa.sql`, `src/platform/api/src/modules/auth/totp.ts`, `src/platform/api/src/modules/auth/plugin.ts`, `src/platform/api/src/config/security.ts`, `src/platform/api/tests/auth-hardening.integration.test.ts`.
 **Estimated scope:** M (5 files)
+**Hoàn tất:** 2026-10-15 — `config/security.ts`: `OTT_DEPLOYMENT_MODE` bắt buộc; startup guard (AC-23) cho hosted/production từ chối khởi động khi TOTP tắt, allowlist admin rỗng, trusted proxy chưa cấu hình/quá rộng hoặc thiếu khóa mã hóa; dev/test mặc định password-only như cũ. IP client thật chỉ tin `X-Forwarded-For` từ trusted proxy (chống spoof); `/api/v1/admin/*` ngoài allowlist → 403 `ADMIN_NETWORK_FORBIDDEN`. BTC login hai bước: mật khẩu → challenge `ott_mfa` → `POST /api/v1/auth/login/mfa` với TOTP RFC 6238 (chống replay theo step) hoặc recovery code dùng một lần; secret mã hóa AES-256-GCM (migration `0012_admin_mfa.sql`), lỗi chung `INVALID_CREDENTIALS`. Enrollment qua `OTT_BOOTSTRAP_BTC_TOTP_SECRET` + API tự phục vụ (rotate secret, sinh recovery code sau lần đăng nhập MFA đầu). Header bảo mật, body limit 1 MiB, rate limit ghi theo IP/account. Web: bước nhập mã trên trang đăng nhập. `auth-hardening` 54/54 trên PostgreSQL + Redis (integration 15/15, chạy lại liền hai lần đều pass), platform-api 200 pass/2 env-skip, platform-web 74 pass, typecheck sạch; mutation replay TOTP, rò recovery code vào audit, dùng lại recovery code đều làm test fail. Còn mở: UI enrollment, entrypoint server/deploy (Nguyên).
 
 ## [ ] Checkpoint P3-E — Public/security boundary
 

@@ -283,6 +283,132 @@ describe('P3-D01 round-rules routes', () => {
     await app.close();
   });
 
+  it('returns the stored rules and tournament stage for a rule set', async () => {
+    const rules = validRuleSetBody().rules;
+    const query = vi.fn().mockResolvedValue({
+      rows: [{
+        id: '00000000-0000-4000-8000-000000000001',
+        tournament_stage: 'QUALIFICATION',
+        version: 2,
+        rules,
+        rules_sha256: 'b'.repeat(64),
+        reason: 'second version',
+        created_at: new Date('2026-10-14T00:00:00.000Z'),
+      }],
+    });
+    const app = createApp(btcPrincipal(), query);
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/v1/admin/round-rule-sets/00000000-0000-4000-8000-000000000001',
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json().data.tournamentStage).toBe('QUALIFICATION');
+    expect(response.json().data.rules).toEqual(rules);
+    expect(response.json().data.version).toBe(2);
+    await app.close();
+  });
+
+  it('returns validation paths without echoed values for invalid rule content', async () => {
+    const query = vi.fn();
+    const app = createApp(btcPrincipal(), query);
+    const body = {
+      ...validRuleSetBody(),
+      rules: { ...validRuleSetBody().rules, schemaVersion: 'WRONG_SCHEMA_MARKER', engineVersion: 'EVIL_VALUE_NEVER_ECHOED_123' },
+    };
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/admin/round-rule-sets',
+      payload: body,
+    });
+    expect(response.statusCode).toBe(400);
+    const error = response.json().error;
+    expect(error.code).toBe('RULE_SET_INVALID');
+    expect(Array.isArray(error.details)).toBe(true);
+    expect(error.details.length).toBeGreaterThan(0);
+    for (const detail of error.details) {
+      expect(Object.keys(detail).sort()).toEqual(['code', 'path']);
+      expect(typeof detail.path).toBe('string');
+      expect(typeof detail.code).toBe('string');
+    }
+    expect(response.body).not.toContain('EVIL_VALUE_NEVER_ECHOED_123');
+    await app.close();
+  });
+
+  it('lists rounds with server-computed allowedActions', async () => {
+    const query = vi.fn().mockResolvedValue({
+      rows: [{
+        id: 'round-1',
+        tournament_stage: 'QUALIFICATION',
+        round_number: 1,
+        status: 'DRAFT_RULES',
+        rule_set_id: null,
+        schedule_round_id: null,
+        paused_at: null,
+        created_at: new Date('2026-10-14T00:00:00.000Z'),
+      }],
+    });
+    const app = createApp(btcPrincipal(), query);
+    const response = await app.inject({ method: 'GET', url: '/api/v1/admin/rounds?tournamentStage=QUALIFICATION' });
+    expect(response.statusCode).toBe(200);
+    expect(response.json().data.items[0].allowedActions).toEqual(['open']);
+    await app.close();
+  });
+
+  it('reports pause only when unpaused and resume only when paused', async () => {
+    const runningRow = (pausedAt: Date | null) => ({
+      id: '00000000-0000-4000-8000-000000000001',
+      tournament_stage: 'QUALIFICATION',
+      round_number: 1,
+      status: 'RUNNING',
+      rule_set_id: '00000000-0000-4000-8000-000000000002',
+      schedule_round_id: null,
+      paused_at: pausedAt,
+      created_at: new Date('2026-10-14T00:00:00.000Z'),
+    });
+    const unpausedApp = createApp(btcPrincipal(), vi.fn().mockResolvedValue({ rows: [runningRow(null)] }));
+    const unpaused = await unpausedApp.inject({ method: 'GET', url: '/api/v1/admin/rounds/00000000-0000-4000-8000-000000000001' });
+    expect(unpaused.json().data.allowedActions).toEqual(['pause', 'reconcile']);
+    await unpausedApp.close();
+
+    const pausedApp = createApp(btcPrincipal(), vi.fn().mockResolvedValue({ rows: [runningRow(new Date('2026-10-14T15:00:00.000Z'))] }));
+    const paused = await pausedApp.inject({ method: 'GET', url: '/api/v1/admin/rounds/00000000-0000-4000-8000-000000000001' });
+    expect(paused.json().data.allowedActions).toEqual(['resume', 'reconcile']);
+    await pausedApp.close();
+  });
+
+  it('includes allowedActions in transition responses', async () => {
+    const pausedAt = new Date('2026-10-14T15:00:00.000Z');
+    const query = vi.fn(async (sql: string) => {
+      if (sql.includes('FOR UPDATE')) {
+        return { rows: [mockRoundRow({ status: 'RUNNING', rule_set_id: '00000000-0000-4000-8000-000000000002' })] };
+      }
+      if (sql.includes('round_number')) {
+        return {
+          rows: [{
+            id: '00000000-0000-4000-8000-000000000001',
+            tournament_stage: 'QUALIFICATION',
+            round_number: 1,
+            status: 'RUNNING',
+            rule_set_id: '00000000-0000-4000-8000-000000000002',
+            schedule_round_id: null,
+            paused_at: pausedAt,
+            created_at: new Date('2026-10-14T00:00:00.000Z'),
+          }],
+        };
+      }
+      return { rows: [] };
+    });
+    const app = createApp(btcPrincipal(), query);
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/admin/rounds/00000000-0000-4000-8000-000000000001/pause',
+      payload: { reason: 'pause for maintenance' },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json().data.allowedActions).toEqual(['resume', 'reconcile']);
+    await app.close();
+  });
+
   it('returns 200 for valid pause transition', async () => {
     const pausedAt = new Date('2026-10-14T15:00:00.000Z');
     const query = vi.fn(async (sql: string) => {
