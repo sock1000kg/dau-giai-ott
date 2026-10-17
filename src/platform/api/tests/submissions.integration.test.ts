@@ -13,7 +13,45 @@ const archive = () => { const layer = tar([{ name: 'bot', body: enc.encode('x') 
 const enabled = process.env.DATABASE_URL && process.env.REDIS_URL && process.env.S3_ENDPOINT && process.env.S3_BUCKET && process.env.S3_ACCESS_KEY_ID && process.env.S3_SECRET_ACCESS_KEY ? describe : describe.skip;
 enabled('P2-T07 OCI upload', () => { let db: Database; let redis: RedisClientType; let app: ReturnType<typeof createAuthApp>; let s3: S3Client;
  beforeAll(async () => { db = createDatabase({ connectionString: process.env.DATABASE_URL! }); redis = createClient({ url: process.env.REDIS_URL! }); await redis.connect(); await db.query('DROP SCHEMA public CASCADE; CREATE SCHEMA public;'); await runMigrations(db); s3 = new S3Client({ endpoint: process.env.S3_ENDPOINT!, region: 'us-east-1', forcePathStyle: true, credentials: { accessKeyId: process.env.S3_ACCESS_KEY_ID!, secretAccessKey: process.env.S3_SECRET_ACCESS_KEY! } }); });
- beforeEach(async () => { await redis.flushDb(); await db.query('TRUNCATE audit_events, sessions, accounts, teams, submissions CASCADE'); const team = randomUUID(); await db.query('INSERT INTO teams(id,name) VALUES($1,$2)', [team, 'A']); await db.query("INSERT INTO accounts(id,username,password_hash,role,team_id) VALUES($1,$2,$3,'TEAM_ACCOUNT',$4)", [randomUUID(), 'team', await createPasswordHasher({ memoryCost: 4096, timeCost: 1 }).hash('pass'), team]); app = createAuthApp({ database: db, redis, passwordHasher: createPasswordHasher({ memoryCost: 4096, timeCost: 1 }), secureCookies: false, storage: createS3Storage({ client: s3, bucket: process.env.S3_BUCKET! }) }); await app.ready(); });
+ beforeEach(async () => {
+   await redis.flushDb();
+   await db.query('TRUNCATE audit_events, sessions, accounts, teams, submissions, submission_reservations, qualification_rounds, round_rule_sets CASCADE');
+   const adminId = randomUUID();
+   await db.query("INSERT INTO accounts(id,username,password_hash,role) VALUES($1,$2,$3,'BTC_ADMIN')", [adminId, 'admin', await createPasswordHasher({ memoryCost: 4096, timeCost: 1 }).hash('adminpass')]);
+   const ruleSetId = randomUUID();
+   const roundId = randomUUID();
+   const rules = {
+     schemaVersion: 'ott.round-rules.v1',
+     engineVersion: '1.0.0',
+     mapSet: [{ mapId: 'map-1', checksum: 'abcdef' }],
+     maxTurns: 100,
+     faultPolicyVersion: '1.0.0',
+     timeControl: { startupMs: 1000, totalBotBudgetMs: 10000, matchWallClockMs: 60000, perTurn: { mode: 'FIXED', fixedMs: 100 } },
+     resources: { memoryMiB: 512, milliCpu: 1000, pids: 64, tmpfsMiB: 64, archiveMiB: 256, unpackedMiB: 512, maxLayers: 10 },
+     schedule: {
+       submissionOpensAt: new Date(Date.now() - 3600000).toISOString(),
+       submissionDeadlineAt: new Date(Date.now() + 86400000).toISOString(),
+       graceEndsAt: new Date(Date.now() + 172800000).toISOString(),
+       runStartsAt: new Date(Date.now() + 259200000).toISOString(),
+       runMaxHours: 24,
+       appealEndsAt: new Date(Date.now() + 345600000).toISOString(),
+     },
+     testRun: { quotaPerTeamPerDay: 5, opponents: ['BTC_REFERENCE'] },
+   };
+   await db.query(
+     'INSERT INTO round_rule_sets (id, tournament_stage, version, rules, rules_sha256, created_by, reason) VALUES ($1,$2,$3,$4,$5,$6,$7)',
+     [ruleSetId, 'QUALIFICATION', 1, JSON.stringify(rules), 'a'.repeat(64), adminId, 'initial']
+   );
+   await db.query(
+     "INSERT INTO qualification_rounds (id, tournament_stage, round_number, status, rule_set_id) VALUES ($1,$2,$3,'SUBMISSION_OPEN',$4)",
+     [roundId, 'QUALIFICATION', 1, ruleSetId]
+   );
+   const team = randomUUID();
+   await db.query('INSERT INTO teams(id,name) VALUES($1,$2)', [team, 'A']);
+   await db.query("INSERT INTO accounts(id,username,password_hash,role,team_id) VALUES($1,$2,$3,'TEAM_ACCOUNT',$4)", [randomUUID(), 'team', await createPasswordHasher({ memoryCost: 4096, timeCost: 1 }).hash('pass'), team]);
+   app = createAuthApp({ database: db, redis, passwordHasher: createPasswordHasher({ memoryCost: 4096, timeCost: 1 }), secureCookies: false, storage: createS3Storage({ client: s3, bucket: process.env.S3_BUCKET! }) });
+   await app.ready();
+ });
  afterAll(async () => { await redis?.quit(); await db?.close(); s3?.destroy(); });
  it('records an immutable PREFLIGHT identity after OCI promotion', async () => { const login = await app.inject({ method: 'POST', url: '/api/v1/auth/login', payload: { username: 'team', password: 'pass' } }); const response = await app.inject({ method: 'POST', url: '/api/v1/submissions', headers: { cookie: String(login.headers['set-cookie']).split(';')[0], 'content-type': 'application/octet-stream' }, payload: Buffer.from(archive()) }); expect(response.statusCode).toBe(201); expect(response.json()).toMatchObject({ data: { status: 'PREFLIGHT', archiveSha256: expect.stringMatching(/^sha256:/) } }); });
 });

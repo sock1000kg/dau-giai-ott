@@ -202,6 +202,51 @@ DATABASE_URL="$YOUR_DISPOSABLE_POSTGRES_URL" \
   npm test --workspace @ott/platform-api -- --run tests/round-rules.integration.test.ts
 ```
 
+## Hash reservation, upload throttling and preflight queue position (`P3-D03`)
+
+`P3-D03` adds hash reservations, upload throttling backpressure, and preflight position tracking:
+
+- **Endpoints & Headers**:
+  - `POST /api/v1/submission-reservations` (Role: `TEAM_ACCOUNT`):
+    Accepts JSON body `{ "archiveSha256": "sha256:<64 hex>" }`.
+    Returns 201 (on creation) or 200 (idempotent re-reservation of identical hash) `{ data: { id, archiveSha256, roundId, reservedAt, graceEndsAt, status } }`.
+    Reservation is rejected after the round's `submissionDeadlineAt`.
+  - `GET /api/v1/submission-reservations/current` (Role: `TEAM_ACCOUNT`):
+    Returns the team's latest reservation in the currently open round, or `{ data: null }` if none exists.
+  - `POST /api/v1/submissions` (Role: `TEAM_ACCOUNT`):
+    Optional header: `X-Reservation-Id: <uuid>`.
+    Required when uploading during the round grace window (`submissionDeadlineAt < now <= graceEndsAt`).
+    Uploads before `submissionOpensAt` return 409 `SUBMISSION_NOT_OPEN`.
+    Uploads after `graceEndsAt` always return 403 `SUBMISSION_CLOSED`.
+    Archive hash must match reservation hash; mismatch returns 409 `RESERVATION_HASH_MISMATCH` and cleans up storage.
+    Retrying an upload of the same archive after completion returns 200 with the existing submission ID idempotently without duplicate storage or rows.
+  - `GET /api/v1/submissions` (Role: `TEAM_ACCOUNT`):
+    Each item in `PREFLIGHT` status gains `preflightPosition` (1-based rank among all `PREFLIGHT` submissions ordered by `(created_at, id)`). Non-`PREFLIGHT` items receive `null`.
+    Response root includes `preflightQueueLength` (total submissions currently in `PREFLIGHT`).
+
+- **Preflight Queue Position Note**:
+  No preflight background job enqueuer exists yet in the platform (submissions sit in `PREFLIGHT` until evaluated). `preflightPosition` and `preflightQueueLength` are therefore derived deterministically from PostgreSQL by counting submissions with `status = 'PREFLIGHT'` ordered by `(created_at, id)`.
+
+- **Concurrency Limiting**:
+  In-process concurrency limiter (`upload-limiter.ts`) guards `POST /api/v1/submissions` before buffering the 256 MiB body:
+  - Defaults: global max concurrent uploads = 8; per-team max concurrent uploads = 1; retry-after base = 5 seconds.
+  - When limits are exceeded, returns HTTP 429 `{ error: { code: 'UPLOAD_BUSY', message: '...' } }` with a `Retry-After` header (integer seconds >= 1, computed as base + queue position offset) instead of hanging.
+  - Slot acquired in `onRequest` hook and released on finish, error, or request abort.
+
+- **Stable Error Codes**:
+  - `SUBMISSION_NOT_OPEN` (409): Attempted reservation or upload when round is not `SUBMISSION_OPEN` or before `submissionOpensAt`.
+  - `SUBMISSION_DEADLINE_PASSED` (403): Attempted new reservation after `submissionDeadlineAt`.
+  - `RESERVATION_REQUIRED` (403): Upload during grace window without `X-Reservation-Id`.
+  - `RESERVATION_INVALID` (403): `X-Reservation-Id` does not exist or does not belong to the authenticated team and current round.
+  - `RESERVATION_HASH_MISMATCH` (409): Uploaded archive SHA-256 does not match the reserved hash.
+  - `SUBMISSION_CLOSED` (403): Upload attempted after `graceEndsAt`.
+  - `UPLOAD_BUSY` (429): Concurrency limit reached; `Retry-After` header indicates backoff seconds.
+  - `INVALID_ARCHIVE_SHA256` (400): Malformed SHA-256 format in reservation request body.
+
+- **Verification**:
+  - Unit tests: `npm test --workspace @ott/platform-api -- submission-reservations`
+  - Integration tests: `tests/submission-reservations.integration.test.ts` (gated on `DATABASE_URL`, `REDIS_URL`, and S3 environment variables).
+
 ## Bulk team provisioning (`P3-D04`)
 
 `P3-D04` adds bulk team import via CSV and bulk credential reset for `BTC_ADMIN`:
