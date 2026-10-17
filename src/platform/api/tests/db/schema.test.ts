@@ -1,5 +1,4 @@
 import { randomUUID } from 'node:crypto';
-
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { createDatabase, runMigrations, type Database } from '../../src/db/client.ts';
@@ -22,6 +21,17 @@ integration('P2-T03 PostgreSQL schema', () => {
 
   it('is repeatable and enforces team account, OCI identity, result and rating invariants', async () => {
     await expect(runMigrations(database)).resolves.toEqual({ applied: [] });
+
+    // P3-D03: Assert submission_reservations table and submissions.qualification_round_id column exist
+    const reservationTableCheck = await database.query<{ readonly count: string }>(
+      "SELECT COUNT(*)::text AS count FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'submission_reservations'"
+    );
+    expect(reservationTableCheck.rows[0]?.count).toBe('1');
+
+    const roundIdColumnCheck = await database.query<{ readonly count: string }>(
+      "SELECT COUNT(*)::text AS count FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'submissions' AND column_name = 'qualification_round_id'"
+    );
+    expect(roundIdColumnCheck.rows[0]?.count).toBe('1');
 
     const firstTeamId = randomUUID();
     const secondTeamId = randomUUID();

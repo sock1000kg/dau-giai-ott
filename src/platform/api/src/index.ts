@@ -17,6 +17,17 @@ export { createPasswordHasher, type PasswordHashPolicy } from './modules/auth/pa
 export { createRedisAuthStore, RedisAuthStore, type LoginRateLimiter, type RedisAuthCommands, type SessionStore } from './modules/auth/sessions.ts';
 export { type AccountRole, type AuthRateLimit, type PasswordHasher, type SessionPrincipal } from './modules/auth/types.ts';
 export { readSubmissionArchive } from './modules/submissions/service.ts';
+export { registerSubmissionRoutes, type SubmissionRoutesOptions } from './modules/submissions/routes.ts';
+export { UploadLimiter, type UploadLimiterOptions } from './modules/submissions/upload-limiter.ts';
+export {
+  createReservation,
+  getCurrentReservation,
+  resolveUpload,
+  SubmissionReservationError,
+  type RoundSchedule,
+  type OpenSubmissionRound,
+  type ReservationData,
+} from './modules/submissions/reservations.ts';
 export {
   scheduleRound,
   dispatchScheduledMatches,

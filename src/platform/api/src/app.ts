@@ -23,6 +23,8 @@ import {
   type SecurityConfig,
 } from './config/security.ts';
 
+import type { UploadLimiterOptions } from './modules/submissions/upload-limiter.ts';
+
 export interface CreateAuthAppOptions {
   readonly database: Database;
   readonly redis: RedisAuthCommands;
@@ -32,6 +34,8 @@ export interface CreateAuthAppOptions {
   readonly rateLimit?: AuthRateLimit;
   readonly storage?: ObjectStorage;
   readonly security?: SecurityConfig;
+  readonly uploadLimiter?: UploadLimiterOptions;
+  readonly now?: () => Date;
 }
 
 function digest(value: string): string {
@@ -156,7 +160,12 @@ export function createAuthApp(options: CreateAuthAppOptions): FastifyInstance {
   registerResultRoutes(application, { database: options.database });
   registerRoundRoutes(application, { database: options.database });
   if (options.storage !== undefined) {
-    registerSubmissionRoutes(application, { database: options.database, storage: options.storage });
+    registerSubmissionRoutes(application, {
+      database: options.database,
+      storage: options.storage,
+      uploadLimiter: options.uploadLimiter,
+      now: options.now,
+    });
     registerReplayRoutes(application, { database: options.database, storage: options.storage });
   }
 
