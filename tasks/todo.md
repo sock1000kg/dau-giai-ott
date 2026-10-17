@@ -957,7 +957,7 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 
 ## Phase 3 — Wave 6: operations readiness
 
-### [ ] P3-N05 — Metrics/alerts, backup-restore và incident runbooks
+### [x] P3-N05 — Metrics/alerts, backup-restore và incident runbooks
 
 **Owner:** Đỗ Khôi Nguyên
 **Mô tả:** Hoàn thiện quan sát hệ thống và quy trình phục hồi/ứng phó cho control plane, queue, storage và worker pool.
@@ -966,6 +966,8 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 **Dependencies:** `P3-N01`, `P3-N02`, `P3-D06`.
 **Files likely touched:** `ops/prometheus/rules.yml`, `ops/grafana/dashboards/tournament.json`, `scripts/backup-local.sh`, `scripts/restore-local.sh`, `docs/runbooks/production-operations.md`.
 **Estimated scope:** M (5 files)
+**Hoàn tất:** 2026-10-18 — Alerting, Grafana dashboard, backup-restore và incident runbooks: `ops/prometheus/rules.yml` định nghĩa 8 alert rules (`QueueAgeHigh`, `WorkerHeartbeatMissing`, `InfraFailureSpike`, `FinalizeStuck`, `SandboxResourcePressure`, `DeadLetterQueueNotEmpty`, `BotForfeitSpike`, `WorkerCapacityThrottled`); `ops/grafana/dashboards/tournament.json` trực quan hoá throughput, queue age, active worker pool, bot forfeits by reason, host CPU/RAM và bot cgroup memory.peak; `scripts/backup-local.sh` và `scripts/restore-local.sh` sao lưu/khôi phục PostgreSQL, MinIO storage, SHA-256 manifest và xác thực toàn vẹn audit events/matches; `docs/runbooks/production-operations.md` quy định 4 emergency playbooks có Owner/Action (Pause upload, Read-only public mode, Secret rotation, Thông báo sự cố/đền bù), bảng tự đánh giá OWASP Top 10 và biên bản diễn tập có chữ ký xác nhận; `ops-alerts-backup.test.ts` 6/6 pass, worker typecheck/build clean, bot protocol 27/27 pass.
+
 
 ### [ ] P3-D07 — Privileged operations, anti-cheat review và appeal workflow
 
