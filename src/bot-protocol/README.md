@@ -8,6 +8,10 @@ Module chỉ chứa **types**; runtime validator/parser nằm ở `P1-L04`.
 - [`docs/contracts/bot-protocol-v1.md`](../../docs/contracts/bot-protocol-v1.md) (LOCKED).
 - [`docs/contracts/bot-protocol-v1.schema.json`](../../docs/contracts/bot-protocol-v1.schema.json) (machine schema).
 - [`docs/decisions/0002-phase-1-engine-and-bot-protocol-v1.md`](../../docs/decisions/0002-phase-1-engine-and-bot-protocol-v1.md).
+- [`docs/contracts/bot-protocol-v2.md`](../../docs/contracts/bot-protocol-v2.md),
+  [`bot-protocol-v2.schema.json`](../../docs/contracts/bot-protocol-v2.schema.json) và fixtures
+  `docs/contracts/fixtures/bot-protocol-v2-*.{ndjson,json}` (`P3-L01`).
+- [`docs/decisions/0008-phase-3-protocol-v2-and-game-adapter-boundary.md`](../../docs/decisions/0008-phase-3-protocol-v2-and-game-adapter-boundary.md).
 
 Domain types (`PlayerSide`, `Piece`, `Position`, `MapRef`, `MapDefinition`, `GameAction`,
 `GameResultReason`, `SkipReason`, `ProcessFaultCode`) được **tái sử dụng** từ `@ott/game-core`
@@ -41,6 +45,27 @@ Schema **không** được sao chép vào module: caller nạp `docs/contracts/b
 và truyền vào `compileProtocolValidator`. Test đọc trực tiếp schema + fixtures trong `docs/contracts/`.
 
 Phụ thuộc runtime: `ajv@8.20.0` (lý do: validator JSON Schema chuẩn; convention module-package cho phép).
+
+## Phạm vi P3-L01 (Bot Protocol v2)
+
+`messages.ts` (chỉ thêm, type v1 không đổi):
+
+- `PROTOCOL_VERSION_V2`, `PerTurnPolicyV2`, `TimeControlV2`, `LimitsV2`, `MessageBaseV2`.
+- `InitMessageV2` — `botSeed` (không có `seed`/`engineSeed`), `limits.timeControl` pin budget.
+- `TurnBudgetV2`, `StateUpdateMessageV2` — `timeBudget` theo từng lượt.
+- `ActionMessageV2`, `TurnResultMessageV2`, `MatchResultMessageV2`, union `ProtocolMessageV2`,
+  alias `AnyProtocolMessage = ProtocolMessage | ProtocolMessageV2`.
+
+`validate.ts`:
+
+- `validateTimeControlV2` — quan hệ số học `baseMs <= maxMs <= totalBotBudgetMs` (JSON Schema không so sánh
+  được hai property) với mã lỗi `INVALID_MODE`, `INVALID_BUDGET`, `BASE_EXCEEDS_MAX`, `MAX_EXCEEDS_TOTAL_BUDGET`.
+- `validateBotMessageV2` — cùng pipeline v1 (size → parse → schema → matchId → turnId → legal action) nhưng chạy
+  trên schema v2; fail closed bằng `SCHEMA_VIOLATION` nếu bị truyền validator v1.
+
+Ngoài phạm vi module này: runtime chess-clock (tính `turnLimitMs`/`remainingBotBudgetMs` theo monotonic clock và
+ghi timing event) thuộc `P3-L02`; các ban riêng của qualification (`FIXED 30s`, `FIXED 1min`, `NONE`) do
+`RoundRuleSet` validator sở hữu.
 
 
 Quy ước: mọi object protocol dùng `additionalProperties: false`; thêm/đổi/bớt field là
