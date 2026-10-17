@@ -1,6 +1,9 @@
 # Bot Protocol v2 — approved design contract
 
-> **Status:** APPROVED for Phase 3 implementation; machine schema/types/fixtures are delivered by `P3-L01`.
+> **Status:** APPROVED for Phase 3 implementation. Machine schema, types and fixtures are delivered by `P3-L01`:
+> [`bot-protocol-v2.schema.json`](bot-protocol-v2.schema.json),
+> [`fixtures/bot-protocol-v2-valid.ndjson`](fixtures/bot-protocol-v2-valid.ndjson) and
+> [`fixtures/bot-protocol-v2-invalid-cases.json`](fixtures/bot-protocol-v2-invalid-cases.json).
 >
 > **Compatibility:** v1 remains immutable for Phase 1–2 regression. A match pins exactly one protocol version.
 
@@ -14,12 +17,23 @@ must use `additionalProperties: false`.
 
 ```ts
 type TimeControlV2 = {
-  totalBotBudgetMs: number;
-  matchWallClockMs: number;
+  startupMs: number;              // spawn → INIT written; replaces v1 startupTimeoutMs
+  totalBotBudgetMs: number;       // chess clock for this bot in this game
+  matchWallClockMs: number;       // hard cap for the whole match
   perTurn:
     | { mode: "FIXED"; fixedMs: number }
     | { mode: "DYNAMIC"; baseMs: number; stepMs: number; everyTurns: number; maxMs: number }
     | { mode: "NONE" };
+};
+
+// v1 Limits minus startupTimeoutMs/turnTimeoutMs, which timeControl supersedes.
+type LimitsV2 = {
+  maxTurns: number;
+  maxMessageBytes: number;
+  maxStderrBytes: number;
+  maxConsecutiveFaults: number;
+  maxTotalFaults: number;
+  timeControl: TimeControlV2;
 };
 
 type InitMessageV2 = {
@@ -30,9 +44,16 @@ type InitMessageV2 = {
   side: "X" | "O";
   botSeed: string;        // never engineSeed; unique to this bot/context
   map: MapDefinition;
-  limits: LimitsV2 & { timeControl: TimeControlV2 };
+  limits: LimitsV2;       // JSON Schema cannot intersect: timeControl is a required field of limits
 };
 ```
+
+`startupMs` sits inside `timeControl` rather than in `limits` so the wire shape matches the already-merged
+`RoundRuleSetRulesV1.timeControl` (`P3-D01`) field for field: `startupMs`, `totalBotBudgetMs`,
+`matchWallClockMs`, `perTurn`. JSON Schema draft 2020-12 cannot compare two properties, so the numeric
+relations `baseMs <= maxMs <= totalBotBudgetMs` are enforced as semantic checks in `@ott/bot-protocol`
+(`validateTimeControlV2`) instead of in the schema.
+
 
 `botSeed` is derived server-side with HMAC from a secret not present in the job/replay exposed to another
 team. The HMAC context binds at least tournament/match/game/team/protocol version. Replaying a private match
@@ -67,3 +88,50 @@ runner computes all duration from a monotonic server clock. Bot timestamps are i
 - Budget exhaustion maps to the approved timeout/forfeit policy and is recorded in the event log.
 - A v1 validator must reject v2 and vice versa; no silent downgrade.
 - Replay records protocol/rule version, budget decisions and remaining totals needed for verification.
+
+## Machine contract (P3-L01)
+
+| Artefact | Path |
+| --- | --- |
+| Design contract (this file) | `docs/contracts/bot-protocol-v2.md` |
+| Machine schema | `docs/contracts/bot-protocol-v2.schema.json` |
+| Valid transcript fixture | `docs/contracts/fixtures/bot-protocol-v2-valid.ndjson` |
+| Invalid-case fixture | `docs/contracts/fixtures/bot-protocol-v2-invalid-cases.json` |
+| Types and runtime validator | `src/bot-protocol/src/messages.ts`, `src/bot-protocol/src/validate.ts` |
+| Contract tests | `src/bot-protocol/tests/schema-v2.test.ts` |
+
+The v2 schema is self-contained: it repeats the shared `$defs` of v1 verbatim instead of `$ref`-ing across files,
+and the contract test asserts the shared definitions stay deep-equal to v1 so the two versions cannot drift.
+`TURN_RESULT` and `MATCH_RESULT` keep the v1 shape and only change `protocolVersion` to `2`; timing decisions are
+added to the event log/replay by `P3-L02`, not to these two messages.
+
+## Negotiation and compatibility
+
+- A match pins exactly one protocol version. The Runner compiles exactly one schema with
+  `compileProtocolValidator(schema)` and uses the matching entry point: `validateBotMessage` for v1,
+  `validateBotMessageV2` for v2.
+- Both directions fail closed: a v2 validator rejects every v1 message with `SCHEMA_VIOLATION` and a v1 validator
+  rejects every v2 message the same way. `validateBotMessageV2` also returns `SCHEMA_VIOLATION` if it is handed a
+  validator compiled from the v1 schema, so a wiring mistake cannot silently downgrade a match.
+- There is no bot-side negotiation handshake: a bot never announces a version. If a bot answers a v2 `INIT` with
+  `protocolVersion: 1`, that message is a `SCHEMA_VIOLATION` and the normal recoverable-fault policy applies
+  (skip turn, then the v1 fault limits).
+- `INIT` is the only message carrying the budget envelope; every later turn repeats `timeBudget` so a bot never
+  has to remember rule-set values across restarts.
+- Qualification-only bans (`FIXED 30s`, `FIXED 1min`, per-turn `NONE`) stay owned by the `RoundRuleSet` validator
+  (`P3-D01`). This protocol module validates transport shape and the numeric budget relations only, keeping a
+  single source for rule policy.
+
+## Validation error codes (v2)
+
+| Code | Emitted when |
+| --- | --- |
+| `MESSAGE_TOO_LARGE` | UTF-8 byte length (excluding the trailing LF) exceeds `maxMessageBytes` |
+| `MALFORMED_JSON` | The line is not valid JSON |
+| `SCHEMA_VIOLATION` | The message does not match the v2 schema, or the entry point received another version |
+| `MATCH_ID_MISMATCH`, `TURN_ID_MISMATCH`, `ILLEGAL_ACTION` | `ACTION` semantic checks, unchanged from v1 |
+| `INVALID_MODE` | `limits.timeControl.perTurn.mode` is not `FIXED`, `DYNAMIC` or `NONE` |
+| `INVALID_BUDGET` | A `DYNAMIC` policy is missing a finite `baseMs`, `maxMs` or `totalBotBudgetMs` |
+| `BASE_EXCEEDS_MAX` | `baseMs > maxMs` |
+| `MAX_EXCEEDS_TOTAL_BUDGET` | `maxMs > totalBotBudgetMs` |
+

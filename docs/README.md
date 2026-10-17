@@ -91,7 +91,7 @@ Quy tắc:
 - [ADR-0010 — Finals bracket và signed ResultBundle](decisions/0010-finals-bracket-and-signed-result-bundle.md).
 - [Engine API v1](contracts/engine-api-v1.md).
 - [Bot Protocol v1](contracts/bot-protocol-v1.md), [JSON Schema](contracts/bot-protocol-v1.schema.json) và [fixtures](contracts/fixtures/).
-- [Bot Protocol v2 design contract](contracts/bot-protocol-v2.md).
+- [Bot Protocol v2](contracts/bot-protocol-v2.md), [JSON Schema](contracts/bot-protocol-v2.schema.json) và [fixtures](contracts/fixtures/bot-protocol-v2-valid.ndjson).
 - [Platform Authentication Contract v1](contracts/platform-auth-v1.md).
 - [Platform Authentication Contract v2](contracts/platform-auth-v2.md).
 - [Spectator Replay API v1](contracts/spectator-replay-v1.md).

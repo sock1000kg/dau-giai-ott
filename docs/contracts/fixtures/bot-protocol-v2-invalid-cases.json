@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 2,
+  "cases": [
+    {
+      "name": "malformed-json",
+      "inputKind": "rawLine",
+      "rawLine": "{\"type\":\"ACTION\",",
+      "expectedError": "MALFORMED_JSON"
+    },
+    {
+      "name": "wrong-protocol-version",
+      "inputKind": "message",
+      "message": {"type":"ACTION","protocolVersion":1,"matchId":"m-fixture-001","turnId":17,"action":{"pieceId":"X-ROCK-1","to":{"col":8,"row":8}}},
+      "expectedError": "SCHEMA_VIOLATION"
+    },
+    {
+      "name": "init-v1-seed-field",
+      "inputKind": "message",
+      "message": {"type":"INIT","protocolVersion":2,"matchId":"m-fixture-001","engineVersion":"1.0.0","side":"X","seed":"fixture-seed-001","map":{"schemaVersion":1,"mapId":"default","version":1,"width":9,"height":9,"obstacles":[],"spawns":[{"id":"a","owner":"X","type":"ROCK","position":{"col":0,"row":0}},{"id":"b","owner":"X","type":"PAPER","position":{"col":0,"row":1}},{"id":"c","owner":"X","type":"SCISSORS","position":{"col":0,"row":2}},{"id":"d","owner":"X","type":"ROCK","position":{"col":1,"row":0}},{"id":"e","owner":"X","type":"PAPER","position":{"col":1,"row":1}},{"id":"f","owner":"X","type":"SCISSORS","position":{"col":1,"row":2}},{"id":"g","owner":"X","type":"ROCK","position":{"col":2,"row":0}},{"id":"h","owner":"X","type":"PAPER","position":{"col":2,"row":1}},{"id":"i","owner":"X","type":"SCISSORS","position":{"col":2,"row":2}},{"id":"j","owner":"O","type":"ROCK","position":{"col":8,"row":8}},{"id":"k","owner":"O","type":"PAPER","position":{"col":8,"row":7}},{"id":"l","owner":"O","type":"SCISSORS","position":{"col":8,"row":6}},{"id":"m","owner":"O","type":"ROCK","position":{"col":7,"row":8}},{"id":"n","owner":"O","type":"PAPER","position":{"col":7,"row":7}},{"id":"o","owner":"O","type":"SCISSORS","position":{"col":7,"row":6}},{"id":"p","owner":"O","type":"ROCK","position":{"col":6,"row":8}},{"id":"q","owner":"O","type":"PAPER","position":{"col":6,"row":7}},{"id":"r","owner":"O","type":"SCISSORS","position":{"col":6,"row":6}}],"goals":{"X":{"col":8,"row":8},"O":{"col":0,"row":0}},"checksum":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"limits":{"maxTurns":200,"maxMessageBytes":65536,"maxStderrBytes":1048576,"maxConsecutiveFaults":3,"maxTotalFaults":5,"timeControl":{"startupMs":5000,"totalBotBudgetMs":60000,"matchWallClockMs":150000,"perTurn":{"mode":"DYNAMIC","baseMs":1000,"stepMs":500,"everyTurns":40,"maxMs":3000}}}},
+      "expectedError": "SCHEMA_VIOLATION"
+    },
+    {
+      "name": "init-v1-limits-fields",
+      "inputKind": "message",
+      "message": {"type":"INIT","protocolVersion":2,"matchId":"m-fixture-001","engineVersion":"1.0.0","side":"X","botSeed":"3f9a1c2d4e5b6a708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f8","map":{"schemaVersion":1,"mapId":"default","version":1,"width":9,"height":9,"obstacles":[],"spawns":[{"id":"a","owner":"X","type":"ROCK","position":{"col":0,"row":0}},{"id":"b","owner":"X","type":"PAPER","position":{"col":0,"row":1}},{"id":"c","owner":"X","type":"SCISSORS","position":{"col":0,"row":2}},{"id":"d","owner":"X","type":"ROCK","position":{"col":1,"row":0}},{"id":"e","owner":"X","type":"PAPER","position":{"col":1,"row":1}},{"id":"f","owner":"X","type":"SCISSORS","position":{"col":1,"row":2}},{"id":"g","owner":"X","type":"ROCK","position":{"col":2,"row":0}},{"id":"h","owner":"X","type":"PAPER","position":{"col":2,"row":1}},{"id":"i","owner":"X","type":"SCISSORS","position":{"col":2,"row":2}},{"id":"j","owner":"O","type":"ROCK","position":{"col":8,"row":8}},{"id":"k","owner":"O","type":"PAPER","position":{"col":8,"row":7}},{"id":"l","owner":"O","type":"SCISSORS","position":{"col":8,"row":6}},{"id":"m","owner":"O","type":"ROCK","position":{"col":7,"row":8}},{"id":"n","owner":"O","type":"PAPER","position":{"col":7,"row":7}},{"id":"o","owner":"O","type":"SCISSORS","position":{"col":7,"row":6}},{"id":"p","owner":"O","type":"ROCK","position":{"col":6,"row":8}},{"id":"q","owner":"O","type":"PAPER","position":{"col":6,"row":7}},{"id":"r","owner":"O","type":"SCISSORS","position":{"col":6,"row":6}}],"goals":{"X":{"col":8,"row":8},"O":{"col":0,"row":0}},"checksum":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"limits":{"startupTimeoutMs":5000,"turnTimeoutMs":3000,"maxTurns":200,"maxMessageBytes":65536,"maxStderrBytes":1048576,"maxConsecutiveFaults":3,"maxTotalFaults":5}},
+      "expectedError": "SCHEMA_VIOLATION"
+    },
+    {
+      "name": "state-update-missing-time-budget",
+      "inputKind": "message",
+      "message": {"type":"STATE_UPDATE","protocolVersion":2,"matchId":"m-fixture-001","turnId":17,"state":{"schemaVersion":1,"engineVersion":"1.0.0","map":{"mapId":"default","version":1,"checksum":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"status":"PLAYING","turn":"X","turnNumber":17,"turnCount":16,"revision":16,"maxTurns":200,"pieces":[{"id":"X-ROCK-1","owner":"X","type":"ROCK","position":{"col":7,"row":7}}],"outcome":null},"legalActions":[{"pieceId":"X-ROCK-1","to":{"col":8,"row":8}}]},
+      "expectedError": "SCHEMA_VIOLATION"
+    },
+    {
+      "name": "action-wrong-match-id",
+      "inputKind": "message",
+      "message": {"type":"ACTION","protocolVersion":2,"matchId":"m-other","turnId":17,"action":{"pieceId":"X-ROCK-1","to":{"col":8,"row":8}}},
+      "expectedError": "MATCH_ID_MISMATCH"
+    },
+    {
+      "name": "action-stale-turn-id",
+      "inputKind": "message",
+      "message": {"type":"ACTION","protocolVersion":2,"matchId":"m-fixture-001","turnId":16,"action":{"pieceId":"X-ROCK-1","to":{"col":8,"row":8}}},
+      "expectedError": "TURN_ID_MISMATCH"
+    },
+    {
+      "name": "action-illegal-action",
+      "inputKind": "message",
+      "message": {"type":"ACTION","protocolVersion":2,"matchId":"m-fixture-001","turnId":17,"action":{"pieceId":"X-ROCK-1","to":{"col":0,"row":0}}},
+      "expectedError": "ILLEGAL_ACTION"
+    },
+    {
+      "name": "oversized-message",
+      "inputKind": "generatedRawLine",
+      "generator": {
+        "baseMessageType": "ACTION",
+        "appendField": "padding",
+        "repeatCharacter": "x",
+        "targetUtf8Bytes": 65537
+      },
+      "expectedError": "MESSAGE_TOO_LARGE"
+    }
+  ]
+}
