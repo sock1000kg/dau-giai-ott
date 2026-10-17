@@ -17,6 +17,7 @@ export const migrationFiles = [
   { id: '0007_round_rules', source: new URL('../../migrations/0007_round_rules.sql', import.meta.url) },
   { id: '0008_team_representative_email', source: new URL('../../migrations/0008_team_representative_email.sql', import.meta.url) },
   { id: '0009_submission_reservations', source: new URL('../../migrations/0009_submission_reservations.sql', import.meta.url) },
+  { id: '0010_oci_layers', source: new URL('../../migrations/0010_oci_layers.sql', import.meta.url) },
   { id: '0011_replay_visibility', source: new URL('../../migrations/0011_replay_visibility.sql', import.meta.url) },
   { id: '0012_admin_mfa', source: new URL('../../migrations/0012_admin_mfa.sql', import.meta.url) },
 ] as const;

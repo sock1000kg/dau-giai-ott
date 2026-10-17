@@ -879,15 +879,17 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 
 ## Phase 3 — Wave 4: OCI lifecycle, ranking và replay privacy
 
-### [ ] P3-N04 — OCI layer dedup, retention, base image và duplicate flag
+### [x] P3-N04 — OCI layer dedup, retention, base image và duplicate flag
 
 **Owner:** Đỗ Khôi Nguyên
 **Mô tả:** Quản lý layer theo digest, retention policy và official base images; flag submission trùng hệt mà không tự kết luận gian lận.
 **Acceptance criteria:** (1) shared layers lưu một bản và garbage collection không xóa artifact đã pin/ACTIVE/3 bản gần nhất; (2) base image/starter kit build reproducible, digest và hướng dẫn/FAQ được công bố; (3) manifest/config/non-base layer duplicate tạo review flag/audit cho BTC.
 **Verification:** storage integration/reference-count race tests; AC-22 pass; dry-run retention report khớp fixture trước delete.
 **Dependencies:** `P3-D03`.
-**Files likely touched:** `src/platform/api/migrations/0010_oci_layers.sql`, `src/platform/api/src/modules/submissions/layers.ts`, `src/platform/worker/src/artifacts.ts`, `src/bots/starter-kits/`, `src/platform/api/tests/oci-retention.integration.test.ts`.
+**Files likely touched:** `src/platform/api/migrations/0010_oci_layers.sql`, `src/platform/api/src/modules/submissions/layers.ts`, `src/platform/worker/src/artifacts.ts`, `src/bots/starter-kits/README.md`, `src/platform/api/tests/oci-retention.integration.test.ts`.
 **Estimated scope:** M (5 files)
+**Hoàn tất:** 2026-10-18 — OCI layer deduplication, AC-22 duplicate detection, D-18 retention invariants và starter kits FAQ: migration `0010_oci_layers.sql` tạo `oci_layers`, `submission_layers`, thêm `duplicate_of_submission_id`, `duplicate_review_flag`, `duplicate_review_reason` vào bảng `submissions`; `layers.ts` cung cấp `recordSubmissionLayers` (dedup theo digest, track new/shared count), `checkDuplicateSubmission` (AC-22: tự động so khớp manifest digest hoặc non-base layers của đội khác, gắn flag và ghi audit event `DUPLICATE_SUBMISSION_FLAGGED` mà không huỷ submission), `evaluateRetention` và `runRetentionPrune` (D-18 invariants: không xóa ACTIVE, không xóa match submissions, giữ top 3 per team, dry-run report khớp fixture trước delete, bảo vệ race condition re-referencing); `artifacts.ts` bổ sung `OFFICIAL_BASE_IMAGES` (Python 3.12-slim, Node 22-slim, Go 1.22-alpine) và `extractOciLayersFromArchive`; `src/bots/starter-kits/README.md` công bố bảng digest, hướng dẫn reproducible build và FAQ; test `oci-retention.integration.test.ts` 9/9 pass, Python bot unit tests 27/27 pass, worker và api typecheck/build clean.
+
 
 ### [ ] P3-L03 — Qualification gate, adaptive K và minimum-series eligibility
 
