@@ -44,3 +44,19 @@ export { MatchQueue, MATCH_QUEUE_NAME, type MatchQueueOptions, type EnqueuedMatc
 export { createRuleSet, listRuleSets, getRuleSet, createRound, listRounds, getRound, executeTransition, getAllowedTransitions, getAllowedActions, RuleSetInvalidError, type RoundServiceOptions, type RuleSetSummary, type RuleSetDetail, type RoundSummary, type RoundActionType } from './modules/rounds/service.ts';
 export { registerRoundRoutes, type RoundRoutesOptions } from './modules/rounds/routes.ts';
 export { validateRoundRuleSetRules, computeRulesSha256, canonicalJson, assertTransition, ALLOWED_TRANSITIONS, ROUND_RULE_SET_SCHEMA_VERSION, type RoundRuleSetRulesV1, type RoundStatus, type RoundAction, type ValidationError } from './modules/rounds/types.ts';
+export {
+  recordSubmissionLayers,
+  checkDuplicateSubmission,
+  evaluateRetention,
+  runRetentionPrune,
+  getSubmissionLayers,
+  getLayerReferenceCount,
+  type OciLayerRecord,
+  type RecordSubmissionLayersInput,
+  type RecordSubmissionLayersResult,
+  type DuplicateDetectionInput,
+  type DuplicateDetectionResult,
+  type RetentionEvaluationResult,
+  type RetentionReport,
+} from './modules/submissions/layers.ts';
+
