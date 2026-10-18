@@ -457,7 +457,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .round-admin-current summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; }
 .round-admin-current summary h2 { margin: 0; font-size: 20px; }
 .round-admin-editor h2 { margin: 0; font-size: 20px; }
-.round-admin-current-scroll { max-height: 70vh; overflow: auto; padding-right: 4px; }
+.round-admin-current-scroll, .round-admin-editor-scroll { max-height: 70vh; overflow: auto; padding-right: 4px; }
 .round-base-note { margin: 0; padding: 8px 12px; border: 1px solid #3a7167; border-radius: 8px; color: #80e4d0; font-size: 13px; }
 .rule-set-archive { display: grid; gap: 12px; padding: 16px; border: 1px solid rgba(177, 204, 224, 0.16); border-radius: 14px; background: rgba(22, 35, 50, 0.9); }
 .rule-set-archive h3 { margin: 0; font-size: 16px; }
@@ -490,7 +490,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
 
 @media (min-width: 1024px) {
   .round-admin-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-  .round-admin-current-scroll { max-height: 60vh; }
+  .round-admin-current-scroll, .round-admin-editor-scroll { max-height: 60vh; }
 }
 @media (max-width: 520px) {
   .round-operations, .round-rule-form fieldset { padding: 14px; }

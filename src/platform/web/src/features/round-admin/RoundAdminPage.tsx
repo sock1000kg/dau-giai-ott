@@ -109,6 +109,7 @@ export function RoundAdminPage() {
             <section className="round-admin-editor" aria-label="Phiên bản bộ luật mới">
               <h2>Phiên bản bộ luật mới</h2>
               {baseVersion !== null && <p role="status" className="round-base-note">Đang soạn dựa trên v{baseVersion}</p>}
+              <div className="round-admin-editor-scroll">
               <RoundRuleForm
                 key={`${stage}:${refreshToken}:${editorKey}`}
                 stage={stage}
@@ -117,6 +118,7 @@ export function RoundAdminPage() {
                 initialTeamCount={teamCount}
                 onSaved={() => setRefreshToken((token) => token + 1)}
               />
+              </div>
             </section>
           </div>
           <RoundOperations stage={stage} />
