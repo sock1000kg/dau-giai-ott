@@ -537,3 +537,12 @@ itself; client points are rejected. A game that is not finalized (running, `FAIL
 
 `npm test --workspace @ott/platform-api -- ratings` and `-- qualification-gate` (unit/route tests need no services;
 `qualification-gate.integration.test.ts` needs `DATABASE_URL`).
+
+## Finals ResultBundle artifact schemas (`P3-D28`, proposed)
+
+Pure contract + validators + deterministic builder for the finals artifacts inside a ResultBundle (`bracket.json`,
+`series/*`, `matches/*`, `replays/*`). Contract: `docs/contracts/finals-result-bundle-v1.md` (section "Artifact schemas v1")
+and `docs/contracts/finals-result-bundle-artifacts-v1.schema.json`. Module:
+`src/platform/api/src/modules/result-bundles/artifacts.ts` (`validateBundleArtifacts` returns the read model after
+recomputing all outcomes with the L06 domain functions; `buildFinalsBundleArtifacts` feeds `exporter.ts`). Not wired into
+the importer or any route yet (D29). Tests: `tests/finals-bundle-artifacts.test.ts` (no database).

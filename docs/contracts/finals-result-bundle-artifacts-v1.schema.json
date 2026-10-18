@@ -1,0 +1,233 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ott.local/contracts/finals-result-bundle-artifacts-v1.schema.json",
+  "title": "Finals ResultBundle artifact schemas v1 (P3-D28, PROPOSED)",
+  "description": "Status: PROPOSED — pending review by Long Trần (finals domain) and Đỗ Khôi Nguyên (offline exporter / LAN). Structural shapes only; cross-artifact rules (recomputed outcomes, bracket structure, replay references) are validator rules in finals-result-bundle-v1.md.",
+  "oneOf": [
+    { "$ref": "#/$defs/bracket" },
+    { "$ref": "#/$defs/series" },
+    { "$ref": "#/$defs/match" },
+    { "$ref": "#/$defs/replayEnvelope" }
+  ],
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$" },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "name": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "ordinal": { "type": "integer", "minimum": 1, "maximum": 64 },
+    "nullableOrdinal": { "type": ["integer", "null"], "minimum": 1, "maximum": 64 },
+    "round": { "enum": ["QUARTERFINAL", "SEMIFINAL", "FINAL", "BRONZE"] },
+    "side": { "enum": ["X", "O"] },
+    "nullableSide": { "enum": ["X", "O", null] },
+    "errorCode": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{0,63}$" },
+    "slot": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "seed"],
+          "properties": { "kind": { "const": "SEED" }, "seed": { "type": "integer", "minimum": 1, "maximum": 8 } }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "pairingId"],
+          "properties": { "kind": { "enum": ["WINNER", "LOSER"] }, "pairingId": { "$ref": "#/$defs/id" } }
+        }
+      ]
+    },
+    "bracket": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "schemaVersion", "tournamentId", "finalsRuleSetId", "bronzeMatchEnabled", "seedingHash", "drawSeedCommitment", "seeds", "pairings", "resolved"],
+      "properties": {
+        "schema": { "const": "ott.finals.bracket" },
+        "schemaVersion": { "const": 1 },
+        "tournamentId": { "$ref": "#/$defs/name" },
+        "finalsRuleSetId": { "$ref": "#/$defs/name" },
+        "bronzeMatchEnabled": { "type": "boolean" },
+        "seedingHash": { "$ref": "#/$defs/sha256" },
+        "drawSeedCommitment": { "$ref": "#/$defs/sha256" },
+        "seeds": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["seed", "teamName", "qualificationRank", "rating"],
+            "properties": {
+              "seed": { "$ref": "#/$defs/ordinal" },
+              "teamName": { "$ref": "#/$defs/name" },
+              "qualificationRank": { "$ref": "#/$defs/ordinal" },
+              "rating": { "type": "number" }
+            }
+          }
+        },
+        "pairings": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "round", "slot", "home", "away"],
+            "properties": {
+              "id": { "$ref": "#/$defs/id" },
+              "round": { "$ref": "#/$defs/round" },
+              "slot": { "type": "integer", "minimum": 1, "maximum": 16 },
+              "home": { "$ref": "#/$defs/slot" },
+              "away": { "$ref": "#/$defs/slot" }
+            }
+          }
+        },
+        "resolved": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "round", "state", "homeSeed", "awaySeed", "winnerSeed", "loserSeed"],
+            "properties": {
+              "id": { "$ref": "#/$defs/id" },
+              "round": { "$ref": "#/$defs/round" },
+              "state": { "enum": ["PENDING", "FINALIZED"] },
+              "homeSeed": { "$ref": "#/$defs/nullableOrdinal" },
+              "awaySeed": { "$ref": "#/$defs/nullableOrdinal" },
+              "winnerSeed": { "$ref": "#/$defs/nullableOrdinal" },
+              "loserSeed": { "$ref": "#/$defs/nullableOrdinal" }
+            }
+          }
+        }
+      }
+    },
+    "series": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "schemaVersion", "pairingId", "round", "bestOf", "state", "games", "outcome"],
+      "properties": {
+        "schema": { "const": "ott.finals.series" },
+        "schemaVersion": { "const": 1 },
+        "pairingId": { "$ref": "#/$defs/id" },
+        "round": { "$ref": "#/$defs/round" },
+        "bestOf": { "const": 3 },
+        "state": { "enum": ["PENDING", "FINALIZED"] },
+        "games": {
+          "type": "array",
+          "maxItems": 3,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["game", "homeSide", "awaySide", "mapId", "matchId", "state"],
+            "properties": {
+              "game": { "type": "integer", "minimum": 1, "maximum": 3 },
+              "homeSide": { "$ref": "#/$defs/side" },
+              "awaySide": { "$ref": "#/$defs/side" },
+              "mapId": { "$ref": "#/$defs/name" },
+              "matchId": { "oneOf": [{ "$ref": "#/$defs/id" }, { "type": "null" }] },
+              "state": { "enum": ["SCHEDULED", "FINALIZED", "CANCELLED"] }
+            }
+          }
+        },
+        "outcome": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["winnerSeed", "loserSeed", "homeGameWins", "awayGameWins", "decisionBasis"],
+          "properties": {
+            "winnerSeed": { "$ref": "#/$defs/nullableOrdinal" },
+            "loserSeed": { "$ref": "#/$defs/nullableOrdinal" },
+            "homeGameWins": { "type": "integer", "minimum": 0, "maximum": 3 },
+            "awayGameWins": { "type": "integer", "minimum": 0, "maximum": 3 },
+            "decisionBasis": { "enum": ["DIRECT", "CRITERION", "QUALIFICATION_SEED", null] }
+          }
+        }
+      }
+    },
+    "fault": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["recoverableTotal", "lastErrorCode"],
+      "properties": {
+        "recoverableTotal": { "type": "integer", "minimum": 0, "maximum": 1000000 },
+        "lastErrorCode": { "oneOf": [{ "$ref": "#/$defs/errorCode" }, { "type": "null" }] }
+      }
+    },
+    "match": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "schemaVersion", "matchId", "pairingId", "game", "sides", "result", "adapter", "faultSummary", "eventLogSha256", "replay"],
+      "properties": {
+        "schema": { "const": "ott.finals.match" },
+        "schemaVersion": { "const": 1 },
+        "matchId": { "$ref": "#/$defs/id" },
+        "pairingId": { "$ref": "#/$defs/id" },
+        "game": { "type": "integer", "minimum": 1, "maximum": 3 },
+        "sides": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["X", "O"],
+          "properties": { "X": { "$ref": "#/$defs/ordinal" }, "O": { "$ref": "#/$defs/ordinal" } }
+        },
+        "result": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["winnerSide", "reason", "turnCount", "finalStateHash"],
+          "properties": {
+            "winnerSide": { "$ref": "#/$defs/nullableSide" },
+            "reason": { "$ref": "#/$defs/errorCode" },
+            "turnCount": { "type": "integer", "minimum": 0, "maximum": 1000000 },
+            "finalStateHash": { "type": "string", "pattern": "^[A-Za-z0-9:_-]{1,128}$" }
+          }
+        },
+        "adapter": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["adapterId", "adapterVersion", "directWinnerSide", "criteria"],
+          "properties": {
+            "adapterId": { "$ref": "#/$defs/name" },
+            "adapterVersion": { "$ref": "#/$defs/name" },
+            "directWinnerSide": { "$ref": "#/$defs/nullableSide" },
+            "criteria": {
+              "type": "array",
+              "maxItems": 32,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["id", "direction", "x", "o"],
+                "properties": {
+                  "id": { "$ref": "#/$defs/name" },
+                  "direction": { "enum": ["HIGHER_WINS", "LOWER_WINS"] },
+                  "x": { "type": "number" },
+                  "o": { "type": "number" }
+                }
+              }
+            }
+          }
+        },
+        "faultSummary": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["X", "O"],
+          "properties": { "X": { "$ref": "#/$defs/fault" }, "O": { "$ref": "#/$defs/fault" } }
+        },
+        "eventLogSha256": { "$ref": "#/$defs/sha256" },
+        "replay": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path", "sha256"],
+          "properties": {
+            "path": { "oneOf": [{ "type": "string", "pattern": "^replays/[A-Za-z0-9_-]{1,64}\\.json$" }, { "type": "null" }] },
+            "sha256": { "oneOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }] }
+          }
+        }
+      }
+    },
+    "replayEnvelope": {
+      "type": "object",
+      "description": "Envelope only; the body is the public spectator replay payload (spectator-replay-v1.md) and may carry further fields.",
+      "required": ["schema", "schemaVersion", "matchId"],
+      "properties": {
+        "schema": { "const": "ott.spectator-replay" },
+        "schemaVersion": { "const": 1 },
+        "matchId": { "$ref": "#/$defs/id" }
+      }
+    }
+  }
+}

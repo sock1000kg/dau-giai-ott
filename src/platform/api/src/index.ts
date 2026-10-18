@@ -103,3 +103,24 @@ export {
 } from './modules/test-runs/service.ts';
 export { registerTestRunRoutes, type TestRunRoutesOptions } from './modules/test-runs/routes.ts';
 
+export {
+  buildFinalsBundleArtifacts,
+  evaluateFinalsBracket,
+  findForbiddenKey,
+  parseBracketArtifact,
+  parseMatchArtifact,
+  parseReplayArtifactEnvelope,
+  parseSeriesArtifact,
+  validateBundleArtifacts,
+  FINALS_ARTIFACT_MEDIA_TYPE,
+  FINALS_REPLAY_MEDIA_TYPE,
+  MAX_FINALS_ARTIFACT_BYTES,
+  MAX_FINALS_REPLAY_BYTES,
+  type BracketArtifact,
+  type FinalsArtifactError,
+  type FinalsArtifactErrorCode,
+  type FinalsBundleBuildInput,
+  type FinalsBundleView,
+  type MatchArtifact,
+  type SeriesArtifact,
+} from './modules/result-bundles/artifacts.ts';
