@@ -63,3 +63,21 @@ The sandbox test uses a Docker transport double; worker integration uses real No
 Hosted capacity, sandbox corpus and checkpoint approval remain the responsible owners' release evidence.
 
 DOCS UPDATED: Bot Protocol v2 contract, MatchRunner README, worker README, task breakdown and this report.
+
+## Rebase re-verification (2026-10-18, `main` = `1a8b356`)
+
+Rebased onto `main` after `P3-D08` (PR #41) and `P3-D09` (PR #42) merged. Conflicts were import/registry
+only: `src/platform/api/src/db/schema.ts` keeps `0014`–`0017` from `main` and appends
+`0018_match_protocol_v2` last, and `modules/scheduling/service.ts` keeps both the D01/L03 imports and the
+`rounds/types.ts` import. Re-ran on the rebased base against an isolated PostgreSQL 18 cluster on loopback
+port 25435 (temporary cluster, removed afterwards):
+
+| Check | Result |
+| --- | --- |
+| Root `npm run typecheck` (all workspaces) | passed |
+| MatchRunner `timing bot-process-v2` | 49 passed |
+| Worker `sandbox-v2` | 6 passed |
+| API `timing-snapshot round-rules scheduling` | 66 passed (unit/logic) + 22 passed across 3 integration files with PostgreSQL |
+| Worker `timing-worker` (PostgreSQL, real Node bot processes) | 2 passed |
+
+The Windows/Python host limitations recorded above are unchanged and were not hidden.
