@@ -1,5 +1,7 @@
-import { useRef, useState, type ChangeEvent } from 'react';
+import { useState, type ChangeEvent } from 'react';
+import { Alert, Badge, Button, Card, Field, Input, Table } from '../../ui/index.ts';
 import { bulkImportTeams, isTeamApiError, type ApiRowError } from './api.ts';
+import './admin-teams.css';
 
 export interface BulkProvisionProps {
   readonly onImportSuccess: () => Promise<void> | void;
@@ -65,7 +67,7 @@ export function BulkProvision({ onImportSuccess }: BulkProvisionProps) {
   const [actionError, setActionError] = useState<string | null>(null);
   const [rowErrors, setRowErrors] = useState<readonly ApiRowError[]>([]);
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [inputKey, setInputKey] = useState(0);
 
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const selected = event.target.files?.[0] ?? null;
@@ -89,9 +91,7 @@ export function BulkProvision({ onImportSuccess }: BulkProvisionProps) {
 
       setSuccessNotice(`Đã tải file ${filename} — xóa file sau khi gửi`);
       setFile(null);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
+      setInputKey((current) => current + 1);
       await onImportSuccess();
     } catch (error) {
       if (isTeamApiError(error)) {
@@ -112,58 +112,46 @@ export function BulkProvision({ onImportSuccess }: BulkProvisionProps) {
   }
 
   return (
-    <section className="bulk-provision" aria-labelledby="bulk-provision-heading">
-      <h2 id="bulk-provision-heading">Cấp tài khoản hàng loạt (CSV)</h2>
-      <p className="welcome-copy">
-        Tải lên danh sách đội thi định dạng CSV. File mật khẩu sẽ chỉ tải được đúng một lần sau khi nhập.
-      </p>
+    <Card title="Cấp tài khoản hàng loạt (CSV)">
+      <div className="teams-import">
+        <p>
+          Tải lên danh sách đội thi định dạng CSV. File mật khẩu sẽ chỉ tải được đúng một lần sau khi nhập.
+        </p>
 
-      {successNotice !== null && <p role="status" className="notice-success">{successNotice}</p>}
-      {actionError !== null && <p role="alert">{actionError}</p>}
+        {successNotice !== null && <Alert tone="success">{successNotice}</Alert>}
+        {actionError !== null && <Alert tone="danger">{actionError}</Alert>}
 
-      {rowErrors.length > 0 && (
-        <div className="table-responsive">
-          <table aria-label="Bảng lỗi CSV" className="error-table">
-            <thead>
-              <tr>
-                <th>Dòng</th>
-                <th>Cột</th>
-                <th>Mã lỗi</th>
-                <th>Chi tiết</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rowErrors.map((err, idx) => (
-                <tr key={`${err.row}-${err.column ?? 'row'}-${err.code}-${idx}`}>
-                  <td>{err.row === 0 ? 'Toàn tệp' : err.row}</td>
-                  <td>{err.column ?? '—'}</td>
-                  <td>{err.code}</td>
-                  <td>{rowErrorMessage(err)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+        {rowErrors.length > 0 && (
+          <Table
+            caption="Bảng lỗi CSV"
+            columns={[
+              { key: 'row', header: 'Dòng', render: (err) => (err.row === 0 ? 'Toàn tệp' : err.row) },
+              { key: 'column', header: 'Cột', render: (err) => err.column ?? '—' },
+              { key: 'code', header: 'Mã lỗi', render: (err) => <Badge>{err.code}</Badge> },
+              { key: 'detail', header: 'Chi tiết', render: (err) => rowErrorMessage(err) },
+            ]}
+            rows={rowErrors}
+            rowKey={(err) => `${err.row}-${err.column ?? 'row'}-${err.code}-${rowErrors.indexOf(err)}`}
+            emptyMessage="Không có lỗi."
+          />
+        )}
 
-      <div className="bulk-import-row">
-        <label htmlFor="bulk-csv-input">Tải lên danh sách đội (.csv)</label>
-        <input
-          id="bulk-csv-input"
-          ref={fileInputRef}
-          type="file"
-          accept=".csv,text/csv"
-          disabled={working}
-          onChange={handleFileChange}
-        />
-        <button
-          type="button"
-          disabled={working || file === null}
-          onClick={() => void handleImport()}
+        <Field
+          label="Tải lên danh sách đội (.csv)"
+          help="Dòng tiêu đề: team_name,representative_email. Đúng 2 cột, tối đa 500 đội, tên đội 1-100 ký tự."
         >
+          <Input
+            key={inputKey}
+            type="file"
+            accept=".csv,text/csv"
+            disabled={working}
+            onChange={handleFileChange}
+          />
+        </Field>
+        <Button disabled={working || file === null} onClick={() => void handleImport()}>
           {working ? 'Đang nhập…' : 'Nhập danh sách'}
-        </button>
+        </Button>
       </div>
-    </section>
+    </Card>
   );
 }
