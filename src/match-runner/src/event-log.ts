@@ -112,6 +112,8 @@ export interface EventLogHeaderV2 {
   readonly seed: string;
   readonly game: GameConfig;
   readonly limits: LimitsV2;
+  /** Optional for historical v2 logs; hosted qualification pins this immutable identity. */
+  readonly ruleSet?: { readonly id: string; readonly version: number; readonly sha256: string };
 }
 
 /** v2 log: v1 entries plus one timing decision per bot-asked turn (P3-L02). */
@@ -382,6 +384,13 @@ export function parseAnyEventLog(text: string): AnyEventLog {
   }
   requireString(header['engineVersion'], 'header.engineVersion');
   requireString(header['seed'], 'header.seed');
+  const ruleSet = header['ruleSet'];
+  if (ruleSet !== undefined) {
+    if (!isRecord(ruleSet)) fail('header.ruleSet must be an object');
+    if (!/^[0-9a-f-]{36}$/i.test(requireString(ruleSet['id'], 'header.ruleSet.id'))
+      || !Number.isSafeInteger(ruleSet['version']) || Number(ruleSet['version']) < 1
+      || !/^[0-9a-f]{64}$/.test(requireString(ruleSet['sha256'], 'header.ruleSet.sha256'))) fail('invalid rule-set identity');
+  }
   if (!isRecord(header['game'])) fail('header.game must be an object');
   const limits = header['limits'];
   if (!isRecord(limits)) fail('header.limits must be an object');

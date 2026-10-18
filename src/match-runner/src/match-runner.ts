@@ -436,6 +436,7 @@ export async function runMatch(
         seed: config.seed,
         game: structuredClone(config.game),
         limits: limitsV2(config, v2.timeControl),
+        ...(v2.ruleSet ? { ruleSet: structuredClone(v2.ruleSet) } : {}),
       };
       log = { header, entries, timing: structuredClone(timing), footer } satisfies EventLogV2;
     }

@@ -1,13 +1,13 @@
 import { createHash } from 'node:crypto';
 import type { Database, ObjectStorage } from '@ott/platform-api';
-import { CoreGameAdapter, serializeEventLog, verifyReplay, type MatchReport } from '@ott/match-runner';
+import { CoreGameAdapter, serializeEventLog, verifyReplay, type AnyEventLog, type MatchReport } from '@ott/match-runner';
 import { persistFinalizedResult, type ClaimedMatch } from './result-repository.ts';
 
 export interface FinalizeMatchResultOptions {
   readonly database: Database;
   readonly storage: ObjectStorage;
   readonly claim: ClaimedMatch;
-  readonly report: MatchReport;
+  readonly report: MatchReport<AnyEventLog>;
 }
 
 /** Verify the canonical replay, persist its content-addressed bytes, then atomically publish result/events/outbox. */

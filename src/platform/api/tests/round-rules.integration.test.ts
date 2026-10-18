@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { DEFAULT_MAP } from '@ott/game-core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { createDatabase, runMigrations, type Database } from '../src/db/client.ts';
@@ -13,7 +14,7 @@ function validQualificationRules() {
   return {
     schemaVersion: 'ott.round-rules.v1' as const,
     engineVersion: '1.0.0',
-    mapSet: [{ mapId: 'default', checksum: 'a'.repeat(64) }],
+    mapSet: [{ mapId: DEFAULT_MAP.mapId, checksum: DEFAULT_MAP.checksum }],
     maxTurns: 200,
     faultPolicyVersion: 'P2_BASELINE_V1',
     timeControl: {

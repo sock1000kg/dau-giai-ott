@@ -303,4 +303,18 @@ PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s src/bots/python/tests
 - `src/timing-policy.ts`: policy thuần (FIXED/DYNAMIC/NONE, ngân sách tổng mỗi bot, wall-clock), không đọc đồng hồ.
 - `runMatch` nhận `config.protocolV2 = { timeControl, botSeeds }` và `ports.clock` (`MonotonicClock`, test dùng `FakeClock`); thiếu `protocolV2` thì chạy v1 y như cũ.
 - Event log `formatVersion: 2` có `timing[]`; `verifyReplay` tính lại và trả `TIMING_MISMATCH` nếu lệch. Chi tiết ngữ nghĩa: `docs/contracts/bot-protocol-v2.md` (mục "Runtime timing and event-log fields").
-- Chưa nối: `BotProcess` thật vẫn validate theo schema v1 và chưa có adapter đồng hồ `performance.now`; worker/job snapshot chưa mang `timeControl` (xem báo cáo).
+- Đã nối BotProcess v1/v2, clock `performance.now`, immutable timing/seed snapshot và worker finalization v2; chi tiết kiểm thử ở phần dưới.
+
+## Phase 3 v2 runtime
+
+`BotProcess` accepts the v1/v2 `BotPort` unions. Compile the schema matching the pinned INIT version;
+a mismatched validator fails before spawn, and ACTION cannot downgrade the match. V2 startup uses
+`limits.timeControl.startupMs`; v1 behavior remains unchanged. Production composition roots can inject
+the public `monotonicClock` adapter into `runMatch`.
+
+Hosted v2 event logs may include `header.ruleSet: { id, version, sha256 }`. Historical v1/v2 logs still parse
+through `parseAnyEventLog`; `parseEventLog` remains v1-only. Timing is verified from the recorded transcript,
+never by reading the current clock during replay.
+
+Focused checks: `npm test --workspace @ott/match-runner -- timing bot-process-v2` and
+`npm run typecheck --workspace @ott/match-runner` (Node.js 22).

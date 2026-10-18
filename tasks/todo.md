@@ -800,7 +800,17 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 
 ## Phase 3 — Wave 2: runtime và vận hành round
 
-### [ ] P3-L02 — Chess-clock/dynamic timing trong MatchRunner và replay
+### [x] P3-L02 — Chess-clock/dynamic timing trong MatchRunner và replay
+
+**Chia nhỏ phần tích hợp (2026-10-18):** Long được phép sửa phần tích hợp DB/API/worker cần thiết sau khi đã phối hợp owner (xác nhận trong phiên làm việc).
+- [x] `P3-L02A` — BotProcess v1/v2 transport và monotonic clock adapter; tối đa 5 file code/test, cập nhật README cùng branch.
+- [x] `P3-L02B1` — Migration và registry cho immutable protocol snapshot (2 file).
+- [x] `P3-L02B2` — Scheduler/start orchestration, pin timeControl/bot seeds và snapshot integration tests (4 file).
+- [x] `P3-L02B3` — Đồng bộ fixture round integration với map registry thực (1 file test).
+- [x] `P3-L02C1` — Đọc snapshot, worker wiring, finalization v1/v2 và integration tests (5 file, gồm sửa teardown fixture cũ).
+- [x] `P3-L02C2` — Sandbox v2 transport và transport tests (2 file).
+- [x] `P3-L02D` — Rule-set identity trong event-log v2 và compatibility tests (5 file code/test).
+Parent `P3-L02` chỉ hoàn tất khi mọi phần được verify; không dùng phần timing thuần đã merge để thay thế bằng chứng tích hợp.
 
 **Owner:** Long Trần
 **Mô tả:** Thực thi per-turn limit, tổng thời gian mỗi bot và wall-clock cap theo Protocol v2, đồng thời ghi timing decision vào event log/replay.
@@ -809,7 +819,7 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 **Dependencies:** `P3-L01`, `P3-D01`, `P3-N01`.
 **Files likely touched:** `src/match-runner/src/timing-policy.ts`, `src/match-runner/src/match-runner.ts`, `src/match-runner/src/event-log.ts`, `src/match-runner/src/replay.ts`, `src/match-runner/tests/timing-policy.test.ts`.
 **Estimated scope:** M (5 files)
-**Trạng thái 2026-10-18:** đã implement trên `datpt/feat-p3-l02-chess-clock` — `timing-policy.ts` thuần (FIXED/DYNAMIC/NONE, ngân sách tổng/bot, wall-clock), `runMatch` nhận `protocolV2` + `ports.clock`, event log `formatVersion: 2` có `timing[]`, `verifyReplay` trả `TIMING_MISMATCH`; `timing` 46/46, toàn bộ `@ott/match-runner` 189/189 (143 cũ giữ nguyên), typecheck/build sạch, 7 mutation đều làm test fail. **Còn thiếu để tick:** nối `timeControl` qua job snapshot/worker (cần cột DB hiện chưa có), `BotProcess` thật chưa validate/ghi message v2 và chưa có adapter `performance.now`.
+**Verification local 2026-10-18:** timing thuần đã merge tại PR #34; phần tích hợp còn lại hoàn tất trên `longt/feat-p3-l02-runtime-integration` (chưa commit/merge/deploy). Đã nối immutable snapshot DB → worker → BotProcess/sandbox v2 → replay, clock `performance.now`, pin rule-set identity và cleanup startup timeout. Focused runner 49, worker 14, scheduling/snapshot/start 6 và round integration 20 test pass; protocol 55, core 46 pass; root typecheck/build pass. Full runner còn 9 lỗi Windows/Python; full API còn 1 lỗi path separator của registry test; không che/skip các lỗi đó. GitNexus structured detect-changes: `partial=false`, `truncated=false`, risk critical, đã review caller/process và ghi giới hạn coverage. Chi tiết bằng chứng/giới hạn: [runtime integration report](../docs/reports/phase-3-l02-runtime-integration.md). Tick này xác nhận implementation/verification local; không thay checkpoint hoặc xác nhận đã merge.
 
 ### [x] P3-N02 — Priority queue, worker heartbeat/capacity và pause/resume
 
