@@ -1,10 +1,12 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash, createHmac, randomBytes, randomUUID } from 'node:crypto';
+import { DEFAULT_MAP } from '@ott/game-core';
 import { validateMatchJob, type MatchJobV1 } from '@ott/job-contract';
 import type { Database } from '../../db/client.ts';
 import { createPairingPlan, pairKey, type PairingParticipant } from './pairing.ts';
 import { scoreQualificationSeries, type SeriesMatchInput } from '../series/scoring.ts';
 import { applyRoundRatings } from '../ratings/service.ts';
 import { CURRENT_RATING_POLICY } from '../ratings/elo.ts';
+import { computeRulesSha256, validateRoundRuleSetRules, type RoundRuleSetRulesV1 } from '../rounds/types.ts';
 import { isQualificationGateEnforced } from './eligibility.ts';
 
 const INITIAL_RATING_BAND = 200;
@@ -26,6 +28,8 @@ interface RoundRow {
 export interface ScheduleRoundInput {
   readonly tournamentStage: string;
   readonly idempotencyKey: string;
+  /** Internal caller only: pins the rules of this closed qualification round. */
+  readonly qualificationRoundId?: string;
 }
 
 export interface ScheduledRound {
@@ -41,7 +45,7 @@ function sha256(value: string): string {
 }
 
 function requestHash(input: ScheduleRoundInput): string {
-  return sha256(JSON.stringify({ tournamentStage: input.tournamentStage }));
+  return sha256(JSON.stringify({ tournamentStage: input.tournamentStage, qualificationRoundId: input.qualificationRoundId }));
 }
 
 function validateInput(input: ScheduleRoundInput): void {
@@ -147,12 +151,30 @@ export async function scheduleRound(database: Database, input: ScheduleRoundInpu
     await transaction.query('SELECT pg_advisory_xact_lock(hashtext($1))', [`schedule:${input.tournamentStage}`]);
     const replay = await existingRound(transaction, input, hash);
     if (replay !== null) return replay;
+    let pinnedRules: { id: string; rules: RoundRuleSetRulesV1 } | undefined;
+    if (input.qualificationRoundId !== undefined) {
+      const selected = await transaction.query<{ id: string; rules: RoundRuleSetRulesV1; rules_sha256: string }>(`
+        SELECT rrs.id, rrs.rules, rrs.rules_sha256 FROM qualification_rounds qr
+        JOIN round_rule_sets rrs ON rrs.id = qr.rule_set_id
+        WHERE qr.id = $1 AND qr.tournament_stage = $2 AND qr.status = 'SUBMISSION_CLOSED'
+        FOR UPDATE OF qr`, [input.qualificationRoundId, input.tournamentStage]);
+      const row = selected.rows[0];
+      if (row === undefined || validateRoundRuleSetRules(row.rules).errors.length > 0
+        || computeRulesSha256(row.rules) !== row.rules_sha256) throw new Error('ROUND_RULE_SNAPSHOT_INVALID');
+      // This repository currently ships one map. Never silently substitute a map for a locked rule set.
+      if (row.rules.mapSet.length !== 1 || row.rules.mapSet[0]!.mapId !== DEFAULT_MAP.mapId
+        || row.rules.mapSet[0]!.checksum !== DEFAULT_MAP.checksum) throw new Error('ROUND_MAP_UNAVAILABLE');
+      pinnedRules = row;
+    }
     await assertNoRoundInProgress(transaction, input.tournamentStage);
     await assertPreviousRoundRatingsApplied(transaction, input.tournamentStage);
 
     const roster = await activeRoster(transaction, input.tournamentStage);
     if (roster.length < 2) throw new Error('SCHEDULING_INSUFFICIENT_TEAMS');
     if (new Set(roster.map(({ policy_version }) => policy_version)).size !== 1) throw new Error('SCHEDULING_POLICY_MISMATCH');
+    if (pinnedRules && roster.some((entry) => entry.policy_version !== pinnedRules.rules.faultPolicyVersion)) {
+      throw new Error('SCHEDULING_POLICY_MISMATCH');
+    }
     const history = await recentPairHistory(transaction, input.tournamentStage);
     const plan = createPairingPlan(roster, {
       previousPairs: history.pairs,
@@ -162,6 +184,8 @@ export async function scheduleRound(database: Database, input: ScheduleRoundInpu
     });
     const roundId = randomUUID();
     const scheduleSeed = randomUUID();
+    // Ephemeral server-only key: persist derived seeds in the immutable DB snapshot, never in the queue.
+    const botSeedKey = randomBytes(32);
     const snapshot = roster.map(({ teamId, submissionId, rating }) => ({ teamId, submissionId, rating }));
     await transaction.query(
       "INSERT INTO rounds (id, tournament_stage, idempotency_key, request_hash, schedule_seed, rating_snapshot, rating_policy_version) VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7)",
@@ -179,6 +203,7 @@ export async function scheduleRound(database: Database, input: ScheduleRoundInpu
       readonly policyVersion: string;
       readonly gameNumber: 1 | 2;
       readonly job: MatchJobV1;
+      readonly protocolV2: { timeControl: RoundRuleSetRulesV1['timeControl']; botSeeds: { X: string; O: string } } | null;
     }[] = [];
     for (const pairing of plan.pairings) {
       const teamA = bySubmission.get(pairing.x.submissionId)!;
@@ -202,6 +227,12 @@ export async function scheduleRound(database: Database, input: ScheduleRoundInpu
           policyVersion,
           gameNumber,
           job,
+          protocolV2: pinnedRules ? {
+            timeControl: pinnedRules.rules.timeControl,
+            botSeeds: Object.fromEntries(([['X', x.teamId], ['O', o.teamId]] as const).map(([side, teamId]) => [side,
+              createHmac('sha256', botSeedKey).update(JSON.stringify([input.tournamentStage, matchId, gameNumber, teamId, 2])).digest('hex'),
+            ])) as { X: string; O: string },
+          } : null,
         });
       }
     }
@@ -219,10 +250,11 @@ export async function scheduleRound(database: Database, input: ScheduleRoundInpu
       FROM unnest($2::uuid[], $3::uuid[], $4::char[]) AS assignment(series_id, team_id, series_slot)`,
     [roundId, assignmentRows.map(({ seriesId }) => seriesId), assignmentRows.map(({ teamId }) => teamId), assignmentRows.map(({ slot }) => slot)]);
     await transaction.query(`
-      INSERT INTO matches (id, series_id, x_submission_id, o_submission_id, status, seed, policy_version, game_number)
-      SELECT match.id, match.series_id, match.x_submission_id, match.o_submission_id, 'SCHEDULED', match.seed, match.policy_version, match.game_number
-      FROM unnest($1::uuid[], $2::uuid[], $3::uuid[], $4::uuid[], $5::text[], $6::text[], $7::smallint[])
-        AS match(id, series_id, x_submission_id, o_submission_id, seed, policy_version, game_number)`,
+      INSERT INTO matches (id, series_id, x_submission_id, o_submission_id, status, seed, policy_version, game_number, rule_set_id, protocol_v2, engine_version, max_turns)
+      SELECT match.id, match.series_id, match.x_submission_id, match.o_submission_id, 'SCHEDULED', match.seed, match.policy_version, match.game_number,
+        $9::uuid, match.protocol_v2, COALESCE($10::text, '1.0.0'), COALESCE($11::integer, 200)
+      FROM unnest($1::uuid[], $2::uuid[], $3::uuid[], $4::uuid[], $5::text[], $6::text[], $7::smallint[], $8::jsonb[])
+        AS match(id, series_id, x_submission_id, o_submission_id, seed, policy_version, game_number, protocol_v2)`,
     [
       matchRows.map(({ id }) => id),
       matchRows.map(({ seriesId }) => seriesId),
@@ -231,6 +263,10 @@ export async function scheduleRound(database: Database, input: ScheduleRoundInpu
       matchRows.map(({ seed }) => seed),
       matchRows.map(({ policyVersion }) => policyVersion),
       matchRows.map(({ gameNumber }) => gameNumber),
+      matchRows.map(({ protocolV2 }) => protocolV2 === null ? null : JSON.stringify(protocolV2)),
+      pinnedRules?.id ?? null,
+      pinnedRules?.rules.engineVersion ?? null,
+      pinnedRules?.rules.maxTurns ?? null,
     ]);
     await transaction.query(`
       INSERT INTO match_outbox (match_id, event_type, payload)

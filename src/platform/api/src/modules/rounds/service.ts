@@ -363,6 +363,7 @@ async function executeStart(
   const scheduleInput: ScheduleRoundInput = {
     tournamentStage: prepared.tournamentStage,
     idempotencyKey: `round-start:${input.roundId}`,
+    qualificationRoundId: input.roundId,
   };
   const scheduled = await scheduleRoundImpl(database, scheduleInput);
 

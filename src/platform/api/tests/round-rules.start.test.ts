@@ -84,7 +84,7 @@ describe('P3-D01 round-rules start orchestration', () => {
 
     expect(result.status).toBe('RUNNING');
     expect(result.scheduleRoundId).toBe('schedule-1');
-    expect(scheduleInputs).toEqual([{ tournamentStage: 'QUALIFICATION', idempotencyKey: `round-start:${ROUND_ID}` }]);
+    expect(scheduleInputs).toEqual([{ tournamentStage: 'QUALIFICATION', idempotencyKey: `round-start:${ROUND_ID}`, qualificationRoundId: ROUND_ID }]);
     expect(database.audits).toEqual(['ROUND_START_INITIATED', 'ROUND_STARTED']);
     expect(database.round.status).toBe('RUNNING');
   });
