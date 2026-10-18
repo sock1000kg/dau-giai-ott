@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-10-18T07:00:00.000Z",
+  "stage": "QUALIFICATION",
+  "round": { "name": "Demo — thay bằng dữ liệu BTC", "status": "SUBMISSION_OPEN" },
+  "queue": [{ "position": 1, "teams": "Đội A / Đội B", "etaSeconds": null }],
+  "results": [],
+  "leaderboard": [{ "rank": 1, "team": "Đội A", "rating": 1500, "eligible": false }],
+  "rules": {
+    "version": "demo-v1",
+    "engineVersion": "1.0.0",
+    "sections": [
+      { "title": "Map set", "body": "Demo: BTC thay bằng mapId, version, checksum, bàn cờ, chướng ngại, spawn và đích của round đã khóa." },
+      { "title": "Thay đổi và giới hạn", "body": "Demo: BTC công bố changelog, time control, maxTurns, fault policy và giới hạn sandbox từ RoundRuleSet đã khóa." }
+    ]
+  },
+  "schedule": [{ "title": "Lịch", "body": "Theo lịch BTC công bố trong round hiện tại." }],
+  "announcements": [{ "title": "Bản minh họa", "body": "Đây là fixture kiểm tra pipeline, không phải kết quả giải đấu." }],
+  "faq": [{ "title": "Xem replay vòng loại ở đâu?", "body": "Vòng loại không có replay công khai; đội thi xem trong cổng đội thi." }],
+  "status": { "message": "Dữ liệu minh họa", "incidentEta": null }
+}
