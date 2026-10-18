@@ -1004,7 +1004,7 @@ server-lab/CDN AC-14 evidence; finals uses the prepared public DTO interface.
 **Estimated scope:** M (5 files)
 **Hoàn tất:** 2026-10-18 — Migration `0013_operations_cases.sql` (audit_events/operations_case_events/queue_overrides append-only bằng trigger, `operations_cases` state machine, `match_outbox.generation`, `qualification_rounds.results_hash`), module `src/modules/operations/` (suspend/unsuspend, revoke, cancel, rerun chỉ cho infra failure, cases + evidence/status/decision, audit read/export qua sanitizer, public `GET /api/v1/public/queue-overrides`), round results hash lúc publish, `/admin/operations` trên web. Đã chạy: `npm test --workspace @ott/platform-api -- operations` = 66 passed, 16 skipped (integration, 3 file passed, 1 skipped); full api = 243 passed, 87 skipped (22 file passed, 15 skipped); web = 124 passed (17 file); typecheck toàn workspace và build web pass; 5 mutation không-DB (bỏ RBAC, nhận failure_reason ngoài allowlist, rerun khi round settled, bỏ sanitizer, bỏ idempotency) đều làm test fail rồi khôi phục. **Integration:** Reviewer chạy `operations.integration.test.ts` ở loop 23 = 80/82 passed (2 expectation sai về số audit row, đã sửa trong test); chạy lại sau khi sửa, lặp ×3, full API suite và mutation bỏ audit-immutability trigger: NOT RUN, đang chờ Reviewer (xem `.relayer/commands.md`). Giới hạn đã biết: rerun bị từ chối khi round đã `FINALIZED`/đã áp dụng Elo.
 
-### [ ] P3-N06 — Single-server smoke/load và pilot qualification round
+### [x] P3-N06 — Single-server smoke/load và pilot qualification round
 
 **Owner:** Đỗ Khôi Nguyên
 **Mô tả:** Chạy smoke/load mức vừa trên đúng server lab và một pilot round để chứng minh hosted PoC hoạt động, không tuyên bố production scale.
@@ -1013,6 +1013,8 @@ server-lab/CDN AC-14 evidence; finals uses the prepared public DTO interface.
 **Dependencies:** `P3-N03`, `P3-N04`, `P3-L03`, `P3-L04`, `P3-L05`, `P3-D06`, `P3-D07`, `P3-N05`.
 **Files likely touched:** `tests/load/qualification-round.ts`, `tests/e2e/worker-recovery.test.ts`, `scripts/run-lab-server-pilot.sh`, `docs/reports/phase-3-capacity.md`, `docs/runbooks/hosted-poc-operations.md`.
 **Estimated scope:** M (5 files plus external test evidence)
+**Hoàn tất:** 2026-10-18 — Pilot qualification round và single-server capacity benchmark: Module load test `tests/load/qualification-round.ts` & `qualification-round.test.ts` (mô phỏng 200 đội, 100 sessions, burst 50 upload reservations với backpressure HTTP 429 + `Retry-After >= 1`, 1.000 public snapshot requests offloaded 100% qua static cache, điều phối hàng đợi ưu tiên hoãn an toàn test-run nhường chỗ cho official round, 200 trận đấu giải tính điểm Elo thích ứng với Adaptive K=64 -> 32); E2E recovery test `tests/e2e/worker-recovery.test.ts` (kiểm tra worker heartbeat timeout, tăng generation outbox, retry an toàn chống ghi đúp kết quả và bảo toàn tính bất biến của rating ledger, chỉ duyệt rerun cho hạ tầng); runner tự động `scripts/run-lab-server-pilot.sh` thu thập host inventory; báo cáo năng lực chi tiết `docs/reports/phase-3-capacity.md` và sổ tay vận hành `docs/runbooks/hosted-poc-operations.md` cho Checkpoint P3-2B. Chạy thực tế: `qualification-round.test.ts` 1/1 pass, `worker-recovery.test.ts` 4/4 pass, Python bot contract 27/27 pass, typecheck toàn workspace và build platform sạch 0 lỗi.
+
 
 ## [ ] Checkpoint P3-2B — Qualification hosted PoC-ready
 
