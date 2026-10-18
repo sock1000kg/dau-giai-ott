@@ -24,6 +24,7 @@ export const migrationFiles = [
   { id: '0014_qualification_gate', source: new URL('../../migrations/0014_qualification_gate.sql', import.meta.url) },
   { id: '0015_test_runs', source: new URL('../../migrations/0015_test_runs.sql', import.meta.url) },
   { id: '0016_finals', source: new URL('../../migrations/0016_finals.sql', import.meta.url) },
+  { id: '0017_result_bundles', source: new URL('../../migrations/0017_result_bundles.sql', import.meta.url) },
 ] as const;
 
 export async function loadMigrations(): Promise<readonly Migration[]> {
