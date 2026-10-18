@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react';
 import { loadPublicSnapshot, type PublicSnapshot } from './snapshot.ts';
 import { Alert, Badge, Card, LinkButton, Page } from '../../ui/index.ts';
+import { ExpandableList } from './ExpandableList.tsx';
 import { RulesPage } from './RulesPage.tsx';
 import { formatScheduleValue, orderSchedule, scheduleLabel } from './schedule.ts';
 import './public.css';
+
+const LEADERBOARD_LIMIT = 10;
 
 export function formatVnDateTime(iso: string): string {
   const date = new Date(iso);
@@ -33,6 +36,8 @@ export function PublicTournamentPage() {
   if (!snapshot) return <Page title="Giải đấu OTT">
     <p className="pub-state" role="status">{failed ? 'Chưa tải được dữ liệu công khai. Trang sẽ tự thử lại.' : 'Đang tải dữ liệu…'}</p></Page>;
   const stale = failed || now - Date.parse(snapshot.updatedAt) > 90_000;
+  const newestFirst = [...snapshot.results].reverse();
+  const topRows = snapshot.leaderboard.slice(0, LEADERBOARD_LIMIT);
   return <Page title={`Giải đấu OTT · ${snapshot.round.name}`}>
     <div className="pub-strip">
       <Badge accent>{snapshot.stage}</Badge>
@@ -43,22 +48,25 @@ export function PublicTournamentPage() {
     <div className="pub-grid">
       <div className="pub-stack"><section aria-label="Trạng thái"><Card as="div" title="Trạng thái"><p>{snapshot.status.message}</p>
         <p>ETA khắc phục: {snapshot.status.incidentEta ?? 'Chưa có ước tính sự cố'}</p></Card></section>
-      <section aria-label="Hàng đợi"><Card as="div" title="Hàng đợi"><ol className="pub-list">{snapshot.queue.map((row, i) =>
+      <section aria-label="Hàng đợi"><Card as="div" title="Hàng đợi"><ExpandableList listTag="ol" label="Danh sách hàng đợi" items={snapshot.queue} initial={10} step={20}
+        summary={`${snapshot.queue.length} trận đang chờ`} emptyText="Hàng đợi trống." renderItem={(row, i) =>
         <li key={i}><Badge accent>#{row.position}</Badge><span className="pub-list-main">{row.teams}</span>
-          <span className="pub-list-meta">ETA {row.etaSeconds === null ? 'chưa xác định' : `~${row.etaSeconds} giây`}</span></li>)}</ol></Card></section></div>
-      <section aria-label="Kết quả"><Card as="div" title="Kết quả"><ul className="pub-list">{snapshot.results.map((row) =>
+          <span className="pub-list-meta">ETA {row.etaSeconds === null ? 'chưa xác định' : `~${row.etaSeconds} giây`}</span></li>} /></Card></section></div>
+      <section aria-label="Kết quả"><Card as="div" title="Kết quả"><ExpandableList listTag="ul" label="Danh sách kết quả" items={newestFirst} initial={20} step={20} scrollMaxHeight={480}
+        summary={`${newestFirst.length} kết quả`} emptyText="Chưa có kết quả." renderItem={(row) =>
         <li key={row.matchId}><span className="pub-list-main">{row.teams}</span><span className="pub-score">{row.score}</span>
           {snapshot.stage === 'FINALS' && row.syncVerified && row.replayPublished
-            && <LinkButton variant="secondary" href={`/spectator/replays/${row.matchId}`}>Replay</LinkButton>}</li>)}</ul></Card></section>
+            && <LinkButton variant="secondary" href={`/spectator/replays/${row.matchId}`}>Replay</LinkButton>}</li>} /></Card></section>
     </div>
     <section id="leaderboard" aria-label="Bảng xếp hạng"><Card as="div" title="Bảng xếp hạng">
       <div className="pub-section-action"><LinkButton variant="secondary" href="/leaderboard">Xem bảng xếp hạng đầy đủ →</LinkButton></div>
       <div className="ui-table-scroll pub-table-scroll"><table className="ui-table pub-table">
         <caption>Thứ hạng công khai theo bản cập nhật mới nhất</caption>
         <thead><tr><th scope="col">Hạng</th><th scope="col">Đội</th><th scope="col" className="pub-num">Elo</th><th scope="col">Điều kiện finals</th></tr></thead>
-        <tbody>{snapshot.leaderboard.map((row, i) => <tr key={i} className={row.rank <= 3 ? 'pub-row-top' : undefined}>
+        <tbody>{topRows.map((row, i) => <tr key={i} className={row.rank <= 3 ? 'pub-row-top' : undefined}>
           <td><span className="pub-rank-value">{row.rank}</span></td><td className="pub-team">{row.team}</td><td className="pub-num">{row.rating}</td>
-          <td>{row.eligible ? <Badge accent>Đủ điều kiện</Badge> : <Badge>Chưa đủ series</Badge>}</td></tr>)}</tbody></table></div></Card></section>
+          <td>{row.eligible ? <Badge accent>Đủ điều kiện</Badge> : <Badge>Chưa đủ series</Badge>}</td></tr>)}</tbody></table></div>
+      {snapshot.leaderboard.length > LEADERBOARD_LIMIT && <p className="pub-muted pub-list-summary">Hiển thị {LEADERBOARD_LIMIT} / {snapshot.leaderboard.length} đội</p>}</Card></section>
     <RulesPage rules={snapshot.rules} />
     <div className={`pub-grid ${snapshot.faq.length > 0 ? 'pub-grid--thirds' : 'pub-grid--halves'}`}>
       <section aria-label="Lịch"><Card as="div" title="Lịch"><div className="pub-entries">{orderSchedule(snapshot.schedule).map((row, i) =>

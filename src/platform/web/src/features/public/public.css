@@ -36,3 +36,12 @@
 @media (min-width: 480px) { .pub-kv > div { grid-template-columns: minmax(120px, 0.4fr) minmax(0, 1fr); gap: var(--ui-space-3); } }
 .pub-muted { color: var(--ui-text-muted); }
 .pub-section-action { display: flex; justify-content: flex-end; margin-bottom: var(--ui-space-3); }
+
+.pub-list-summary { margin: 0 0 var(--ui-space-2); font-size: 13px; }
+.pub-scroll { overflow-y: auto; padding-right: var(--ui-space-1); scrollbar-width: thin; scrollbar-color: var(--ui-border-strong) transparent; }
+.pub-scroll:focus-visible { outline: var(--ui-focus-ring); outline-offset: 2px; }
+.pub-scroll::-webkit-scrollbar { width: 8px; }
+.pub-scroll::-webkit-scrollbar-track { background: transparent; }
+.pub-scroll::-webkit-scrollbar-thumb { border-radius: 999px; background: var(--ui-border-strong); }
+.pub-scroll::-webkit-scrollbar-thumb:hover { background: var(--ui-text-muted); }
+.pub-list-actions { display: flex; flex-wrap: wrap; gap: var(--ui-space-2); margin-top: var(--ui-space-3); }

@@ -110,6 +110,18 @@ the responsive table can scroll horizontally on narrow screens. Only the API's
 public entry fields are mapped into the page; private seeds and artifact keys
 are not rendered.
 
+## Public tournament lists (`P3-D23`)
+
+`/public` bounds the three long lists from the snapshot; the snapshot format and
+publisher are unchanged. **Hàng đợi** keeps snapshot order and shows the first 10
+rows; **Kết quả** is displayed newest first (the snapshot lists the newest last)
+and shows the first 20 inside a scroll region (`max-height: 480px`). Both use
+`ExpandableList`: "Xem thêm (n còn lại)" reveals 20 more per click and "Thu gọn"
+returns to the first rows. **Bảng xếp hạng** shows the top 10 rows plus
+"Hiển thị 10 / n đội" and the link to `/leaderboard`, which is unchanged. The
+expanded count lives in the component, so it persists across the 30-second
+snapshot refreshes and is clamped when a list shrinks.
+
 ## BTC replay publication console (`P2-T25`)
 
 BTC operators open `/admin/replays` to browse paginated terminal matches from
