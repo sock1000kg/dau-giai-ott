@@ -1,5 +1,7 @@
 import { useState } from 'react';
+import { Alert, Button } from '../../ui/index.ts';
 import type { TeamCredential } from './api.ts';
+import './admin-teams.css';
 
 export function CredentialOnce({
   teamName,
@@ -19,17 +21,19 @@ export function CredentialOnce({
   }
 
   return (
-    <section className="credential-card" aria-label="Thông tin đăng nhập tạo một lần">
+    <section className="ui-card teams-credential ui-stack" aria-label="Thông tin đăng nhập tạo một lần">
       <h2>Thông tin đăng nhập — {teamName}</h2>
-      <p>Hãy gửi thông tin này cho đội qua kênh riêng. Mật khẩu không thể xem lại sau khi đóng thẻ này.</p>
-      <dl>
+      <Alert tone="warning">
+        Thông tin đăng nhập chỉ hiển thị một lần. Hãy gửi thông tin này cho đội qua kênh riêng. Mật khẩu không thể xem lại sau khi đóng thẻ này.
+      </Alert>
+      <dl className="teams-credential-list">
         <div><dt>Tên đăng nhập</dt><dd><code>{credential.username}</code></dd></div>
         <div><dt>Mật khẩu</dt><dd><code>{credential.password}</code></dd></div>
       </dl>
       {copyStatus !== null && <p role="status">{copyStatus}</p>}
-      <div className="credential-actions">
-        <button type="button" onClick={() => void copyCredentials()}>Sao chép</button>
-        <button type="button" className="button-secondary" onClick={onDismiss}>Đã lưu thông tin đăng nhập</button>
+      <div className="ui-row">
+        <Button onClick={() => void copyCredentials()}>Sao chép</Button>
+        <Button variant="secondary" onClick={onDismiss}>Đã lưu thông tin đăng nhập</Button>
       </div>
     </section>
   );

@@ -1,0 +1,24 @@
+.teams-card-desc { margin: 0 0 var(--ui-space-4); }
+.teams-form { display: grid; gap: var(--ui-space-4); max-width: 520px; }
+.teams-counter { margin: 0; color: var(--ui-text-muted); font-size: 13px; text-align: right; }
+.teams-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.teams-form .ui-button, .teams-import .ui-button { justify-self: start; }
+
+.teams-import { display: grid; gap: var(--ui-space-4); }
+.teams-import .ui-input { padding-block: var(--ui-space-2); }
+
+.teams-credential { border-color: var(--ui-warning); }
+.teams-credential-list { display: grid; gap: var(--ui-space-3); margin: var(--ui-space-4) 0; }
+.teams-credential-list > div { display: grid; gap: var(--ui-space-1); padding: var(--ui-space-3) var(--ui-space-4); border: 1px solid var(--ui-border-strong); border-radius: var(--ui-radius-sm); background: var(--ui-surface-solid); }
+.teams-credential-list dt { color: var(--ui-text-muted); font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.teams-credential-list dd { margin: 0; overflow-wrap: anywhere; color: var(--ui-text); }
+.teams-credential-list code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 16px; }
+
+.teams-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--ui-space-3); }
+.teams-count { margin: 0; color: var(--ui-text-muted); font-size: 14px; }
+.teams-check { display: inline-grid; min-width: 44px; min-height: 44px; place-items: center; cursor: pointer; }
+.teams-check input { width: 20px; height: 20px; accent-color: var(--ui-accent); }
+.teams-table th.teams-col-check, .teams-table td.teams-col-check { width: 1%; padding-block: 0; padding-inline: var(--ui-space-2); vertical-align: middle; }
+.teams-table td { vertical-align: middle; }
+.teams-table .ui-button { min-height: 44px; }
+.teams-col-email { overflow-wrap: anywhere; }

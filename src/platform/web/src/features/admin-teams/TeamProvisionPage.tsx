@@ -9,8 +9,10 @@ import {
   type TeamCredential,
   type TeamSummary,
 } from './api.ts';
+import { Alert, Button, Card, Field, Input, Page } from '../../ui/index.ts';
 import { BulkProvision, downloadCredentialBlob } from './BulkProvision.tsx';
 import { CredentialOnce } from './CredentialOnce.tsx';
+import './admin-teams.css';
 
 type OneTimeCredential = Readonly<{ teamName: string; credential: TeamCredential }>;
 
@@ -27,6 +29,7 @@ export function TeamProvisionPage() {
   const [teamName, setTeamName] = useState('');
   const [working, setWorking] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [createError, setCreateError] = useState<string | null>(null);
   const [bulkNotice, setBulkNotice] = useState<string | null>(null);
   const [oneTimeCredential, setOneTimeCredential] = useState<OneTimeCredential | null>(null);
   const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(new Set());
@@ -58,18 +61,20 @@ export function TeamProvisionPage() {
     event.preventDefault();
     const normalizedName = teamName.trim();
     if (normalizedName.length === 0 || normalizedName.length > 100) {
-      setActionError('Tên đội phải có từ 1 đến 100 ký tự.');
+      setCreateError('Tên đội phải có từ 1 đến 100 ký tự.');
       return;
     }
     setWorking(true);
     setActionError(null);
+    setCreateError(null);
     try {
       const created = await createTeam(normalizedName);
       setTeams((current) => [...current, created.team].sort((left, right) => left.name.localeCompare(right.name)));
       setTeamName('');
       setOneTimeCredential({ teamName: created.team.name, credential: created.credential });
     } catch (error) {
-      setActionError(errorMessage(error));
+      if (isTeamApiError(error) && error.code === 'TEAM_NAME_TAKEN') setCreateError(errorMessage(error));
+      else setActionError(errorMessage(error));
     } finally {
       setWorking(false);
     }
@@ -131,15 +136,16 @@ export function TeamProvisionPage() {
     setSelectedIds(next);
   }
 
-  return (
-    <main className="admin-page">
-      <div className="eyebrow"><span aria-hidden="true" /> QUẢN TRỊ GIẢI ĐẤU</div>
-      <a className="admin-back-link" href="/admin">← Về khu vực BTC</a>
-      <h1>Quản lý đội thi</h1>
-      <p className="welcome-copy">Tạo tài khoản cho đội và gửi thông tin đăng nhập qua kênh riêng.</p>
+  const allSelected = teams.length > 0 && selectedIds.size === teams.length;
 
-      {actionError !== null && <p role="alert">{actionError}</p>}
-      {bulkNotice !== null && <p role="status" className="notice-success">{bulkNotice}</p>}
+  return (
+    <Page
+      title="Quản lý đội thi"
+      description="Tạo tài khoản cho đội và gửi thông tin đăng nhập qua kênh riêng."
+      actions={<a className="ui-button ui-button--ghost" href="/admin">← Về khu vực BTC</a>}
+    >
+      {actionError !== null && <Alert tone="danger">{actionError}</Alert>}
+      {bulkNotice !== null && <Alert tone="success">{bulkNotice}</Alert>}
 
       {oneTimeCredential !== null && (
         <CredentialOnce
@@ -150,89 +156,101 @@ export function TeamProvisionPage() {
       )}
 
       {oneTimeCredential === null && (
-        <form className="team-create-form" aria-label="Tạo đội" onSubmit={(event) => void handleCreate(event)}>
-          <label htmlFor="team-name">Tên đội</label>
-          <div className="team-create-row">
-            <input
-              id="team-name"
-              name="name"
-              required
-              maxLength={100}
-              value={teamName}
-              onChange={(event) => setTeamName(event.currentTarget.value)}
-            />
-            <button type="submit" disabled={working}>{working ? 'Đang tạo…' : 'Tạo tài khoản đội'}</button>
-          </div>
-        </form>
+        <Card title="Tạo đội mới">
+          <p className="teams-card-desc">Chỉ cần tên đội; hệ thống tự sinh tài khoản và mật khẩu.</p>
+          <form className="teams-form" aria-label="Tạo đội" onSubmit={(event) => void handleCreate(event)}>
+            <Field
+              label="Tên đội"
+              help="Tối đa 100 ký tự, không trùng tên đội khác"
+              {...(createError === null ? {} : { error: createError })}
+            >
+              <Input
+                id="team-name"
+                name="name"
+                required
+                maxLength={100}
+                value={teamName}
+                onChange={(event) => setTeamName(event.currentTarget.value)}
+              />
+            </Field>
+            {createError !== null && <span role="alert" className="teams-sr-only">{createError}</span>}
+            <p className="teams-counter">{teamName.length}/100</p>
+            <Button type="submit" loading={working}>{working ? 'Đang tạo…' : 'Tạo tài khoản đội'}</Button>
+          </form>
+        </Card>
       )}
 
       <BulkProvision onImportSuccess={loadTeams} />
 
-      <section className="team-list" aria-labelledby="team-list-heading">
-        <div className="team-list-heading">
-          <h2 id="team-list-heading">Danh sách đội</h2>
-          <div className="team-list-buttons">
-            <button
-              type="button"
-              className="button-secondary"
-              disabled={working || selectedIds.size === 0}
-              onClick={() => void handleBulkReset()}
-            >
-              Cấp lại mật khẩu hàng loạt
-            </button>
-            <button
-              type="button"
-              className="button-secondary"
-              disabled={listStatus === 'loading'}
-              onClick={() => void loadTeams()}
-            >
-              Làm mới
-            </button>
+      <Card title="Danh sách đội">
+        <div className="ui-stack">
+          <div className="teams-toolbar">
+            <p className="teams-count">Đã chọn {selectedIds.size}/{teams.length}</p>
+            <div className="ui-row">
+              <Button
+                variant="secondary"
+                disabled={working || selectedIds.size === 0}
+                onClick={() => void handleBulkReset()}
+              >
+                Cấp lại mật khẩu hàng loạt
+              </Button>
+              <Button variant="secondary" disabled={listStatus === 'loading'} onClick={() => void loadTeams()}>
+                Làm mới
+              </Button>
+            </div>
           </div>
+
+          {listStatus === 'loading' && <p role="status">Đang tải danh sách đội…</p>}
+          {listStatus === 'error' && <Alert tone="danger">{listError}</Alert>}
+          {listStatus === 'ready' && teams.length === 0 && <div className="ui-empty">Chưa có đội nào.</div>}
+          {listStatus === 'ready' && teams.length > 0 && (
+            <div className="ui-table-scroll">
+              <table className="ui-table teams-table">
+                <caption>Danh sách đội thi</caption>
+                <thead>
+                  <tr>
+                    <th scope="col" className="teams-col-check">
+                      <label className="teams-check">
+                        <input type="checkbox" aria-label="Chọn tất cả" checked={allSelected} onChange={toggleSelectAll} />
+                      </label>
+                    </th>
+                    <th scope="col">Tên đội</th>
+                    <th scope="col">Email đại diện</th>
+                    <th scope="col">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {teams.map((team) => (
+                    <tr key={team.id}>
+                      <td className="teams-col-check">
+                        <label className="teams-check">
+                          <input
+                            type="checkbox"
+                            aria-label={`Chọn đội ${team.name}`}
+                            checked={selectedIds.has(team.id)}
+                            onChange={() => toggleSelect(team.id)}
+                          />
+                        </label>
+                      </td>
+                      <td>{team.name}</td>
+                      <td className="teams-col-email">{team.representativeEmail ?? '—'}</td>
+                      <td>
+                        <Button
+                          variant="secondary"
+                          disabled={working || oneTimeCredential !== null}
+                          onClick={() => void handleReset(team)}
+                        >
+                          Cấp lại thông tin đăng nhập — {team.name}
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
-
-        {teams.length > 0 && (
-          <div className="select-all-row">
-            <label>
-              <input
-                type="checkbox"
-                aria-label="Chọn tất cả"
-                checked={teams.length > 0 && selectedIds.size === teams.length}
-                onChange={toggleSelectAll}
-              />
-              {' '}Chọn tất cả
-            </label>
-          </div>
-        )}
-
-        {listStatus === 'loading' && <p role="status">Đang tải danh sách đội…</p>}
-        {listStatus === 'error' && <p role="alert">{listError}</p>}
-        {listStatus === 'ready' && teams.length === 0 && <p>Chưa có đội nào.</p>}
-        {listStatus === 'ready' && teams.length > 0 && (
-          <ul>
-            {teams.map((team) => (
-              <li key={team.id}>
-                <input
-                  type="checkbox"
-                  aria-label={`Chọn đội ${team.name}`}
-                  checked={selectedIds.has(team.id)}
-                  onChange={() => toggleSelect(team.id)}
-                />
-                <span className="team-name">{team.name}</span>
-                <span className="team-email">{team.representativeEmail ?? '—'}</span>
-                <button
-                  type="button"
-                  className="button-secondary"
-                  disabled={working || oneTimeCredential !== null}
-                  onClick={() => void handleReset(team)}
-                >
-                  Cấp lại thông tin đăng nhập — {team.name}
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-    </main>
+      </Card>
+    </Page>
   );
 }

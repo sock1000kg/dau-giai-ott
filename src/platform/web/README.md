@@ -39,6 +39,10 @@ plaintext credentials never enter React state or the DOM. If the file is invalid
 Bulk reset allows selecting multiple teams, requires explicit confirmation naming the count, revokes active sessions,
 and downloads the updated credentials. The team list also displays `representativeEmail` (or "—").
 
+The page is built from the shared `ui/*` primitives (`Page`, `Card`, `Field`, `Button`, `Alert`) with feature styles in
+`features/admin-teams/admin-teams.css`: a "Tạo đội mới" card, a CSV import card, and a "Danh sách đội" card with a bordered
+table (select-all header checkbox, `Đã chọn n/N` count, per-row reset). Behaviour, texts and the one-time credential rules are unchanged.
+
 
 ## Team submission portal (`P2-T20`)
 
