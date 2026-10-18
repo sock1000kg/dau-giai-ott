@@ -69,6 +69,7 @@ describe('BTC team provisioning', () => {
 
     expect(await screen.findByRole('heading', { name: /quản lý đội thi/i })).toBeTruthy();
     expect(screen.getByRole('status').textContent).toMatch(/đang tải danh sách đội/i);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
     if (resolveList === undefined) throw new Error('team list request was not started');
     resolveList(response(200, { data: [{ id: 'team-1', name: 'Alpha' }] }));
     expect(await screen.findByText('Alpha')).toBeTruthy();

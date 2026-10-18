@@ -26,6 +26,38 @@ The browser host must route `/api/v1` to the platform API on the same origin.
 Production secrets and API credentials must never be embedded in the Vite
 client bundle.
 
+## UI conventions
+
+- **Primitives.** Shared tokens and components live in `src/ui` (`Page`, `Card`, `Field`, `Input`/`Select`/`Textarea`, `Button`, `LinkButton`, `Table`, `Alert`, `Badge`, `AppNav`, `AppShellLayout`); see `src/ui/README.md`. Import from `src/ui/index.ts`.
+- **One stylesheet per feature.** Each feature imports its own CSS file from the component that needs it. Do not add page rules to `app/styles.css`.
+- **`app/styles.css` is globals only (plus the round-admin legacy rules).** It holds the reset and `:root`, `body`, `:focus-visible`, the reduced-motion rule, the app shell and header/footer (`.app-shell`, `.app-header`, `.app-footer`, `.brand`, `.brand-mark`, `.header-label`, `.eyebrow`, `.public-nav-link`) and the `/admin/rounds` page rules that have no feature stylesheet yet (`.admin-page`, `.welcome-copy`, `.round-*`, `.rule-set-*`, `.field-help`, and a few older shorthands such as `.results-controls`, `.results-pagination`, `.replay-state`, `.replay-player` that no component applies any more). Every other page's rules live in its per-feature CSS; put new page styles there, not in `styles.css`.
+- **Class prefixes.** `ui-` shared primitives; `ops-` operations; `ra-` replay admin; `pub-` public pages (leaderboard, tournament); `results-` results; `submissions-` submissions; `auth-` login; `teams-` team provisioning. Prefix new classes with the feature's prefix.
+- **Pages.** One `h1` per page (via `Page`, except pages that render their own `main`), one `main` landmark, every control labelled through `Field`, tables with a caption, dates in Vietnam time (`lib/format-date.ts`), shared button wording ("Làm mới", "Thử lại", "Trang trước", "Trang sau").
+- **Adding a page.** Create `features/<name>/<Name>Page.tsx` using `Page`, add `<name>.css` for layout, register the route and role in `app/routes.tsx`, add a nav item in `ui/AppNav.tsx` if it needs one, add the row to the inventory below, and add the route to the matrix in `app/app-routes.test.tsx` (it checks landmarks, labels, ids, nav `aria-current`, console output and that every request is mocked in `test/route-fixtures.ts`).
+- **Routed test.** `npm test --workspace @ott/platform-web -- app-routes` renders the whole app per role and path with one shared fetch router and the structural checker in `test/a11y-checks.ts`. It is a structural check, not a browser or screen-reader verification.
+
+## Page inventory
+
+| Route | Role | Component | Feature CSS | Owner task |
+| --- | --- | --- | --- | --- |
+| `/` (and `/login`) | anonymous | `features/auth/LoginPage.tsx` | `auth.css` | `P3-D15` |
+| `/` | BTC, team | `features/home/HomePage.tsx` | `ui/ui.css` | `P3-D11` |
+| `/public` | anyone | `features/public/PublicTournamentPage.tsx` | `public.css` | `P3-L05` |
+| `/leaderboard` | anyone | `features/leaderboard/LeaderboardPage.tsx` | `leaderboard.css` | `P2-T22` |
+| `/admin/teams` | BTC | `features/admin-teams/TeamProvisionPage.tsx` | `admin-teams.css` | `P3-D14` |
+| `/admin/rounds` | BTC | `features/round-admin/RoundAdminPage.tsx` | none (round-admin rules remain in `app/styles.css`) | `P3-D02` / `P3-D02b` |
+| `/admin/operations` | BTC | `features/operations/OperationsConsole.tsx` | `operations.css` | `P3-D12` |
+| `/admin/results` | BTC | `features/results/MatchResultsPage.tsx` | `results.css` | `P3-D13` |
+| `/admin/replays` | BTC | `features/replay-admin/ReplayCatalog.tsx` | `replay-admin.css` | `P2-T25` |
+| `/admin/replays/:id/view`, `/team/replays/:id` | BTC, team | `pages/PrivateReplayPage.tsx` | `features/spectator/replay-player.css` | `P3-D21` |
+| `/spectator/replays/:id` | anyone | `pages/SpectatorReplayPage.tsx` | `features/spectator/replay-player.css` | `P3-D21` |
+| `/team/submissions` | team | `features/submissions/SubmissionForm.tsx` | `submissions.css` | `P2-T20` |
+| `/team/results` | team | `features/results/MatchResultsPage.tsx` | `results.css` | `P3-D13` |
+
+The operations console (`/admin/operations`) no longer shows cases ("Hồ sơ vụ việc"); the case API routes, tables and audit actions are still in the backend pending a product decision.
+
+## Feature notes (API and behaviour)
+
 ## BTC team provisioning (`P2-T19`, `P3-D04`)
 
 The BTC-only screen uses `GET /api/v1/admin/teams`, `POST /api/v1/admin/teams` with only `{ name }`,
@@ -38,6 +70,10 @@ as a `Blob`. The client triggers an immediate download using a temporary object 
 plaintext credentials never enter React state or the DOM. If the file is invalid or contains collisions, a row-error table is displayed.
 Bulk reset allows selecting multiple teams, requires explicit confirmation naming the count, revokes active sessions,
 and downloads the updated credentials. The team list also displays `representativeEmail` (or "—").
+
+The page is built from the shared `ui/*` primitives (`Page`, `Card`, `Field`, `Button`, `Alert`) with feature styles in
+`features/admin-teams/admin-teams.css`: a "Tạo đội mới" card, a CSV import card, and a "Danh sách đội" card with a bordered
+table (select-all header checkbox, `Đã chọn n/N` count, per-row reset). Behaviour, texts and the one-time credential rules are unchanged.
 
 
 ## Team submission portal (`P2-T20`)
@@ -57,6 +93,11 @@ keys and does not accept a team selector. API role checks remain authoritative;
 the portal does not persist session credentials or submission data in browser
 storage.
 
+The page is built from the `ui/*` primitives (`submissions.css` holds its layout):
+an upload card and a history card side by side from 1024px, stacked below. The
+history is a table (time in `Asia/Ho_Chi_Minh`, status badge, preflight position
+shown only for `PREFLIGHT`). Upload and API behaviour are unchanged.
+
 ## Public leaderboard (`P2-T22`)
 
 Anyone can open `/leaderboard` without a team/BTC session. The page reads
@@ -68,6 +109,18 @@ that BTC decision is required. Stage and page controls request new server pages;
 the responsive table can scroll horizontally on narrow screens. Only the API's
 public entry fields are mapped into the page; private seeds and artifact keys
 are not rendered.
+
+## Public tournament lists (`P3-D23`)
+
+`/public` bounds the three long lists from the snapshot; the snapshot format and
+publisher are unchanged. **Hàng đợi** keeps snapshot order and shows the first 10
+rows; **Kết quả** is displayed newest first (the snapshot lists the newest last)
+and shows the first 20 inside a scroll region (`max-height: 480px`). Both use
+`ExpandableList`: "Xem thêm (n còn lại)" reveals 20 more per click and "Thu gọn"
+returns to the first rows. **Bảng xếp hạng** shows the top 10 rows plus
+"Hiển thị 10 / n đội" and the link to `/leaderboard`, which is unchanged. The
+expanded count lives in the component, so it persists across the 30-second
+snapshot refreshes and is clamped when a list shrinks.
 
 ## BTC replay publication console (`P2-T25`)
 
@@ -148,6 +201,36 @@ Verification: `npm test --workspace @ott/platform-web -- RoundAdmin`,
 `npm run typecheck --workspace @ott/platform-web`, plus desktop/mobile
 browser smoke and keyboard tab order over the form and start confirmation.
 
+### Catalog pickers (`P3-D26`)
+
+The editor form (not the read-only current-rules copy) loads `GET /api/v1/admin/rounds/catalog`
+(`getRoundCatalog`, strict parser in `api.ts`) with the other page data and turns engine version,
+fault policy version and map rows into `ui/Select` pickers. Choosing a map fills `mapId` and
+`checksum` from the catalog; the checksum field stays (read-only, full value in `title`). Maps
+chosen in other rows are disabled and "Thêm map" is disabled once every catalog map is used. A
+stored value missing from the catalog stays selected as "… (không còn trong danh mục)". If the
+catalog request fails the page keeps the plain text inputs and shows a warning with
+"Thử tải lại danh mục", which refetches only the catalog. The new server codes
+`UNKNOWN_ENGINE_VERSION`, `UNKNOWN_MAP`, `UNKNOWN_FAULT_POLICY`, `MAX_TURNS_EXCEEDS_RUNNER_LIMIT`
+and `TURN_LIMIT_EXCEEDS_RUNNER_LIMIT` show Vietnamese messages on their field. The endpoint
+exists only once `P3-D25` is merged; the form state shape and the saved rules JSON are unchanged.
+
+### Round admin UX (`P3-D02b`)
+
+- The page is a two-column grid at ≥1024px: left "Bộ luật hiện hành" (collapsible
+  `<details>`, bounded height) plus the version archive, right "Phiên bản bộ luật mới"
+  (editor). "Current" is the rule set of the round with the highest `roundNumber` that has a
+  `ruleSetId` and left `DRAFT_RULES` (`current-rule-set.ts`); with none, the latest version is shown
+  read-only. `RoundRuleForm` takes an `idPrefix` (`rrc` for the read-only copy) so DOM ids never repeat.
+- `RuleSetArchive` lists all versions newest first with usage badges (rounds whose `ruleSetId`
+  matches), loads `GET /api/v1/admin/round-rule-sets/:id` on selection and shows engine version and
+  each map's id + checksum read-only (map content is not stored in rules). "Dùng làm cơ sở cho phiên
+  bản mới" remounts the editor from that version.
+- Every form control has a one-line help (`field-help.ts`, `FIELD_HELP`) wired with
+  `aria-describedby="{id}-help {id}-error"`. Ranges come from the API validator (`rounds/types.ts`).
+- The reconcile button is labelled "Kiểm tra và chốt kết quả round" with an explanatory help line.
+- Layout, spacing and responsiveness are CSS-only and were not verified in a browser.
+
 ## Privileged operations console (`P3-D07`)
 
 BTC operators open `/admin/operations` (workspace link "Vận hành đặc quyền", BTC only; team accounts get
@@ -157,9 +240,33 @@ the access-denied page). `features/operations/OperationsConsole.tsx` composes:
   target and a reason, a public reason for cancel/rerun and an explicit infra-failure checkbox for rerun;
   "Xem lại thao tác" opens a confirm step, and one `crypto.randomUUID()` idempotency key per confirmed
   action is sent with a fresh `X-Correlation-Id`. Repeated clicks while a request is in flight send nothing.
-- cases: open, list, detail with the append-only event list, and evidence/status/decision forms that
-  require a reason.
+- cases are no longer in the UI (removed in `P3-D24`; the backend routes, tables and audit actions remain, pending a decision).
 - an audit viewer with action/target filters and the public queue-override list.
+
+`P3-D12` restyles the page with the `ui/*` primitives (three cards, `Field`/`Textarea` with `n/500` counters,
+bordered tables with empty states, badges, alerts) and replaces pasted UUIDs with entity pickers. Teams come from
+`GET /api/v1/admin/teams` (loaded once, filterable by name) and matches from `GET /api/v1/results/matches`
+(server-side `teamId`/`stage` filters, FAILED only for cancel/rerun). Every picker keeps a "Nhập mã thủ công"
+UUID field. API gaps: the match list never returns SCHEDULED matches (cancel of a SCHEDULED match needs the manual
+id) and `GET /api/v1/submissions` is TEAM_ACCOUNT-only, so revoke takes a manual submission id.
+The confirm step shows the target name + short id, moves focus to its heading and returns focus to
+"Xem lại thao tác" on cancel. Tests: `operations.test.tsx`, `operations.pickers.test.tsx`,
+`operations.layout.test.tsx` (shared mocks in `operations.testkit.tsx`).
+
+The public tournament page (`/public`) shows "Hàng đợi" and "Kết quả" as equal panels: one `--pub-panel-height` cap
+(`clamp(420px, 70vh, 640px)`) at ≥ 1024px, both columns stretch to the same bottom edge and each list scrolls inside its
+card (`ExpandableList` `fill`); below 1024px each list region is capped at 360px. Wait times read "Dự kiến chờ ~N phút/giờ"
+(`features/public/format-wait.ts`). Heights are CSS-only and not verified in a browser.
 
 Server error codes are mapped to stable Vietnamese messages (`operationsErrorMessage` in `api.ts`); server
 text is never displayed. Verification: `npm test --workspace @ott/platform-web -- operations`.
+
+## Results page (`P3-D13`)
+
+`/admin/results` and `/team/results` (`features/results`) use the `ui/*` primitives with styles in `features/results/results.css`.
+Filters are `Select`s: kind, team (BTC only) and **Vòng/stage**, a dropdown with "Tất cả vòng", `QUALIFICATION`, `FINALS` (`stages.ts`) plus any other stage seen in loaded results, so a free-form stage is never un-selectable. Changing a filter resets to page 1; "Tất cả vòng" sends no `stage` query parameter.
+Matches and series render as bordered tables (horizontal scroll inside the table container on narrow screens). Status, reason and cancellation codes get Vietnamese labels in `labels.ts` (unknown codes show the raw code); dates are shown in `Asia/Ho_Chi_Minh`. Replay links stay FINALIZED-only.
+
+## Login and MFA screens (`P3-D15`)
+
+`features/auth/LoginPage.tsx` renders the password and 2-step screens with the `ui/*` primitives and `auth.css`, outside `AppShellLayout`. API calls and error mapping are unchanged. The password step has a "Hiện mật khẩu" toggle (`aria-pressed`, resets to hidden when MFA starts). When MFA starts the password is cleared from state; "Quay lại" returns to the password step and clears codes and errors. Nothing credential-like is stored in browser storage.

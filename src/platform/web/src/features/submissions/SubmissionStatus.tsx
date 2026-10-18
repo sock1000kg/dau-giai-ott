@@ -1,5 +1,6 @@
 import type { TeamSubmission } from './api.ts';
 import type { SubmissionPage } from './api.ts';
+import { Alert, Badge, Button, Card, Table, type TableColumn } from '../../ui/index.ts';
 
 const statusLabels: Record<TeamSubmission['status'], string> = {
   UPLOADED: 'Đã tải lên',
@@ -11,6 +12,19 @@ const statusLabels: Record<TeamSubmission['status'], string> = {
   SUPERSEDED: 'Đã thay thế',
   REVOKED: 'Đã thu hồi',
 };
+
+const statusTones: Record<TeamSubmission['status'], 'success' | 'info' | 'danger' | 'neutral'> = {
+  UPLOADED: 'info',
+  INSPECTING: 'info',
+  INVALID: 'danger',
+  PREFLIGHT: 'info',
+  VALID: 'success',
+  ACTIVE: 'success',
+  SUPERSEDED: 'neutral',
+  REVOKED: 'danger',
+};
+
+const dateFormat = new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', dateStyle: 'short', timeStyle: 'short' });
 
 interface SubmissionStatusProps {
   readonly submissions: readonly TeamSubmission[];
@@ -31,74 +45,62 @@ export function SubmissionStatus({
   onPageChange,
   preflightQueueLength,
 }: SubmissionStatusProps) {
+  const columns: readonly TableColumn<TeamSubmission>[] = [
+    { key: 'time', header: 'Thời điểm', render: (submission) => <time dateTime={submission.createdAt}>{dateFormat.format(new Date(submission.createdAt))}</time> },
+    {
+      key: 'status',
+      header: 'Trạng thái',
+      render: (submission) => (
+        <span className={`submissions-status submissions-status--${statusTones[submission.status]}`}>
+          <Badge>{statusLabels[submission.status]}</Badge>
+        </span>
+      ),
+    },
+    {
+      key: 'preflight',
+      header: 'Vị trí preflight',
+      render: (submission) => submission.status === 'PREFLIGHT' && submission.preflightPosition != null
+        ? <span>Vị trí preflight: {submission.preflightPosition} / {preflightQueueLength ?? submission.preflightPosition}</span>
+        : <span aria-hidden="true">—</span>,
+    },
+  ];
   return (
-    <section className="submission-history" aria-labelledby="submission-history-title">
-      <div className="submission-section-heading">
-        <div>
-          <p className="eyebrow">HỒ SƠ ĐỘI THI</p>
-          <h2 id="submission-history-title">Các bot đã nộp</h2>
-        </div>
-        <button type="button" className="secondary-button" onClick={onRetry} disabled={loading}>
+    <Card title="Các bot đã nộp" className="submissions-history">
+      <div className="submissions-history-bar">
+        <p className="eyebrow">HỒ SƠ ĐỘI THI</p>
+        <Button variant="secondary" onClick={onRetry} disabled={loading}>
           {loading ? 'Đang tải…' : 'Làm mới'}
-        </button>
+        </Button>
       </div>
-      {loading && <p role="status" aria-busy="true">Đang tải trạng thái submission…</p>}
+      {loading && <div role="status" aria-busy="true" className="ui-alert ui-alert--info">Đang tải trạng thái submission…</div>}
       {!loading && error !== null && (
-        <div className="submission-error" role="alert">
+        <Alert tone="danger">
           <p>{error}</p>
-          <button type="button" className="secondary-button" onClick={onRetry}>
-            Thử lại
-          </button>
-        </div>
+          <Button variant="secondary" onClick={onRetry}>Thử lại</Button>
+        </Alert>
       )}
-      {!loading && error === null && submissions.length === 0 && (
-        <p className="submission-empty" role="status">
-          Đội chưa có submission nào.
-        </p>
-      )}
-      {!loading && error === null && submissions.length > 0 && (
-        <ul className="submission-list" aria-label="Danh sách submission của đội">
-          {submissions.map((submission) => (
-            <li key={submission.id} className="submission-row">
-              <div>
-                <strong>Submission</strong>
-                <time dateTime={submission.createdAt}>{new Date(submission.createdAt).toLocaleString('vi-VN')}</time>
-                {submission.status === 'PREFLIGHT' && submission.preflightPosition != null && (
-                  <span className="preflight-position">
-                    {' · '}Vị trí preflight: {submission.preflightPosition} / {preflightQueueLength ?? submission.preflightPosition}
-                  </span>
-                )}
-              </div>
-              <span className={`submission-status status-${submission.status.toLowerCase()}`}>
-                {statusLabels[submission.status]}
-              </span>
-            </li>
-          ))}
-        </ul>
+      {!loading && error === null && (
+        <Table
+          caption="Danh sách submission của đội"
+          columns={columns}
+          rows={submissions}
+          rowKey={(submission) => submission.id}
+          emptyMessage="Đội chưa có submission nào."
+        />
       )}
       {!loading && error === null && pagination.totalPages > 1 && (
-        <nav className="submission-pagination" aria-label="Phân trang submission">
-          <button
-            type="button"
-            className="secondary-button"
-            disabled={pagination.page <= 1}
-            onClick={() => onPageChange(pagination.page - 1)}
-          >
+        <nav className="submissions-pagination" aria-label="Phân trang submission">
+          <Button variant="secondary" disabled={pagination.page <= 1} onClick={() => onPageChange(pagination.page - 1)}>
             Trang trước
-          </button>
+          </Button>
           <span>
             Trang {pagination.page} / {pagination.totalPages} · {pagination.totalItems} submission
           </span>
-          <button
-            type="button"
-            className="secondary-button"
-            disabled={pagination.page >= pagination.totalPages}
-            onClick={() => onPageChange(pagination.page + 1)}
-          >
+          <Button variant="secondary" disabled={pagination.page >= pagination.totalPages} onClick={() => onPageChange(pagination.page + 1)}>
             Trang sau
-          </button>
+          </Button>
         </nav>
       )}
-    </section>
+    </Card>
   );
 }

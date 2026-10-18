@@ -1,0 +1,71 @@
+/* Replay player + replay pages. Prefix rp-; built on ui/ui.css tokens. */
+.rp-sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.rp-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+
+.rp-page { width: min(100%, 1240px); }
+.rp-eyebrow { margin: 0; color: var(--ui-accent); font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; overflow-wrap: anywhere; }
+.rp-state { padding: var(--ui-space-5); border: 1px dashed var(--ui-border-strong); border-radius: var(--ui-radius-md); color: var(--ui-text-muted); text-align: center; }
+.rp-error { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--ui-space-3); }
+.rp-error p { margin: 0; }
+
+.rp-player { display: grid; gap: var(--ui-space-4); min-width: 0; }
+.rp-heading { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--ui-space-3); }
+.rp-heading h2 { margin: var(--ui-space-2) 0; font-size: clamp(20px, 3vw, 26px); }
+.rp-match-id { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
+.rp-chips { display: flex; flex-wrap: wrap; gap: var(--ui-space-2); }
+
+.rp-scoreboard { display: grid; grid-template-columns: 1fr; gap: var(--ui-space-3); }
+@media (min-width: 720px) { .rp-scoreboard { grid-template-columns: 1fr 1fr 1.2fr; } }
+.rp-team { display: grid; gap: var(--ui-space-2); align-content: start; }
+.rp-team h2 { margin: 0; }
+.rp-team-head { display: flex; align-items: center; gap: var(--ui-space-2); }
+.rp-team--winner { border-color: var(--ui-accent); box-shadow: inset 0 0 0 1px var(--ui-accent); }
+.rp-chip { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; font-weight: 800; font-size: 14px; border: 2px solid; }
+.rp-chip--x { border-color: #ee7c77; background: #472d35; color: #ffc0ba; }
+.rp-chip--o { border-color: #78b8ea; background: #203d54; color: #b9e0ff; }
+.rp-outcome { display: grid; align-content: center; gap: var(--ui-space-2); text-align: center; }
+.rp-outcome strong { font-size: 18px; color: var(--ui-text); }
+
+.rp-stage { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--ui-space-4); align-items: start; }
+@media (min-width: 1024px) { .rp-stage { grid-template-columns: minmax(0, 560px) minmax(0, 1fr); } }
+.rp-board-card { min-width: 0; }
+.rp-board-scroll { overflow-x: auto; scrollbar-width: thin; scrollbar-color: var(--ui-border-strong) transparent; }
+.rp-board { width: min(100%, 560px); min-width: 324px; margin: 0 auto; table-layout: fixed; border-collapse: separate; border-spacing: 3px; text-align: center; }
+.rp-board caption { padding-bottom: var(--ui-space-3); color: var(--ui-text-muted); font-size: 13px; }
+.rp-board thead th, .rp-board tbody th { color: var(--ui-text-muted); font-size: 11px; font-weight: 650; }
+.rp-board td { aspect-ratio: 1; min-width: 32px; padding: 0; border: 1px solid var(--ui-border); border-radius: 6px; background: var(--ui-surface-solid); color: #7a90a4; font-size: clamp(10px, 2.2vw, 15px); font-weight: 800; }
+.rp-cell--x { border-color: #ee7c77; background: #472d35; color: #ffc0ba; }
+.rp-cell--o { border-color: #78b8ea; background: #203d54; color: #b9e0ff; }
+.rp-cell--goal-x, .rp-cell--goal-o { box-shadow: inset 0 0 0 2px var(--ui-accent); }
+.rp-cell--obstacle { background: repeating-linear-gradient(45deg, #2a3a4a, #2a3a4a 4px, #1d2b39 4px, #1d2b39 8px); color: #9fb2c4; }
+.rp-cell--from { outline: 2px dashed var(--ui-warning); outline-offset: -3px; }
+.rp-cell--to { outline: 3px solid var(--ui-warning); outline-offset: -3px; }
+
+.rp-side { display: grid; gap: var(--ui-space-3); min-width: 0; }
+.rp-fault-row { display: flex; flex-wrap: wrap; gap: var(--ui-space-2); margin: 0; }
+.rp-fault-row strong { color: var(--ui-text); }
+
+.rp-controls { display: grid; gap: var(--ui-space-3); }
+.rp-button-row { display: flex; flex-wrap: wrap; gap: var(--ui-space-2); }
+.rp-field { display: grid; gap: var(--ui-space-2); }
+.rp-field label { color: var(--ui-text); font-size: 14px; font-weight: 600; display: flex; flex-wrap: wrap; gap: var(--ui-space-2); align-items: baseline; }
+.rp-field output { color: var(--ui-text-muted); font-weight: 400; }
+.rp-range { width: 100%; min-height: var(--ui-control-height); margin: 0; accent-color: var(--ui-accent); cursor: pointer; }
+.rp-range:focus-visible { outline: var(--ui-focus-ring); outline-offset: 2px; }
+.rp-speed { max-width: 200px; }
+.rp-status { margin: 0; }
+
+.rp-moves { display: grid; gap: var(--ui-space-2); min-width: 0; }
+.rp-moves h2, .rp-events h2 { margin: 0; }
+.rp-scroll { max-height: 320px; overflow-y: auto; margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; scrollbar-width: thin; scrollbar-color: var(--ui-border-strong) transparent; position: relative; }
+.rp-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+.rp-scroll::-webkit-scrollbar-track { background: transparent; }
+.rp-scroll::-webkit-scrollbar-thumb { border-radius: 999px; background: var(--ui-border-strong); }
+.rp-scroll::-webkit-scrollbar-thumb:hover { background: var(--ui-text-muted); }
+.rp-move { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ui-space-2); box-sizing: border-box; width: 100%; min-height: var(--ui-control-height); padding: 6px var(--ui-space-3); border: 1px solid var(--ui-border); border-radius: var(--ui-radius-sm); background: transparent; color: var(--ui-text); font: inherit; text-align: left; cursor: pointer; }
+.rp-move:hover { background: var(--ui-surface-raised); }
+.rp-move:focus-visible { outline: var(--ui-focus-ring); outline-offset: 2px; }
+.rp-move[aria-current="step"] { border-color: var(--ui-accent); background: var(--ui-surface-raised); box-shadow: inset 3px 0 0 var(--ui-accent); }
+.rp-move-no { min-width: 4ch; text-align: right; color: var(--ui-text-muted); font-variant-numeric: tabular-nums; }
+.rp-move-text { overflow-wrap: anywhere; }
+.rp-events .rp-scroll { max-height: 280px; }

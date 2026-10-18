@@ -207,3 +207,41 @@ export async function listTeamsCount(): Promise<number> {
   if (!Array.isArray(data)) throw new Error('Invalid team list response');
   return data.length;
 }
+
+export interface CatalogMap {
+  readonly mapId: string;
+  readonly version: number;
+  readonly checksum: string;
+  readonly width: number;
+  readonly height: number;
+}
+
+export interface RoundCatalog {
+  readonly engineVersions: readonly string[];
+  readonly maps: readonly CatalogMap[];
+  readonly faultPolicyVersions: readonly string[];
+}
+
+function stringList(value: unknown): string[] {
+  if (!Array.isArray(value) || !value.every((entry): entry is string => typeof entry === 'string')) throw new Error('Invalid catalog response');
+  return value;
+}
+
+function catalogMap(value: unknown): CatalogMap {
+  const row = object(value, 'Invalid catalog response');
+  const positive = (field: unknown): field is number => typeof field === 'number' && Number.isSafeInteger(field) && field > 0;
+  if (typeof row.mapId !== 'string' || typeof row.checksum !== 'string'
+    || !positive(row.version) || !positive(row.width) || !positive(row.height)) throw new Error('Invalid catalog response');
+  return { mapId: row.mapId, version: row.version, checksum: row.checksum, width: row.width, height: row.height };
+}
+
+export async function getRoundCatalog(): Promise<RoundCatalog> {
+  const body = object(await request('/api/v1/admin/rounds/catalog'), 'Invalid catalog response');
+  const data = object(body.data, 'Invalid catalog response');
+  if (!Array.isArray(data.maps)) throw new Error('Invalid catalog response');
+  return {
+    engineVersions: stringList(data.engineVersions),
+    maps: data.maps.map(catalogMap),
+    faultPolicyVersions: stringList(data.faultPolicyVersions),
+  };
+}

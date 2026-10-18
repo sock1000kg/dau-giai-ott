@@ -44,7 +44,7 @@ describe('public leaderboard', () => {
     expect(screen.getByText('Beta')).toBeTruthy();
     expect(screen.getByText('Gamma')).toBeTruthy();
     expect(screen.getAllByText('4')).toHaveLength(2);
-    expect(screen.getAllByText(/BTC cần quyết định/i)).toHaveLength(2);
+    expect(screen.getAllByText('Đồng hạng')).toHaveLength(2);
     expect(document.body.textContent).not.toContain('private/object');
     expect(document.body.textContent).not.toContain('private');
     expect(fetch).toHaveBeenCalledTimes(1);
@@ -59,9 +59,9 @@ describe('public leaderboard', () => {
     window.history.replaceState({}, '', '/leaderboard');
     render(<LeaderboardPage />);
     await screen.findByText('Alpha');
-    fireEvent.change(screen.getByLabelText('Vòng đấu / stage'), { target: { value: 'PLAYOFF' } });
+    fireEvent.change(screen.getByLabelText('Vòng đấu / stage'), { target: { value: 'FINALS' } });
     fireEvent.submit(screen.getByRole('form', { name: 'Lọc bảng xếp hạng' }));
-    await waitFor(() => expect(fetch).toHaveBeenCalledWith(expect.stringContaining('stage=PLAYOFF'), expect.anything()));
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith(expect.stringContaining('stage=FINALS'), expect.anything()));
     fireEvent.click(screen.getByRole('button', { name: 'Trang sau' }));
     await waitFor(() => expect(fetch).toHaveBeenCalledWith(expect.stringContaining('page=2'), expect.anything()));
     expect(screen.getAllByText('4').length).toBeGreaterThan(0);
