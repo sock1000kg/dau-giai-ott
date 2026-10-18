@@ -1,0 +1,7 @@
+{
+  "announcements": [],
+  "faq": [{ "title": "Có replay vòng loại không?", "body": "Không có replay công khai ở vòng loại." }],
+  "status": { "message": "Đang vận hành", "incidentEta": null },
+  "changelog": "BTC cập nhật thay đổi luật so với round trước tại đây.",
+  "minimumSeries": 5
+}
