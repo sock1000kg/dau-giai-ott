@@ -30,6 +30,7 @@ client bundle.
 
 - **Primitives.** Shared tokens and components live in `src/ui` (`Page`, `Card`, `Field`, `Input`/`Select`/`Textarea`, `Button`, `LinkButton`, `Table`, `Alert`, `Badge`, `AppNav`, `AppShellLayout`); see `src/ui/README.md`. Import from `src/ui/index.ts`.
 - **One stylesheet per feature.** Each feature imports its own CSS file from the component that needs it. Do not add page rules to `app/styles.css`.
+- **`app/styles.css` is globals only (plus the round-admin legacy rules).** It holds the reset and `:root`, `body`, `:focus-visible`, the reduced-motion rule, the app shell and header/footer (`.app-shell`, `.app-header`, `.app-footer`, `.brand`, `.brand-mark`, `.header-label`, `.eyebrow`, `.public-nav-link`) and the `/admin/rounds` page rules that have no feature stylesheet yet (`.admin-page`, `.welcome-copy`, `.round-*`, `.rule-set-*`, `.field-help`, and a few older shorthands such as `.results-controls`, `.results-pagination`, `.replay-state`, `.replay-player` that no component applies any more). Every other page's rules live in its per-feature CSS; put new page styles there, not in `styles.css`.
 - **Class prefixes.** `ui-` shared primitives; `ops-` operations; `ra-` replay admin; `pub-` public pages (leaderboard, tournament); `results-` results; `submissions-` submissions; `auth-` login; `teams-` team provisioning. Prefix new classes with the feature's prefix.
 - **Pages.** One `h1` per page (via `Page`, except pages that render their own `main`), one `main` landmark, every control labelled through `Field`, tables with a caption, dates in Vietnam time (`lib/format-date.ts`), shared button wording ("Làm mới", "Thử lại", "Trang trước", "Trang sau").
 - **Adding a page.** Create `features/<name>/<Name>Page.tsx` using `Page`, add `<name>.css` for layout, register the route and role in `app/routes.tsx`, add a nav item in `ui/AppNav.tsx` if it needs one, add the row to the inventory below, and add the route to the matrix in `app/app-routes.test.tsx` (it checks landmarks, labels, ids, nav `aria-current`, console output and that every request is mocked in `test/route-fixtures.ts`).
@@ -44,7 +45,7 @@ client bundle.
 | `/public` | anyone | `features/public/PublicTournamentPage.tsx` | `public.css` | `P3-L05` |
 | `/leaderboard` | anyone | `features/leaderboard/LeaderboardPage.tsx` | `leaderboard.css` | `P2-T22` |
 | `/admin/teams` | BTC | `features/admin-teams/TeamProvisionPage.tsx` | `admin-teams.css` | `P3-D14` |
-| `/admin/rounds` | BTC | `features/round-admin/RoundAdminPage.tsx` | none (legacy rules in `app/styles.css`) | `P3-D02` / `P3-D02b` |
+| `/admin/rounds` | BTC | `features/round-admin/RoundAdminPage.tsx` | none (round-admin rules remain in `app/styles.css`) | `P3-D02` / `P3-D02b` |
 | `/admin/operations` | BTC | `features/operations/OperationsConsole.tsx` | `operations.css` | `P3-D12` |
 | `/admin/results` | BTC | `features/results/MatchResultsPage.tsx` | `results.css` | `P3-D13` |
 | `/admin/replays` | BTC | `features/replay-admin/ReplayCatalog.tsx` | `replay-admin.css` | `P2-T25` |

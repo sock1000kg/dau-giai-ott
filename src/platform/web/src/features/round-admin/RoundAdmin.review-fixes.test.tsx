@@ -61,16 +61,20 @@ describe('rule editor footer', () => {
 
   it('still submits the same payload from the footer', async () => {
     const editor = await lockedPage();
+    const pageFetch = globalThis.fetch;
+    const isPost = (url: unknown, init?: RequestInit) => String(url) === '/api/v1/admin/round-rule-sets' && init?.method === 'POST';
     const fetchMock = vi.fn(async (url: unknown, init?: RequestInit): Promise<Response> => {
-      expect(String(url)).toBe('/api/v1/admin/round-rule-sets');
-      expect(init?.method).toBe('POST');
+      if (!isPost(url, init)) return pageFetch(url as RequestInfo, init);
       return { ok: true, status: 201, json: async () => ({ data: { id: 'rs-9', version: 9, rulesSha256: 'f'.repeat(64) } }) } as Response;
     });
     vi.stubGlobal('fetch', fetchMock);
     fireEvent.change(within(editor).getByLabelText('Lý do thay đổi'), { target: { value: 'Từ footer' } });
     fireEvent.click(within(editor).getByRole('button', { name: 'Lưu phiên bản mới' }));
-    await waitFor(() => expect(fetchMock.mock.calls.length).toBeGreaterThanOrEqual(1));
-    const post = fetchMock.mock.calls.find(([url]) => String(url) === '/api/v1/admin/round-rule-sets');
+    // Other page requests (reloads) may hit the mock first; wait for the POST itself, not just any call.
+    const findPost = () => fetchMock.mock.calls.find(([url, init]) => isPost(url, init));
+    await waitFor(() => expect(findPost()).toBeDefined());
+    const post = findPost();
+    expect(typeof post?.[1]?.body).toBe('string');
     expect(JSON.parse(String(post?.[1]?.body))).toMatchObject({ tournamentStage: 'QUALIFICATION', reason: 'Từ footer' });
   });
 
