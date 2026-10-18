@@ -14,6 +14,7 @@ import {
   type CreateRuleSetInput,
   type TransitionInput,
 } from './service.ts';
+import { catalogView } from './catalog.ts';
 import type { RoundAction } from './types.ts';
 
 export interface RoundRoutesOptions {
@@ -34,6 +35,7 @@ function sendRoundError(reply: FastifyReply, error: unknown) {
     RULE_SET_STAGE_MISMATCH: { statusCode: 409, code: 'RULE_SET_STAGE_MISMATCH', message: 'Rule set does not belong to this stage' },
     IDEMPOTENCY_KEY_INVALID: { statusCode: 400, code: 'IDEMPOTENCY_KEY_INVALID', message: 'Invalid idempotency key' },
     IDEMPOTENCY_KEY_REUSED: { statusCode: 409, code: 'IDEMPOTENCY_KEY_REUSED', message: 'Idempotency key was already used for another request' },
+    ROUND_RULESET_UNRESOLVABLE: { statusCode: 409, code: 'ROUND_RULESET_UNRESOLVABLE', message: 'Locked rule set cannot be resolved against the catalog' },
     ROUND_TRANSITION_INVALID: { statusCode: 409, code: 'ROUND_TRANSITION_INVALID', message: 'This transition is not allowed' },
   };
   const clientError = clientErrors[error.message];
@@ -104,6 +106,12 @@ function buildAction(type: string, ruleSetId?: string, idempotencyKey?: string):
 }
 
 export function registerRoundRoutes(app: FastifyInstance, options: RoundRoutesOptions): void {
+  // Registered before `/rounds/:roundId` so `catalog` is never parsed as a round id.
+  app.get('/api/v1/admin/rounds/catalog', async (request) => {
+    requireRole(requireAuthenticated(request.principal), 'BTC_ADMIN');
+    return { data: catalogView() };
+  });
+
   app.get('/api/v1/admin/round-rule-sets', async (request, reply) => {
     requireRole(requireAuthenticated(request.principal), 'BTC_ADMIN');
     const stage = validateStageQuery(request.query);

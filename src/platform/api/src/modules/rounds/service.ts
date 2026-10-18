@@ -9,6 +9,7 @@ import {
   type RoundRuleSetRulesV1,
   type RoundStatus,
 } from './types.ts';
+import { resolveMatchRules, validateAgainstCatalog, type MatchRules } from './catalog.ts';
 import { scheduleRound, type ScheduleRoundInput } from '../scheduling/service.ts';
 import { applyRoundRatings } from '../ratings/service.ts';
 import { computeRoundResultsHash } from '../operations/results-hash.ts';
@@ -113,6 +114,10 @@ export async function createRuleSet(
     throw new RuleSetInvalidError(validation.errors.map(({ path, code }) => ({ path, code })));
   }
   const rules = input.rules as RoundRuleSetRulesV1;
+  const catalogErrors = validateAgainstCatalog(rules);
+  if (catalogErrors.length > 0) {
+    throw new RuleSetInvalidError(catalogErrors.map(({ path, code }) => ({ path, code })));
+  }
   const sha = computeRulesSha256(rules);
   const now = options?.now?.() ?? new Date();
 
@@ -321,6 +326,20 @@ function getGraceEndsFromRuleSet(ruleSetRules: unknown): string | null {
   return graceEndsAt;
 }
 
+/** Re-read the locked rule set, check its hash and resolve it through the registry; no partial writes on failure. */
+async function loadMatchRules(tx: Database, ruleSetId: string | null): Promise<MatchRules> {
+  if (ruleSetId === null) throw new Error('ROUND_RULESET_UNRESOLVABLE');
+  const result = await tx.query<{ readonly rules: RoundRuleSetRulesV1; readonly rules_sha256: string }>(
+    'SELECT rules, rules_sha256 FROM round_rule_sets WHERE id = $1',
+    [ruleSetId],
+  );
+  const row = result.rows[0];
+  if (row === undefined || computeRulesSha256(row.rules) !== row.rules_sha256) throw new Error('ROUND_RULESET_UNRESOLVABLE');
+  const matchRules = resolveMatchRules(row.rules);
+  if (matchRules === null) throw new Error('ROUND_RULESET_UNRESOLVABLE');
+  return matchRules;
+}
+
 async function executeStart(
   database: Database,
   input: TransitionInput,
@@ -346,24 +365,26 @@ async function executeStart(
       if (round.start_idempotency_key !== idempotencyKey || round.start_request_hash !== requestHash) {
         throw new Error('IDEMPOTENCY_KEY_REUSED');
       }
-      return { tournamentStage: round.tournament_stage };
+      return { tournamentStage: round.tournament_stage, matchRules: await loadMatchRules(tx, round.rule_set_id) };
     }
 
     if (round.status !== 'SUBMISSION_CLOSED') throw new Error('ROUND_TRANSITION_INVALID');
     if (action.ruleSetId !== round.rule_set_id) throw new Error('ROUND_TRANSITION_INVALID');
+    const matchRules = await loadMatchRules(tx, round.rule_set_id);
 
     await tx.query(
       "UPDATE qualification_rounds SET start_idempotency_key = $2, start_request_hash = $3 WHERE id = $1",
       [input.roundId, idempotencyKey, requestHash],
     );
     await writeAudit(tx, input.actorAccountId, 'ROUND_START_INITIATED', input.roundId, reason, { idempotencyKey }, now);
-    return { tournamentStage: round.tournament_stage };
+    return { tournamentStage: round.tournament_stage, matchRules };
   });
 
   const scheduleInput: ScheduleRoundInput = {
     tournamentStage: prepared.tournamentStage,
     idempotencyKey: `round-start:${input.roundId}`,
     qualificationRoundId: input.roundId,
+    matchRules: prepared.matchRules,
   };
   const scheduled = await scheduleRoundImpl(database, scheduleInput);
 

@@ -11,7 +11,6 @@ const matchId = '3f1b7c64-9d0e-4a53-8e55-0b1f4c2d7a11';
 interface Mock {
   role?: 'BTC_ADMIN' | 'TEAM_ACCOUNT';
   privileged?: (url: string, init: RequestInit) => Response | Promise<Response>;
-  cases?: unknown[];
 }
 
 function install(options: Mock = {}) {
@@ -22,7 +21,8 @@ function install(options: Mock = {}) {
     if (path.startsWith('/api/v1/auth/')) {
       return response(200, { data: options.role === 'TEAM_ACCOUNT' ? { role: 'TEAM_ACCOUNT', teamId: 't1' } : { role: 'BTC_ADMIN' } });
     }
-    if (path === '/api/v1/admin/operations/cases') return response(200, { data: { items: options.cases ?? [] } });
+    if (path === '/api/v1/admin/teams') return response(200, { data: [] });
+    if (path.startsWith('/api/v1/results/matches')) return response(200, { data: { items: [], pagination: { page: 1, pageSize: 100, total: 0, totalPages: 0 } } });
     if (path.startsWith('/api/v1/admin/operations/audit')) return response(200, { data: { items: [] } });
     if (path === '/api/v1/public/queue-overrides') return response(200, { data: { items: [{ id: 'o1', action: 'RERUN', matchOpaqueId: 'abcdef0123456789', publicReason: 'Worker restarted', createdAt: '2026-10-18T00:00:00Z' }] } });
     if (init?.method === 'POST' && path.startsWith('/api/v1/admin/operations/')) {
@@ -142,29 +142,5 @@ describe('OperationsConsole', () => {
     const alert = await priv().findByRole('alert');
     expect(alert.textContent).toMatch(pattern);
     expect(alert.textContent).not.toContain('server text must not leak');
-  });
-
-  it('lists cases, shows events and requires a reason for case decisions', async () => {
-    const caseId = '00000000-0000-4000-8000-0000000000aa';
-    const api = install({ cases: [{ id: caseId, kind: 'ANOMALY', status: 'OPEN', teamId: null, matchId, submissionId: null, openedAt: '2026-10-18T00:00:00Z', decidedAt: null }] });
-    const base = api.fetchMock.getMockImplementation()!;
-    api.fetchMock.mockImplementation(async (url: unknown, init?: RequestInit) => {
-      if (String(url) === `/api/v1/admin/operations/cases/${caseId}`) {
-        return response(200, { data: { id: caseId, kind: 'ANOMALY', status: 'OPEN', teamId: null, matchId, submissionId: null, openedAt: '2026-10-18T00:00:00Z', decidedAt: null, events: [{ seq: 1, eventType: 'OPENED', reason: 'nghi vấn', decision: null, createdAt: '2026-10-18T00:00:00Z' }] } });
-      }
-      return base(url, init);
-    });
-    window.history.replaceState({}, '', '/admin/operations');
-    render(<App />);
-    fireEvent.click(await screen.findByRole('button', { name: /^Xem 00000000/ }));
-    expect(await screen.findByText(/1\. OPENED — nghi vấn/)).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Ghi quyết định' }));
-    expect((await screen.findAllByRole('alert')).some((node) => /lý do/i.test(node.textContent ?? ''))).toBe(true);
-    expect(posts(api.calls)).toHaveLength(0);
-    fireEvent.change(screen.getByLabelText('Lý do (bắt buộc)'), { target: { value: 'không có vi phạm' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Ghi quyết định' }));
-    await waitFor(() => expect(posts(api.calls)).toHaveLength(1));
-    expect(posts(api.calls)[0]!.url).toBe(`/api/v1/admin/operations/cases/${caseId}/decision`);
-    expect(JSON.parse(String(posts(api.calls)[0]!.init!.body))).toEqual({ reason: 'không có vi phạm', decision: 'NO_ACTION' });
   });
 });

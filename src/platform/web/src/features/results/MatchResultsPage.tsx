@@ -1,6 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Alert, Button, Card, Field, Page, Select } from '../../ui/index.ts';
 import { listResultTeams, listResults, ResultsApiError, type MatchResult, type SeriesResult } from './api.ts';
+import { MatchResultsTable } from './MatchResultsTable.tsx';
 import { SeriesResults } from './SeriesResults.tsx';
+import { stageOptions } from './stages.ts';
+import './results.css';
 
 const PAGE_SIZE = 10;
 
@@ -18,6 +22,7 @@ export function MatchResultsPage({ isAdmin }: Readonly<{ isAdmin: boolean }>) {
   const [teams, setTeams] = useState<readonly { id: string; name: string }[]>([]);
   const [matches, setMatches] = useState<readonly MatchResult[]>([]);
   const [series, setSeries] = useState<readonly SeriesResult[]>([]);
+  const [seenStages, setSeenStages] = useState<ReadonlySet<string>>(new Set());
   const [totalPages, setTotalPages] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -35,6 +40,7 @@ export function MatchResultsPage({ isAdmin }: Readonly<{ isAdmin: boolean }>) {
       const options = { page, pageSize: PAGE_SIZE, ...(isAdmin && teamId ? { teamId } : {}), ...(stage ? { stage } : {}) };
       const result = kind === 'matches' ? await listResults('matches', options) : await listResults('series', options);
       setTotalPages(result.pagination.totalPages);
+      setSeenStages((previous) => new Set([...previous, ...result.items.map((item) => item.stage)]));
       if (kind === 'matches') { setMatches(result.items as readonly MatchResult[]); setSeries([]); }
       else { setSeries(result.items as readonly SeriesResult[]); setMatches([]); }
     } catch (cause) { setError(failureMessage(cause)); }
@@ -42,33 +48,31 @@ export function MatchResultsPage({ isAdmin }: Readonly<{ isAdmin: boolean }>) {
   }, [isAdmin, kind, page, stage, teamId]);
 
   useEffect(() => { void load(); }, [load]);
-  const setFilter = (setter: (value: string) => void) => (event: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>) => { setter(event.target.value); setPage(1); };
-  const empty = kind === 'matches' ? matches.length === 0 : series.length === 0;
+  const setFilter = (setter: (value: string) => void) => (event: React.ChangeEvent<HTMLSelectElement>) => { setter(event.target.value); setPage(1); };
+  const options = useMemo(() => stageOptions([...seenStages, stage]), [seenStages, stage]);
+  const count = kind === 'matches' ? matches.length : series.length;
+  const empty = count === 0;
 
   return (
-    <main className="results-page">
-      <section className="results-intro"><p className="eyebrow">KẾT QUẢ CHÍNH THỨC</p><h1>Kết quả thi đấu</h1><p className="welcome-copy">Kết quả đã chốt được cung cấp từ hệ thống giải đấu; trang này chỉ đọc và không can thiệp trận.</p></section>
-      <section className="results-controls" aria-label="Bộ lọc kết quả">
-        <label>Loại kết quả<select value={kind} onChange={(event) => { setKind(event.target.value as 'matches' | 'series'); setPage(1); }}><option value="matches">Từng trận</option><option value="series">Loạt trận</option></select></label>
-        {isAdmin && <label>Đội thi<select value={teamId} onChange={setFilter(setTeamId)}><option value="">Tất cả đội</option>{teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}</select></label>}
-        <label>Vòng/stage<input value={stage} onChange={setFilter(setStage)} placeholder="Ví dụ: QUALIFICATION" /></label>
-        <button className="secondary-button" type="button" onClick={() => void load()} disabled={loading}>Làm mới</button>
-      </section>
-      {error && <div className="results-error" role="alert"><p>{error}</p><button className="secondary-button" onClick={() => void load()}>Thử lại</button></div>}
-      {loading ? <p className="results-state" role="status" aria-busy="true">Đang tải kết quả…</p> : !error && empty ? <p className="results-state">Chưa có kết quả phù hợp.</p> : null}
-      {!loading && !error && kind === 'matches' && matches.length > 0 && <div className="results-list">{matches.map((match) => <article className="result-card" key={match.matchId}>
-        <div className="result-heading"><div><p className="eyebrow">{match.stage} · GAME {match.gameNumber}</p><h2>{match.teams.x.name} <span>vs</span> {match.teams.o.name}</h2></div><span className="result-status">{match.status}</span></div>
-        <p className="result-outcome">{match.winnerSide ? `Thắng: ${match.winnerSide === 'X' ? match.teams.x.name : match.teams.o.name}` : match.reason === 'TURN_LIMIT' ? 'Hòa · hết giới hạn lượt' : 'Không có đội thắng'} · {match.reason ?? 'Chưa có lý do'}{match.turnCount === null ? '' : ` · ${match.turnCount} lượt`}</p>
-        {match.faults ? <div className="fault-summary" aria-label="Tóm tắt lỗi bot"><span>X: {match.faults.X.recoverableTotal} lỗi{match.faults.X.lastErrorCode ? ` (${match.faults.X.lastErrorCode})` : ''}</span><span>O: {match.faults.O.recoverableTotal} lỗi{match.faults.O.lastErrorCode ? ` (${match.faults.O.lastErrorCode})` : ''}</span></div> : <p className="result-date">Không có fault summary cho kết quả này.</p>}
-        <p className="result-date">{match.finalizedAt ? new Date(match.finalizedAt).toLocaleString() : 'Thời điểm chưa có'}</p>
-        {match.status === 'FINALIZED' && (
-          <div className="result-actions">
-            <a className="secondary-button" href={isAdmin ? `/admin/replays/${match.matchId}/view` : `/team/replays/${match.matchId}`}>Replay</a>
-          </div>
-        )}
-      </article>)}</div>}
+    <Page title="Kết quả thi đấu" description="Kết quả đã chốt được cung cấp từ hệ thống giải đấu; trang này chỉ đọc và không can thiệp trận.">
+      <Card><div className="results-filters" role="group" aria-label="Bộ lọc kết quả">
+        <Field label="Loại kết quả" help="Xem từng trận hoặc cả loạt trận.">
+          <Select value={kind} onChange={(event) => { setKind(event.target.value as 'matches' | 'series'); setPage(1); }}><option value="matches">Từng trận</option><option value="series">Loạt trận</option></Select>
+        </Field>
+        {isAdmin && <Field label="Đội thi" help="Chỉ hiện kết quả của đội được chọn.">
+          <Select value={teamId} onChange={setFilter(setTeamId)}><option value="">Tất cả đội</option>{teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}</Select>
+        </Field>}
+        <Field label="Vòng/stage" help="Lọc theo vòng đấu.">
+          <Select value={stage} onChange={setFilter(setStage)}><option value="">Tất cả vòng</option>{options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</Select>
+        </Field>
+        <div className="results-refresh"><Button variant="secondary" onClick={() => void load()} disabled={loading}>Làm mới</Button></div>
+      </div></Card>
+      {!loading && !error && !empty && <p className="results-summary">Hiển thị {count} kết quả · Trang {page}{totalPages ? ` / ${totalPages}` : ''}</p>}
+      {error && <Alert tone="danger"><p>{error}</p><Button variant="secondary" onClick={() => void load()}>Thử lại</Button></Alert>}
+      {loading ? <div className="ui-empty" role="status" aria-busy="true">Đang tải kết quả…</div> : !error && empty ? <div className="ui-empty">Chưa có kết quả phù hợp.</div> : null}
+      {!loading && !error && kind === 'matches' && matches.length > 0 && <MatchResultsTable items={matches} isAdmin={isAdmin} />}
       {!loading && !error && kind === 'series' && series.length > 0 && <SeriesResults items={series} />}
-      <nav className="results-pagination" aria-label="Phân trang kết quả"><button className="secondary-button" disabled={loading || page <= 1} onClick={() => setPage(page - 1)}>Trang trước</button><span>Trang {page}{totalPages ? ` / ${totalPages}` : ''}</span><button className="secondary-button" disabled={loading || totalPages === 0 || page >= totalPages} onClick={() => setPage(page + 1)}>Trang sau</button></nav>
-    </main>
+      <nav className="results-pagination" aria-label="Phân trang kết quả"><Button variant="secondary" disabled={loading || page <= 1} onClick={() => setPage(page - 1)}>Trang trước</Button><span>Trang {page}{totalPages ? ` / ${totalPages}` : ''}</span><Button variant="secondary" disabled={loading || totalPages === 0 || page >= totalPages} onClick={() => setPage(page + 1)}>Trang sau</Button></nav>
+    </Page>
   );
 }

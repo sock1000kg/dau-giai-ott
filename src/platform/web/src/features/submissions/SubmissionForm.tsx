@@ -8,7 +8,9 @@ import {
   type SubmissionPage,
   type TeamSubmission,
 } from './api.ts';
+import { Alert, Badge, Button, Card, Field, Page } from '../../ui/index.ts';
 import { SubmissionStatus } from './SubmissionStatus.tsx';
+import './submissions.css';
 
 const MAX_ARCHIVE_BYTES = 256 * 1024 * 1024;
 
@@ -131,49 +133,57 @@ export function SubmissionForm() {
   }
 
   return (
-    <main className="submission-page">
-      <div className="submission-intro">
-        <p className="eyebrow">CỔNG ĐỘI THI</p>
-        <h1>Nộp bot dự thi</h1>
-        <p>Đóng gói bot thành OCI image archive rồi tải lên. Nền tảng sẽ kiểm tra cấu trúc và chạy preflight trước khi bot được sử dụng.</p>
+    <Page title="Nộp bot dự thi" description="Đóng gói bot thành OCI image archive rồi tải lên. Nền tảng sẽ kiểm tra cấu trúc và chạy preflight trước khi bot được sử dụng.">
+      <p className="eyebrow">CỔNG ĐỘI THI</p>
+      <div className="submissions-layout">
+        <Card title="Tải OCI archive" className="submissions-upload">
+          <p>Chỉ nhận một file `.tar`, tối đa 256 MiB. Không gửi source code, Dockerfile, lệnh chạy hoặc thông tin registry riêng.</p>
+          <form className="submissions-form" onSubmit={(event) => void handleSubmit(event)}>
+            <Field label="OCI image archive (.tar)">
+              <input ref={archiveInput} id="bot-archive" className="submissions-file" type="file" accept=".tar,application/x-tar" disabled={uploading} onChange={(event) => chooseFile(event.currentTarget.files?.[0])} />
+            </Field>
+            {file !== null && (
+              <div className="submissions-selected">
+                <p className="selected-file">{file.name} · {(file.size / (1024 * 1024)).toFixed(1)} MiB</p>
+                <Badge accent>Sẵn sàng</Badge>
+              </div>
+            )}
+            {uploading && (
+              <div className="submissions-progress" role="status" aria-live="polite">
+                <span>{waitingText ?? (progress === null ? 'Đang tải archive…' : `Đang tải archive: ${progress}%`)}</span>
+                <progress
+                  role="progressbar"
+                  max="100"
+                  value={progress ?? undefined}
+                  aria-label="Tiến trình tải archive"
+                  aria-valuenow={progress ?? undefined}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                />
+              </div>
+            )}
+            {formError !== null && <Alert tone="danger">{formError}</Alert>}
+            {success !== null && <Alert tone="success">{success}</Alert>}
+            <Button type="submit" disabled={file === null || uploading}>{uploading ? 'Đang nộp…' : 'Nộp bot'}</Button>
+          </form>
+          <ol className="submissions-steps" aria-label="Quy trình">
+            <li>Tải archive lên</li>
+            <li>Kiểm tra cấu trúc</li>
+            <li>Chạy preflight</li>
+            <li>Sẵn sàng sử dụng</li>
+          </ol>
+        </Card>
+
+        <SubmissionStatus
+          submissions={submissions}
+          loading={loadingList}
+          error={listError}
+          pagination={pagination}
+          onPageChange={setPage}
+          onRetry={() => void loadSubmissions()}
+          preflightQueueLength={preflightQueueLength}
+        />
       </div>
-
-      <section className="submission-upload" aria-labelledby="submission-upload-title">
-        <h2 id="submission-upload-title">Tải OCI archive</h2>
-        <p>Chỉ nhận một file `.tar`, tối đa 256 MiB. Không gửi source code, Dockerfile, lệnh chạy hoặc thông tin registry riêng.</p>
-        <form onSubmit={(event) => void handleSubmit(event)}>
-          <label htmlFor="bot-archive">OCI image archive (.tar)</label>
-          <input ref={archiveInput} id="bot-archive" type="file" accept=".tar,application/x-tar" disabled={uploading} onChange={(event) => chooseFile(event.currentTarget.files?.[0])} />
-          {file !== null && <p className="selected-file">{file.name} · {(file.size / (1024 * 1024)).toFixed(1)} MiB</p>}
-          {uploading && (
-            <div className="upload-progress" role="status" aria-live="polite">
-              <span>{waitingText ?? (progress === null ? 'Đang tải archive…' : `Đang tải archive: ${progress}%`)}</span>
-              <progress
-                role="progressbar"
-                max="100"
-                value={progress ?? undefined}
-                aria-label="Tiến trình tải archive"
-                aria-valuenow={progress ?? undefined}
-                aria-valuemin={0}
-                aria-valuemax={100}
-              />
-            </div>
-          )}
-          {formError !== null && <p className="submission-error" role="alert">{formError}</p>}
-          {success !== null && <p className="submission-success" role="status">{success}</p>}
-          <button type="submit" disabled={file === null || uploading}>{uploading ? 'Đang nộp…' : 'Nộp bot'}</button>
-        </form>
-      </section>
-
-      <SubmissionStatus
-        submissions={submissions}
-        loading={loadingList}
-        error={listError}
-        pagination={pagination}
-        onPageChange={setPage}
-        onRetry={() => void loadSubmissions()}
-        preflightQueueLength={preflightQueueLength}
-      />
-    </main>
+    </Page>
   );
 }

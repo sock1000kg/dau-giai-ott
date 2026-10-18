@@ -1,0 +1,58 @@
+.pub-strip { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ui-space-3); }
+.pub-updated { color: var(--ui-text-muted); font-size: 14px; }
+.pub-state { margin: 0; padding: var(--ui-space-5); border: 1px dashed var(--ui-border-strong); border-radius: var(--ui-radius-md); color: var(--ui-text-muted); text-align: center; }
+
+.pub-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--ui-space-4); }
+@media (min-width: 1024px) {
+  .pub-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+  .pub-grid--thirds { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .pub-grid--halves { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.pub-stack { display: grid; gap: var(--ui-space-4); }
+.pub-panel-section { display: flex; min-height: 0; flex-direction: column; }
+.pub-panel { display: flex; min-height: 0; flex: 1 1 auto; flex-direction: column; }
+.pub-scroll--fill { max-height: 360px; }
+@media (min-width: 1024px) {
+  .pub-grid--panels { --pub-panel-height: clamp(420px, 70vh, 640px); align-items: stretch; }
+  .pub-grid--panels > .pub-stack, .pub-grid--panels > .pub-panel-section { max-height: var(--pub-panel-height); }
+  .pub-grid--panels > .pub-stack { display: flex; min-height: 0; flex-direction: column; }
+  .pub-grid--panels > .pub-stack > section:first-child { flex: 0 0 auto; }
+  .pub-grid--panels > .pub-stack > .pub-panel-section { flex: 1 1 auto; }
+  .pub-scroll--fill { max-height: none; flex: 1 1 auto; min-height: 0; }
+}
+.pub-stack .ui-card p + p { margin-top: var(--ui-space-2); }
+
+.pub-list { display: grid; gap: var(--ui-space-2); margin: 0; padding: 0; list-style: none; }
+.pub-list li { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ui-space-3); padding: var(--ui-space-3); border: 1px solid var(--ui-border); border-radius: var(--ui-radius-sm); }
+.pub-list-main { flex: 1 1 140px; min-width: 0; overflow-wrap: anywhere; color: var(--ui-text); font-weight: 600; }
+.pub-list-meta { color: var(--ui-text-muted); font-size: 13px; }
+.pub-score { font-variant-numeric: tabular-nums; font-weight: 800; }
+
+.pub-entries { display: grid; gap: var(--ui-space-3); }
+.pub-entry { padding: var(--ui-space-3); border: 1px solid var(--ui-border); border-radius: var(--ui-radius-sm); background: var(--ui-surface-solid); }
+.pub-entry h3 { margin: 0 0 var(--ui-space-1); font-size: 15px; }
+.pub-entry p { overflow-wrap: anywhere; }
+
+.app-header .public-nav-link { display: inline-flex; min-height: 44px; align-items: center; padding-inline: 8px; border-radius: var(--ui-radius-sm); }
+.app-header .public-nav-link:focus-visible { outline: var(--ui-focus-ring); outline-offset: 2px; }
+.app-header .public-nav-link[aria-current] { background: rgba(128, 228, 208, 0.14); color: var(--ui-accent); }
+@media (prefers-reduced-motion: reduce) { .pub-list li, .pub-entry { transition: none; } }
+
+.pub-kv, .pub-kv-list { display: grid; gap: var(--ui-space-2); margin: 0; padding: 0; list-style: none; }
+.pub-kv > div { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; }
+.pub-kv dt { color: var(--ui-text-muted); font-size: 12px; font-weight: 700; }
+.pub-kv dd { margin: 0; overflow-wrap: anywhere; color: var(--ui-text); }
+.pub-kv .pub-kv, .pub-kv .pub-kv-list { padding-left: var(--ui-space-3); border-left: 1px solid var(--ui-border); }
+.pub-kv-list > li { overflow-wrap: anywhere; }
+@media (min-width: 480px) { .pub-kv > div { grid-template-columns: minmax(120px, 0.4fr) minmax(0, 1fr); gap: var(--ui-space-3); } }
+.pub-muted { color: var(--ui-text-muted); }
+.pub-section-action { display: flex; justify-content: flex-end; margin-bottom: var(--ui-space-3); }
+
+.pub-list-summary { margin: 0 0 var(--ui-space-2); font-size: 13px; }
+.pub-scroll { overflow-y: auto; padding-right: var(--ui-space-1); scrollbar-width: thin; scrollbar-color: var(--ui-border-strong) transparent; }
+.pub-scroll:focus-visible { outline: var(--ui-focus-ring); outline-offset: 2px; }
+.pub-scroll::-webkit-scrollbar { width: 8px; }
+.pub-scroll::-webkit-scrollbar-track { background: transparent; }
+.pub-scroll::-webkit-scrollbar-thumb { border-radius: 999px; background: var(--ui-border-strong); }
+.pub-scroll::-webkit-scrollbar-thumb:hover { background: var(--ui-text-muted); }
+.pub-list-actions { display: flex; flex-wrap: wrap; gap: var(--ui-space-2); margin-top: var(--ui-space-3); }

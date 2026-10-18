@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Select } from '../../ui/index.ts';
 import {
   createRound,
   getRound,
@@ -34,6 +35,8 @@ const ACTION_LABELS: Record<Exclude<RoundActionType, 'reconcile'>, string> = {
   resume: 'Tiếp tục',
   publish: 'Công bố',
 };
+
+const RECONCILE_HELP = 'Nếu mọi series đã kết thúc: chuyển round sang chốt kết quả và áp dụng Elo. Không có tác dụng nếu round chưa xong; an toàn khi bấm lại.';
 
 function failureMessage(error: unknown): string {
   if (error instanceof RoundAdminApiError && error.status === 401) return 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.';
@@ -237,10 +240,12 @@ export function RoundOperations({ stage }: Readonly<{ stage: string }>) {
   return (
     <section className="round-operations" aria-label="Vận hành round">
       <h2>Vận hành round</h2>
-      <button type="button" onClick={() => setShowCreate(true)}>Tạo round mới…</button>
-      <button type="button" onClick={() => void load()} disabled={loading || busyRound !== null}>Làm mới</button>
+      <div className="round-toolbar">
+        <button type="button" onClick={() => setShowCreate(true)}>Tạo round mới…</button>
+        <button type="button" onClick={() => void load()} disabled={loading || busyRound !== null}>Làm mới</button>
+      </div>
 
-      {message !== null && <p role="status">{message}</p>}
+      {message !== null && <p role="status" className="round-message">{message}</p>}
       {error !== null && <div role="alert"><p>{error}</p><button type="button" onClick={() => void load()}>Thử lại</button></div>}
       {loading && <p role="status" aria-busy="true">Đang tải danh sách round…</p>}
       {!loading && error === null && rounds.length === 0 && <p>Chưa có round nào ở stage này.</p>}
@@ -255,9 +260,12 @@ export function RoundOperations({ stage }: Readonly<{ stage: string }>) {
               {round.pausedAt !== null && <p>Tạm dừng</p>}
               <div>
                 {round.allowedActions.map((action) => action === 'reconcile' ? (
-                  <button key={action} type="button" disabled={busyRound !== null} onClick={() => void submitReconcile(round)}>
-                    Đồng bộ trạng thái
-                  </button>
+                  <span key={action} className="round-reconcile">
+                    <button type="button" disabled={busyRound !== null} aria-describedby={`round-reconcile-help-${round.id}`} title={RECONCILE_HELP} onClick={() => void submitReconcile(round)}>
+                      Kiểm tra và chốt kết quả round
+                    </button>
+                    <small className="field-help" id={`round-reconcile-help-${round.id}`}>{RECONCILE_HELP}</small>
+                  </span>
                 ) : (
                   <button key={action} type="button" disabled={busyRound !== null} onClick={() => openActionDialog(round, action)}>
                     {`${ACTION_LABELS[action]}…`}
@@ -270,17 +278,19 @@ export function RoundOperations({ stage }: Readonly<{ stage: string }>) {
       )}
 
       {showCreate && (
-        <form aria-label="Tạo round mới" onSubmit={(event) => void submitCreate(event)}>
+        <form className="round-dialog" aria-label="Tạo round mới" onSubmit={(event) => void submitCreate(event)}>
           <h2>Tạo round mới</h2>
           <label htmlFor="round-create-reason">Lý do</label>
           <textarea id="round-create-reason" required minLength={1} maxLength={500} value={createReason} onChange={(event) => setCreateReason(event.target.value)} />
-          <button type="button" disabled={submitting} onClick={() => setShowCreate(false)}>Hủy</button>
-          <button type="submit" disabled={submitting || createReason.trim().length === 0}>{submitting ? 'Đang tạo…' : 'Xác nhận tạo'}</button>
+          <div className="round-dialog-actions">
+            <button type="button" disabled={submitting} onClick={() => setShowCreate(false)}>Hủy</button>
+            <button type="submit" disabled={submitting || createReason.trim().length === 0}>{submitting ? 'Đang tạo…' : 'Xác nhận tạo'}</button>
+          </div>
         </form>
       )}
 
       {pending !== null && (
-        <form aria-label={pending.action === 'start' ? 'Xác nhận bắt đầu round' : `Xác nhận ${ACTION_LABELS[pending.action].toLowerCase()}`} onSubmit={(event) => void submitPending(event)}>
+        <form className="round-dialog" aria-label={pending.action === 'start' ? 'Xác nhận bắt đầu round' : `Xác nhận ${ACTION_LABELS[pending.action].toLowerCase()}`} onSubmit={(event) => void submitPending(event)}>
           <h2>{pending.action === 'start' ? `Bắt đầu round ${pending.round.roundNumber}?` : `${ACTION_LABELS[pending.action]} round ${pending.round.roundNumber}?`}</h2>
           {pending.action === 'start' && (
             <>
@@ -295,15 +305,16 @@ export function RoundOperations({ stage }: Readonly<{ stage: string }>) {
           {pending.action === 'open' && (
             <>
               <label htmlFor="round-open-ruleset">Phiên bản bộ luật</label>
-              <select id="round-open-ruleset" value={chosenRuleSetId} onChange={(event) => setChosenRuleSetId(event.target.value)}>
+              <Select id="round-open-ruleset" value={chosenRuleSetId} onChange={(event) => setChosenRuleSetId(event.target.value)}>
                 {ruleSets.map((entry) => (
                   <option key={entry.id} value={entry.id}>v{entry.version} ({shortSha(entry.rulesSha256)})</option>
                 ))}
-              </select>
+              </Select>
             </>
           )}
           <label htmlFor="round-action-reason">Lý do</label>
           <textarea id="round-action-reason" required minLength={1} maxLength={500} value={reason} onChange={(event) => setReason(event.target.value)} />
+          <div className="round-dialog-actions">
           <button type="button" disabled={submitting} onClick={closeActionDialog}>Hủy</button>
           <button
             type="submit"
@@ -313,6 +324,7 @@ export function RoundOperations({ stage }: Readonly<{ stage: string }>) {
           >
             {submitting ? 'Đang gửi…' : pending.action === 'start' ? 'Xác nhận bắt đầu' : `Xác nhận ${ACTION_LABELS[pending.action].toLowerCase()}`}
           </button>
+          </div>
         </form>
       )}
     </section>

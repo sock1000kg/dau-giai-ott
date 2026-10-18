@@ -39,7 +39,7 @@ function validRuleSetBody() {
     rules: {
       schemaVersion: 'ott.round-rules.v1',
       engineVersion: '1.0.0',
-      mapSet: [{ mapId: 'map-v1', checksum: 'a'.repeat(64) }],
+      mapSet: [{ mapId: 'default', checksum: 'a'.repeat(64) }],
       maxTurns: 200,
       faultPolicyVersion: 'P2_BASELINE_V1',
       timeControl: {
