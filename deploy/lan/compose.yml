@@ -1,0 +1,173 @@
+name: ott-finals-lan
+
+# ==============================================================================
+# OTT TOURNAMENT FINALS — ISOLATED LAN DEPLOYMENT (P3-N07)
+# Topology:
+# 1. ott-lan-internal: strictly isolated internal bridge (internal: true)
+#    - No gateway to external networks or WAN (No-Egress guaranteed).
+#    - Postgres, Redis, SeaweedFS, Worker reside here.
+#    - Worker is STRICTLY isolated and NEVER accessible from participant machines.
+# 2. ott-lan-public: participant and administration ingress network
+#    - Only platform-api and platform-web expose ingress ports here.
+# ==============================================================================
+
+networks:
+  ott-lan-internal:
+    driver: bridge
+    internal: true
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.28.10.0/24
+
+  ott-lan-public:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.28.20.0/24
+
+services:
+  postgres:
+    image: postgres:16.6-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB in .env}
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_INITDB_ARGS: --auth=scram-sha-256
+    networks:
+      - ott-lan-internal
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+    restart: unless-stopped
+
+  redis:
+    image: redis:7.4.2-alpine
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --requirepass
+      - ${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}
+    networks:
+      - ott-lan-internal
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli --no-auth-warning -a \"$$REDIS_PASSWORD\" ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+    restart: unless-stopped
+
+  seaweedfs:
+    image: chrislusf/seaweedfs@sha256:4e61d15fd35994cb1e43e1e553dff106794841fd9a99ade2fc8c8bfce4d7872d
+    environment:
+      AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?set S3_ACCESS_KEY_ID in .env}
+      AWS_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?set S3_SECRET_ACCESS_KEY in .env}
+      S3_BUCKET: ${S3_BUCKET:?set S3_BUCKET in .env}
+    command:
+      - mini
+      - -dir=/data
+      - -bucket=${S3_BUCKET:?set S3_BUCKET in .env}
+      - -master.telemetry=false
+    networks:
+      - ott-lan-internal
+    volumes:
+      - seaweedfs-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:9333/cluster/status || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+    restart: unless-stopped
+
+  platform-api:
+    image: ott-platform-api:finals-latest
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      seaweedfs:
+        condition: service_healthy
+    networks:
+      - ott-lan-internal
+      - ott-lan-public
+    ports:
+      - "${API_BIND_IP:-0.0.0.0}:${PORT:-3000}:3000"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      S3_ENDPOINT: http://seaweedfs:8333
+      S3_BUCKET: ${S3_BUCKET}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
+      OTT_DEPLOYMENT_MODE: finals_lan
+      OTT_ADMIN_NETWORK_ALLOWLIST: ${OTT_ADMIN_NETWORK_ALLOWLIST:?set OTT_ADMIN_NETWORK_ALLOWLIST in .env}
+      OTT_TRUSTED_PROXIES: ${OTT_TRUSTED_PROXIES:?set OTT_TRUSTED_PROXIES in .env}
+      OTT_BOOTSTRAP_BTC_TOTP_SECRET: ${OTT_BOOTSTRAP_BTC_TOTP_SECRET:?set OTT_BOOTSTRAP_BTC_TOTP_SECRET in .env}
+      OTT_SESSION_SECRET: ${OTT_SESSION_SECRET:?set OTT_SESSION_SECRET in .env}
+      PORT: 3000
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:3000/api/v1/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+    restart: unless-stopped
+
+  worker:
+    image: ott-worker:finals-latest
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      seaweedfs:
+        condition: service_healthy
+    networks:
+      # Worker ONLY attached to internal network; NO ports exposed; completely unroutable from participant network
+      - ott-lan-internal
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - worker-cache:/tmp/worker-cache
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      S3_ENDPOINT: http://seaweedfs:8333
+      S3_BUCKET: ${S3_BUCKET}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
+      OTT_DEPLOYMENT_MODE: finals_lan
+    restart: unless-stopped
+
+  platform-web:
+    image: ott-platform-web:finals-latest
+    depends_on:
+      platform-api:
+        condition: service_healthy
+    networks:
+      - ott-lan-public
+    ports:
+      - "${WEB_BIND_IP:-0.0.0.0}:${WEB_PORT:-80}:80"
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  redis-data:
+  seaweedfs-data:
+  worker-cache:
+

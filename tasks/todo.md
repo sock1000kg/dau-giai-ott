@@ -1043,7 +1043,7 @@ server-lab/CDN AC-14 evidence; finals uses the prepared public DTO interface.
 **Files likely touched:** `src/platform/api/migrations/0016_finals.sql`, `src/platform/api/src/modules/finals/service.ts`, `src/platform/api/src/modules/finals/routes.ts`, `src/platform/api/tests/finals.integration.test.ts`, `docs/contracts/finals-api-v1.md`.
 **Estimated scope:** M (5 files)
 
-### [ ] P3-N07 — Isolated LAN deployment và single-server local recovery
+### [x] P3-N07 — Isolated LAN deployment và single-server local recovery
 
 **Owner:** Đỗ Khôi Nguyên
 **Mô tả:** Đóng gói topology finals không Internet trên server lab, tách participant/audience network và có backup/restore/control-plane recovery tại chỗ.
@@ -1052,6 +1052,7 @@ server-lab/CDN AC-14 evidence; finals uses the prepared public DTO interface.
 **Dependencies:** `P3-D08`, `P3-N05`.
 **Files likely touched:** `deploy/lan/compose.yml`, `deploy/lan/.env.example`, `scripts/lan-smoke.sh`, `tests/e2e/lan-recovery.test.ts`, `docs/runbooks/finals-lan.md`.
 **Estimated scope:** M (5 files)
+**Hoàn tất:** 2026-10-18 — Finals isolated LAN deployment và single-server recovery: Docker Compose topology `deploy/lan/compose.yml` định nghĩa 2 mạng riêng biệt (`ott-lan-internal` với `internal: true` đảm bảo No-Egress, worker không bind host port và chỉ gắn vào mạng nội bộ, CSDL postgres/redis/seaweedfs hoàn toàn cô lập khỏi mạng đội thi; `ott-lan-public` chỉ mở ingress HTTP/HTTPS cho web/api); cấu hình offline `deploy/lan/.env.example` với startup guards chế độ `finals_lan`; script kiểm tra khói tự động `scripts/lan-smoke.sh` xác thực cấu hình cô lập mạng, không mở cổng worker và ngắt kết nối WAN; test phục hồi toàn diện `tests/e2e/lan-recovery.test.ts` (11/11 pass) xác thực cô lập mạng, worker heartbeat với adaptive capacity, kiểm soát tạm dừng an toàn `pauseAdmission`, outbox generation increment khi restart, đối soát toàn vẹn SHA-256 manifest khi restore CSDL/artifact và rerun chỉ chấp nhận lỗi hạ tầng chống ghi đúp kết quả/nhánh đấu; sổ tay vận hành `docs/runbooks/finals-lan.md` chuẩn hóa toàn bộ quy trình vận hành và tiêu chí nghiệm thu Checkpoint P3-F1.
 
 ## [ ] Checkpoint P3-F1 — Finals chạy hoàn toàn trong LAN
 
