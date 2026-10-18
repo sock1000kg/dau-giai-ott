@@ -1,5 +1,5 @@
 import type { Database } from '../../db/client.ts';
-import { calculateEloDelta } from './elo.ts';
+import { seriesDeltas } from './elo.ts';
 
 interface RatingSnapshotEntry {
   readonly teamId: string;
@@ -12,6 +12,7 @@ interface RoundRow {
   readonly status: 'SCHEDULED' | 'FINALIZED';
   readonly rating_snapshot: unknown;
   readonly rating_applied_at: Date | null;
+  readonly rating_policy_version: string;
 }
 
 interface SeriesRow {
@@ -55,7 +56,17 @@ function parseSnapshot(value: unknown): Map<string, number> {
   return ratings;
 }
 
-function expectedEntries(round: RoundRow, series: readonly SeriesRow[]): ExpectedLedgerEntry[] {
+/** Rated series each team completed in earlier rounds; cancelled series earn no ledger row and never count. */
+export function countPriorRatedSeries(priorSeries: readonly { readonly teamAId: string; readonly teamBId: string }[]): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const { teamAId, teamBId } of priorSeries) {
+    counts.set(teamAId, (counts.get(teamAId) ?? 0) + 1);
+    counts.set(teamBId, (counts.get(teamBId) ?? 0) + 1);
+  }
+  return counts;
+}
+
+function expectedEntries(round: RoundRow, series: readonly SeriesRow[], priorCounts: ReadonlyMap<string, number>): ExpectedLedgerEntry[] {
   const snapshot = parseSnapshot(round.rating_snapshot);
   const rows: ExpectedLedgerEntry[] = [];
   const seenTeams = new Set<string>();
@@ -70,12 +81,15 @@ function expectedEntries(round: RoundRow, series: readonly SeriesRow[]): Expecte
     const ratingA = snapshot.get(item.team_a_id);
     const ratingB = snapshot.get(item.team_b_id);
     if (ratingA === undefined || ratingB === undefined) throw new Error('RATING_SNAPSHOT_TEAM_MISSING');
-    const scoreA = Number(item.team_a_score) > Number(item.team_b_score) ? 1
+    const scoreA: 0 | 0.5 | 1 = Number(item.team_a_score) > Number(item.team_b_score) ? 1
       : Number(item.team_a_score) < Number(item.team_b_score) ? 0 : 0.5;
-    const deltaA = calculateEloDelta(ratingA, ratingB, scoreA);
+    const { deltaA, deltaB } = seriesDeltas(
+      round.rating_policy_version, ratingA, ratingB, scoreA,
+      priorCounts.get(item.team_a_id) ?? 0, priorCounts.get(item.team_b_id) ?? 0,
+    );
     rows.push(
       { teamId: item.team_a_id, seriesId: item.id, ratingBefore: ratingA, delta: deltaA, ratingAfter: ratingA + deltaA },
-      { teamId: item.team_b_id, seriesId: item.id, ratingBefore: ratingB, delta: -deltaA, ratingAfter: ratingB - deltaA },
+      { teamId: item.team_b_id, seriesId: item.id, ratingBefore: ratingB, delta: deltaB, ratingAfter: ratingB + deltaB },
     );
   }
   return rows;
@@ -87,7 +101,7 @@ async function applyRoundInTransaction(
   repair: boolean,
 ): Promise<{ readonly inserted: number; readonly wasApplied: boolean }> {
   const selected = await transaction.query<RoundRow>(
-    'SELECT id, tournament_stage, status, rating_snapshot, rating_applied_at FROM rounds WHERE id = $1 FOR UPDATE', [roundId],
+    'SELECT id, tournament_stage, status, rating_snapshot, rating_applied_at, rating_policy_version FROM rounds WHERE id = $1 FOR UPDATE', [roundId],
   );
   const round = selected.rows[0];
   if (round === undefined) throw new Error('ROUND_NOT_FOUND');
@@ -95,7 +109,17 @@ async function applyRoundInTransaction(
   const result = await transaction.query<SeriesRow>(
     'SELECT id, status, team_a_id, team_b_id, team_a_score, team_b_score FROM series WHERE round_id = $1 ORDER BY id', [roundId],
   );
-  const expected = expectedEntries(round, result.rows);
+  // Prior rounds are those before this one in the same (finalized_at, id) order rebuildRatingLedger walks,
+  // so incremental application and a rebuild see identical history.
+  const prior = await transaction.query<{ readonly team_a_id: string; readonly team_b_id: string }>(`
+    SELECT s.team_a_id, s.team_b_id
+    FROM series s
+    JOIN rounds r ON r.id = s.round_id
+    JOIN rounds cur ON cur.id = $1
+    WHERE r.tournament_stage = cur.tournament_stage AND r.status = 'FINALIZED' AND s.status = 'FINALIZED'
+      AND (r.finalized_at, r.id) < (cur.finalized_at, cur.id)`, [roundId]);
+  const priorCounts = countPriorRatedSeries(prior.rows.map((row) => ({ teamAId: row.team_a_id, teamBId: row.team_b_id })));
+  const expected = expectedEntries(round, result.rows, priorCounts);
   const expectedByKey = new Map(expected.map((entry) => [`${entry.seriesId}:${entry.teamId}`, entry]));
   const existing = await transaction.query<LedgerRow>(
     'SELECT team_id, series_id, rating_before, rating_after, delta FROM rating_ledger WHERE series_id = ANY($1::uuid[])',

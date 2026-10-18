@@ -4,6 +4,8 @@ import type { Database } from '../../db/client.ts';
 import { createPairingPlan, pairKey, type PairingParticipant } from './pairing.ts';
 import { scoreQualificationSeries, type SeriesMatchInput } from '../series/scoring.ts';
 import { applyRoundRatings } from '../ratings/service.ts';
+import { CURRENT_RATING_POLICY } from '../ratings/elo.ts';
+import { isQualificationGateEnforced } from './eligibility.ts';
 
 const INITIAL_RATING_BAND = 200;
 const RATING_BAND_STEP = 100;
@@ -75,6 +77,8 @@ async function activeRoster(transaction: Database, stage: string): Promise<Submi
       s.oci_config_digest AS config_digest, s.policy_version
     FROM teams t
     JOIN submissions s ON s.team_id = t.id AND s.tournament_stage = $1 AND s.status = 'ACTIVE'
+      AND ($2::boolean = FALSE OR EXISTS (
+        SELECT 1 FROM submission_gate_results gate WHERE gate.submission_id = s.id AND gate.outcome = 'PASS'))
     LEFT JOIN LATERAL (
       SELECT ledger.rating_after
       FROM rating_ledger ledger
@@ -83,7 +87,7 @@ async function activeRoster(transaction: Database, stage: string): Promise<Submi
       ORDER BY prior_series.created_at DESC, ledger.created_at DESC, ledger.id DESC
       LIMIT 1
     ) latest ON TRUE
-    ORDER BY t.id`, [stage]);
+    ORDER BY t.id`, [stage, isQualificationGateEnforced()]);
   return result.rows;
 }
 
@@ -160,8 +164,8 @@ export async function scheduleRound(database: Database, input: ScheduleRoundInpu
     const scheduleSeed = randomUUID();
     const snapshot = roster.map(({ teamId, submissionId, rating }) => ({ teamId, submissionId, rating }));
     await transaction.query(
-      "INSERT INTO rounds (id, tournament_stage, idempotency_key, request_hash, schedule_seed, rating_snapshot) VALUES ($1,$2,$3,$4,$5,$6::jsonb)",
-      [roundId, input.tournamentStage, input.idempotencyKey, hash, scheduleSeed, JSON.stringify(snapshot)],
+      "INSERT INTO rounds (id, tournament_stage, idempotency_key, request_hash, schedule_seed, rating_snapshot, rating_policy_version) VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7)",
+      [roundId, input.tournamentStage, input.idempotencyKey, hash, scheduleSeed, JSON.stringify(snapshot), CURRENT_RATING_POLICY],
     );
     const bySubmission = new Map(roster.map((entry) => [entry.submissionId, entry]));
     const seriesRows: { readonly id: string; readonly teamAId: string; readonly teamBId: string }[] = [];

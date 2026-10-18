@@ -1,5 +1,7 @@
 export type TieBreakStatus = 'CLEAR' | 'BTC_REQUIRED';
 
+export type RatingStatus = 'RANKED' | 'UNRANKED_MIN_SERIES';
+
 export interface LeaderboardEntry {
   readonly rank: number;
   readonly tieBreakStatus: TieBreakStatus;
@@ -11,6 +13,8 @@ export interface LeaderboardEntry {
   readonly technicalFaultCount: number;
   readonly forfeitCount: number;
   readonly updatedAt: string;
+  /** Teams below the minimum finalized series are listed but labelled "chưa xếp hạng". */
+  readonly ratingStatus: RatingStatus;
 }
 
 export interface LeaderboardPageData {
@@ -55,6 +59,7 @@ function entry(value: unknown): LeaderboardEntry {
     technicalFaultCount: Number(row.technicalFaultCount),
     forfeitCount: Number(row.forfeitCount),
     updatedAt: row.updatedAt,
+    ratingStatus: row.ratingStatus === 'UNRANKED_MIN_SERIES' ? 'UNRANKED_MIN_SERIES' : 'RANKED',
   };
 }
 

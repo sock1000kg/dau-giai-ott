@@ -83,4 +83,18 @@ describe('public leaderboard', () => {
     expect(await screen.findByRole('alert')).toBeTruthy();
     expect(screen.getByRole('button', { name: /thử lại/i })).toBeTruthy();
   });
+
+  it('labels teams below the minimum series as "Chưa xếp hạng" and defaults older rows to ranked', async () => {
+    const rows = [
+      { ...pageOne.data.items[1], team: { id: 'u', name: 'Unranked' }, ratingStatus: 'UNRANKED_MIN_SERIES', ratedSeries: 4, finalsEligible: false },
+      { ...pageOne.data.items[2], team: { id: 'r', name: 'Ranked' }, ratingStatus: 'RANKED', ratedSeries: 5, finalsEligible: true },
+    ];
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(200, { data: { items: rows, pagination: pageOne.data.pagination } })));
+    const result = await listLeaderboard();
+    expect(result.items.map((item) => item.ratingStatus)).toEqual(['UNRANKED_MIN_SERIES', 'RANKED']);
+    window.history.replaceState({}, '', '/leaderboard');
+    render(<LeaderboardPage />);
+    expect(await screen.findByText('Unranked')).toBeTruthy();
+    expect(screen.getAllByText(/Chưa xếp hạng/)).toHaveLength(1);
+  });
 });

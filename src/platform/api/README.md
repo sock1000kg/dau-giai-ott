@@ -454,3 +454,53 @@ and cannot change the stored hash.
 
 `npm test --workspace @ott/platform-api -- operations` (unit and route tests need no services;
 `operations.integration.test.ts` needs `DATABASE_URL` and `REDIS_URL` and skips otherwise).
+
+## Qualification gate, adaptive K and minimum-series eligibility (`P3-L03`)
+
+Migration `0014_qualification_gate.sql` adds `rounds.rating_policy_version` and `submission_gate_results`.
+
+### Rating policy (pinned per round)
+
+| `rating_policy_version` | K |
+| --- | --- |
+| `elo-k32-v1` (column default, every pre-0014 round) | 32 always — Phase 2 ledgers rebuild unchanged |
+| `elo-adaptive-k-v1` (set by `scheduleRound` on new rounds) | 64 while the team has fewer than 5 earlier rated series, else 32 |
+
+- "Earlier rated series" = `FINALIZED` series of the same stage in rounds that precede the round in the order
+  `rebuildRatingLedger` walks (`finalized_at, id`). Cancelled / infra-failed series earn no ledger row and never count.
+  The count is taken from `series`, not `rating_ledger`, so it does not depend on which rounds were already applied;
+  incremental apply and rebuild therefore produce identical rows.
+- Each team's delta uses its own K. With equal K the legacy zero-sum rounding is kept; with different K the two deltas
+  are not exact negatives, so total rating is **not conserved** under `elo-adaptive-k-v1`. The ledger stores each team's own delta and
+  `RATING_LEDGER_MISMATCH` still compares every stored row with the recomputed one.
+- `rating_policy_version` is in the round snapshot trigger's protected columns (immutable after insert).
+
+### Finals eligibility and leaderboard labels
+
+`scheduling/eligibility.ts`: `finalsEligibility({ ratedSeries, minimumSeries })` (default `DEFAULT_MINIMUM_FINALS_SERIES = 5`,
+integer >= 1). `GET /api/v1/leaderboard` rows gain `ratedSeries`, `finalsEligible` and `ratingStatus`
+(`RANKED` | `UNRANKED_MIN_SERIES`, shown in the web as "Chưa xếp hạng"); ordering and existing fields are unchanged.
+Optional query `minimumSeries` (1-50, else `400 INVALID_QUERY`). BTC lowering the threshold for stages with fewer than six
+rounds is a caller-supplied value; storing it per stage is supplied by `P3-D08`.
+
+### Capture-first gate
+
+`submission_gate_results` is append-only (trigger `reject_append_only_mutation`), unique per
+`(submission_id, gate_bot_id, gate_bot_digest)`, and `outcome = 'PASS'` exactly when `points >= 1`.
+`recordGateResult` reads the two finalized `match_results`, requires that both games are the submission's, were played against a
+submission whose `oci_manifest_digest` equals the pinned `gateBotDigest`, and on opposite sides. It computes win 1 / draw 0.5 / loss 0
+itself; client points are rejected. A game that is not finalized (running, `FAILED`, `CANCELLED`) gives `409 GATE_PENDING`, never a FAIL.
+
+| Endpoint (BTC_ADMIN only) | Result |
+| --- | --- |
+| `POST /api/v1/admin/qualification-gate/results` body `{ reason, submissionId, gateBotDigest, game1MatchId, game2MatchId, gateBotId? }` | `201` new / `200` replay; `409 GATE_RESULT_CONFLICT` for other matches on the same key; `422 GATE_SIDES_NOT_SWAPPED` / `GATE_MATCH_FOREIGN`; `404`; one `qualification_gate.record` audit row, `X-Correlation-Id` echoed |
+| `GET /api/v1/admin/qualification-gate/submissions/:submissionId` | `{ rankable, results[] }` |
+
+`OTT_QUALIFICATION_GATE_ENFORCED=true` makes `scheduleRound` skip teams whose ACTIVE submission has no PASS row
+(default off, existing behaviour). Follow-ups, not in this task: queueing/running the two gate matches in the preflight queue
+(needs worker/job work) and per-stage gate-bot configuration in the round rule set (D01 schema is frozen).
+
+### Verification
+
+`npm test --workspace @ott/platform-api -- ratings` and `-- qualification-gate` (unit/route tests need no services;
+`qualification-gate.integration.test.ts` needs `DATABASE_URL`).

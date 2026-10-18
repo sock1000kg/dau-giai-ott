@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import type { Database } from '../../db/client.ts';
+import { DEFAULT_MINIMUM_FINALS_SERIES, finalsEligibility, MAX_MINIMUM_FINALS_SERIES, ratingStatusFor } from '../scheduling/eligibility.ts';
 
 export interface LeaderboardRoutesOptions {
   readonly database: Database;
@@ -9,6 +10,7 @@ interface LeaderboardQuery {
   readonly stage?: unknown;
   readonly page?: unknown;
   readonly pageSize?: unknown;
+  readonly minimumSeries?: unknown;
 }
 
 interface LeaderboardRow {
@@ -159,7 +161,8 @@ export function registerLeaderboardRoutes(app: FastifyInstance, options: Leaderb
     const stage = query.stage === undefined ? 'QUALIFICATION' : query.stage;
     const page = integerQuery(query.page, 1, 1, 10000);
     const pageSize = integerQuery(query.pageSize, 25, 1, 100);
-    if (!validStage(stage) || page === null || pageSize === null) {
+    const minimumSeries = integerQuery(query.minimumSeries, DEFAULT_MINIMUM_FINALS_SERIES, 1, MAX_MINIMUM_FINALS_SERIES);
+    if (!validStage(stage) || page === null || pageSize === null || minimumSeries === null) {
       return reply.status(400).send({ error: { code: 'INVALID_QUERY', message: 'Invalid leaderboard query' } });
     }
     const offset = (page - 1) * pageSize;
@@ -173,18 +176,25 @@ export function registerLeaderboardRoutes(app: FastifyInstance, options: Leaderb
     }
     return {
       data: {
-        items: result.rows.map((row) => ({
-          rank: Number(row.rank),
-          tieBreakStatus: Number(row.tie_count) > 1 ? 'BTC_REQUIRED' : 'CLEAR',
-          team: { id: row.team_id, name: row.team_name },
-          rating: row.rating,
-          headToHeadPoints: Number(row.head_to_head_points),
-          series: { wins: row.series_wins, draws: row.series_draws, losses: row.series_losses },
-          winRate: Number(row.win_rate),
-          technicalFaultCount: row.technical_fault_count,
-          forfeitCount: row.forfeit_count,
-          updatedAt: row.updated_at,
-        })),
+        items: result.rows.map((row) => {
+          const ratedSeries = row.series_wins + row.series_draws + row.series_losses;
+          const eligibility = finalsEligibility({ ratedSeries, minimumSeries });
+          return {
+            rank: Number(row.rank),
+            tieBreakStatus: Number(row.tie_count) > 1 ? 'BTC_REQUIRED' : 'CLEAR',
+            team: { id: row.team_id, name: row.team_name },
+            rating: row.rating,
+            headToHeadPoints: Number(row.head_to_head_points),
+            series: { wins: row.series_wins, draws: row.series_draws, losses: row.series_losses },
+            winRate: Number(row.win_rate),
+            technicalFaultCount: row.technical_fault_count,
+            forfeitCount: row.forfeit_count,
+            updatedAt: row.updated_at,
+            ratedSeries,
+            finalsEligible: eligibility.eligible,
+            ratingStatus: ratingStatusFor(eligibility),
+          };
+        }),
         pagination: { page, pageSize, total, totalPages: Math.ceil(total / pageSize) },
       },
     };

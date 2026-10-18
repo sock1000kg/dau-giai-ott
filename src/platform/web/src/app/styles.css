@@ -353,6 +353,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .leaderboard-table tbody tr:hover { background: rgba(128, 228, 208, .045); }
 .leaderboard-team { min-width: 160px; color: #f3f6fb !important; font-size: 13px !important; font-weight: 700; }
 .rank-value { display: inline-grid; min-width: 28px; min-height: 28px; place-items: center; border-radius: 8px; background: #20384a; color: #80e4d0; font-size: 13px; font-weight: 800; }
+.unranked-status { display: block; width: max-content; margin-top: 5px; color: #9fb3c8; font-size: 9px; font-weight: 750; }
 .tie-break-status { display: block; width: max-content; margin-top: 5px; color: #ffd59a; font-size: 9px; font-weight: 750; }
 .leaderboard-pagination { display: flex; align-items: center; justify-content: center; gap: 14px; margin: 22px 0 12px; color: #a8b8c8; font-size: 13px; }
 .leaderboard-pagination button { margin: 0; }

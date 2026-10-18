@@ -900,6 +900,7 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 **Dependencies:** `P3-T01`, `P3-D01`.
 **Files likely touched:** `src/platform/api/src/modules/ratings/elo.ts`, `src/platform/api/src/modules/ratings/service.ts`, `src/platform/api/src/modules/scheduling/eligibility.ts`, `src/platform/api/tests/ratings-v2.test.ts`, `src/platform/api/tests/qualification-gate.integration.test.ts`.
 **Estimated scope:** M (5 files)
+**Hoàn tất:** Chưa tick — code và test không cần dịch vụ đã xong (platform-api: 328 pass / 96 skipped, ratings-v2 48 pass, qualification-gate 37 pass, platform-web 125 pass, typecheck sạch); các integration PostgreSQL (`qualification-gate.integration.test.ts`) và mutation DB chưa chạy, chờ Reviewer. Ngoài phạm vi: xếp lịch/chạy 2 game gate trong preflight queue và cấu hình gate bot theo stage.
 
 ### [x] P3-D05 — Qualification replay authorization từ dữ liệu đầu tiên
 

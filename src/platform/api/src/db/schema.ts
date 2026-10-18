@@ -21,6 +21,7 @@ export const migrationFiles = [
   { id: '0011_replay_visibility', source: new URL('../../migrations/0011_replay_visibility.sql', import.meta.url) },
   { id: '0012_admin_mfa', source: new URL('../../migrations/0012_admin_mfa.sql', import.meta.url) },
   { id: '0013_operations_cases', source: new URL('../../migrations/0013_operations_cases.sql', import.meta.url) },
+  { id: '0014_qualification_gate', source: new URL('../../migrations/0014_qualification_gate.sql', import.meta.url) },
 ] as const;
 
 export async function loadMigrations(): Promise<readonly Migration[]> {
