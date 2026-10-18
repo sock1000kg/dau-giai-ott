@@ -297,3 +297,10 @@ Chạy riêng E2E:
 npm --workspace @ott/match-runner test -- tests/e2e
 PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s src/bots/python/tests
 ```
+
+## Phạm vi P3-L02 — chess-clock / dynamic timing
+
+- `src/timing-policy.ts`: policy thuần (FIXED/DYNAMIC/NONE, ngân sách tổng mỗi bot, wall-clock), không đọc đồng hồ.
+- `runMatch` nhận `config.protocolV2 = { timeControl, botSeeds }` và `ports.clock` (`MonotonicClock`, test dùng `FakeClock`); thiếu `protocolV2` thì chạy v1 y như cũ.
+- Event log `formatVersion: 2` có `timing[]`; `verifyReplay` tính lại và trả `TIMING_MISMATCH` nếu lệch. Chi tiết ngữ nghĩa: `docs/contracts/bot-protocol-v2.md` (mục "Runtime timing and event-log fields").
+- Chưa nối: `BotProcess` thật vẫn validate theo schema v1 và chưa có adapter đồng hồ `performance.now`; worker/job snapshot chưa mang `timeControl` (xem báo cáo).

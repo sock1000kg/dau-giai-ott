@@ -135,3 +135,25 @@ added to the event log/replay by `P3-L02`, not to these two messages.
 | `BASE_EXCEEDS_MAX` | `baseMs > maxMs` |
 | `MAX_EXCEEDS_TOTAL_BUDGET` | `maxMs > totalBotBudgetMs` |
 
+
+## Runtime timing and event-log fields (P3-L02)
+
+`runMatch` pins v2 through `MatchConfig.protocolV2 = { timeControl, botSeeds }` and an injected monotonic
+`ports.clock`; without it a match is unchanged v1. The policy is the pure module
+`src/match-runner/src/timing-policy.ts`. Semantics the contract leaves open are fixed there:
+
+- Turn index = Engine `turnNumber - 1` (both sides count); `DYNAMIC` limit = `min(maxMs, baseMs + stepMs * floor(index / everyTurns))`.
+- Enforced deadline = strictest of per-turn limit, the bot's remaining budget and remaining match wall-clock.
+  `timeBudget.turnLimitMs` is `min(perTurn, remaining budget)` (`null` for `NONE`); wall-clock is not folded into it.
+- Answer on time ⇔ `elapsed <= deadline`; a late answer or transport `BOT_TIMEOUT` is charged `max(elapsed, deadline)` and
+  the ACTION is discarded. Deadline 0 ⇒ the bot is not asked.
+- Overrun of the per-turn limit = the existing recoverable `BOT_TIMEOUT` skip. Overrun of the bot budget or wall-clock =
+  `BOT_TIMEOUT` skip, its TURN_RESULT, then a forfeit of that side with fault `BOT_TIMEOUT`. A process fault still wins.
+
+Event log `formatVersion: 2` (v1 logs are unchanged and verify as before) has `header.protocolVersion: 2`,
+`header.limits.timeControl` and a top-level `timing` array, one decision per bot-asked turn:
+`turnId, side, turnLimitMs, deadlineMs, remainingBeforeMs, wallElapsedBeforeMs, elapsedMs, timedOut, chargedMs,
+remainingAfterMs, exhaustion (null | TURN_LIMIT | BOT_BUDGET | WALL_CLOCK)`. `verifyReplay` recomputes every derived field from the
+header rules plus the recorded `elapsedMs`/`timedOut`/`wallElapsedBeforeMs` and rejects a disagreement with
+`TIMING_MISMATCH` (`timing[i] <field> is <recorded> but the rules give <expected>`). `parseAnyEventLog` reads both versions;
+`parseEventLog` stays v1-only and rejects v2.

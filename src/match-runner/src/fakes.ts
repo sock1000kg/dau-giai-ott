@@ -26,14 +26,19 @@ import type {
 } from '@ott/game-core';
 import type {
   ActionMessage,
+  AnyProtocolMessage,
   InitMessage,
+  InitMessageV2,
   MatchResultMessage,
+  MatchResultMessageV2,
   ProtocolMessage,
   StateUpdateMessage,
+  StateUpdateMessageV2,
   TurnResultMessage,
+  TurnResultMessageV2,
 } from '@ott/bot-protocol';
 
-import type { BotPort, BotReply, BotReplyErrorCode, BotStartResult, GamePort } from './ports.ts';
+import type { BotPort, BotReply, BotReplyErrorCode, BotStartResult, GamePort, MonotonicClock } from './ports.ts';
 
 /** Scripted end condition, checked before the `maxTurns` draw (Engine API v1 section 5). */
 export interface FinishScript {
@@ -293,15 +298,40 @@ export class FakeGame implements GamePort {
   }
 }
 
-export type ScriptedReply =
+/**
+ * Deterministic `MonotonicClock` for tests: time only moves when `advance` is called
+ * (`ScriptedBot` does it through `elapsedMs`). Never reads the system clock.
+ */
+export class FakeClock implements MonotonicClock {
+  #now: number;
+
+  constructor(startMs = 0) {
+    this.#now = startMs;
+  }
+
+  nowMs(): number {
+    return this.#now;
+  }
+
+  advance(ms: number): void {
+    if (!(ms >= 0)) throw new RangeError(`FakeClock cannot go backwards (advance ${ms})`);
+    this.#now += ms;
+  }
+}
+
+/** `elapsedMs` advances the bot's `FakeClock` by that much while it "thinks" about this reply. */
+export type ScriptedReply = (
   | { readonly kind: 'action'; readonly action: GameAction }
   | { readonly kind: 'raw'; readonly message: ActionMessage }
   | { readonly kind: 'error'; readonly code: BotReplyErrorCode }
-  | { readonly kind: 'throw'; readonly error: Error };
+  | { readonly kind: 'throw'; readonly error: Error }
+) & { readonly elapsedMs?: number };
 
 export interface ScriptedBotOptions {
   readonly replies: readonly ScriptedReply[];
   readonly startResult?: BotStartResult;
+  /** Advanced by each reply's `elapsedMs` (P3-L02). */
+  readonly clock?: FakeClock;
 }
 
 /**
@@ -312,20 +342,22 @@ export interface ScriptedBotOptions {
  * `notifyStateUpdate`/`sendTurnResult`/`finish` resolve as no-ops without recording; the bot is
  * already gone and the runner's `finally` may call them in any order.
  */
-export class ScriptedBot implements BotPort {
+export class ScriptedBot<Received extends AnyProtocolMessage = ProtocolMessage> implements BotPort {
   readonly #queue: ScriptedReply[];
   readonly #startResult: BotStartResult;
-  readonly #received: ProtocolMessage[] = [];
+  readonly #received: Received[] = [];
+  readonly #clock: FakeClock | undefined;
   readonly #timeouts: number[] = [];
   #stopCalls = 0;
 
   constructor(options: ScriptedBotOptions) {
     this.#queue = [...options.replies];
     this.#startResult = options.startResult ?? { ok: true };
+    this.#clock = options.clock;
   }
 
   /** Every message handed to the bot, in call order. */
-  get received(): readonly ProtocolMessage[] {
+  get received(): readonly Received[] {
     return [...this.#received];
   }
 
@@ -339,20 +371,21 @@ export class ScriptedBot implements BotPort {
     return [...this.#timeouts];
   }
 
-  async start(init: InitMessage): Promise<BotStartResult> {
+  async start(init: InitMessage | InitMessageV2): Promise<BotStartResult> {
     if (this.#stopCalls > 0) return { ok: false, code: 'BOT_EOF' };
     if (!this.#startResult.ok) return this.#startResult;
-    this.#received.push(init);
+    this.#received.push(init as Received);
     return this.#startResult;
   }
 
-  async requestAction(update: StateUpdateMessage, timeoutMs: number): Promise<BotReply> {
+  async requestAction(update: StateUpdateMessage | StateUpdateMessageV2, timeoutMs: number): Promise<BotReply> {
     this.#timeouts.push(timeoutMs);
     if (this.#stopCalls > 0) return { ok: false, code: 'BOT_EOF' };
 
-    this.#received.push(update);
+    this.#received.push(update as Received);
     const reply = this.#queue.shift();
     if (reply === undefined) return { ok: false, code: 'BOT_EOF' };
+    if (reply.elapsedMs !== undefined) this.#clock?.advance(reply.elapsedMs);
     if (reply.kind === 'throw') throw reply.error;
     if (reply.kind === 'error') return { ok: false, code: reply.code };
     if (reply.kind === 'raw') return { ok: true, message: reply.message };
@@ -360,7 +393,7 @@ export class ScriptedBot implements BotPort {
       ok: true,
       message: {
         type: 'ACTION',
-        protocolVersion: 1,
+        protocolVersion: update.protocolVersion,
         matchId: update.matchId,
         turnId: update.turnId,
         action: cloneAction(reply.action),
@@ -372,19 +405,19 @@ export class ScriptedBot implements BotPort {
    * Send-only STATE_UPDATE (Bot Protocol v1 §5.2/§8): records the update, consumes no
    * scripted reply and records no timeout.
    */
-  async notifyStateUpdate(update: StateUpdateMessage): Promise<void> {
+  async notifyStateUpdate(update: StateUpdateMessage | StateUpdateMessageV2): Promise<void> {
     if (this.#stopCalls > 0) return;
-    this.#received.push(update);
+    this.#received.push(update as Received);
   }
 
-  async sendTurnResult(message: TurnResultMessage): Promise<void> {
+  async sendTurnResult(message: TurnResultMessage | TurnResultMessageV2): Promise<void> {
     if (this.#stopCalls > 0) return;
-    this.#received.push(message);
+    this.#received.push(message as Received);
   }
 
-  async finish(message: MatchResultMessage): Promise<void> {
+  async finish(message: MatchResultMessage | MatchResultMessageV2): Promise<void> {
     if (this.#stopCalls > 0) return;
-    this.#received.push(message);
+    this.#received.push(message as Received);
   }
 
   async stop(): Promise<void> {
