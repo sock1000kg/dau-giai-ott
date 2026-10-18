@@ -12,6 +12,7 @@ import { registerResultRoutes } from './modules/results/routes.ts';
 import { registerReplayRoutes } from './modules/replays/routes.ts';
 import { registerRoundRoutes } from './modules/rounds/routes.ts';
 import { registerFinalsRoutes } from './modules/finals/routes.ts';
+import { registerResultBundleRoutes } from './modules/result-bundles/routes.ts';
 import { registerOperationsRoutes } from './modules/operations/routes.ts';
 import { registerQualificationGateRoutes } from './modules/qualification-gate/routes.ts';
 import { registerTestRunRoutes } from './modules/test-runs/routes.ts';
@@ -166,6 +167,7 @@ export function createAuthApp(options: CreateAuthAppOptions): FastifyInstance {
   registerResultRoutes(application, { database: options.database });
   registerRoundRoutes(application, { database: options.database });
   registerFinalsRoutes(application, { database: options.database });
+  registerResultBundleRoutes(application, { database: options.database });
   registerOperationsRoutes(application, { database: options.database, sessionStore: authStore, enqueuer: options.matchEnqueuer });
   registerQualificationGateRoutes(application, { database: options.database });
   registerTestRunRoutes(application, {
