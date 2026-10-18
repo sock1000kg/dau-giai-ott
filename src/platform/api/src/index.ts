@@ -60,3 +60,6 @@ export {
   type RetentionReport,
 } from './modules/submissions/layers.ts';
 
+export { registerOperationsRoutes, type OperationsRoutesOptions } from './modules/operations/routes.ts';
+export { INFRA_FAILURE_REASONS, evaluateRerunEligibility, CASE_TRANSITIONS, canTransitionCase } from './modules/operations/types.ts';
+export { computeRoundResultsHash } from './modules/operations/results-hash.ts';

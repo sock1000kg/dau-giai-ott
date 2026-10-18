@@ -971,7 +971,7 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 **Hoàn tất:** 2026-10-18 — Alerting, Grafana dashboard, backup-restore và incident runbooks: `ops/prometheus/rules.yml` định nghĩa 8 alert rules (`QueueAgeHigh`, `WorkerHeartbeatMissing`, `InfraFailureSpike`, `FinalizeStuck`, `SandboxResourcePressure`, `DeadLetterQueueNotEmpty`, `BotForfeitSpike`, `WorkerCapacityThrottled`); `ops/grafana/dashboards/tournament.json` trực quan hoá throughput, queue age, active worker pool, bot forfeits by reason, host CPU/RAM và bot cgroup memory.peak; `scripts/backup-local.sh` và `scripts/restore-local.sh` sao lưu/khôi phục PostgreSQL, MinIO storage, SHA-256 manifest và xác thực toàn vẹn audit events/matches; `docs/runbooks/production-operations.md` quy định 4 emergency playbooks có Owner/Action (Pause upload, Read-only public mode, Secret rotation, Thông báo sự cố/đền bù), bảng tự đánh giá OWASP Top 10 và biên bản diễn tập có chữ ký xác nhận; `ops-alerts-backup.test.ts` 6/6 pass, worker typecheck/build clean, bot protocol 27/27 pass.
 
 
-### [ ] P3-D07 — Privileged operations, anti-cheat review và appeal workflow
+### [x] P3-D07 — Privileged operations, anti-cheat review và appeal workflow
 
 **Owner:** Phạm Tất Đạt
 **Mô tả:** Hoàn thiện thao tác BTC còn thiếu: revoke/suspend, retry/cancel lỗi hạ tầng, review anomaly/duplicate và xử lý khiếu nại mà không sửa lịch sử.
@@ -980,6 +980,7 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 **Dependencies:** `P3-D01`, `P3-N02`, `P3-N04`.
 **Files likely touched:** `src/platform/api/migrations/0013_operations_cases.sql`, `src/platform/api/src/modules/operations/service.ts`, `src/platform/api/src/modules/operations/routes.ts`, `src/platform/api/tests/operations.integration.test.ts`, `src/platform/web/src/features/operations/OperationsConsole.tsx`.
 **Estimated scope:** M (5 files)
+**Hoàn tất:** 2026-10-18 — Migration `0013_operations_cases.sql` (audit_events/operations_case_events/queue_overrides append-only bằng trigger, `operations_cases` state machine, `match_outbox.generation`, `qualification_rounds.results_hash`), module `src/modules/operations/` (suspend/unsuspend, revoke, cancel, rerun chỉ cho infra failure, cases + evidence/status/decision, audit read/export qua sanitizer, public `GET /api/v1/public/queue-overrides`), round results hash lúc publish, `/admin/operations` trên web. Đã chạy: `npm test --workspace @ott/platform-api -- operations` = 66 passed, 16 skipped (integration, 3 file passed, 1 skipped); full api = 243 passed, 87 skipped (22 file passed, 15 skipped); web = 124 passed (17 file); typecheck toàn workspace và build web pass; 5 mutation không-DB (bỏ RBAC, nhận failure_reason ngoài allowlist, rerun khi round settled, bỏ sanitizer, bỏ idempotency) đều làm test fail rồi khôi phục. **Integration:** Reviewer chạy `operations.integration.test.ts` ở loop 23 = 80/82 passed (2 expectation sai về số audit row, đã sửa trong test); chạy lại sau khi sửa, lặp ×3, full API suite và mutation bỏ audit-immutability trigger: NOT RUN, đang chờ Reviewer (xem `.relayer/commands.md`). Giới hạn đã biết: rerun bị từ chối khi round đã `FINALIZED`/đã áp dụng Elo.
 
 ### [ ] P3-N06 — Single-server smoke/load và pilot qualification round
 

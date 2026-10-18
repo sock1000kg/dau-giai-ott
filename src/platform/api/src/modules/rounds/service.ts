@@ -11,6 +11,7 @@ import {
 } from './types.ts';
 import { scheduleRound, type ScheduleRoundInput } from '../scheduling/service.ts';
 import { applyRoundRatings } from '../ratings/service.ts';
+import { computeRoundResultsHash } from '../operations/results-hash.ts';
 
 export interface CreateRuleSetInput {
   readonly tournamentStage: string;
@@ -60,6 +61,7 @@ export interface RoundSummary {
   readonly pausedAt: Date | null;
   readonly createdAt: Date;
   readonly allowedActions: readonly RoundActionType[];
+  readonly resultsHash?: string;
   readonly replayed?: boolean;
 }
 
@@ -256,8 +258,9 @@ export async function getRound(
     readonly schedule_round_id: string | null;
     readonly paused_at: Date | null;
     readonly created_at: Date;
+    readonly results_hash?: string | null;
   }>(
-    'SELECT id, tournament_stage, round_number, status, rule_set_id, schedule_round_id, paused_at, created_at FROM qualification_rounds WHERE id = $1',
+    'SELECT id, tournament_stage, round_number, status, rule_set_id, schedule_round_id, paused_at, created_at, results_hash FROM qualification_rounds WHERE id = $1',
     [roundId],
   );
   const row = result.rows[0];
@@ -266,6 +269,7 @@ export async function getRound(
     id: row.id, tournamentStage: row.tournament_stage, roundNumber: row.round_number, status: row.status,
     ruleSetId: row.rule_set_id, scheduleRoundId: row.schedule_round_id, pausedAt: row.paused_at, createdAt: row.created_at,
     allowedActions: getAllowedActions(row.status, row.paused_at),
+    ...(row.results_hash ? { resultsHash: row.results_hash } : {}),
   };
 }
 
@@ -530,11 +534,12 @@ export async function executeTransition(
 
       case 'publish': {
         if (round.status !== 'RATED') throw new Error('ROUND_TRANSITION_INVALID');
+        const resultsHash = await computeRoundResultsHash(tx, round.schedule_round_id);
         await tx.query(
-          "UPDATE qualification_rounds SET status = 'PUBLISHED', published_at = $2 WHERE id = $1",
-          [input.roundId, now],
+          "UPDATE qualification_rounds SET status = 'PUBLISHED', published_at = $2, results_hash = $3 WHERE id = $1",
+          [input.roundId, now, resultsHash],
         );
-        await writeAudit(tx, input.actorAccountId, 'ROUND_PUBLISHED', input.roundId, reason, {}, now);
+        await writeAudit(tx, input.actorAccountId, 'ROUND_PUBLISHED', input.roundId, reason, { resultsHash }, now);
         return getRoundFromTx(tx, input.roundId) as Promise<RoundSummary>;
       }
 
@@ -554,8 +559,9 @@ async function getRoundFromTx(tx: Database, roundId: string): Promise<RoundSumma
     readonly schedule_round_id: string | null;
     readonly paused_at: Date | null;
     readonly created_at: Date;
+    readonly results_hash?: string | null;
   }>(
-    'SELECT id, tournament_stage, round_number, status, rule_set_id, schedule_round_id, paused_at, created_at FROM qualification_rounds WHERE id = $1',
+    'SELECT id, tournament_stage, round_number, status, rule_set_id, schedule_round_id, paused_at, created_at, results_hash FROM qualification_rounds WHERE id = $1',
     [roundId],
   );
   const row = result.rows[0];
@@ -564,6 +570,7 @@ async function getRoundFromTx(tx: Database, roundId: string): Promise<RoundSumma
     id: row.id, tournamentStage: row.tournament_stage, roundNumber: row.round_number, status: row.status,
     ruleSetId: row.rule_set_id, scheduleRoundId: row.schedule_round_id, pausedAt: row.paused_at, createdAt: row.created_at,
     allowedActions: getAllowedActions(row.status, row.paused_at),
+    ...(row.results_hash ? { resultsHash: row.results_hash } : {}),
   };
 }
 

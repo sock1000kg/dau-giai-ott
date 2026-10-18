@@ -345,3 +345,112 @@ Stable error codes:
    ```
 3. **Generate recovery codes post-login**:
    Bootstrap configures the initial TOTP secret. Upon first login with TOTP, the BTC operator calls `POST /api/v1/auth/mfa/recovery-codes` to generate and display the 10 emergency recovery codes.
+
+## Privileged operations, cases and public queue overrides (`P3-D07`)
+
+Migration `0013_operations_cases.sql` (registered in `src/db/schema.ts`) adds the history-preserving
+tables; code lives in `src/modules/operations/` (`service.ts`, `routes.ts`, `types.ts` validators,
+`export.ts` sanitizer, `results-hash.ts`). Operations never edit `match_results`, `rating_ledger` or any
+historical row.
+
+### Rules shared by every privileged action
+
+- `BTC_ADMIN` only (plus the existing admin network/MFA gates for `/api/v1/admin/*`).
+- Body `reason` is required, 1-500 characters (`400 INVALID_REASON`).
+- `X-Correlation-Id` (UUID) is echoed in the response header and body; it is generated when absent and
+  a malformed value is `400 INVALID_CORRELATION_ID`.
+- Optional `Idempotency-Key` (1-200 printable chars) on suspend, unsuspend, revoke, cancel and rerun:
+  same key and same payload returns the stored outcome (`data.replayed: true`, no second audit row);
+  the same key with a different payload is `409 IDEMPOTENCY_KEY_REUSED`.
+- One transaction writes the state change and one `audit_events` row with
+  `details = { before, after, requestHash }` (ids, statuses and counts only; secret-looking keys are
+  stripped before insert). `audit_events`, `operations_case_events` and `queue_overrides` reject
+  `UPDATE`/`DELETE` through triggers (`TRUNCATE` stays available for test fixtures).
+
+### Endpoints (`/api/v1/admin/operations`)
+
+| Method and path | Effect | Errors |
+| --- | --- | --- |
+| `POST /teams/:teamId/suspend`, `/unsuspend` | `accounts.status` ACTIVE↔DISABLED; suspend also revokes DB and Redis sessions | `404 TEAM_NOT_FOUND`, `409 TRANSITION_INVALID` |
+| `POST /submissions/:id/revoke` | `VALID`/`ACTIVE` → `REVOKED` (lifecycle in requirements §8.3); played matches untouched | `404 SUBMISSION_NOT_FOUND`, `409 TRANSITION_INVALID` |
+| `POST /matches/:id/cancel` | `SCHEDULED`/`FAILED` → `CANCELLED`; body `publicReason` (1-200), optional `caseId`; inserts a `queue_overrides` row | `404 MATCH_NOT_FOUND`, `409 CANCEL_NOT_ALLOWED` |
+| `POST /matches/:id/rerun` | see below; body `reason`, `publicReason`, `verifiedInfraFailure: true`, optional `caseId` | `400 RERUN_CONFIRMATION_REQUIRED`, `409 RERUN_*` |
+| `POST /cases`, `GET /cases`, `GET /cases/:id`, `GET /cases/export` | open (kind + subject + allowlisted evidence), list, detail with events, NDJSON export | `400 CASE_SUBJECT_REQUIRED`, `400 INVALID_EVIDENCE`, `409 CASE_ALREADY_EXISTS` |
+| `POST /cases/from-duplicate/:submissionId` | opens a `DUPLICATE` case for an N04-flagged submission; repeat calls return the existing case | `409 SUBMISSION_NOT_FLAGGED` |
+| `POST /cases/:id/evidence`, `/status`, `/decision` | append evidence, move `OPEN→UNDER_REVIEW` / `DECIDED→CLOSED`, record a decision | `409 CASE_LOCKED`, `409 CASE_TRANSITION_INVALID`, `409 DECISION_NOT_ALLOWED_FOR_KIND` |
+| `GET /audit` | filters `targetType`, `targetId`, `actorAccountId`, `action`, `from`, `to`, `page`, `pageSize` (≤100) | `400 INVALID_QUERY` |
+| `GET /audit/export` | NDJSON, sanitized | |
+
+### Case lifecycle
+
+`OPEN → UNDER_REVIEW → DECIDED → CLOSED` and `OPEN → DECIDED`; enforced in the API and by a trigger on
+`operations_cases` (only `status`/`decided_at` may change, never `DELETE`). Evidence, status changes and
+decisions are rows in the append-only `operations_case_events` (`seq` unique per case). Decisions:
+`NO_ACTION`, `WARN`, `REVOKE_SUBMISSION`, `SUSPEND_TEAM`, `RERUN_APPROVED`, `APPEAL_UPHELD`,
+`APPEAL_REJECTED` (appeal outcomes only on `APPEAL` cases). A decision never changes results or
+ratings; acting on it is a separate privileged action above. Evidence is a flat object restricted to the
+keys `summary, source, note, links, similarity, matchId, submissionId, seriesId, teamId, confirmed`,
+at most 4096 bytes; secret-looking keys are rejected.
+
+### Rerun rules
+
+A rerun only recovers infrastructure failures. All of these must hold, else `409` with the listed code
+(first failing rule wins):
+
+1. `matches.status = 'FAILED'` (`RERUN_MATCH_NOT_FAILED`) and no `match_results` row (`RERUN_RESULT_EXISTS`).
+2. The latest `match_attempts` row is `FAILED_TERMINAL` with `failure_reason` in `INFRA_FAILURE_REASONS`
+   = `MATCH_LEASE_EXPIRED`, `MATCH_EXECUTION_FAILED`, `SUBMISSION_ARCHIVE_CHECKSUM_MISMATCH`,
+   `MATCH_EVENT_LOG_INTEGRITY_FAILED`, `SANDBOX_NOT_RUNNING` (`RERUN_NOT_INFRA_FAILURE`). Bot faults are
+   recorded as `FORFEIT` results and never reach `FAILED`. Any other code is refused.
+3. The request carries `verifiedInfraFailure: true` and a reason; both appear in the audit `details`.
+4. The schedule round is still `SCHEDULED`, the series has no `rating_ledger` row and is not `FINALIZED`
+   (`RERUN_ROUND_SETTLED`). A series cancelled with `INFRASTRUCTURE_FAILURE` is reopened
+   (`SCHEDULED`, cancellation reason and `finalized_at` cleared); a series cancelled for
+   `MATCH_CANCELLED` is never revived (`RERUN_SERIES_CANCELLED_BY_OPERATOR`).
+5. No undispatched `MATCH_RERUN` outbox row exists for the match (`RERUN_ALREADY_PENDING`).
+
+The transaction sets the match back to `SCHEDULED`, inserts a `match_outbox` row
+(`event_type='MATCH_RERUN'`, `generation = previous max + 1`, payload copied from the original
+`MATCH_SCHEDULED` row), a public `queue_overrides` row and the audit row. The failed attempt row stays as
+history; the unchanged worker creates the next attempt number when it claims the job. Migration 0013 drops
+the old `UNIQUE (match_id, event_type)` and adds `UNIQUE (match_id, event_type, generation)`.
+`dispatchScheduledMatches` publishes both event types and passes `{ generation }`; `MatchQueue.enqueue`
+uses job id `match-<id>-r<generation>` for generations above 0 (generation 0 keeps `match-<id>`). When
+`createAuthApp` is given `matchEnqueuer`, the API tries to publish right after commit; the outbox stays the
+source of truth, so a Redis outage never fails the rerun.
+
+Known limitation: once every series of a round has settled the round is `FINALIZED` and ratings are
+applied; a rerun is then refused. BTC must rerun before the last series of the round settles (pause the
+queue and act promptly). Reopening a rated round would need a ratings rebuild and is out of scope.
+
+### Exports and public overrides
+
+Audit and case exports pass through `export.ts`: a field allowlist per record type, and every key
+matching `seed|password|secret|credential|stderr|object_?key|token|hash_of_password` (case-insensitive,
+any nesting depth) is dropped.
+
+`GET /api/v1/public/queue-overrides` is unauthenticated and read-only. It returns only
+`{ id, action, matchOpaqueId, publicReason, createdAt }` (`matchOpaqueId` is the first 16 hex characters of
+`sha256("queue-override-match:" + matchId)`); no team names, account ids or case contents. P3-L05 consumes it.
+
+### Round results hash
+
+At `publish` the round's `results_hash` is stored (column added in 0013, settable only once and only with
+`status = 'PUBLISHED'`), written to the `ROUND_PUBLISHED` audit `details.resultsHash` and returned as
+`resultsHash` by `GET /api/v1/admin/rounds/:roundId` and the publish response. It is
+`sha256(canonicalJson(document))` with `canonicalJson` from `rounds/types.ts` (sorted keys, no whitespace) and
+
+```json
+{ "version": 1,
+  "matches": [{ "matchId": "…", "finalStateHash": "…", "eventLogSha256": "…|null" }],
+  "ratings": [{ "seriesId": "…", "teamId": "…", "ratingBefore": 0, "ratingAfter": 0, "delta": 0 }] }
+```
+
+`matches` are the schedule round's `FINALIZED` matches with a result ordered by match id; `ratings` are its
+`rating_ledger` rows ordered by `(series_id, team_id)`. A second publish is `409 ROUND_TRANSITION_INVALID`
+and cannot change the stored hash.
+
+### Verification
+
+`npm test --workspace @ott/platform-api -- operations` (unit and route tests need no services;
+`operations.integration.test.ts` needs `DATABASE_URL` and `REDIS_URL` and skips otherwise).

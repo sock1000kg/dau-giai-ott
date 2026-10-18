@@ -244,20 +244,21 @@ export async function scheduleRound(database: Database, input: ScheduleRoundInpu
 }
 
 export interface MatchJobEnqueuer {
-  enqueue(job: MatchJobV1): Promise<unknown>;
+  enqueue(job: MatchJobV1, options?: { readonly generation?: number }): Promise<unknown>;
 }
 
 /** Queue publication can be retried safely because the DB outbox and BullMQ key are stable. */
 export async function dispatchScheduledMatches(database: Database, enqueuer: MatchJobEnqueuer, limit = 100): Promise<number> {
   if (!Number.isSafeInteger(limit) || limit < 1 || limit > 1000) throw new Error('OUTBOX_LIMIT_INVALID');
-  const pending = await database.query<{ readonly id: string; readonly payload: unknown }>(
-    "SELECT id, payload FROM match_outbox WHERE event_type = 'MATCH_SCHEDULED' AND dispatched_at IS NULL ORDER BY created_at, id LIMIT $1", [limit],
+  const pending = await database.query<{ readonly id: string; readonly payload: unknown; readonly generation: number }>(
+    "SELECT id, payload, generation FROM match_outbox WHERE event_type IN ('MATCH_SCHEDULED', 'MATCH_RERUN') AND dispatched_at IS NULL ORDER BY created_at, id LIMIT $1", [limit],
   );
   let dispatched = 0;
   for (const row of pending.rows) {
     const validation = validateMatchJob(row.payload);
     if (!validation.ok) throw new Error('SCHEDULED_OUTBOX_PAYLOAD_INVALID');
-    await enqueuer.enqueue(validation.value);
+    if (row.generation > 0) await enqueuer.enqueue(validation.value, { generation: row.generation });
+    else await enqueuer.enqueue(validation.value);
     const marked = await database.query(
       "UPDATE match_outbox SET dispatched_at = now() WHERE id = $1 AND dispatched_at IS NULL", [row.id],
     );

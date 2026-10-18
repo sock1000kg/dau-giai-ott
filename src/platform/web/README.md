@@ -147,3 +147,19 @@ route gating as `/admin/replays`). The stage selector defaults to
 Verification: `npm test --workspace @ott/platform-web -- RoundAdmin`,
 `npm run typecheck --workspace @ott/platform-web`, plus desktop/mobile
 browser smoke and keyboard tab order over the form and start confirmation.
+
+## Privileged operations console (`P3-D07`)
+
+BTC operators open `/admin/operations` (workspace link "Vận hành đặc quyền", BTC only; team accounts get
+the access-denied page). `features/operations/OperationsConsole.tsx` composes:
+
+- privileged actions (suspend/unsuspend team, revoke submission, cancel and rerun match). Each needs a
+  target and a reason, a public reason for cancel/rerun and an explicit infra-failure checkbox for rerun;
+  "Xem lại thao tác" opens a confirm step, and one `crypto.randomUUID()` idempotency key per confirmed
+  action is sent with a fresh `X-Correlation-Id`. Repeated clicks while a request is in flight send nothing.
+- cases: open, list, detail with the append-only event list, and evidence/status/decision forms that
+  require a reason.
+- an audit viewer with action/target filters and the public queue-override list.
+
+Server error codes are mapped to stable Vietnamese messages (`operationsErrorMessage` in `api.ts`); server
+text is never displayed. Verification: `npm test --workspace @ott/platform-web -- operations`.

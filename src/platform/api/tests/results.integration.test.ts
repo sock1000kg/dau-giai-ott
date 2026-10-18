@@ -88,7 +88,10 @@ integration('P2-T13C authenticated results API', () => {
   afterAll(async () => {
     if (app !== undefined) await app.close();
     if (database !== undefined) {
+      // audit_events is append-only (0013); fixture cleanup suspends the trigger for this one delete.
+      await database.query('ALTER TABLE audit_events DISABLE TRIGGER audit_events_append_only');
       await database.query('DELETE FROM audit_events WHERE actor_account_id = ANY($1::uuid[])', [accountIds]);
+      await database.query('ALTER TABLE audit_events ENABLE TRIGGER audit_events_append_only');
       await database.query('DELETE FROM sessions WHERE account_id = ANY($1::uuid[])', [accountIds]);
       await database.query('DELETE FROM match_results WHERE match_id = ANY($1::uuid[])', [matchIds]);
       await database.query('DELETE FROM matches WHERE id = ANY($1::uuid[])', [matchIds]);
