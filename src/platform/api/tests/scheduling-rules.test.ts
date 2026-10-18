@@ -65,13 +65,16 @@ describe('P3-D25 match snapshot columns', () => {
   it('keeps the column defaults when matchRules is absent', async () => {
     const { matches } = await schedule();
     expect(matches.text).not.toContain('map_definition');
-    expect(matches.values).toHaveLength(7);
+    // 7 unnest arrays + protocolV2 (jsonb[]) + pinned rule-set id / engine / maxTurns (all null without a pinned round).
+    expect(matches.values).toHaveLength(11);
+    expect(matches.values.slice(8)).toEqual([null, null, null]);
   });
 
   it('writes engine, map, maxTurns and timeout for every match, with the same map for both games of a series', async () => {
     const second = { ...MAP_REGISTRY[0]!, mapId: 'second', definition: { ...MAP_REGISTRY[0]!.definition, mapId: 'second', checksum: 'b'.repeat(64) }, checksum: 'b'.repeat(64) };
     const { matches } = await schedule({ matchRules: rules({ maps: [MAP_REGISTRY[0]!, second] }) });
-    const [ids, seriesIds, , , , , , engine, maxTurns, timeout, definitions, checksums] = matches.values as [string[], string[], unknown, unknown, unknown, unknown, unknown, string, number, number, string[], string[]];
+    // value layout: 7 unnest arrays, pinned rule-set id, engine, maxTurns, timeout, protocolV2[], map definitions[], map checksums[]
+    const [ids, seriesIds, , , , , , , engine, maxTurns, timeout, , definitions, checksums] = matches.values as [string[], string[], unknown, unknown, unknown, unknown, unknown, unknown, string, number, number, unknown, string[], string[]];
     expect(ids).toHaveLength(4);
     expect([engine, maxTurns, timeout]).toEqual(['1.0.0', 150, 2000]);
     definitions.forEach((definition, index) => expect(JSON.parse(definition).checksum).toBe(checksums[index]));

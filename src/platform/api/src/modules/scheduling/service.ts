@@ -49,21 +49,21 @@ function sha256(value: string): string {
 
 function requestHash(input: ScheduleRoundInput): string {
   const rules = input.matchRules;
+  // `qualificationRoundId` is undefined for direct callers and is then dropped by JSON.stringify,
+  // so the hash stays unchanged for them; D25's matchRules are included only when present.
   if (rules === undefined) {
-    return sha256(
-      JSON.stringify({
-        tournamentStage: input.tournamentStage,
-        qualificationRoundId: input.qualificationRoundId,
-      })
-    );
+    return sha256(JSON.stringify({ tournamentStage: input.tournamentStage, qualificationRoundId: input.qualificationRoundId }));
   }
-  return sha256(
-    JSON.stringify({
-      tournamentStage: input.tournamentStage,
-      qualificationRoundId: input.qualificationRoundId,
-      rulesSha256: computeRulesSha256(rules.rules),
-    })
-  );
+  return sha256(JSON.stringify({
+    tournamentStage: input.tournamentStage,
+    qualificationRoundId: input.qualificationRoundId,
+    matchRules: {
+      engineVersion: rules.engineVersion,
+      maxTurns: rules.maxTurns,
+      turnTimeoutMs: rules.turnTimeoutMs,
+      maps: rules.maps.map(({ mapId, version, checksum }) => ({ mapId, version, checksum })),
+    },
+  }));
 }
 
 function validateInput(input: ScheduleRoundInput): void {
