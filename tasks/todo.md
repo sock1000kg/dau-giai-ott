@@ -862,15 +862,17 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 **Estimated scope:** M (5 files)
 **Hoàn tất:** 2026-10-14 — `POST /api/v1/admin/teams/bulk-import` nhận CSV `team_name,representative_email` (RFC 4180, BOM/CRLF, 1–500 dòng), validate toàn bộ và trả lỗi theo dòng/cột không echo giá trị; trùng tên/email trong file và với DB bị từ chối nguyên khối; credential sinh và stream một lần trong response `text/csv` (`no-store`, attachment, chống formula injection), DB chỉ giữ argon2 hash, audit chỉ ghi actor/`count=N`. `POST /api/v1/admin/teams/bulk-reset` theo `teamIds` tạo file mới và revoke session cũ. Theo quyết định của Đạt (14/10/2026), migration `0008_team_representative_email.sql` lưu email người đại diện (lowercase, unique, nullable, chỉ BTC thấy). UI BTC: nhập CSV, chọn đội để cấp lại hàng loạt, file tải trực tiếp không hiển thị mật khẩu. `bulk-teams` 34/34 pass trên PostgreSQL 16.6 + Redis (8 integration chạy thật), platform-api 74 pass/2 env-skip, platform-web 72 pass, typecheck sạch; mutation ghi mật khẩu vào audit và bỏ revoke session đều làm test fail. Hạn chế: retry trùng username trong transaction không dùng SAVEPOINT (xác suất trùng ~2^-32).
 
-### [ ] P3-N03 — Test-run quota, opponent policy và private artifacts
+### [x] P3-N03 — Test-run quota, opponent policy và private artifacts
 
 **Owner:** Đỗ Khôi Nguyên
 **Mô tả:** Tạo flow test run ưu tiên thấp, chỉ đấu bot tham chiếu hoặc submission khác cùng đội, không ảnh hưởng Elo.
 **Acceptance criteria:** (1) quota tính khi start và hoàn lại cho infra failure; (2) test run đứng chờ khi official round chạy và không nhận bot đội khác; (3) result/replay/truncated stderr chỉ owner team/BTC đọc được.
 **Verification:** API/worker integration và AC-21 pass; RBAC tests cross-team/anonymous; rating ledger không đổi sau test run.
 **Dependencies:** `P3-D01`, `P3-L02`, `P3-N02`.
-**Files likely touched:** `src/platform/api/migrations/0009_test_runs.sql`, `src/platform/api/src/modules/test-runs/service.ts`, `src/platform/api/src/modules/test-runs/routes.ts`, `src/platform/worker/src/run-test-job.ts`, `src/platform/worker/tests/test-run.integration.test.ts`.
+**Files likely touched:** `src/platform/api/migrations/0015_test_runs.sql`, `src/platform/api/src/modules/test-runs/service.ts`, `src/platform/api/src/modules/test-runs/routes.ts`, `src/platform/worker/src/run-test-job.ts`, `src/platform/worker/tests/test-run.integration.test.ts`.
 **Estimated scope:** M (5 files)
+**Hoàn tất:** 2026-10-18 — Test-run flow theo AC-21 và D-18: Migration `0015_test_runs.sql` (bảng `test_runs`, enums `test_run_status`, `test_run_opponent_type`, index quota và team isolation); module `test-runs` trong `platform-api` (`createTestRun`, `getTestRunById`, `listTestRuns`, `refundTestRunQuota`, `completeTestRun`, `failTestRun`, `getDailyConsumedQuota`, `getRoundTestRunQuota`); routes `POST /api/v1/test-runs`, `GET /api/v1/test-runs`, `GET /api/v1/test-runs/:id`, `GET /api/v1/test-runs/:id/replay`; worker `runTestJob` với queue priority thấp (`QUEUE_PRIORITY.TEST_RUN = 3`), sandbox execution, replay private `replays/test-runs/<id>.json`, stderr truncated 4 KiB, tự động hoàn quota khi gặp lỗi hạ tầng; bảo vệ RBAC nghiêm ngặt (chỉ owner team hoặc BTC_ADMIN được truy cập); ratings ledger hoàn toàn không bị ảnh hưởng. Test `test-run.integration.test.ts` 8/8 pass, `migrations-registry.test.ts` 1/1 pass, Python tests 27/27 pass, worker & api typecheck và build sạch 0 lỗi.
+
 
 ## [ ] Checkpoint P3-C — Participant workflows
 

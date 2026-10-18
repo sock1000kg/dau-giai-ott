@@ -13,6 +13,7 @@ import { registerReplayRoutes } from './modules/replays/routes.ts';
 import { registerRoundRoutes } from './modules/rounds/routes.ts';
 import { registerOperationsRoutes } from './modules/operations/routes.ts';
 import { registerQualificationGateRoutes } from './modules/qualification-gate/routes.ts';
+import { registerTestRunRoutes } from './modules/test-runs/routes.ts';
 import type { MatchJobEnqueuer } from './modules/scheduling/service.ts';
 import type { ObjectStorage } from './storage/s3.ts';
 import { createPasswordHasher, type PasswordHashPolicy } from './modules/auth/passwords.ts';
@@ -165,6 +166,11 @@ export function createAuthApp(options: CreateAuthAppOptions): FastifyInstance {
   registerRoundRoutes(application, { database: options.database });
   registerOperationsRoutes(application, { database: options.database, sessionStore: authStore, enqueuer: options.matchEnqueuer });
   registerQualificationGateRoutes(application, { database: options.database });
+  registerTestRunRoutes(application, {
+    database: options.database,
+    storage: options.storage,
+    enqueuer: options.matchEnqueuer,
+  });
   if (options.storage !== undefined) {
     registerSubmissionRoutes(application, {
       database: options.database,
