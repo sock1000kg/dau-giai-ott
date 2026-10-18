@@ -19,12 +19,17 @@ import { spawn, type ChildProcess } from 'node:child_process';
 import {
   utf8ByteLength,
   type ActionMessage,
+  type ActionMessageV2,
   type InitMessage,
+  type InitMessageV2,
   type MatchResultMessage,
-  type ProtocolMessage,
+  type MatchResultMessageV2,
+  type AnyProtocolMessage,
   type ProtocolValidator,
   type StateUpdateMessage,
+  type StateUpdateMessageV2,
   type TurnResultMessage,
+  type TurnResultMessageV2,
 } from '@ott/bot-protocol';
 import type { ProcessFaultCode } from '@ott/game-core';
 
@@ -77,6 +82,7 @@ export class BotProcess implements BotPort {
   private readonly now: () => number;
 
   private child: ChildProcess | null = null;
+  private protocolVersion: 1 | 2 = 1;
   private phase: 'unstarted' | ProcessPhase = 'unstarted';
   private _fault: ProcessFaultCode | null = null;
   private pendingRequest: {
@@ -146,7 +152,7 @@ export class BotProcess implements BotPort {
     };
   }
 
-  public async start(init: InitMessage): Promise<BotStartResult> {
+  public async start(init: InitMessage | InitMessageV2): Promise<BotStartResult> {
     if (this.child || this.phase !== 'unstarted') {
       if (this._fault) {
         return { ok: false, code: this._fault };
@@ -158,6 +164,12 @@ export class BotProcess implements BotPort {
       return { ok: false, code: this._fault };
     }
 
+    // Reject a mismatched schema before spawning: a match never silently downgrades.
+    if (!this.options.validator.isProtocolMessage(init)) {
+      this.setFault('BOT_SPAWN_FAILED');
+      return { ok: false, code: 'BOT_SPAWN_FAILED' };
+    }
+    this.protocolVersion = init.protocolVersion;
     this.phase = 'starting';
 
     const env = this.options.env
@@ -204,7 +216,9 @@ export class BotProcess implements BotPort {
 
       const startupTimer = this.setTrackedTimeout(() => {
         settleStart({ ok: false, code: 'BOT_SPAWN_FAILED' });
-      }, this.startupTimeoutMs);
+      }, init.protocolVersion === 2
+        ? Math.min(this.options.startupTimeoutMs ?? init.limits.timeControl.startupMs, init.limits.timeControl.startupMs)
+        : this.startupTimeoutMs);
 
       child.stdin?.on('error', (_err) => {
         if (this.phase === 'starting') {
@@ -293,7 +307,10 @@ export class BotProcess implements BotPort {
     });
   }
 
-  public async requestAction(update: StateUpdateMessage, timeoutMs: number): Promise<BotReply> {
+  public async requestAction(update: StateUpdateMessage | StateUpdateMessageV2, timeoutMs: number): Promise<BotReply> {
+    if (update.protocolVersion !== this.protocolVersion) {
+      return { ok: false, code: 'SCHEMA_VIOLATION' };
+    }
     if (this._fault) {
       return { ok: false, code: this._fault };
     }
@@ -349,7 +366,7 @@ export class BotProcess implements BotPort {
     });
   }
 
-  public async notifyStateUpdate(update: StateUpdateMessage): Promise<void> {
+  public async notifyStateUpdate(update: StateUpdateMessage | StateUpdateMessageV2): Promise<void> {
     if (this._fault || this.hasExited || this.phase === 'stopping') {
       return;
     }
@@ -360,7 +377,7 @@ export class BotProcess implements BotPort {
     }
   }
 
-  public async sendTurnResult(message: TurnResultMessage): Promise<void> {
+  public async sendTurnResult(message: TurnResultMessage | TurnResultMessageV2): Promise<void> {
     if (this._fault || this.hasExited || this.phase === 'stopping') {
       return;
     }
@@ -371,7 +388,7 @@ export class BotProcess implements BotPort {
     }
   }
 
-  public async finish(message: MatchResultMessage): Promise<void> {
+  public async finish(message: MatchResultMessage | MatchResultMessageV2): Promise<void> {
     if (this._fault || this.hasExited || this.phase === 'stopping') {
       return;
     }
@@ -648,11 +665,11 @@ export class BotProcess implements BotPort {
       return { ok: false, code: 'SCHEMA_VIOLATION' };
     }
 
-    const message = value as unknown as ProtocolMessage;
-    if (message.type !== 'ACTION') {
+    const message = value as unknown as AnyProtocolMessage;
+    if (message.type !== 'ACTION' || message.protocolVersion !== this.protocolVersion) {
       return { ok: false, code: 'SCHEMA_VIOLATION' };
     }
 
-    return { ok: true, message: message as ActionMessage };
+    return { ok: true, message: message as ActionMessage | ActionMessageV2 };
   }
 }

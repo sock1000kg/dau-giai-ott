@@ -1,7 +1,9 @@
 import { randomUUID } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 import type { MatchJobV1 } from '@ott/job-contract';
 import type { GameConfig, GameResult, MapDefinition } from '@ott/game-core';
-import { DEFAULT_LIMITS, type FaultSummary } from '@ott/bot-protocol';
+import { DEFAULT_LIMITS, compileProtocolValidator, validateTimeControlV2, type FaultSummary, type ProtocolValidator } from '@ott/bot-protocol';
+import type { MatchConfig } from '@ott/match-runner';
 import type { PlayerSide } from '@ott/game-core';
 import type { Database } from '@ott/platform-api';
 
@@ -29,6 +31,7 @@ export interface MatchJobConfig {
   readonly seed: string;
   readonly game: GameConfig;
   readonly turnTimeoutMs: number;
+  readonly protocolV2?: NonNullable<MatchConfig['protocolV2']>;
 }
 
 export type ClaimMatchResult =
@@ -46,6 +49,10 @@ type MatchRow = {
   readonly max_turns: number;
   readonly turn_timeout_ms: number;
   readonly policy_version: string;
+  readonly rule_set_id: string | null;
+  readonly protocol_v2: unknown;
+  readonly rule_set_version: number | null;
+  readonly rules_sha256: string | null;
   readonly x_submission_id: string;
   readonly x_archive_sha256: string;
   readonly x_manifest_digest: string;
@@ -123,7 +130,8 @@ export async function claimMatch(database: Database, job: MatchJobV1): Promise<C
   return database.transaction(async (transaction) => {
     const selected = await transaction.query<MatchRow>(`
       SELECT m.id, m.status, m.series_id, m.seed, m.map_checksum, m.map_definition,
-        m.engine_version, m.max_turns, m.turn_timeout_ms, m.policy_version,
+        m.engine_version, m.max_turns, m.turn_timeout_ms, m.policy_version, m.rule_set_id, m.protocol_v2,
+        rrs.version AS rule_set_version, rrs.rules_sha256,
         sx.id AS x_submission_id, sx.archive_sha256 AS x_archive_sha256,
         sx.oci_manifest_digest AS x_manifest_digest, sx.oci_config_digest AS x_config_digest,
         sx.policy_version AS x_policy_version, sx.object_key AS x_object_key, sx.entrypoint AS x_entrypoint,
@@ -133,6 +141,7 @@ export async function claimMatch(database: Database, job: MatchJobV1): Promise<C
       FROM matches m
       JOIN submissions sx ON sx.id = m.x_submission_id
       JOIN submissions so ON so.id = m.o_submission_id
+      LEFT JOIN round_rule_sets rrs ON rrs.id = m.rule_set_id
       WHERE m.id = $1
       FOR UPDATE OF m`, [job.matchId]);
     const row = selected.rows[0];
@@ -160,11 +169,15 @@ export async function claimMatch(database: Database, job: MatchJobV1): Promise<C
 
     const map = readMap(row.map_definition);
     if (row.map_checksum !== map.checksum || row.seed === null || row.max_turns <= 0
-      || row.max_turns > DEFAULT_LIMITS.maxTurns || row.turn_timeout_ms <= 0
+      || (row.protocol_v2 == null && row.max_turns > DEFAULT_LIMITS.maxTurns) || row.turn_timeout_ms <= 0
       || row.turn_timeout_ms > DEFAULT_LIMITS.turnTimeoutMs) {
       throw new Error('MATCH_EXECUTION_SNAPSHOT_INVALID');
     }
 
+    const game: GameConfig = {
+      gameId: job.matchId, engineVersion: row.engine_version, map, maxTurns: row.max_turns,
+    };
+    const protocolV2 = await readProtocolSnapshot(row, game);
     const attemptNumber = await transaction.query<{ readonly next_attempt: number }>(
       'SELECT COALESCE(MAX(attempt_number), 0) + 1 AS next_attempt FROM match_attempts WHERE match_id = $1', [job.matchId],
     );
@@ -172,26 +185,47 @@ export async function claimMatch(database: Database, job: MatchJobV1): Promise<C
     const token = randomUUID();
     const next = attemptNumber.rows[0]?.next_attempt ?? 1;
     await transaction.query(
-      "INSERT INTO match_attempts (id, match_id, attempt_number, status, leased_at, lease_token, lease_expires_at) VALUES ($1,$2,$3,'RUNNING',now(),$4,now() + interval '15 minutes')",
-      [id, job.matchId, next, token],
+      "INSERT INTO match_attempts (id, match_id, attempt_number, status, leased_at, lease_token, lease_expires_at) VALUES ($1,$2,$3,'RUNNING',now(),$4,now() + ($5::bigint * interval '1 millisecond'))",
+      [id, job.matchId, next, token, Math.max(900000, protocolV2 ? protocolV2.timeControl.matchWallClockMs + 2 * protocolV2.timeControl.startupMs + 60000 : 0)],
     );
     await transaction.query("UPDATE matches SET status = 'RUNNING' WHERE id = $1", [job.matchId]);
 
-    const game: GameConfig = {
-      gameId: job.matchId,
-      engineVersion: row.engine_version,
-      map,
-      maxTurns: row.max_turns,
-    };
     return {
       kind: 'claimed',
       value: {
         attempt: { id, token, attemptNumber: next },
-        config: { matchId: job.matchId, policyVersion: row.policy_version, seed: row.seed, game, turnTimeoutMs: row.turn_timeout_ms },
+        config: { matchId: job.matchId, policyVersion: row.policy_version, seed: row.seed, game, turnTimeoutMs: row.turn_timeout_ms,
+          ...(protocolV2 ? { protocolV2 } : {}) },
         submissions: { X: x, O: o },
       },
     };
   });
+}
+
+let v2Validator: ProtocolValidator | undefined;
+async function readProtocolSnapshot(row: MatchRow, game: GameConfig): Promise<MatchConfig['protocolV2']> {
+  if (row.protocol_v2 == null) {
+    if (row.rule_set_id != null) throw new Error('MATCH_PROTOCOL_SNAPSHOT_INVALID');
+    return undefined;
+  }
+  if (row.rule_set_id == null || typeof row.protocol_v2 !== 'object' || Array.isArray(row.protocol_v2)) {
+    throw new Error('MATCH_PROTOCOL_SNAPSHOT_INVALID');
+  }
+  if (Object.keys(row.protocol_v2).sort().join(',') !== 'botSeeds,timeControl') throw new Error('MATCH_PROTOCOL_SNAPSHOT_INVALID');
+  const value = row.protocol_v2 as NonNullable<MatchConfig['protocolV2']>;
+  v2Validator ??= compileProtocolValidator(JSON.parse(await readFile(new URL('../../../../docs/contracts/bot-protocol-v2.schema.json', import.meta.url), 'utf8')));
+  for (const side of ['X', 'O'] as const) {
+    const { startupTimeoutMs: _startup, turnTimeoutMs: _turn, ...limits } = DEFAULT_LIMITS;
+    if (!v2Validator.isProtocolMessage({ type: 'INIT', protocolVersion: 2, matchId: row.id, engineVersion: game.engineVersion,
+      side, botSeed: value.botSeeds?.[side], map: game.map, limits: { ...limits, maxTurns: game.maxTurns, timeControl: value.timeControl } })) {
+      throw new Error('MATCH_PROTOCOL_SNAPSHOT_INVALID');
+    }
+  }
+  if (!validateTimeControlV2(value.timeControl).ok || value.botSeeds.X === value.botSeeds.O
+    || value.botSeeds.X === row.seed || value.botSeeds.O === row.seed) throw new Error('MATCH_PROTOCOL_SNAPSHOT_INVALID');
+  if (!Number.isSafeInteger(row.rule_set_version) || row.rule_set_version! < 1
+    || typeof row.rules_sha256 !== 'string' || !/^[0-9a-f]{64}$/.test(row.rules_sha256)) throw new Error('MATCH_PROTOCOL_SNAPSHOT_INVALID');
+  return { ...value, ruleSet: { id: row.rule_set_id, version: row.rule_set_version!, sha256: row.rules_sha256 } };
 }
 
 export async function markAttemptFailed(

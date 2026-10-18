@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
-import type { ActionMessage, InitMessage, MatchResultMessage, ProtocolMessage, ProtocolValidator, StateUpdateMessage, TurnResultMessage } from '@ott/bot-protocol';
+import type { ActionMessage, ActionMessageV2, InitMessage, InitMessageV2, MatchResultMessage, MatchResultMessageV2, AnyProtocolMessage, ProtocolValidator, StateUpdateMessage, StateUpdateMessageV2, TurnResultMessage, TurnResultMessageV2 } from '@ott/bot-protocol';
 import { compileProtocolValidator, utf8ByteLength } from '@ott/bot-protocol';
 import type { BotPort, BotReply, BotStartResult } from '@ott/match-runner';
 import type { ProcessFaultCode } from '@ott/game-core';
@@ -37,6 +37,7 @@ export class SandboxOciBotPort implements BotPort {
   private closed = false;
   private waitTask?: Promise<{ readonly statusCode: number; readonly oomKilled: boolean }>;
   private stopTask?: Promise<void>;
+  private protocolVersion: 1 | 2 = 1;
 
   constructor(options: SandboxOciBotPortOptions) {
     this.options = options;
@@ -46,12 +47,18 @@ export class SandboxOciBotPort implements BotPort {
     this.validator = options.validator;
   }
 
-  async start(init: InitMessage): Promise<BotStartResult> {
+  async start(init: InitMessage | InitMessageV2): Promise<BotStartResult> {
     if (this.running || this.closed) return { ok: false, code: 'BOT_SPAWN_FAILED' };
     try {
-      this.validator ??= compileProtocolValidator(JSON.parse(await readFile(new URL('../../../../../docs/contracts/bot-protocol-v1.schema.json', import.meta.url), 'utf8')) as unknown);
+      this.validator ??= compileProtocolValidator(JSON.parse(await readFile(new URL(`../../../../../docs/contracts/bot-protocol-v${init.protocolVersion}.schema.json`, import.meta.url), 'utf8')) as unknown);
+      if (!this.validator.isProtocolMessage(init)) throw new Error('PROTOCOL_SCHEMA_MISMATCH');
+      this.protocolVersion = init.protocolVersion;
+      if (init.protocolVersion === 2 && (init.limits.maxMessageBytes > this.policy.maxMessageBytes
+        || init.limits.maxStderrBytes > this.policy.maxStderrBytes)) throw new Error('PROTOCOL_LIMITS_UNSUPPORTED');
       const imageId = await this.runtime.loadAndVerify(this.options.archive, this.identity.ociManifestDigest, this.identity.ociConfigDigest, this.identity.entrypoint);
-      this.running = await this.runtime.createAndStart(imageId, this.identity.entrypoint, `ott-${randomUUID()}`);
+      this.running = init.protocolVersion === 2
+        ? await this.startWithDeadline(imageId, init.limits.timeControl.startupMs)
+        : await this.runtime.createAndStart(imageId, this.identity.entrypoint, `ott-${randomUUID()}`);
       this.running.stream.on('data', (chunk: Buffer) => this.onDockerData(chunk));
       this.running.stream.on('error', () => this.onExit('BOT_CRASHED'));
       // Stream EOF has no exit status; the Engine wait endpoint is authoritative for exit/OOM classification.
@@ -62,7 +69,7 @@ export class SandboxOciBotPort implements BotPort {
         if (!this.closed) this.onExit('BOT_CRASHED');
         return { statusCode: 1, oomKilled: false };
       });
-      const effectiveInit: InitMessage = {
+      const effectiveInit: InitMessage | InitMessageV2 = init.protocolVersion === 2 ? init : {
         ...init,
         limits: {
           ...init.limits,
@@ -90,22 +97,23 @@ export class SandboxOciBotPort implements BotPort {
     }
   }
 
-  requestAction(update: StateUpdateMessage, timeoutMs: number): Promise<BotReply> {
+  requestAction(update: StateUpdateMessage | StateUpdateMessageV2, timeoutMs: number): Promise<BotReply> {
+    if (update.protocolVersion !== this.protocolVersion) return Promise.resolve({ ok: false, code: 'SCHEMA_VIOLATION' });
     if (this.fault) return Promise.resolve({ ok: false, code: this.fault });
     if (this.pending || !this.running) return Promise.resolve({ ok: false, code: 'BOT_CRASHED' });
     return new Promise((resolve) => {
       const timer = setTimeout(() => {
         if (this.pending?.turnId !== update.turnId) return;
         this.settle({ ok: false, code: 'BOT_TIMEOUT' });
-      }, Math.min(timeoutMs, this.policy.turnTimeoutMs));
+      }, this.protocolVersion === 2 ? timeoutMs : Math.min(timeoutMs, this.policy.turnTimeoutMs));
       this.pending = { turnId: update.turnId, resolve, timer };
       if (!this.write(update)) this.settle({ ok: false, code: this.fault ?? 'BOT_CRASHED' });
     });
   }
 
-  async notifyStateUpdate(update: StateUpdateMessage): Promise<void> { this.write(update); }
-  async sendTurnResult(message: TurnResultMessage): Promise<void> { this.write(message); }
-  async finish(message: MatchResultMessage): Promise<void> { this.write(message); }
+  async notifyStateUpdate(update: StateUpdateMessage | StateUpdateMessageV2): Promise<void> { this.write(update); }
+  async sendTurnResult(message: TurnResultMessage | TurnResultMessageV2): Promise<void> { this.write(message); }
+  async finish(message: MatchResultMessage | MatchResultMessageV2): Promise<void> { this.write(message); }
 
   async stop(): Promise<void> {
     this.stopTask ??= this.cleanup();
@@ -123,11 +131,26 @@ export class SandboxOciBotPort implements BotPort {
     return this.runtime.benchmarkStats(this.running.id);
   }
 
-  private write(message: ProtocolMessage): boolean {
+  private write(message: AnyProtocolMessage): boolean {
     if (!this.running || this.fault || this.closed) return false;
     const line = `${JSON.stringify(message)}\n`;
     if (utf8ByteLength(line.slice(0, -1)) > this.policy.maxMessageBytes) return false;
-    return this.running.stream.write(line);
+    // false means queued with backpressure, not a failed write. Stream errors set the sticky fault.
+    try { this.running.stream.write(line); return true; } catch { this.onExit('BOT_CRASHED'); return false; }
+  }
+
+  private startWithDeadline(imageId: string, startupMs: number): Promise<RunningContainer> {
+    return new Promise((resolve, reject) => {
+      let expired = false;
+      const timer = setTimeout(() => { expired = true; reject(new Error('BOT_STARTUP_TIMEOUT')); }, startupMs);
+      this.runtime.createAndStart(imageId, this.identity.entrypoint, `ott-${randomUUID()}`).then((running) => {
+        clearTimeout(timer);
+        if (expired) {
+          running.stream.destroy();
+          void this.runtime.kill(running.id).then(() => this.runtime.remove(running.id)).catch(() => undefined);
+        } else resolve(running);
+      }, (error: unknown) => { clearTimeout(timer); reject(error); });
+    });
   }
 
   private onDockerData(chunk: Buffer): void {
@@ -173,7 +196,8 @@ export class SandboxOciBotPort implements BotPort {
     if (!this.validator?.isProtocolMessage(message) || typeof message !== 'object' || message === null || (message as { type?: unknown }).type !== 'ACTION') {
       this.settle({ ok: false, code: 'SCHEMA_VIOLATION' }); return;
     }
-    const action = message as ActionMessage;
+    const action = message as ActionMessage | ActionMessageV2;
+    if (action.protocolVersion !== this.protocolVersion) { this.settle({ ok: false, code: 'SCHEMA_VIOLATION' }); return; }
     if (!this.pending || action.turnId !== this.pending.turnId) return;
     this.settle({ ok: true, message: action });
   }

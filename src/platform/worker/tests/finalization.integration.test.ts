@@ -49,25 +49,21 @@ class StartupFailureBot extends FirstLegalBot {
 
 integration('P2-T11 worker match finalization', () => {
   let database: Database;
-  const created: Array<{ matchId: string; seriesId: string; teams: string[]; submissions: string[] }> = [];
+  let adminDatabase: Database;
+  const schemaName = `finalization_${randomUUID().replaceAll('-', '')}`;
 
   beforeAll(async () => {
-    database = createDatabase({ connectionString: databaseUrl! });
+    adminDatabase = createDatabase({ connectionString: databaseUrl! });
+    await adminDatabase.query(`CREATE SCHEMA ${schemaName}`);
+    const url = new URL(databaseUrl!); url.searchParams.set('options', `-c search_path=${schemaName}`);
+    database = createDatabase({ connectionString: url.toString() });
     await runMigrations(database);
   });
 
   afterAll(async () => {
-    for (const item of created) {
-      await database.query('DELETE FROM match_outbox WHERE match_id = $1', [item.matchId]);
-      await database.query('DELETE FROM match_results WHERE match_id = $1', [item.matchId]);
-      await database.query('DELETE FROM match_events WHERE match_id = $1', [item.matchId]);
-      await database.query('DELETE FROM match_attempts WHERE match_id = $1', [item.matchId]);
-      await database.query('DELETE FROM matches WHERE id = $1', [item.matchId]);
-      await database.query('DELETE FROM series WHERE id = $1', [item.seriesId]);
-      await database.query('DELETE FROM submissions WHERE id = ANY($1::uuid[])', [item.submissions]);
-      await database.query('DELETE FROM teams WHERE id = ANY($1::uuid[])', [item.teams]);
-    }
-    await database.close();
+    await database?.close();
+    await adminDatabase?.query(`DROP SCHEMA IF EXISTS ${schemaName} CASCADE`);
+    await adminDatabase?.close();
   });
 
   async function fixture(): Promise<{ job: MatchJobV1; storage: MemoryStorage; matchId: string }> {
@@ -97,7 +93,6 @@ integration('P2-T11 worker match finalization', () => {
       "INSERT INTO matches (id, series_id, x_submission_id, o_submission_id, status, map_checksum, seed, policy_version, max_turns) VALUES ($1,$2,$3,$4,'SCHEDULED',$5,$6,$7,2)",
       [matchId, seriesId, submissionX, submissionO, DEFAULT_MAP.checksum, `seed-${matchId}`, POLICY_VERSION],
     );
-    created.push({ matchId, seriesId, teams: [teamX, teamO], submissions: [submissionX, submissionO] });
 
     return {
       matchId,

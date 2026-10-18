@@ -157,3 +157,26 @@ remainingAfterMs, exhaustion (null | TURN_LIMIT | BOT_BUDGET | WALL_CLOCK)`. `ve
 header rules plus the recorded `elapsedMs`/`timedOut`/`wallElapsedBeforeMs` and rejects a disagreement with
 `TIMING_MISMATCH` (`timing[i] <field> is <recorded> but the rules give <expected>`). `parseAnyEventLog` reads both versions;
 `parseEventLog` stays v1-only and rejects v2.
+
+### Hosted execution snapshot and rule identity
+
+Qualification `START` passes its internal `qualificationRoundId` into scheduling. The scheduler validates the locked
+rule-set checksum, pins `timeControl`, engine/max-turn values and a `rule_set_id` in each match, and derives separate
+HMAC-SHA256 bot seeds using an ephemeral server-only key and the context `[stage, matchId, gameNumber, teamId, 2]`.
+The database stores derived seeds in `matches.protocol_v2`; neither the key nor the bot seeds enter queue payloads.
+Retries read the same immutable snapshot. Migration `0018_match_protocol_v2` keeps existing matches at v1 and
+rejects changes to either new snapshot field. Earlier numbers are taken on `main`: `0014` qualification gate,
+`0015` test runs (`P3-N06`), `0016` finals (`P3-D08`) and `0017` result bundles (`P3-D09`).
+
+Hosted v2 logs add optional `header.ruleSet = { id, version, sha256 }`, referring to the immutable rule set.
+Historical v2 logs without this field continue to parse. Invalid supplied identities fail parsing. The worker
+checks both v2 INIT shapes before acquiring a lease, uses the exported `monotonicClock` (`performance.now`) and
+sets a lease long enough for the pinned finite wall-clock/startup cap plus finalization allowance.
+
+`BotProcess` and `SandboxOciBotPort` select/check exactly the INIT protocol version and reject downgrade ACTIONs.
+The sandbox preserves v2 INIT without inserting v1 timeout fields, enforces v2 startup, removes late-started
+containers after a startup timeout, and uses the runner's effective v2 deadline without a second fixed 3s clamp.
+V1 sandbox limits keep their existing clamp. Archive loading precedes the bot startup window.
+
+The current map registry contains only `DEFAULT_MAP`. A hosted rule set naming another map or a map pool is
+rejected with `ROUND_MAP_UNAVAILABLE` before scheduling; it never silently runs on the default map.
