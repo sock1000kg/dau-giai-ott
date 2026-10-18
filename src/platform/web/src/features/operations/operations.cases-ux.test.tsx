@@ -109,10 +109,11 @@ describe('case detail UX', () => {
     await openCases();
     fireEvent.click(await viewButton('00000000'));
     const article = await screen.findByRole('article', { name: 'Chi tiết hồ sơ' });
+    await waitFor(() => expect(document.activeElement).toBe(within(article).getByRole('heading', { level: 3 })));
     fireEvent.click(within(article).getByRole('button', { name: 'Đóng' }));
-    expect(screen.queryByRole('article', { name: 'Chi tiết hồ sơ' })).toBeNull();
+    await waitFor(() => expect(screen.queryByRole('article', { name: 'Chi tiết hồ sơ' })).toBeNull());
     const rows = cases().getAllByRole('row').slice(1);
-    expect(document.activeElement).toBe(within(rows[0]!).getByRole('button'));
+    await waitFor(() => expect(document.activeElement).toBe(within(rows[0]!).getByRole('button')));
     expect(rows.some((row) => row.getAttribute('aria-current') === 'true')).toBe(false);
   });
 
