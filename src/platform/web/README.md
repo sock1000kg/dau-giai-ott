@@ -48,8 +48,8 @@ client bundle.
 | `/admin/operations` | BTC | `features/operations/OperationsConsole.tsx` | `operations.css` | `P3-D12` |
 | `/admin/results` | BTC | `features/results/MatchResultsPage.tsx` | `results.css` | `P3-D13` |
 | `/admin/replays` | BTC | `features/replay-admin/ReplayCatalog.tsx` | `replay-admin.css` | `P2-T25` |
-| `/admin/replays/:id/view`, `/team/replays/:id` | BTC, team | `pages/PrivateReplayPage.tsx` | `app/styles.css` | `P2-T27` |
-| `/spectator/replays/:id` | anyone | `pages/SpectatorReplayPage.tsx` | `app/styles.css` | `P2-T27` |
+| `/admin/replays/:id/view`, `/team/replays/:id` | BTC, team | `pages/PrivateReplayPage.tsx` | `features/spectator/replay-player.css` | `P3-D21` |
+| `/spectator/replays/:id` | anyone | `pages/SpectatorReplayPage.tsx` | `features/spectator/replay-player.css` | `P3-D21` |
 | `/team/submissions` | team | `features/submissions/SubmissionForm.tsx` | `submissions.css` | `P2-T20` |
 | `/team/results` | team | `features/results/MatchResultsPage.tsx` | `results.css` | `P3-D13` |
 

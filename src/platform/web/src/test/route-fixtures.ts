@@ -1,5 +1,7 @@
 import { createHash } from 'node:crypto';
+import { createGame, DEFAULT_MAP, getGameResult, hashGameState, skipTurn } from '@ott/game-core';
 import { vi } from 'vitest';
+import type { SpectatorReplayV1 } from '../features/spectator/replay-schema.ts';
 
 export type TestRole = 'ANONYMOUS' | 'BTC_ADMIN' | 'TEAM_ACCOUNT';
 
@@ -41,6 +43,26 @@ const replayEntry = {
 
 const submission = { id: ids.submission, status: 'VALID', archiveSha256: SHA, createdAt: '2026-10-18T00:00:00.000Z' };
 const caseSummary = { id: ids.caseId, kind: 'ANOMALY', status: 'OPEN', teamId: null, matchId: ids.match, submissionId: null, openedAt: '2026-10-18T00:00:00Z', decidedAt: null };
+
+function replayBody(): string {
+  const t = skipTurn(createGame({ gameId: ids.match, engineVersion: '1.0.0', map: DEFAULT_MAP, maxTurns: 1 }), 'X', 'NO_LEGAL_ACTION');
+  if (!t.ok) throw new Error('replay fixture failed');
+  const result = getGameResult(t.state);
+  if (result === null) throw new Error('replay fixture must be terminal');
+  const replay: SpectatorReplayV1 = {
+    schema: 'ott.spectator-replay', schemaVersion: 1, matchId: ids.match,
+    header: { format: 'ott.match-event-log', formatVersion: 1, matchId: ids.match, protocolVersion: 1, engineVersion: '1.0.0', game: { engineVersion: '1.0.0', maxTurns: 1, map: DEFAULT_MAP } },
+    entries: [{ index: 1, input: { kind: 'skip', side: 'X', reason: 'NO_LEGAL_ACTION' }, events: t.events, revision: t.state.revision, stateHash: hashGameState(t.state) }],
+    result,
+    faults: { X: { recoverableTotal: 0, recoverableConsecutive: 0, lastErrorCode: null }, O: { recoverableTotal: 0, recoverableConsecutive: 0, lastErrorCode: null } },
+  };
+  return JSON.stringify(replay);
+}
+
+function replayResponse(): Response {
+  const text = replayBody();
+  return new Response(text, { headers: { 'content-type': 'application/vnd.ott.spectator-replay+json;version=1', 'x-replay-sha256': `sha256:${createHash('sha256').update(text).digest('hex')}` } });
+}
 
 function publicSnapshot() {
   const updatedAt = new Date().toISOString();
@@ -91,6 +113,7 @@ export function installRouteFetch(role: TestRole): RouteApi {
       if (pathname === '/api/v1/submissions') return json(200, { data: [submission], pagination: { page: 1, pageSize: 20, totalItems: 1, totalPages: 1 }, preflightQueueLength: 0 });
       if (pathname === '/api/v1/admin/replays/catalog') return json(200, { data: { items: [replayEntry], pagination: page([replayEntry]) } });
       if (pathname === '/api/v1/leaderboard') return json(200, { data: { items: [leaderboardEntry], pagination: page([leaderboardEntry]) } });
+      if (pathname === `/api/v1/replays/${ids.match}` || pathname === `/api/v1/public/replays/${ids.match}`) return replayResponse();
       if (pathname === '/snapshots/latest.json') return json(200, snapshotPointer);
       if (pathname === `/snapshots/${snapshotPointer.file}`) return new Response(snapshotBody);
     }

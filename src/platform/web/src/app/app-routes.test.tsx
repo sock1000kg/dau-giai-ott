@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { checkNavCurrent, checkPage } from '../test/a11y-checks.ts';
-import { installRouteFetch, type TestRole } from '../test/route-fixtures.ts';
+import { ids, installRouteFetch, type TestRole } from '../test/route-fixtures.ts';
 import { App } from './App.tsx';
 
 interface Case {
@@ -28,6 +28,9 @@ const MATRIX: readonly Case[] = [
   { role: 'BTC_ADMIN', path: '/admin/operations', h1: 'Vận hành đặc quyền', nav: 'Đặc quyền', ready: 'Danh sách hồ sơ' },
   { role: 'BTC_ADMIN', path: '/admin/results', h1: /kết quả/i, nav: 'Kết quả', ready: 'Đã chốt' },
   { role: 'BTC_ADMIN', path: '/admin/replays', h1: /replay/i, nav: 'Replay', ready: /Alpha Team/ },
+  { role: 'BTC_ADMIN', path: `/admin/replays/${ids.match}/view`, h1: 'Xem lại trận', nav: 'Replay', ready: /REPLAY ĐÃ XÁC MINH/ },
+  { role: 'TEAM_ACCOUNT', path: `/team/replays/${ids.match}`, h1: 'Xem lại trận', ready: /REPLAY ĐÃ XÁC MINH/ },
+  { role: 'ANONYMOUS', path: `/spectator/replays/${ids.match}`, h1: 'Xem lại trận', ready: /REPLAY ĐÃ XÁC MINH/ },
   { role: 'TEAM_ACCOUNT', path: '/', h1: 'Cổng đội thi', nav: 'Tổng quan' },
   { role: 'TEAM_ACCOUNT', path: '/team/submissions', h1: /nộp bot/i, nav: 'Nộp bot' },
   { role: 'TEAM_ACCOUNT', path: '/team/results', h1: /kết quả/i, nav: 'Kết quả', ready: 'Đã chốt' },
