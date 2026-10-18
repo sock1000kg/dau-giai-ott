@@ -24,8 +24,6 @@ import {
 const databaseUrl = process.env.DATABASE_URL;
 const integration = databaseUrl === undefined ? describe.skip : describe;
 
-const STAGE = 'FINALS_INTEGRATION';
-
 function hash64(fill: string): string {
   return fill.repeat(64).slice(0, 64);
 }
@@ -46,6 +44,8 @@ function finalsRules(bronze = true) {
 
 integration('P3-D08 finals control plane (PostgreSQL)', () => {
   let database: Database;
+  const suffix = randomUUID().replaceAll('-', '').slice(0, 12).toUpperCase();
+  const STAGE = `FINALS_INT_${suffix}`;
   const actorId = randomUUID();
   const teamIds = Array.from({ length: 8 }, () => randomUUID());
   const submissionIds = Array.from({ length: 8 }, () => randomUUID());
@@ -85,18 +85,15 @@ integration('P3-D08 finals control plane (PostgreSQL)', () => {
 
   afterAll(async () => {
     if (database === undefined) return;
-    const competitionFilter = 'SELECT id FROM finals_competitions WHERE tournament_stage = $1';
-    await database.query(`DELETE FROM finals_submission_pins WHERE competition_id IN (${competitionFilter})`, [STAGE]);
-    await database.query(`DELETE FROM finals_seeds WHERE competition_id IN (${competitionFilter})`, [STAGE]);
-    await database.query(`DELETE FROM finals_series WHERE competition_id IN (${competitionFilter})`, [STAGE]);
-    await database.query('DELETE FROM finals_competitions WHERE tournament_stage = $1', [STAGE]);
-    await database.query('DELETE FROM finals_rule_sets WHERE tournament_stage = $1', [STAGE]);
-    await database.query('DELETE FROM submissions WHERE tournament_stage = $1', [STAGE]);
-    await database.query('DELETE FROM series WHERE tournament_stage = $1', [STAGE]);
-    await database.query('DELETE FROM teams WHERE id = ANY($1::uuid[])', [teamIds]);
-    await database.query('DELETE FROM audit_events WHERE actor_account_id = $1', [actorId]);
-    await database.query('DELETE FROM accounts WHERE id = $1', [actorId]);
-    await database.close();
+    try {
+      await database.query('DELETE FROM series WHERE tournament_stage = $1', [STAGE]);
+    } finally {
+      // finals_competitions, finals_rule_sets, and finals_seeds are protected by immutability/append-only
+      // triggers (reject_finals_competition_delete, reject_finals_rule_set_mutation, reject_finals_seed_mutation),
+      // audit_events is append-only, and accounts, teams, and submissions are referenced by immutable seeds/pins.
+      // Every fixture uses a run-unique stage and account ID so leftover rows remain inert in the DB.
+      await database.close();
+    }
   });
 
   it('rejects an invalid finals rule set before writing anything', async () => {
