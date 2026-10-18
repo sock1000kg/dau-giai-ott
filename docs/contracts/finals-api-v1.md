@@ -9,7 +9,7 @@
 
 BTC-only control plane for one finals competition per tournament stage: versioned finals rule sets, the
 locked eight-team seeding, the LAN submission window, cutoff pinning and per-team submission pins.
-Persistence lives in [`0015_finals.sql`](../../src/platform/api/migrations/0015_finals.sql).
+Persistence lives in [`0016_finals.sql`](../../src/platform/api/migrations/0016_finals.sql).
 
 ## Authorisation
 
@@ -100,9 +100,9 @@ pin is refused with `409 FINALS_CUTOFF_CLOSED`.
 
 ## Migration numbering
 
-`0014` is already taken by `0014_qualification_gate.sql`, so this task ships `0015_finals.sql`.
-`P3-D09` (ResultBundle) takes `0016`; the uncommitted L02 runtime-integration migration must renumber to
-`0017` before it merges.
+`main` already shipped `0014_qualification_gate.sql` and `0015_test_runs.sql` (`P3-N06`), so this task
+ships `0016_finals.sql`. `P3-D09` (ResultBundle) takes `0017`; the uncommitted L02 runtime-integration
+migration must renumber to `0018` before it merges.
 
 ## Verification
 
