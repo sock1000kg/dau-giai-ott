@@ -17,7 +17,7 @@
  */
 import { readFile, rename, unlink, writeFile } from 'node:fs/promises';
 
-import type { Limits, FaultSummary } from '@ott/bot-protocol';
+import type { Limits, LimitsV2, FaultSummary } from '@ott/bot-protocol';
 import type {
   GameAction,
   GameConfig,
@@ -28,8 +28,15 @@ import type {
   SkipReason,
 } from '@ott/game-core';
 
+import type { TimingDecision } from './timing-policy.ts';
+
 export const EVENT_LOG_FORMAT = 'ott.match-event-log';
 export const EVENT_LOG_FORMAT_VERSION = 1;
+/**
+ * P3-L02: logs of a Bot Protocol v2 match. `formatVersion` 1 logs are untouched and keep
+ * verifying exactly as before; v2 adds `header.limits.timeControl` and the `timing` section.
+ */
+export const EVENT_LOG_FORMAT_VERSION_V2 = 2;
 
 /** Why a serialized log could not be read. Stable across releases so callers can branch on it. */
 export type EventLogErrorCode = 'MALFORMED_EVENT_LOG' | 'UNSUPPORTED_EVENT_LOG_FORMAT';
@@ -95,6 +102,28 @@ export interface EventLogV1 {
   readonly footer: EventLogFooter;
 }
 
+/** Header of a v2 log: same identity fields, `limits` carries the pinned `timeControl`. */
+export interface EventLogHeaderV2 {
+  readonly format: typeof EVENT_LOG_FORMAT;
+  readonly formatVersion: 2;
+  readonly matchId: string;
+  readonly protocolVersion: 2;
+  readonly engineVersion: string;
+  readonly seed: string;
+  readonly game: GameConfig;
+  readonly limits: LimitsV2;
+}
+
+/** v2 log: v1 entries plus one timing decision per bot-asked turn (P3-L02). */
+export interface EventLogV2 {
+  readonly header: EventLogHeaderV2;
+  readonly entries: readonly EventLogEntry[];
+  readonly timing: readonly TimingDecision[];
+  readonly footer: EventLogFooter;
+}
+
+export type AnyEventLog = EventLogV1 | EventLogV2;
+
 function cloneAction(action: GameAction): GameAction {
   return { pieceId: action.pieceId, to: { col: action.to.col, row: action.to.row } };
 }
@@ -152,7 +181,7 @@ export function cloneEventLog(log: EventLogV1): EventLogV1 {
  * Byte-stable serialization: fixed 2-space indent, a trailing newline, and a fixed key order
  * (every log object above is built in one literal), so equal logs serialize to equal strings.
  */
-export function serializeEventLog(log: EventLogV1): string {
+export function serializeEventLog(log: AnyEventLog): string {
   return `${JSON.stringify(log, null, 2)}\n`;
 }
 
@@ -230,6 +259,31 @@ function requireResult(value: unknown, where: string): void {
   requireString(value['finalStateHash'], `${where}.finalStateHash`);
 }
 
+function requireEntriesAndFooter(parsed: Record<string, unknown>): void {
+  const entries = parsed['entries'];
+  if (!Array.isArray(entries)) fail('entries must be an array');
+  entries.forEach((entry, position) => {
+    const where = `entries[${position}]`;
+    if (!isRecord(entry)) fail(`${where} must be an object`);
+    requireNumber(entry['index'], `${where}.index`);
+    requireInput(entry['input'], `${where}.input`);
+    const events = entry['events'];
+    if (!Array.isArray(events)) fail(`${where}.events must be an array`);
+    events.forEach((event, at) => requireEvent(event, `${where}.events[${at}]`));
+    requireNumber(entry['revision'], `${where}.revision`);
+    requireString(entry['stateHash'], `${where}.stateHash`);
+  });
+
+  const footer = parsed['footer'];
+  if (!isRecord(footer)) fail('footer must be an object');
+  requireResult(footer['result'], 'footer.result');
+  const faults = footer['faults'];
+  if (!isRecord(faults)) fail('footer.faults must be an object');
+  requireSummary(faults['X'], 'footer.faults.X');
+  requireSummary(faults['O'], 'footer.faults.O');
+  requireNumber(footer['entryCount'], 'footer.entryCount');
+}
+
 /**
  * Parse a serialized log. Structural checks only (no schema library): format identity and
  * version first, then the required fields of every level.
@@ -274,30 +328,75 @@ export function parseEventLog(text: string): EventLogV1 {
   if (!isRecord(header['game'])) fail('header.game must be an object');
   if (!isRecord(header['limits'])) fail('header.limits must be an object');
 
-  const entries = parsed['entries'];
-  if (!Array.isArray(entries)) fail('entries must be an array');
-  entries.forEach((entry, position) => {
-    const where = `entries[${position}]`;
-    if (!isRecord(entry)) fail(`${where} must be an object`);
-    requireNumber(entry['index'], `${where}.index`);
-    requireInput(entry['input'], `${where}.input`);
-    const events = entry['events'];
-    if (!Array.isArray(events)) fail(`${where}.events must be an array`);
-    events.forEach((event, at) => requireEvent(event, `${where}.events[${at}]`));
-    requireNumber(entry['revision'], `${where}.revision`);
-    requireString(entry['stateHash'], `${where}.stateHash`);
-  });
-
-  const footer = parsed['footer'];
-  if (!isRecord(footer)) fail('footer must be an object');
-  requireResult(footer['result'], 'footer.result');
-  const faults = footer['faults'];
-  if (!isRecord(faults)) fail('footer.faults must be an object');
-  requireSummary(faults['X'], 'footer.faults.X');
-  requireSummary(faults['O'], 'footer.faults.O');
-  requireNumber(footer['entryCount'], 'footer.entryCount');
+  requireEntriesAndFooter(parsed);
 
   return parsed as unknown as EventLogV1;
+}
+
+const EXHAUSTIONS = ['TURN_LIMIT', 'BOT_BUDGET', 'WALL_CLOCK'];
+
+function requireDecision(value: unknown, where: string): void {
+  if (!isRecord(value)) fail(`${where} must be an object`);
+  requireNumber(value['turnId'], `${where}.turnId`);
+  requireSide(value['side'], `${where}.side`);
+  if (value['turnLimitMs'] !== null) requireNumber(value['turnLimitMs'], `${where}.turnLimitMs`);
+  for (const key of ['deadlineMs', 'remainingBeforeMs', 'wallElapsedBeforeMs', 'elapsedMs', 'chargedMs', 'remainingAfterMs']) {
+    requireNumber(value[key], `${where}.${key}`);
+  }
+  if (typeof value['timedOut'] !== 'boolean') fail(`${where}.timedOut must be a boolean`);
+  const exhaustion = value['exhaustion'];
+  if (exhaustion !== null && !(typeof exhaustion === 'string' && EXHAUSTIONS.includes(exhaustion))) {
+    fail(`${where}.exhaustion must be null or one of ${EXHAUSTIONS.join(', ')}`);
+  }
+}
+
+/**
+ * Parse either log version. `formatVersion` 1 goes through {@link parseEventLog} unchanged;
+ * `formatVersion` 2 additionally requires `protocolVersion` 2, `header.limits.timeControl`
+ * and the `timing` array. {@link parseEventLog} itself still rejects v2 so existing v1-only
+ * consumers keep failing closed.
+ */
+export function parseAnyEventLog(text: string): AnyEventLog {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text) as unknown;
+  } catch {
+    throw new EventLogError('MALFORMED_EVENT_LOG', 'not valid JSON');
+  }
+  if (!isRecord(parsed)) fail('log must be a JSON object');
+  const header = parsed['header'];
+  if (!isRecord(header) || header['formatVersion'] !== EVENT_LOG_FORMAT_VERSION_V2) return parseEventLog(text);
+
+  if (header['format'] !== EVENT_LOG_FORMAT) {
+    throw new EventLogError(
+      'UNSUPPORTED_EVENT_LOG_FORMAT',
+      `format ${JSON.stringify(header['format'])} is not ${EVENT_LOG_FORMAT}`,
+    );
+  }
+  requireString(header['matchId'], 'header.matchId');
+  if (header['protocolVersion'] !== 2) {
+    throw new EventLogError(
+      'UNSUPPORTED_EVENT_LOG_FORMAT',
+      `protocolVersion ${JSON.stringify(header['protocolVersion'])} is not 2`,
+    );
+  }
+  requireString(header['engineVersion'], 'header.engineVersion');
+  requireString(header['seed'], 'header.seed');
+  if (!isRecord(header['game'])) fail('header.game must be an object');
+  const limits = header['limits'];
+  if (!isRecord(limits)) fail('header.limits must be an object');
+  const timeControl = limits['timeControl'];
+  if (!isRecord(timeControl)) fail('header.limits.timeControl must be an object');
+  for (const key of ['startupMs', 'totalBotBudgetMs', 'matchWallClockMs']) {
+    requireNumber(timeControl[key], `header.limits.timeControl.${key}`);
+  }
+  if (!isRecord(timeControl['perTurn'])) fail('header.limits.timeControl.perTurn must be an object');
+
+  requireEntriesAndFooter(parsed);
+  const timing = parsed['timing'];
+  if (!Array.isArray(timing)) fail('timing must be an array');
+  timing.forEach((decision, position) => requireDecision(decision, `timing[${position}]`));
+  return parsed as unknown as EventLogV2;
 }
 
 /** The temporary file a write goes through; deterministic, no clock or randomness. */
@@ -316,7 +415,7 @@ async function removePartial(path: string): Promise<void> {
  * failure the temp file is removed (best effort) and the error is rethrown, so a reader never
  * sees a truncated log at `path`.
  */
-export async function writeEventLogFile(path: string, log: EventLogV1): Promise<void> {
+export async function writeEventLogFile(path: string, log: AnyEventLog): Promise<void> {
   const partial = partialPathOf(path);
   try {
     await writeFile(partial, serializeEventLog(log), 'utf8');

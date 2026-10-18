@@ -808,6 +808,7 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 **Dependencies:** `P3-L01`, `P3-D01`, `P3-N01`.
 **Files likely touched:** `src/match-runner/src/timing-policy.ts`, `src/match-runner/src/match-runner.ts`, `src/match-runner/src/event-log.ts`, `src/match-runner/src/replay.ts`, `src/match-runner/tests/timing-policy.test.ts`.
 **Estimated scope:** M (5 files)
+**Trạng thái 2026-10-18:** đã implement trên `datpt/feat-p3-l02-chess-clock` — `timing-policy.ts` thuần (FIXED/DYNAMIC/NONE, ngân sách tổng/bot, wall-clock), `runMatch` nhận `protocolV2` + `ports.clock`, event log `formatVersion: 2` có `timing[]`, `verifyReplay` trả `TIMING_MISMATCH`; `timing` 46/46, toàn bộ `@ott/match-runner` 189/189 (143 cũ giữ nguyên), typecheck/build sạch, 7 mutation đều làm test fail. **Còn thiếu để tick:** nối `timeControl` qua job snapshot/worker (cần cột DB hiện chưa có), `BotProcess` thật chưa validate/ghi message v2 và chưa có adapter `performance.now`.
 
 ### [x] P3-N02 — Priority queue, worker heartbeat/capacity và pause/resume
 

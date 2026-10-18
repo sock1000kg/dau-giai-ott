@@ -7,10 +7,10 @@
  * copied and this module has no runtime imports.
  */
 import type { GameConfig, GameEvent, GameResult, GameState, PlayerSide } from '@ott/game-core';
-import type { FaultSummary, Limits } from '@ott/bot-protocol';
+import type { FaultSummary, Limits, TimeControlV2 } from '@ott/bot-protocol';
 
-import type { EventLogV1 } from './event-log.ts';
-import type { BotPort, GamePort } from './ports.ts';
+import type { EventLogV1, EventLogV2 } from './event-log.ts';
+import type { BotPort, GamePort, MonotonicClock } from './ports.ts';
 
 /** Everything one match needs; `matchId` is copied verbatim into every protocol message. */
 export interface MatchConfig {
@@ -21,23 +21,39 @@ export interface MatchConfig {
   readonly game: GameConfig;
   /** Sent in INIT; `turnTimeoutMs` is the deadline handed to `BotPort.requestAction`. */
   readonly limits: Limits;
+  /**
+   * P3-L02: pin Bot Protocol v2. When set the runner sends v2 messages, enforces the chess
+   * clock from `timeControl` (instead of `limits.turnTimeoutMs`) and writes a v2 event log.
+   * `ports.clock` is then required. Absent ⇒ behaviour is unchanged v1.
+   */
+  readonly protocolV2?: {
+    readonly timeControl: TimeControlV2;
+    /** INIT `botSeed` per side; never the engine seed (`seed`). */
+    readonly botSeeds: Readonly<Record<PlayerSide, string>>;
+  };
 }
+
+/** A config that pins Bot Protocol v2 (P3-L02): `runMatch` then returns an `EventLogV2` report. */
+export type MatchConfigV2 = MatchConfig & { readonly protocolV2: NonNullable<MatchConfig['protocolV2']> };
 
 /** The seam the runner drives: one game port plus one bot port per side. */
 export interface MatchPorts {
   readonly game: GamePort;
   readonly bots: Readonly<Record<PlayerSide, BotPort>>;
+  /** Monotonic clock for the v2 chess clock; the core never reads a system clock itself. */
+  readonly clock?: MonotonicClock;
 }
 
 /** What `runMatch` returns after the match ends: the result, the final state and the full event trail. */
-export interface MatchReport {
+export interface MatchReport<Log extends EventLogV1 | EventLogV2 = EventLogV1> {
   readonly matchId: string;
   readonly result: GameResult;
   readonly finalState: GameState;
   /** Every transition event, in emission order; `sequence` is strictly increasing. */
   readonly events: readonly GameEvent[];
   readonly faults: Readonly<Record<PlayerSide, FaultSummary>>;
-  readonly log: EventLogV1;
+  /** `EventLogV1` for a v1 match, `EventLogV2` (with `timing`) when `config.protocolV2` is set. */
+  readonly log: Log;
 }
 
 export type MatchRunnerErrorCode =

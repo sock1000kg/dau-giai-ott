@@ -8,6 +8,7 @@
  * - `match-runner.ts` — the turn loop `runMatch`, with the P1-D04 fault policy.
  * - `errors.ts` — MatchRunnerError and the pure fault-counter helpers (P1-D04).
  * - `event-log.ts` — match event log format, serializer, parser, atomic file writer (P1-D07).
+ * - `timing-policy.ts` — pure Bot Protocol v2 chess-clock policy (P3-L02).
  * - `replay.ts` — pure in-memory replay verifier over GamePort (P1-D07).
  *
  * - `line-buffer.ts` — pure NDJSON line buffer with byte limit (P1-D05).
@@ -33,3 +34,4 @@ export * from './bot-process.ts';
 export * from './core-adapter.ts';
 export * from './config.ts';
 export * from './cli.ts';
+export * from './timing-policy.ts';

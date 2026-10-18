@@ -23,11 +23,24 @@ import type {
 } from '@ott/game-core';
 import type {
   ActionMessage,
+  ActionMessageV2,
   InitMessage,
+  InitMessageV2,
   MatchResultMessage,
+  MatchResultMessageV2,
   StateUpdateMessage,
+  StateUpdateMessageV2,
   TurnResultMessage,
+  TurnResultMessageV2,
 } from '@ott/bot-protocol';
+
+/**
+ * Monotonic clock port (P3-L02): milliseconds from an arbitrary origin that never goes
+ * backwards, `performance.now`-style. The core never reads `Date.now`; tests inject `FakeClock`.
+ */
+export interface MonotonicClock {
+  nowMs(): number;
+}
 
 /** Thin seam over Engine API v1 section 4; the real adapter (P1-D09) just forwards to game-core. */
 export interface GamePort {
@@ -55,22 +68,22 @@ export type BotReplyErrorCode = Extract<
 > | ProcessFaultCode;
 /** Bot failures are values, never exceptions, so P1-D04 can map them to skip/forfeit deterministically. */
 export type BotReply =
-  | { readonly ok: true; readonly message: ActionMessage }
+  | { readonly ok: true; readonly message: ActionMessage | ActionMessageV2 }
   | { readonly ok: false; readonly code: BotReplyErrorCode };
 
 /** Same rule for the one spawn attempt; a failed start is reported, not thrown. */
 export type BotStartResult = { readonly ok: true } | { readonly ok: false; readonly code: ProcessFaultCode };
 
 export interface BotPort {
-  start(init: InitMessage): Promise<BotStartResult>;
-  requestAction(update: StateUpdateMessage, timeoutMs: number): Promise<BotReply>;
+  start(init: InitMessage | InitMessageV2): Promise<BotStartResult>;
+  requestAction(update: StateUpdateMessage | StateUpdateMessageV2, timeoutMs: number): Promise<BotReply>;
   /**
    * Send-only STATE_UPDATE for a turn with no legal action (Bot Protocol v1 §5.2/§8):
    * the bot gets the update but no ACTION is expected or waited for.
    */
-  notifyStateUpdate(update: StateUpdateMessage): Promise<void>;
-  sendTurnResult(message: TurnResultMessage): Promise<void>;
-  finish(message: MatchResultMessage): Promise<void>;
+  notifyStateUpdate(update: StateUpdateMessage | StateUpdateMessageV2): Promise<void>;
+  sendTurnResult(message: TurnResultMessage | TurnResultMessageV2): Promise<void>;
+  finish(message: MatchResultMessage | MatchResultMessageV2): Promise<void>;
   /** Idempotent; must be safe to call in `finally` after any failure. */
   stop(): Promise<void>;
 }
