@@ -59,9 +59,9 @@ describe('public leaderboard', () => {
     window.history.replaceState({}, '', '/leaderboard');
     render(<LeaderboardPage />);
     await screen.findByText('Alpha');
-    fireEvent.change(screen.getByLabelText('Vòng đấu / stage'), { target: { value: 'PLAYOFF' } });
+    fireEvent.change(screen.getByLabelText('Vòng đấu / stage'), { target: { value: 'FINALS' } });
     fireEvent.submit(screen.getByRole('form', { name: 'Lọc bảng xếp hạng' }));
-    await waitFor(() => expect(fetch).toHaveBeenCalledWith(expect.stringContaining('stage=PLAYOFF'), expect.anything()));
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith(expect.stringContaining('stage=FINALS'), expect.anything()));
     fireEvent.click(screen.getByRole('button', { name: 'Trang sau' }));
     await waitFor(() => expect(fetch).toHaveBeenCalledWith(expect.stringContaining('page=2'), expect.anything()));
     expect(screen.getAllByText('4').length).toBeGreaterThan(0);

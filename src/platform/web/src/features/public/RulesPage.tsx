@@ -1,8 +1,10 @@
+import { Card } from '../../ui/index.ts';
 import type { PublicSnapshot } from './snapshot.ts';
+import './public.css';
 
 export function RulesPage({ rules }: { rules: PublicSnapshot['rules'] }) {
-  return <section aria-label="Luật hiện tại"><h2>Luật hiện tại</h2>
+  return <section aria-label="Luật hiện tại"><Card as="div" title="Luật hiện tại">
     <p>Phiên bản {rules.version} · Engine {rules.engineVersion}</p>
-    {rules.sections.map((row, index) => <article key={index}><h3>{row.title}</h3><p>{row.body}</p></article>)}
-  </section>;
+    <div className="pub-entries">{rules.sections.map((row, index) => <article className="pub-entry" key={index}><h3>{row.title}</h3><p>{row.body}</p></article>)}</div>
+  </Card></section>;
 }

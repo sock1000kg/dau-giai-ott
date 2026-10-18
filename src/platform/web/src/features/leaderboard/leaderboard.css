@@ -1,0 +1,22 @@
+.pub-eyebrow { margin: 0; color: var(--ui-accent); font-size: 12px; font-weight: 700; letter-spacing: 0.08em; }
+.pub-filters { display: grid; grid-template-columns: 1fr; gap: var(--ui-space-4); align-items: end; }
+@media (min-width: 640px) { .pub-filters { grid-template-columns: minmax(0, 2fr) auto auto; } }
+.pub-summary { margin: 0; color: var(--ui-text-muted); font-size: 14px; }
+.pub-state { padding: var(--ui-space-5); border: 1px dashed var(--ui-border-strong); border-radius: var(--ui-radius-md); color: var(--ui-text-muted); text-align: center; }
+.pub-alert-text { margin: 0 0 var(--ui-space-3); }
+.pub-pagination { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--ui-space-4); color: var(--ui-text-muted); }
+.pub-note p { font-size: 14px; }
+
+.pub-table-scroll { max-height: 70vh; overflow: auto; max-width: 100%; }
+.pub-table-scroll:focus-visible { outline: var(--ui-focus-ring); outline-offset: 2px; }
+.pub-table { min-width: 720px; font-variant-numeric: tabular-nums; }
+.pub-table caption { color: var(--ui-text); font-size: 15px; font-weight: 700; }
+.pub-table thead th { position: sticky; top: 0; z-index: 1; }
+.pub-table tbody th { font-weight: 600; }
+.pub-table .pub-num { text-align: right; }
+.pub-table td { vertical-align: middle; }
+.pub-rank { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--ui-space-2); }
+.pub-rank-value { min-width: 1.5em; font-size: 16px; font-weight: 800; }
+.pub-row-top { background: rgba(128, 228, 208, 0.07); box-shadow: inset 3px 0 0 var(--ui-accent); }
+.pub-team { font-weight: 600; }
+.pub-tone--warning .ui-badge { border-color: var(--ui-warning); color: var(--ui-warning); }

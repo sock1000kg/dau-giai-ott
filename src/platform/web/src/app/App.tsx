@@ -18,8 +18,8 @@ export function App() {
           <span>OTT Arena</span>
         </a>
         <span className="header-label">NỀN TẢNG GIẢI ĐẤU</span>
-        <a className="public-nav-link" href="/public">Thông tin giải đấu</a>
-        <a className="public-nav-link" href={window.location.pathname === '/public' ? '#leaderboard' : '/leaderboard'}>Bảng xếp hạng</a>
+        <a className="public-nav-link" href="/public" aria-current={window.location.pathname === '/public' ? 'page' : undefined}>Thông tin giải đấu</a>
+        <a className="public-nav-link" href={window.location.pathname === '/public' ? '#leaderboard' : '/leaderboard'} aria-current={isPublicLeaderboard ? 'page' : undefined}>Bảng xếp hạng</a>
       </header>
 
       {window.location.pathname === '/public' ? <PublicTournamentPage /> : isPublicLeaderboard ? <LeaderboardPage />
