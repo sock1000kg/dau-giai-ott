@@ -13,7 +13,7 @@ function validQualificationRules() {
   return {
     schemaVersion: 'ott.round-rules.v1' as const,
     engineVersion: '1.0.0',
-    mapSet: [{ mapId: 'map-v1', checksum: 'a'.repeat(64) }],
+    mapSet: [{ mapId: 'default', checksum: 'a'.repeat(64) }],
     maxTurns: 200,
     faultPolicyVersion: 'P2_BASELINE_V1',
     timeControl: {
@@ -121,7 +121,7 @@ integration('P3-D01 round-rules PostgreSQL integration', () => {
     const rs1 = await createRuleSet(database, { tournamentStage: stage, rules: validQualificationRules(), reason: 'v2 rules', actorAccountId: accountId });
     expect(rs1.version).toBe(2);
     expect(rs1.rulesSha256).toMatch(/^[0-9a-f]{64}$/);
-    await expect(createRuleSet(database, { tournamentStage: stage, rules: { ...validQualificationRules(), engineVersion: '2.0.0' }, reason: 'v3 rules', actorAccountId: accountId })).resolves.toMatchObject({ version: 3 });
+    await expect(createRuleSet(database, { tournamentStage: stage, rules: { ...validQualificationRules(), maxTurns: 150 }, reason: 'v3 rules', actorAccountId: accountId })).resolves.toMatchObject({ version: 3 });
   });
 
   it('rejects invalid rule sets with RULE_SET_INVALID', async () => {

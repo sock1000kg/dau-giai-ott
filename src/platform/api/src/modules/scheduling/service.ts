@@ -6,6 +6,7 @@ import { scoreQualificationSeries, type SeriesMatchInput } from '../series/scori
 import { applyRoundRatings } from '../ratings/service.ts';
 import { CURRENT_RATING_POLICY } from '../ratings/elo.ts';
 import { isQualificationGateEnforced } from './eligibility.ts';
+import { selectMapIndex, type MatchRules, type RegisteredMap } from '../rounds/catalog.ts';
 
 const INITIAL_RATING_BAND = 200;
 const RATING_BAND_STEP = 100;
@@ -26,6 +27,8 @@ interface RoundRow {
 export interface ScheduleRoundInput {
   readonly tournamentStage: string;
   readonly idempotencyKey: string;
+  /** Locked rule-set snapshot for the matches; absent keeps the migration column defaults. */
+  readonly matchRules?: MatchRules;
 }
 
 export interface ScheduledRound {
@@ -41,12 +44,23 @@ function sha256(value: string): string {
 }
 
 function requestHash(input: ScheduleRoundInput): string {
-  return sha256(JSON.stringify({ tournamentStage: input.tournamentStage }));
+  const rules = input.matchRules;
+  if (rules === undefined) return sha256(JSON.stringify({ tournamentStage: input.tournamentStage }));
+  return sha256(JSON.stringify({
+    tournamentStage: input.tournamentStage,
+    matchRules: {
+      engineVersion: rules.engineVersion,
+      maxTurns: rules.maxTurns,
+      turnTimeoutMs: rules.turnTimeoutMs,
+      maps: rules.maps.map(({ mapId, version, checksum }) => ({ mapId, version, checksum })),
+    },
+  }));
 }
 
 function validateInput(input: ScheduleRoundInput): void {
   if (!/^[A-Z][A-Z0-9_]{0,63}$/.test(input.tournamentStage)) throw new Error('TOURNAMENT_STAGE_INVALID');
   if (input.idempotencyKey.length < 1 || input.idempotencyKey.length > 128) throw new Error('IDEMPOTENCY_KEY_INVALID');
+  if (input.matchRules !== undefined && input.matchRules.maps.length < 1) throw new Error('MATCH_RULES_INVALID');
 }
 
 async function existingRound(transaction: Database, input: ScheduleRoundInput, expectedHash: string): Promise<ScheduledRound | null> {
@@ -179,6 +193,7 @@ export async function scheduleRound(database: Database, input: ScheduleRoundInpu
       readonly policyVersion: string;
       readonly gameNumber: 1 | 2;
       readonly job: MatchJobV1;
+      readonly map: RegisteredMap | null;
     }[] = [];
     for (const pairing of plan.pairings) {
       const teamA = bySubmission.get(pairing.x.submissionId)!;
@@ -186,6 +201,9 @@ export async function scheduleRound(database: Database, input: ScheduleRoundInpu
       const seriesId = randomUUID();
       seriesRows.push({ id: seriesId, teamAId: teamA.teamId, teamBId: teamB.teamId });
       participantRows.push({ seriesId, teamId: teamA.teamId, slot: 'A' }, { seriesId, teamId: teamB.teamId, slot: 'B' });
+      // One map per series: both games (side swap) are played on the same map.
+      const map = input.matchRules === undefined ? null
+        : input.matchRules.maps[selectMapIndex(scheduleSeed, seriesId, input.matchRules.maps.length)]!;
       for (const gameNumber of [1, 2] as const) {
         const matchId = randomUUID();
         const x = gameNumber === 1 ? teamA : teamB;
@@ -202,6 +220,7 @@ export async function scheduleRound(database: Database, input: ScheduleRoundInpu
           policyVersion,
           gameNumber,
           job,
+          map,
         });
       }
     }
@@ -218,20 +237,45 @@ export async function scheduleRound(database: Database, input: ScheduleRoundInpu
         assignment.series_slot
       FROM unnest($2::uuid[], $3::uuid[], $4::char[]) AS assignment(series_id, team_id, series_slot)`,
     [roundId, assignmentRows.map(({ seriesId }) => seriesId), assignmentRows.map(({ teamId }) => teamId), assignmentRows.map(({ slot }) => slot)]);
-    await transaction.query(`
-      INSERT INTO matches (id, series_id, x_submission_id, o_submission_id, status, seed, policy_version, game_number)
-      SELECT match.id, match.series_id, match.x_submission_id, match.o_submission_id, 'SCHEDULED', match.seed, match.policy_version, match.game_number
-      FROM unnest($1::uuid[], $2::uuid[], $3::uuid[], $4::uuid[], $5::text[], $6::text[], $7::smallint[])
-        AS match(id, series_id, x_submission_id, o_submission_id, seed, policy_version, game_number)`,
-    [
-      matchRows.map(({ id }) => id),
-      matchRows.map(({ seriesId }) => seriesId),
-      matchRows.map(({ xSubmissionId }) => xSubmissionId),
-      matchRows.map(({ oSubmissionId }) => oSubmissionId),
-      matchRows.map(({ seed }) => seed),
-      matchRows.map(({ policyVersion }) => policyVersion),
-      matchRows.map(({ gameNumber }) => gameNumber),
-    ]);
+    if (input.matchRules === undefined) {
+      await transaction.query(`
+        INSERT INTO matches (id, series_id, x_submission_id, o_submission_id, status, seed, policy_version, game_number)
+        SELECT match.id, match.series_id, match.x_submission_id, match.o_submission_id, 'SCHEDULED', match.seed, match.policy_version, match.game_number
+        FROM unnest($1::uuid[], $2::uuid[], $3::uuid[], $4::uuid[], $5::text[], $6::text[], $7::smallint[])
+          AS match(id, series_id, x_submission_id, o_submission_id, seed, policy_version, game_number)`,
+      [
+        matchRows.map(({ id }) => id),
+        matchRows.map(({ seriesId }) => seriesId),
+        matchRows.map(({ xSubmissionId }) => xSubmissionId),
+        matchRows.map(({ oSubmissionId }) => oSubmissionId),
+        matchRows.map(({ seed }) => seed),
+        matchRows.map(({ policyVersion }) => policyVersion),
+        matchRows.map(({ gameNumber }) => gameNumber),
+      ]);
+    } else {
+      const rules = input.matchRules;
+      await transaction.query(`
+        INSERT INTO matches (id, series_id, x_submission_id, o_submission_id, status, seed, policy_version, game_number,
+          engine_version, map_definition, map_checksum, max_turns, turn_timeout_ms)
+        SELECT match.id, match.series_id, match.x_submission_id, match.o_submission_id, 'SCHEDULED', match.seed, match.policy_version, match.game_number,
+          $8::text, match.map_definition::jsonb, match.map_checksum, $9::integer, $10::integer
+        FROM unnest($1::uuid[], $2::uuid[], $3::uuid[], $4::uuid[], $5::text[], $6::text[], $7::smallint[], $11::text[], $12::text[])
+          AS match(id, series_id, x_submission_id, o_submission_id, seed, policy_version, game_number, map_definition, map_checksum)`,
+      [
+        matchRows.map(({ id }) => id),
+        matchRows.map(({ seriesId }) => seriesId),
+        matchRows.map(({ xSubmissionId }) => xSubmissionId),
+        matchRows.map(({ oSubmissionId }) => oSubmissionId),
+        matchRows.map(({ seed }) => seed),
+        matchRows.map(({ policyVersion }) => policyVersion),
+        matchRows.map(({ gameNumber }) => gameNumber),
+        rules.engineVersion,
+        rules.maxTurns,
+        rules.turnTimeoutMs,
+        matchRows.map(({ map }) => JSON.stringify(map!.definition)),
+        matchRows.map(({ map }) => map!.checksum),
+      ]);
+    }
     await transaction.query(`
       INSERT INTO match_outbox (match_id, event_type, payload)
       SELECT outbox.match_id, 'MATCH_SCHEDULED', outbox.payload

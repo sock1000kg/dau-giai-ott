@@ -13,6 +13,8 @@
     "db:migrate": "tsx src/db/migrate.ts"
   },
   "dependencies": {
+    "@ott/bot-protocol": "*",
+    "@ott/game-core": "*",
     "@ott/job-contract": "*",
     "@ott/match-runner": "*",
     "bullmq": "6.3.13",
