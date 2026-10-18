@@ -1,0 +1,33 @@
+.submissions-layout { display: grid; gap: var(--ui-space-5); align-items: start; }
+@media (min-width: 1024px) {
+  .submissions-layout { grid-template-columns: minmax(320px, 420px) minmax(0, 1fr); }
+  .submissions-upload { position: sticky; top: var(--ui-space-4); }
+}
+
+.submissions-form { display: grid; gap: var(--ui-space-4); margin-top: var(--ui-space-4); }
+.submissions-form .ui-button { width: 100%; min-height: 44px; }
+.submissions-file {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  padding: var(--ui-space-4);
+  border: 2px dashed var(--ui-border-strong);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-surface-solid);
+  color: var(--ui-text);
+  cursor: pointer;
+}
+.submissions-file:focus-visible { outline: var(--ui-focus-ring); outline-offset: 2px; }
+.submissions-selected { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--ui-space-3); padding: var(--ui-space-3) var(--ui-space-4); border: 1px solid var(--ui-border-strong); border-radius: var(--ui-radius-sm); background: var(--ui-surface-solid); }
+.submissions-selected .selected-file { margin: 0; overflow-wrap: anywhere; color: var(--ui-text); }
+.submissions-progress { display: grid; gap: var(--ui-space-2); color: var(--ui-text); }
+.submissions-progress progress { width: 100%; height: 12px; accent-color: var(--ui-accent); }
+.submissions-steps { display: grid; gap: var(--ui-space-2); margin: var(--ui-space-4) 0 0; padding-left: var(--ui-space-5); color: var(--ui-text-muted); font-size: 14px; }
+
+.submissions-history-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--ui-space-3); margin-bottom: var(--ui-space-3); }
+.submissions-history-bar .ui-button, .submissions-pagination .ui-button { min-height: 44px; }
+.submissions-history > .ui-alert, .submissions-history > .ui-table-scroll, .submissions-history > .ui-empty { margin-top: var(--ui-space-3); }
+.submissions-status--danger .ui-badge { border-color: var(--ui-danger-strong); color: var(--ui-danger); }
+.submissions-status--success .ui-badge { border-color: var(--ui-accent); color: var(--ui-accent); }
+.submissions-status--info .ui-badge { border-color: var(--ui-info); color: var(--ui-info); }
+.submissions-pagination { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--ui-space-3); margin-top: var(--ui-space-4); color: var(--ui-text-muted); }

@@ -61,6 +61,11 @@ keys and does not accept a team selector. API role checks remain authoritative;
 the portal does not persist session credentials or submission data in browser
 storage.
 
+The page is built from the `ui/*` primitives (`submissions.css` holds its layout):
+an upload card and a history card side by side from 1024px, stacked below. The
+history is a table (time in `Asia/Ho_Chi_Minh`, status badge, preflight position
+shown only for `PREFLIGHT`). Upload and API behaviour are unchanged.
+
 ## Public leaderboard (`P2-T22`)
 
 Anyone can open `/leaderboard` without a team/BTC session. The page reads
