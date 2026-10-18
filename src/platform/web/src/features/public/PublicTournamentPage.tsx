@@ -4,6 +4,7 @@ import { Alert, Badge, Card, LinkButton, Page } from '../../ui/index.ts';
 import { ExpandableList } from './ExpandableList.tsx';
 import { RulesPage } from './RulesPage.tsx';
 import { formatScheduleValue, orderSchedule, scheduleLabel } from './schedule.ts';
+import { formatWait } from './format-wait.ts';
 import './public.css';
 
 const LEADERBOARD_LIMIT = 10;
@@ -45,14 +46,14 @@ export function PublicTournamentPage() {
       <span className="pub-updated">Cập nhật lúc <time dateTime={snapshot.updatedAt}>{formatVnDateTime(snapshot.updatedAt)}</time></span>
     </div>
     {stale && <Alert tone="warning">Dữ liệu có thể đã cũ. Đang giữ bản cập nhật cuối cùng.</Alert>}
-    <div className="pub-grid">
+    <div className="pub-grid pub-grid--panels">
       <div className="pub-stack"><section aria-label="Trạng thái"><Card as="div" title="Trạng thái"><p>{snapshot.status.message}</p>
-        <p>ETA khắc phục: {snapshot.status.incidentEta ?? 'Chưa có ước tính sự cố'}</p></Card></section>
-      <section aria-label="Hàng đợi"><Card as="div" title="Hàng đợi"><ExpandableList listTag="ol" label="Danh sách hàng đợi" items={snapshot.queue} initial={10} step={20}
+        <p>Dự kiến khắc phục: {snapshot.status.incidentEta ?? 'Chưa có ước tính sự cố'}</p></Card></section>
+      <section aria-label="Hàng đợi" className="pub-panel-section"><Card as="div" title="Hàng đợi" className="pub-panel"><ExpandableList listTag="ol" label="Danh sách hàng đợi" items={snapshot.queue} initial={10} step={20} fill
         summary={`${snapshot.queue.length} trận đang chờ`} emptyText="Hàng đợi trống." renderItem={(row, i) =>
         <li key={i}><Badge accent>#{row.position}</Badge><span className="pub-list-main">{row.teams}</span>
-          <span className="pub-list-meta">ETA {row.etaSeconds === null ? 'chưa xác định' : `~${row.etaSeconds} giây`}</span></li>} /></Card></section></div>
-      <section aria-label="Kết quả"><Card as="div" title="Kết quả"><ExpandableList listTag="ul" label="Danh sách kết quả" items={newestFirst} initial={20} step={20} scrollMaxHeight={480}
+          <span className="pub-list-meta">{formatWait(row.etaSeconds)}</span></li>} /></Card></section></div>
+      <section aria-label="Kết quả" className="pub-panel-section"><Card as="div" title="Kết quả" className="pub-panel"><ExpandableList listTag="ul" label="Danh sách kết quả" items={newestFirst} initial={20} step={20} fill
         summary={`${newestFirst.length} kết quả`} emptyText="Chưa có kết quả." renderItem={(row) =>
         <li key={row.matchId}><span className="pub-list-main">{row.teams}</span><span className="pub-score">{row.score}</span>
           {snapshot.stage === 'FINALS' && row.syncVerified && row.replayPublished

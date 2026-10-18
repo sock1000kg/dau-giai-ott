@@ -25,7 +25,7 @@ const MATRIX: readonly Case[] = [
   { role: 'BTC_ADMIN', path: '/', h1: 'Khu vực BTC', nav: 'Tổng quan' },
   { role: 'BTC_ADMIN', path: '/admin/teams', h1: /đội thi/i, nav: 'Đội thi' },
   { role: 'BTC_ADMIN', path: '/admin/rounds', h1: /round/i, nav: 'Round' },
-  { role: 'BTC_ADMIN', path: '/admin/operations', h1: 'Vận hành đặc quyền', nav: 'Đặc quyền', ready: 'Danh sách hồ sơ' },
+  { role: 'BTC_ADMIN', path: '/admin/operations', h1: 'Vận hành đặc quyền', nav: 'Đặc quyền', ready: 'Chưa có sự kiện audit nào' },
   { role: 'BTC_ADMIN', path: '/admin/results', h1: /kết quả/i, nav: 'Kết quả', ready: 'Đã chốt' },
   { role: 'BTC_ADMIN', path: '/admin/replays', h1: /replay/i, nav: 'Replay', ready: /Alpha Team/ },
   { role: 'BTC_ADMIN', path: `/admin/replays/${ids.match}/view`, h1: 'Xem lại trận', nav: 'Replay', ready: /REPLAY ĐÃ XÁC MINH/ },

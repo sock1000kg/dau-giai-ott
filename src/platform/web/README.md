@@ -54,7 +54,7 @@ client bundle.
 | `/team/submissions` | team | `features/submissions/SubmissionForm.tsx` | `submissions.css` | `P2-T20` |
 | `/team/results` | team | `features/results/MatchResultsPage.tsx` | `results.css` | `P3-D13` |
 
-The case detail in the operations console (`/admin/operations`) scrolls into view and takes focus when a case opens, shows load failures inside the detail area with a retry, and returns focus to the row's "Xem" button on "Đóng". Behaviour is covered by jsdom tests only; real scroll and focus feel in a browser is not verified.
+The operations console (`/admin/operations`) no longer shows cases ("Hồ sơ vụ việc"); the case API routes, tables and audit actions are still in the backend pending a product decision.
 
 ## Feature notes (API and behaviour)
 
@@ -226,19 +226,23 @@ the access-denied page). `features/operations/OperationsConsole.tsx` composes:
   target and a reason, a public reason for cancel/rerun and an explicit infra-failure checkbox for rerun;
   "Xem lại thao tác" opens a confirm step, and one `crypto.randomUUID()` idempotency key per confirmed
   action is sent with a fresh `X-Correlation-Id`. Repeated clicks while a request is in flight send nothing.
-- cases: open, list, detail with the append-only event list, and evidence/status/decision forms that
-  require a reason.
+- cases are no longer in the UI (removed in `P3-D24`; the backend routes, tables and audit actions remain, pending a decision).
 - an audit viewer with action/target filters and the public queue-override list.
 
-`P3-D12` restyles the page with the `ui/*` primitives (four cards, `Field`/`Textarea` with `n/500` counters,
+`P3-D12` restyles the page with the `ui/*` primitives (three cards, `Field`/`Textarea` with `n/500` counters,
 bordered tables with empty states, badges, alerts) and replaces pasted UUIDs with entity pickers. Teams come from
 `GET /api/v1/admin/teams` (loaded once, filterable by name) and matches from `GET /api/v1/results/matches`
 (server-side `teamId`/`stage` filters, FAILED only for cancel/rerun). Every picker keeps a "Nhập mã thủ công"
 UUID field. API gaps: the match list never returns SCHEDULED matches (cancel of a SCHEDULED match needs the manual
-id) and `GET /api/v1/submissions` is TEAM_ACCOUNT-only, so revoke and DUPLICATE cases take a manual submission id.
+id) and `GET /api/v1/submissions` is TEAM_ACCOUNT-only, so revoke takes a manual submission id.
 The confirm step shows the target name + short id, moves focus to its heading and returns focus to
 "Xem lại thao tác" on cancel. Tests: `operations.test.tsx`, `operations.pickers.test.tsx`,
 `operations.layout.test.tsx` (shared mocks in `operations.testkit.tsx`).
+
+The public tournament page (`/public`) shows "Hàng đợi" and "Kết quả" as equal panels: one `--pub-panel-height` cap
+(`clamp(420px, 70vh, 640px)`) at ≥ 1024px, both columns stretch to the same bottom edge and each list scrolls inside its
+card (`ExpandableList` `fill`); below 1024px each list region is capped at 360px. Wait times read "Dự kiến chờ ~N phút/giờ"
+(`features/public/format-wait.ts`). Heights are CSS-only and not verified in a browser.
 
 Server error codes are mapped to stable Vietnamese messages (`operationsErrorMessage` in `api.ts`); server
 text is never displayed. Verification: `npm test --workspace @ott/platform-web -- operations`.

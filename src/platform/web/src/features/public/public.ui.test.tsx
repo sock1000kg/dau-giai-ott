@@ -38,14 +38,14 @@ describe('public tournament page restyle', () => {
     }
     expect(document.getElementById('leaderboard')?.getAttribute('aria-label')).toBe('Bảng xếp hạng');
     expect(document.querySelectorAll('.pub-grid').length).toBe(2);
-    expect(screen.getByText('ETA khắc phục: Chưa có ước tính sự cố')).toBeTruthy();
+    expect(screen.getByText('Dự kiến khắc phục: Chưa có ước tính sự cố')).toBeTruthy();
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Giải đấu OTT · Week 1');
   });
 
-  it('shows the queue as an ordered list with positions and ETA', async () => {
+  it('shows the queue as an ordered list with positions and plain wait times', async () => {
     await mount();
     const items = within(screen.getByRole('region', { name: 'Hàng đợi' }).querySelector('ol')!).getAllByRole('listitem');
-    expect(items.map((li) => li.textContent)).toEqual(['#1A vs BETA ~30 giây', '#2C vs DETA chưa xác định']);
+    expect(items.map((li) => li.textContent)).toEqual(['#1A vs BDự kiến chờ ~1 phút', '#2C vs DChưa có ước tính']);
   });
 
   it('lists the leaderboard with eligibility badges and VN time', async () => {

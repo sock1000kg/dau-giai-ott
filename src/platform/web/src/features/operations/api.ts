@@ -1,32 +1,4 @@
 export type PrivilegedActionKind = 'suspend' | 'unsuspend' | 'revoke' | 'cancel' | 'rerun';
-export type CaseKind = 'ANOMALY' | 'DUPLICATE' | 'APPEAL';
-export type CaseStatus = 'OPEN' | 'UNDER_REVIEW' | 'DECIDED' | 'CLOSED';
-export type CaseDecision = 'NO_ACTION' | 'WARN' | 'REVOKE_SUBMISSION' | 'SUSPEND_TEAM' | 'RERUN_APPROVED' | 'APPEAL_UPHELD' | 'APPEAL_REJECTED';
-
-export const CASE_KINDS: readonly CaseKind[] = ['ANOMALY', 'DUPLICATE', 'APPEAL'];
-export const CASE_DECISIONS: readonly CaseDecision[] = ['NO_ACTION', 'WARN', 'REVOKE_SUBMISSION', 'SUSPEND_TEAM', 'RERUN_APPROVED', 'APPEAL_UPHELD', 'APPEAL_REJECTED'];
-
-export interface CaseSummary {
-  readonly id: string;
-  readonly kind: CaseKind;
-  readonly status: CaseStatus;
-  readonly teamId: string | null;
-  readonly matchId: string | null;
-  readonly submissionId: string | null;
-  readonly openedAt: string;
-  readonly decidedAt: string | null;
-}
-
-export interface CaseEvent {
-  readonly seq: number;
-  readonly eventType: string;
-  readonly reason: string;
-  readonly decision: CaseDecision | null;
-  readonly createdAt: string;
-}
-
-export interface CaseDetail extends CaseSummary { readonly events: readonly CaseEvent[] }
-
 export interface AuditItem {
   readonly id: string;
   readonly action: string;
@@ -49,12 +21,6 @@ export interface AuditFilters {
   readonly action?: string;
   readonly targetType?: string;
   readonly targetId?: string;
-  readonly page?: number;
-}
-
-export interface CaseFilters {
-  readonly kind?: CaseKind | '';
-  readonly status?: CaseStatus | '';
   readonly page?: number;
 }
 
@@ -114,19 +80,11 @@ const MESSAGES: Readonly<Record<string, string>> = {
   RERUN_ALREADY_PENDING: 'Đã có yêu cầu chạy lại đang chờ phát hành.',
   CANCEL_NOT_ALLOWED: 'Chỉ hủy được trận SCHEDULED hoặc FAILED.',
   TRANSITION_INVALID: 'Thao tác không hợp lệ ở trạng thái hiện tại.',
-  CASE_TRANSITION_INVALID: 'Không thể chuyển trạng thái hồ sơ như vậy.',
-  CASE_LOCKED: 'Hồ sơ đã có quyết định, không thể thêm bằng chứng.',
-  DECISION_NOT_ALLOWED_FOR_KIND: 'Quyết định không áp dụng cho loại hồ sơ này.',
-  CASE_ALREADY_EXISTS: 'Đã có hồ sơ cho đối tượng này.',
   SUBMISSION_NOT_FLAGGED: 'Submission chưa bị gắn cờ trùng lặp.',
   IDEMPOTENCY_KEY_REUSED: 'Khóa idempotency đã dùng cho yêu cầu khác. Vui lòng thao tác lại.',
   TEAM_NOT_FOUND: 'Không tìm thấy đội.',
   SUBMISSION_NOT_FOUND: 'Không tìm thấy submission.',
   MATCH_NOT_FOUND: 'Không tìm thấy trận.',
-  CASE_NOT_FOUND: 'Không tìm thấy hồ sơ.',
-  CASE_SUBJECT_NOT_FOUND: 'Không tìm thấy đối tượng của hồ sơ.',
-  CASE_SUBJECT_REQUIRED: 'Hồ sơ cần ít nhất một đối tượng hợp lệ.',
-  INVALID_EVIDENCE: 'Bằng chứng không hợp lệ.',
 };
 
 export function operationsErrorMessage(error: unknown): string {
@@ -214,12 +172,6 @@ function paged<T>(body: unknown, page: number): Paged<T> {
   return { items: list, pagination: pagination((body as { pagination?: unknown }).pagination, page, list.length) };
 }
 
-export async function listCases(filters: CaseFilters = {}): Promise<Paged<CaseSummary>> {
-  const page = filters.page ?? 1;
-  const body = await request(`${BASE}/cases${query({ kind: filters.kind, status: filters.status, page: page > 1 ? page : undefined })}`);
-  return paged<CaseSummary>(body, page);
-}
-
 export async function listTeams(): Promise<readonly TeamOption[]> {
   const body = await request('/api/v1/admin/teams') as { data?: unknown };
   if (!Array.isArray(body.data)) throw new Error('Invalid operations response');
@@ -232,32 +184,6 @@ export async function listMatches(filters: MatchFilters = {}): Promise<Paged<Mat
   if (!Array.isArray(body.data?.items)) throw new Error('Invalid operations response');
   const list = body.data.items as MatchOption[];
   return { items: list, pagination: pagination(body.data.pagination, page, list.length) };
-}
-
-export async function getCase(id: string): Promise<CaseDetail> {
-  const body = await request(`${BASE}/cases/${encodeURIComponent(id)}`) as { data?: CaseDetail };
-  if (body.data === undefined) throw new Error('Invalid operations response');
-  return body.data;
-}
-
-export async function openCase(input: { readonly kind: CaseKind; readonly subjectId: string; readonly reason: string; readonly summary: string }): Promise<void> {
-  const subject: Record<CaseKind, string> = { ANOMALY: 'matchId', DUPLICATE: 'submissionId', APPEAL: 'teamId' };
-  await request(`${BASE}/cases`, {
-    method: 'POST',
-    body: JSON.stringify({ kind: input.kind, reason: input.reason, [subject[input.kind]]: input.subjectId, evidence: { summary: input.summary } }),
-  });
-}
-
-export async function addCaseEvidence(id: string, reason: string, summary: string): Promise<void> {
-  await request(`${BASE}/cases/${encodeURIComponent(id)}/evidence`, { method: 'POST', body: JSON.stringify({ reason, evidence: { summary } }) });
-}
-
-export async function changeCaseStatus(id: string, reason: string, status: 'UNDER_REVIEW' | 'CLOSED'): Promise<void> {
-  await request(`${BASE}/cases/${encodeURIComponent(id)}/status`, { method: 'POST', body: JSON.stringify({ reason, status }) });
-}
-
-export async function decideCase(id: string, reason: string, decision: CaseDecision): Promise<void> {
-  await request(`${BASE}/cases/${encodeURIComponent(id)}/decision`, { method: 'POST', body: JSON.stringify({ reason, decision }) });
 }
 
 export async function listAudit(filters: AuditFilters): Promise<Paged<AuditItem>> {

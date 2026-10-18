@@ -20,10 +20,8 @@ export interface Call { readonly url: string; readonly init: RequestInit | undef
 export interface Options {
   teams?: () => Response;
   matches?: (url: string) => Response;
-  cases?: (url: string) => Response;
   audit?: (url: string) => Response;
   post?: (url: string, init: RequestInit) => Response | Promise<Response>;
-  caseDetail?: unknown;
 }
 
 export function install(options: Options = {}) {
@@ -37,8 +35,6 @@ export function install(options: Options = {}) {
       return options.matches?.(url) ?? response(200, { data: { items: [failedMatch, doneMatch], pagination: { page: 1, pageSize: 100, total: 2, totalPages: 1 } } });
     }
     if (init?.method === 'POST') return options.post ? options.post(url, init) : response(200, { data: {} });
-    if (url.startsWith('/api/v1/admin/operations/cases/')) return response(200, { data: options.caseDetail });
-    if (url.startsWith('/api/v1/admin/operations/cases')) return options.cases?.(url) ?? response(200, { data: { items: [] } });
     if (url.startsWith('/api/v1/admin/operations/audit')) return options.audit?.(url) ?? response(200, { data: { items: [] } });
     if (url === '/api/v1/public/queue-overrides') return response(200, { data: { items: [] } });
     throw new Error(`unmocked request: ${url}`);
@@ -60,5 +56,4 @@ export async function openConsole(options: Options = {}) {
 
 export const region = (name: string) => within(screen.getByRole('region', { name }));
 export const priv = () => region('Thao tác đặc quyền');
-export const cases = () => region('Hồ sơ vụ việc');
 export const audit = () => region('Nhật ký audit');

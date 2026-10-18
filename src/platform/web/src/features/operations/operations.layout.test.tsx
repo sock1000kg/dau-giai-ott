@@ -1,6 +1,6 @@
-import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { alpha, audit, cases, doneMatchId, failedMatchId, gets, openConsole, posts, priv, response, submissionId } from './operations.testkit.tsx';
+import { alpha, audit, failedMatchId, gets, openConsole, posts, priv, response } from './operations.testkit.tsx';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -8,17 +8,15 @@ afterEach(() => {
   window.history.replaceState({}, '', '/');
 });
 
-const caseId = '00000000-0000-4000-8000-0000000000aa';
-const summary = { id: caseId, kind: 'ANOMALY', status: 'OPEN', teamId: null, matchId: failedMatchId, submissionId: null, openedAt: '2026-10-18T00:00:00Z', decidedAt: null };
 const REASON = /Lý do \(bắt buộc, tối đa 500/;
 
 describe('page structure and a11y', () => {
-  it('renders four named cards, each with a description', async () => {
+  it('renders three named cards, each with a description', async () => {
     await openConsole();
-    for (const name of ['Thao tác đặc quyền', 'Hồ sơ vụ việc', 'Nhật ký audit', 'Can thiệp hàng đợi (công khai)']) {
+    for (const name of ['Thao tác đặc quyền', 'Nhật ký audit', 'Can thiệp hàng đợi (công khai)']) {
       expect(screen.getByRole('region', { name })).toBeTruthy();
     }
-    expect(document.querySelectorAll('.ui-card').length).toBe(4);
+    expect(document.querySelectorAll('.ui-card').length).toBe(3);
   });
 
   it('gives every control a visible label and keeps counters live', async () => {
@@ -45,70 +43,6 @@ describe('page structure and a11y', () => {
     await waitFor(() => expect(document.activeElement).toBe(within(group).getByRole('heading')));
     fireEvent.click(within(group).getByRole('button', { name: 'Hủy' }));
     await waitFor(() => expect(document.activeElement).toBe(priv().getByRole('button', { name: 'Xem lại thao tác' })));
-  });
-});
-
-describe('cases', () => {
-  it('shows the bordered table with an empty state', async () => {
-    await openConsole();
-    expect(await cases().findByText('Chưa có hồ sơ nào')).toBeTruthy();
-    expect(cases().getByRole('table', { name: 'Danh sách hồ sơ' }).className).toBe('ui-table');
-    expect(cases().getByRole('table').closest('.ui-table-scroll')).toBeTruthy();
-  });
-
-  it('resolves subjects and sends kind/status filters', async () => {
-    const api = await openConsole({ cases: () => response(200, { data: { items: [summary] }, pagination: { page: 1, pageSize: 20, totalItems: 1, totalPages: 1 } }) });
-    expect((await cases().findByText(/Trận ROUND_1 · Game 2/)).textContent).toContain('Trận');
-    fireEvent.change(cases().getByLabelText('Lọc theo loại'), { target: { value: 'APPEAL' } });
-    await waitFor(() => expect(gets(api.calls, '/api/v1/admin/operations/cases').some(({ url }) => url.includes('kind=APPEAL'))).toBe(true));
-    fireEvent.change(cases().getByLabelText('Lọc theo trạng thái'), { target: { value: 'DECIDED' } });
-    await waitFor(() => expect(gets(api.calls, '/api/v1/admin/operations/cases').some(({ url }) => url.includes('kind=APPEAL') && url.includes('status=DECIDED'))).toBe(true));
-  });
-
-  it.each([
-    ['APPEAL', 'Chọn đội', alpha.id, 'teamId'],
-    ['ANOMALY', 'Chọn trận', doneMatchId, 'matchId'],
-    ['DUPLICATE', 'Mã submission (UUID)', submissionId, 'submissionId'],
-  ])('opens a %s case from the picker with the right body', async (kind, label, id, field) => {
-    const api = await openConsole();
-    fireEvent.change(cases().getByLabelText('Loại hồ sơ'), { target: { value: kind } });
-    if (label === 'Mã submission (UUID)') fireEvent.change(cases().getByLabelText(label), { target: { value: id } });
-    else {
-      await waitFor(() => expect(cases().getByLabelText(label).querySelectorAll('option').length).toBeGreaterThan(2 - (kind === 'APPEAL' ? 0 : 1)));
-      fireEvent.change(cases().getByLabelText(label), { target: { value: id } });
-    }
-    fireEvent.change(cases().getByLabelText('Bằng chứng ban đầu'), { target: { value: 'ev' } });
-    fireEvent.change(cases().getByLabelText('Lý do mở hồ sơ'), { target: { value: 'why' } });
-    fireEvent.click(cases().getByRole('button', { name: 'Mở hồ sơ' }));
-    await waitFor(() => expect(posts(api.calls)).toHaveLength(1));
-    expect(posts(api.calls)[0]!.url).toBe('/api/v1/admin/operations/cases');
-    expect(JSON.parse(String(posts(api.calls)[0]!.init!.body))).toEqual({ kind, reason: 'why', [field]: id, evidence: { summary: 'ev' } });
-  });
-
-  it('orders the timeline by seq and disables only the busy control', async () => {
-    let release: (value: Response) => void = () => undefined;
-    const api = await openConsole({
-      cases: () => response(200, { data: { items: [summary] } }),
-      caseDetail: { ...summary, events: [
-        { seq: 2, eventType: 'EVIDENCE_ADDED', reason: 'second', decision: null, createdAt: '2026-10-18T02:00:00Z' },
-        { seq: 1, eventType: 'OPENED', reason: 'first', decision: null, createdAt: '2026-10-18T01:00:00Z' },
-      ] },
-      post: () => new Promise<Response>((resolve) => { release = resolve; }),
-    });
-    fireEvent.click(await screen.findByRole('button', { name: /^Xem 00000000/ }));
-    const detail = within(await screen.findByRole('article', { name: 'Chi tiết hồ sơ' }));
-    const items = detail.getAllByRole('listitem').map((node) => node.textContent ?? '');
-    expect(items[0]).toContain('1. OPENED — first');
-    expect(items[1]).toContain('2. EVIDENCE_ADDED — second');
-
-    fireEvent.change(detail.getByLabelText('Lý do (bắt buộc)'), { target: { value: 'why' } });
-    fireEvent.change(detail.getByLabelText('Bằng chứng (tóm tắt)'), { target: { value: 'ev' } });
-    fireEvent.click(detail.getByRole('button', { name: 'Thêm bằng chứng' }));
-    await waitFor(() => expect(detail.getByRole('button', { name: 'Thêm bằng chứng' }).hasAttribute('disabled')).toBe(true));
-    expect(detail.getByRole('button', { name: 'Đổi trạng thái' }).hasAttribute('disabled')).toBe(false);
-    expect(detail.getByRole('button', { name: 'Ghi quyết định' }).hasAttribute('disabled')).toBe(false);
-    expect(posts(api.calls)).toHaveLength(1);
-    await act(async () => { release(response(200, { data: {} })); });
   });
 });
 

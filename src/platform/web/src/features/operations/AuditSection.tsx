@@ -81,7 +81,7 @@ export function AuditViewer({ refreshToken }: Readonly<{ refreshToken: number }>
         <div className="ops-form-grid">
           <SelectOrCustom label="Hành động" customLabel="Hành động (nhập tay)" known={AUDIT_ACTIONS} value={action} onChange={setAction} />
           <SelectOrCustom label="Loại đối tượng" customLabel="Loại đối tượng (nhập tay)" known={AUDIT_TARGET_TYPES} value={targetType} onChange={setTargetType} />
-          <Field label="Mã đối tượng" help="UUID của đội, trận, submission hoặc hồ sơ.">
+          <Field label="Mã đối tượng" help="UUID của đội, trận, hoặc submission.">
             <Input value={targetId} autoComplete="off" spellCheck={false} onChange={(event) => setTargetId(event.target.value)} />
           </Field>
         </div>

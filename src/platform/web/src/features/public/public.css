@@ -9,6 +9,17 @@
   .pub-grid--halves { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 .pub-stack { display: grid; gap: var(--ui-space-4); }
+.pub-panel-section { display: flex; min-height: 0; flex-direction: column; }
+.pub-panel { display: flex; min-height: 0; flex: 1 1 auto; flex-direction: column; }
+.pub-scroll--fill { max-height: 360px; }
+@media (min-width: 1024px) {
+  .pub-grid--panels { --pub-panel-height: clamp(420px, 70vh, 640px); align-items: stretch; }
+  .pub-grid--panels > .pub-stack, .pub-grid--panels > .pub-panel-section { max-height: var(--pub-panel-height); }
+  .pub-grid--panels > .pub-stack { display: flex; min-height: 0; flex-direction: column; }
+  .pub-grid--panels > .pub-stack > section:first-child { flex: 0 0 auto; }
+  .pub-grid--panels > .pub-stack > .pub-panel-section { flex: 1 1 auto; }
+  .pub-scroll--fill { max-height: none; flex: 1 1 auto; min-height: 0; }
+}
 .pub-stack .ui-card p + p { margin-top: var(--ui-space-2); }
 
 .pub-list { display: grid; gap: var(--ui-space-2); margin: 0; padding: 0; list-style: none; }

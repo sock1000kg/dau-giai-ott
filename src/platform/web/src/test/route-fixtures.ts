@@ -11,7 +11,6 @@ export const ids = {
   otherTeam: '22222222-2222-4222-8222-222222222222',
   match: '33333333-3333-4333-8333-333333333333',
   submission: '55555555-5555-4555-8555-555555555555',
-  caseId: '00000000-0000-4000-8000-0000000000aa',
 };
 
 const teams = [
@@ -42,7 +41,6 @@ const replayEntry = {
 };
 
 const submission = { id: ids.submission, status: 'VALID', archiveSha256: SHA, createdAt: '2026-10-18T00:00:00.000Z' };
-const caseSummary = { id: ids.caseId, kind: 'ANOMALY', status: 'OPEN', teamId: null, matchId: ids.match, submissionId: null, openedAt: '2026-10-18T00:00:00Z', decidedAt: null };
 
 function replayBody(): string {
   const t = skipTurn(createGame({ gameId: ids.match, engineVersion: '1.0.0', map: DEFAULT_MAP, maxTurns: 1 }), 'X', 'NO_LEGAL_ACTION');
@@ -107,7 +105,6 @@ export function installRouteFetch(role: TestRole): RouteApi {
       if (pathname === '/api/v1/admin/rounds') return json(200, { data: { items: [] } });
       if (pathname === '/api/v1/results/matches') return json(200, { data: { items: [matchResult], pagination: page([matchResult]) } });
       if (pathname === '/api/v1/results/series') return json(200, { data: { items: [seriesResult], pagination: page([seriesResult]) } });
-      if (pathname === '/api/v1/admin/operations/cases') return json(200, { data: { items: [caseSummary] }, pagination: page([caseSummary]) });
       if (pathname === '/api/v1/admin/operations/audit') return json(200, { data: { items: [] }, pagination: page([]) });
       if (pathname === '/api/v1/public/queue-overrides') return json(200, { data: { items: [] } });
       if (pathname === '/api/v1/submissions') return json(200, { data: [submission], pagination: { page: 1, pageSize: 20, totalItems: 1, totalPages: 1 }, preflightQueueLength: 0 });

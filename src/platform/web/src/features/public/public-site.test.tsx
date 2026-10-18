@@ -67,7 +67,7 @@ describe('public-site static snapshots', () => {
     fetcher.mockRejectedValue(new Error('offline'));
     await act(async () => { await vi.advanceTimersByTimeAsync(30_000); });
     expect(screen.getByRole('alert').textContent).toMatch(/bản cập nhật cuối/);
-    expect(screen.getByText('ETA khắc phục: 10 phút')).toBeTruthy();
+    expect(screen.getByText('Dự kiến khắc phục: 10 phút')).toBeTruthy();
     expect(screen.getByRole('heading', { name: /Week 1/ })).toBeTruthy();
   });
   it('rejects checksum mutation, unsafe pointer paths and old snapshots', async () => {
