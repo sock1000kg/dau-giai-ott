@@ -1,7 +1,7 @@
 # Finals ResultBundle v1
 
 > **Status:** LOCKED cryptographic envelope. Machine implementation is delivered by `P3-D09` in
-> `src/platform/api/src/modules/result-bundles/` with migration `0016_result_bundles.sql`.
+> `src/platform/api/src/modules/result-bundles/` with migration `0017_result_bundles.sql`.
 
 ## Trust model
 
@@ -54,7 +54,7 @@ and `VERIFIED`. It never exposes the private key, internal object key or unpubli
 
 | Artefact | Path |
 | --- | --- |
-| Persistence | `src/platform/api/migrations/0016_result_bundles.sql` |
+| Persistence | `src/platform/api/migrations/0017_result_bundles.sql` |
 | Canonicalization | `src/platform/api/src/modules/result-bundles/canonical.ts` |
 | Offline signing | `src/platform/api/src/modules/result-bundles/exporter.ts` |
 | Hosted import | `src/platform/api/src/modules/result-bundles/importer.ts` |
