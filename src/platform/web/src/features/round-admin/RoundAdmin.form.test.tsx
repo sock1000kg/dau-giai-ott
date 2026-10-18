@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { FIELD_HELP, fieldIdFromDomId } from './field-help.ts';
 import { RoundRuleForm } from './RoundRuleForm.tsx';
 import type { RoundRuleSetRulesV1 } from './rules-form.ts';
 
@@ -104,7 +105,8 @@ describe('RoundAdmin rule form', () => {
     expect(startup.getAttribute('aria-invalid')).toBe('true');
     const describedBy = startup.getAttribute('aria-describedby');
     expect(describedBy).toBeTruthy();
-    expect(document.getElementById(describedBy as string)?.textContent).toMatch(/máy chủ từ chối/i);
+    const describedText = (describedBy as string).split(' ').map((id) => document.getElementById(id)?.textContent ?? '').join(' ');
+    expect(describedText).toMatch(/máy chủ từ chối/i);
     expect(screen.getByRole('alert').textContent).toContain('mysteryField');
   });
 
@@ -154,5 +156,39 @@ describe('RoundAdmin rule form', () => {
     fireEvent.click(save);
     expect(await screen.findByRole('status')).toBeTruthy();
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('RoundAdmin field help', () => {
+  function formControls(): HTMLElement[] {
+    return Array.from(document.querySelectorAll<HTMLElement>('input[id^="rr-"], select[id^="rr-"], textarea[id^="rr-"]'));
+  }
+
+  it('covers every rendered control with a FIELD_HELP entry wired through aria-describedby', () => {
+    const { rerender } = renderNew(validRules());
+    const check = () => {
+      for (const control of formControls()) {
+        const key = fieldIdFromDomId(control.id);
+        expect(Object.keys(FIELD_HELP), control.id).toContain(key);
+        const ids = (control.getAttribute('aria-describedby') ?? '').split(' ');
+        expect(ids, control.id).toContain(`${control.id}-help`);
+        expect(document.getElementById(`${control.id}-help`)?.textContent, control.id).toBe((FIELD_HELP as Record<string, string>)[key]);
+      }
+    };
+    check();
+    fireEvent.change(screen.getByLabelText(/thời gian mỗi lượt/i), { target: { value: 'FIXED' } });
+    check();
+    expect(formControls().length).toBeGreaterThan(25);
+    rerender(<RoundRuleForm stage="QUALIFICATION" prefill={validRules()} locked={null} initialTeamCount={8} onSaved={() => {}} />);
+  });
+
+  it('keeps both the help id and the error id when a field is invalid', () => {
+    renderNew(null);
+    fireEvent.change(screen.getByLabelText(/lý do thay đổi/i), { target: { value: 'x' } });
+    fireEvent.click(screen.getByRole('button', { name: /lưu phiên bản mới/i }));
+    const memory = screen.getByLabelText(/bộ nhớ \(mib\)/i);
+    const tokens = (memory.getAttribute('aria-describedby') ?? '').split(' ');
+    expect(tokens).toEqual(['rr-memoryMiB-help', 'rr-memoryMiB-error']);
+    expect(document.getElementById('rr-memoryMiB-error')).toBeTruthy();
   });
 });

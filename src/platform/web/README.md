@@ -148,6 +148,22 @@ Verification: `npm test --workspace @ott/platform-web -- RoundAdmin`,
 `npm run typecheck --workspace @ott/platform-web`, plus desktop/mobile
 browser smoke and keyboard tab order over the form and start confirmation.
 
+### Round admin UX (`P3-D02b`)
+
+- The page is a two-column grid at ≥1024px: left "Bộ luật hiện hành" (collapsible
+  `<details>`, bounded height) plus the version archive, right "Phiên bản bộ luật mới"
+  (editor). "Current" is the rule set of the round with the highest `roundNumber` that has a
+  `ruleSetId` and left `DRAFT_RULES` (`current-rule-set.ts`); with none, the latest version is shown
+  read-only. `RoundRuleForm` takes an `idPrefix` (`rrc` for the read-only copy) so DOM ids never repeat.
+- `RuleSetArchive` lists all versions newest first with usage badges (rounds whose `ruleSetId`
+  matches), loads `GET /api/v1/admin/round-rule-sets/:id` on selection and shows engine version and
+  each map's id + checksum read-only (map content is not stored in rules). "Dùng làm cơ sở cho phiên
+  bản mới" remounts the editor from that version.
+- Every form control has a one-line help (`field-help.ts`, `FIELD_HELP`) wired with
+  `aria-describedby="{id}-help {id}-error"`. Ranges come from the API validator (`rounds/types.ts`).
+- The reconcile button is labelled "Kiểm tra và chốt kết quả round" with an explanatory help line.
+- Layout, spacing and responsiveness are CSS-only and were not verified in a browser.
+
 ## Privileged operations console (`P3-D07`)
 
 BTC operators open `/admin/operations` (workspace link "Vận hành đặc quyền", BTC only; team accounts get
