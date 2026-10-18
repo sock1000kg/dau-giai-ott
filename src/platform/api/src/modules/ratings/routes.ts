@@ -13,7 +13,7 @@ interface LeaderboardQuery {
   readonly minimumSeries?: unknown;
 }
 
-interface LeaderboardRow {
+export interface LeaderboardRow {
   readonly rank: string;
   readonly tie_count: string;
   readonly total_count: string;
@@ -30,7 +30,7 @@ interface LeaderboardRow {
   readonly updated_at: Date;
 }
 
-const leaderboardSql = `
+export const leaderboardSql = `
 WITH participants AS (
   SELECT DISTINCT rp.team_id
   FROM round_participants rp

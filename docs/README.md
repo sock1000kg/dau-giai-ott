@@ -96,6 +96,7 @@ Quy tắc:
 - [Platform Authentication Contract v2](contracts/platform-auth-v2.md).
 - [Spectator Replay API v1](contracts/spectator-replay-v1.md).
 - [Spectator Replay API v2](contracts/spectator-replay-v2.md).
+- [Public snapshot v1](contracts/public-snapshot-v1.md).
 - [Finals Format v1](contracts/finals-format-v1.md) và [Finals ResultBundle v1](contracts/finals-result-bundle-v1.md).
 
 ## 6. Kiến trúc

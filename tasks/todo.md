@@ -949,6 +949,17 @@ L04 remains unchecked: AC3 (raw event-log v2 fixtures) awaits resolution with
 **Files likely touched:** `src/platform/api/src/modules/public-snapshots/publisher.ts`, `src/platform/web/src/features/public/PublicTournamentPage.tsx`, `src/platform/web/src/features/public/RulesPage.tsx`, `src/platform/web/src/features/public/public-site.test.tsx`, `docs/contracts/public-snapshot-v1.md`.
 **Estimated scope:** M (5 files)
 
+**Local implementation:** Static publisher + CLI, checksummed immutable artifact and atomic
+latest pointer; `/public` polls static files every 30s, retains last good data on
+failure, displays rules/schedule/FAQ/status/ETA, and guards qualification/finals
+replay links. API publisher 4 tests and public-site 5 tests pass; web build passes.
+Local load: 1,000 logical clients / 2,000 static requests with a 100-connection
+pool; see `docs/reports/phase-3-l05-static-load.md`.
+Live qualification producer reads locked rules/results/official rankings from
+PostgreSQL and ordered job IDs from Redis, with a 30s loop; 2 PostgreSQL integration
+tests pass. Task remains unchecked pending configured live deployment and
+server-lab/CDN AC-14 evidence; finals uses the prepared public DTO interface.
+
 ### [x] P3-D06 — TOTP, admin network allowlist và hosted startup guard
 
 **Owner:** Phạm Tất Đạt
