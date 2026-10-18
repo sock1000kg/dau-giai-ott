@@ -64,3 +64,19 @@ OTT_SANDBOX_BENCHMARK_REPORT="$PWD/src/bots/sandbox-corpus/results/2026-10-13-lo
 This run does not qualify a fair public profile. Keep team registration closed
 until repeated representative-host measurements are reviewed and the tournament
 owner approves D-08.
+
+## Phase 3 timing integration
+
+After migration `0018_match_protocol_v2`, the worker reads each match's immutable `protocol_v2`/`rule_set_id`
+snapshot. Existing rows remain v1. V2 snapshots are validated with the machine schema before acquiring a lease;
+invalid snapshots raise `MATCH_PROTOCOL_SNAPSHOT_INVALID`. The runner receives private per-side seeds,
+pinned time control and a monotonic clock. Finalization verifies and stores both event-log versions.
+
+`SandboxOciBotPort` preserves pinned v2 INIT, rejects downgrade replies and enforces the runner's effective
+deadline. V2 startup timeout also cleans up a container that starts late. Archive loading is outside the
+spawn/INIT startup window; OS isolation and resource quotas are unchanged.
+
+Checks: `npm test --workspace @ott/platform-worker -- sandbox-v2` (Docker transport double), and with an isolated
+`DATABASE_URL`, `npm test --workspace @ott/platform-worker -- timing-worker` (real PostgreSQL + two Node bot
+processes, timing mutation rejection, exactly-once finalization). The latter does not replace the real Docker
+sandbox corpus qualification required for the hosted checkpoint.

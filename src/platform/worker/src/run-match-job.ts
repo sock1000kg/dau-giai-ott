@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { DEFAULT_LIMITS } from '@ott/bot-protocol';
 import type { MatchJobV1, OciArtifactReference } from '@ott/job-contract';
 import type { BotPort } from '@ott/match-runner';
-import { CoreGameAdapter, runMatch } from '@ott/match-runner';
+import { CoreGameAdapter, monotonicClock, runMatch, type AnyEventLog, type MatchConfig, type MatchReport } from '@ott/match-runner';
 import type { Database, ObjectStorage } from '@ott/platform-api';
 import { validateMatchJob } from '@ott/job-contract';
 import { SANDBOX_POLICY_V1, resolveSandboxPolicy, type SandboxPolicy } from './sandbox/policy.ts';
@@ -94,12 +94,15 @@ export async function runMatchJob(options: RunMatchJobOptions): Promise<RunMatch
       factory(archiveX, executionReference(claim.submissions.X.reference, claim.config.policyVersion, effectivePolicy), claim.submissions.X.entrypoint, effectivePolicy),
       factory(archiveO, executionReference(claim.submissions.O.reference, claim.config.policyVersion, effectivePolicy), claim.submissions.O.entrypoint, effectivePolicy),
     ]);
-    const report = await runMatch({
+    const config: MatchConfig = {
       matchId: claim.config.matchId,
       seed: claim.config.seed,
       game: claim.config.game,
       limits: { ...DEFAULT_LIMITS, maxTurns: claim.config.game.maxTurns, turnTimeoutMs: claim.config.turnTimeoutMs },
-    }, { game: new CoreGameAdapter(), bots: { X: botX, O: botO } });
+      ...(claim.config.protocolV2 ? { protocolV2: claim.config.protocolV2 } : {}),
+    };
+    const report: MatchReport<AnyEventLog> = await runMatch(config,
+      { game: new CoreGameAdapter(), bots: { X: botX, O: botO }, clock: monotonicClock });
 
     let memoryPeakX: number | null = null;
     let memoryPeakO: number | null = null;
