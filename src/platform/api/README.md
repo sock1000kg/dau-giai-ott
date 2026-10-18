@@ -177,6 +177,43 @@ admission stop belongs to `P3-N02`. Submission uploads are not yet gated by
 this lifecycle (`P3-D03`). Deadline extension ("gia hạn") is not part of
 `P3-D01`.
 
+## Rule-set catalog and match snapshot wiring (`P3-D25`)
+
+The locked `RoundRuleSet` now drives the matches that `start` schedules.
+What the existing `matches` columns can carry is wired: `engine_version`,
+`map_definition` + `map_checksum`, `max_turns` and `turn_timeout_ms`. Full
+Protocol v2 time control (job contract, worker, BotProcess v2) and the
+`resources` block are **not** wired yet (follow-up L02b).
+
+- **Registry** (`src/modules/rounds/catalog.ts`): `ENGINE_VERSIONS` (the
+  game-core `ENGINE_VERSION`), `MAP_REGISTRY` (built from `DEFAULT_MAP`) and
+  `FAULT_POLICY_VERSIONS` (`P2_BASELINE_V1`). Adding an engine, map or fault
+  policy = adding one entry to the matching list; no other code change. The
+  default map's checksum is a placeholder (`'a' * 64`), not a content hash.
+- **Validation**: `createRuleSet` runs `validateAgainstCatalog` after the
+  structural validator. `400 RULE_SET_INVALID` `details[]` (`{path, code}`)
+  adds `UNKNOWN_ENGINE_VERSION`, `UNKNOWN_MAP` (`mapSet[i].mapId` or
+  `.checksum`), `UNKNOWN_FAULT_POLICY`, `MAX_TURNS_EXCEEDS_RUNNER_LIMIT`
+  (above `DEFAULT_LIMITS.maxTurns`) and `TURN_LIMIT_EXCEEDS_RUNNER_LIMIT`
+  (`fixedMs`/`maxMs` above `DEFAULT_LIMITS.turnTimeoutMs`).
+- **Start**: `executeStart` re-reads the locked rule set, checks its hash and
+  resolves it through the registry; failure is `409 ROUND_RULESET_UNRESOLVABLE`
+  before any write. `scheduleRound` receives `matchRules` and inserts the
+  columns above; without `matchRules` the migration defaults apply.
+  `request_hash` includes `matchRules`, so replaying a schedule with
+  different rules is `SCHEDULE_IDEMPOTENCY_CONFLICT`.
+- **Interim turn timeout**: the v1 job carries a single timeout, so
+  `turn_timeout_ms` is the *maximum* per-turn limit of the rule set (FIXED →
+  `fixedMs`, DYNAMIC → `maxMs`). Dynamic budgets arrive with L02b.
+- **Map per series**: the map index is
+  `int(sha256(scheduleSeed:seriesId:map)[0..8]) % maps.length`, so maps vary
+  across series but **both games of a series use the same map** (side-swap
+  fairness).
+- `GET /api/v1/admin/rounds/catalog` (BTC_ADMIN; 401/403 otherwise) returns
+  `{ data: { engineVersions, maps: [{ mapId, version, checksum, width, height }], faultPolicyVersions } }`
+  with no map definitions or spawns. It is registered before
+  `/rounds/:roundId`.
+
 ## Admin round-rule and operations console (`P3-D02`)
 
 Small additive UI-serving changes on the D01 module (no migration, no
