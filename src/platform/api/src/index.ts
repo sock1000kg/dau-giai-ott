@@ -78,7 +78,7 @@ export {
 } from './modules/submissions/layers.ts';
 
 export { registerOperationsRoutes, type OperationsRoutesOptions } from './modules/operations/routes.ts';
-export { INFRA_FAILURE_REASONS, evaluateRerunEligibility, CASE_TRANSITIONS, canTransitionCase } from './modules/operations/types.ts';
+export { INFRA_FAILURE_REASONS, evaluateRerunEligibility } from './modules/operations/types.ts';
 export { computeRoundResultsHash } from './modules/operations/results-hash.ts';
 export { publishPublicSnapshot, projectPublicSnapshot, type PublicSnapshot } from './modules/public-snapshots/publisher.ts';
 export { collectQualificationSnapshot, publishQualificationSnapshot, type PublicEditorial } from './modules/public-snapshots/source.ts';
