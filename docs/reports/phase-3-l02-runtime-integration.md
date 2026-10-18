@@ -81,3 +81,15 @@ port 25435 (temporary cluster, removed afterwards):
 | Worker `timing-worker` (PostgreSQL, real Node bot processes) | 2 passed |
 
 The Windows/Python host limitations recorded above are unchanged and were not hidden.
+
+### Time-dependent fixture found on re-run (2026-10-18, after 12:00 UTC)
+
+A later re-run of the same three integration files failed two assertions in `round-rules.integration.test.ts`
+("close before grace period is rejected" and the cascading follow-up): the fixture pins
+`schedule.graceEndsAt = 2026-10-18T12:00:00Z` while that test uses the real clock, and the sibling test right
+after it already injects `{ now }`. The first successful re-run happened at 10:11 UTC (before the pinned
+deadline) and the failing one at 13:23 UTC (after it), with no code change in between. The two commits that
+landed on `main` after this branch's base touch only `deploy/lan/*`, `scripts/lan-smoke.sh` and
+`tests/e2e/lan-recovery.test.ts`, so this is a pre-existing, time-dependent fixture on `main` (owned by
+`P3-D01`), not a `P3-L02` regression. Proposed one-line fix: pass an explicit `{ now: () => new Date(...) }`
+before `graceEndsAt`, as the neighbouring test does.
