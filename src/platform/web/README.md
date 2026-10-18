@@ -164,6 +164,12 @@ the access-denied page). `features/operations/OperationsConsole.tsx` composes:
 Server error codes are mapped to stable Vietnamese messages (`operationsErrorMessage` in `api.ts`); server
 text is never displayed. Verification: `npm test --workspace @ott/platform-web -- operations`.
 
+## Results page (`P3-D13`)
+
+`/admin/results` and `/team/results` (`features/results`) use the `ui/*` primitives with styles in `features/results/results.css`.
+Filters are `Select`s: kind, team (BTC only) and **Vòng/stage**, a dropdown with "Tất cả vòng", `QUALIFICATION`, `FINALS` (`stages.ts`) plus any other stage seen in loaded results, so a free-form stage is never un-selectable. Changing a filter resets to page 1; "Tất cả vòng" sends no `stage` query parameter.
+Matches and series render as bordered tables (horizontal scroll inside the table container on narrow screens). Status, reason and cancellation codes get Vietnamese labels in `labels.ts` (unknown codes show the raw code); dates are shown in `Asia/Ho_Chi_Minh`. Replay links stay FINALIZED-only.
+
 ## UI conventions
 
 Shared design tokens and components live in `src/ui` (see `src/ui/README.md`). New pages use the `ui-*` primitives plus a per-feature stylesheet; do not add page-level rules to `app/styles.css`. Authenticated pages are wrapped by `AppShellLayout` (navigation, skip link, `#main`).
