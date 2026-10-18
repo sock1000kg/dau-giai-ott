@@ -22,10 +22,12 @@ import {
 const databaseUrl = process.env.DATABASE_URL;
 const integration = databaseUrl === undefined ? describe.skip : describe;
 
-const KEY_ID = 'poc-test-key';
-
 integration('P3-D09 signed ResultBundle import (PostgreSQL)', () => {
   let database: Database;
+  const keySuffix = randomUUID().replaceAll('-', '').slice(0, 8);
+  const KEY_ID = `poc-test-key-${keySuffix}`;
+  const runSuffix = randomUUID().replaceAll('-', '').slice(0, 8);
+  const bundlePrefix = `rb-int-${runSuffix}`;
   const actorId = randomUUID();
   const { privateKey, publicKey } = generateKeyPairSync('ed25519');
   const privateKeyPem = privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
@@ -64,7 +66,7 @@ integration('P3-D09 signed ResultBundle import (PostgreSQL)', () => {
     await runMigrations(database);
     await database.query("INSERT INTO accounts (id, username, password_hash, role) VALUES ($1,$2,'x','BTC_ADMIN')", [
       actorId,
-      `rb-int-${actorId.slice(0, 8)}`,
+      `${bundlePrefix}-${actorId.slice(0, 8)}`,
     ]);
     await database.query('INSERT INTO result_bundle_keys (key_id, algorithm, public_key_pem) VALUES ($1,$2,$3)', [
       KEY_ID,
@@ -75,16 +77,18 @@ integration('P3-D09 signed ResultBundle import (PostgreSQL)', () => {
 
   afterAll(async () => {
     if (database === undefined) return;
-    await database.query("DELETE FROM result_bundle_artifacts WHERE bundle_id LIKE 'rb-int-%'");
-    await database.query("DELETE FROM result_bundles WHERE bundle_id LIKE 'rb-int-%'");
-    await database.query('DELETE FROM result_bundle_keys WHERE key_id = $1', [KEY_ID]);
-    await database.query('DELETE FROM audit_events WHERE actor_account_id = $1', [actorId]);
-    await database.query('DELETE FROM accounts WHERE id = $1', [actorId]);
-    await database.close();
+    try {
+      // result_bundles and result_bundle_artifacts are protected by immutability triggers
+      // (reject_result_bundle_mutation, reject_result_bundle_artifact_mutation), audit_events is append-only,
+      // and accounts / result_bundle_keys are referenced by foreign keys from immutable rows.
+      // Every fixture uses a run-unique key ID, bundle IDs, and account ID so rows remain inert in the DB.
+    } finally {
+      await database.close();
+    }
   });
 
   it('AC-20 valid: imports a signed bundle, publishes proof and replays idempotently', async () => {
-    const { payload, manifestSha256 } = signed(`rb-int-valid-${randomUUID()}`);
+    const { payload, manifestSha256 } = signed(`${bundlePrefix}-valid-${randomUUID()}`);
     const imported = await importResultBundle(database, payload, { actorAccountId: actorId });
     expect(imported).toMatchObject({ status: 'VERIFIED', replayed: false, keyId: KEY_ID, manifestSha256 });
 
@@ -98,7 +102,7 @@ integration('P3-D09 signed ResultBundle import (PostgreSQL)', () => {
   });
 
   it('AC-20 tamper: one changed byte rejects the whole bundle', async () => {
-    const { payload } = signed(`rb-int-tamper-${randomUUID()}`);
+    const { payload } = signed(`${bundlePrefix}-tamper-${randomUUID()}`);
     const bundleId = (payload.manifest as { readonly bundleId: string }).bundleId;
     const tampered: ResultBundleImportInput = {
       ...payload,
@@ -113,7 +117,7 @@ integration('P3-D09 signed ResultBundle import (PostgreSQL)', () => {
   });
 
   it('AC-20 missing file: a declared artifact that is not uploaded is refused', async () => {
-    const { payload } = signed(`rb-int-missing-${randomUUID()}`);
+    const { payload } = signed(`${bundlePrefix}-missing-${randomUUID()}`);
     const incomplete: ResultBundleImportInput = { ...payload, artifacts: payload.artifacts.slice(0, 1) };
     await expect(importResultBundle(database, incomplete, { actorAccountId: actorId })).rejects.toThrow(
       'RESULT_BUNDLE_ARTIFACT_MISSING',
@@ -121,7 +125,7 @@ integration('P3-D09 signed ResultBundle import (PostgreSQL)', () => {
   });
 
   it('rejects artifacts the manifest does not declare', async () => {
-    const { payload } = signed(`rb-int-unlisted-${randomUUID()}`);
+    const { payload } = signed(`${bundlePrefix}-unlisted-${randomUUID()}`);
     const extra: ResultBundleImportInput = {
       ...payload,
       artifacts: [...payload.artifacts, { path: 'secret.env', payload: Buffer.from('KEY=1') }],
@@ -133,7 +137,7 @@ integration('P3-D09 signed ResultBundle import (PostgreSQL)', () => {
 
   it('rejects a manifest that points at a key which is not allowlisted', async () => {
     const built = buildSignedResultBundle(
-      { ...buildInput(`rb-int-unknown-key-${randomUUID()}`, 1), keyId: 'not-allowlisted' },
+      { ...buildInput(`${bundlePrefix}-unknown-key-${randomUUID()}`, 1), keyId: 'not-allowlisted' },
       privateKeyPem,
     );
     await expect(
@@ -146,7 +150,7 @@ integration('P3-D09 signed ResultBundle import (PostgreSQL)', () => {
   });
 
   it('rejects a manifest with a traversal path', async () => {
-    const { payload } = signed(`rb-int-path-${randomUUID()}`);
+    const { payload } = signed(`${bundlePrefix}-path-${randomUUID()}`);
     const manifest = { ...(payload.manifest as Record<string, unknown>), artifacts: [{ path: '../escape.json', mediaType: 'application/json', sha256: sha256HexOf('x'), bytes: 1 }] };
     await expect(
       importResultBundle(database, { ...payload, manifest }, { actorAccountId: actorId }),
@@ -154,14 +158,14 @@ integration('P3-D09 signed ResultBundle import (PostgreSQL)', () => {
   });
 
   it('AC-20 wrong key: a signature from another key is refused', async () => {
-    const { payload } = signed(`rb-int-wrong-key-${randomUUID()}`, 1, otherPrivateKeyPem);
+    const { payload } = signed(`${bundlePrefix}-wrong-key-${randomUUID()}`, 1, otherPrivateKeyPem);
     await expect(importResultBundle(database, payload, { actorAccountId: actorId })).rejects.toThrow(
       'RESULT_BUNDLE_SIGNATURE_INVALID',
     );
   });
 
   it('refuses different content for an already imported bundle version', async () => {
-    const bundleId = `rb-int-conflict-${randomUUID()}`;
+    const bundleId = `${bundlePrefix}-conflict-${randomUUID()}`;
     const { payload } = signed(bundleId, 1);
     await importResultBundle(database, payload, { actorAccountId: actorId });
 
@@ -186,7 +190,7 @@ integration('P3-D09 signed ResultBundle import (PostgreSQL)', () => {
   });
 
   it('accepts a correction with a higher version and a reason, and refuses a lower one', async () => {
-    const bundleId = `rb-int-corrected-${randomUUID()}`;
+    const bundleId = `${bundlePrefix}-corrected-${randomUUID()}`;
     await importResultBundle(database, signed(bundleId, 1).payload, { actorAccountId: actorId });
 
     const corrected = buildSignedResultBundle(
@@ -216,7 +220,7 @@ integration('P3-D09 signed ResultBundle import (PostgreSQL)', () => {
   });
 
   it('never publishes a partial bundle: VERIFIED without all artifacts is refused at commit', async () => {
-    const bundleId = `rb-int-partial-${randomUUID()}`;
+    const bundleId = `${bundlePrefix}-partial-${randomUUID()}`;
     const manifest = signed(bundleId, 1).payload.manifest as Record<string, unknown>;
     await expect(
       database.transaction(async (transaction) => {
