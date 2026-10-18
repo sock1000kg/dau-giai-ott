@@ -449,3 +449,50 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .round-operations li p { margin: 0; color: #a8b8c8; font-size: 13px; }
 .round-operations li > div { display: flex; flex-wrap: wrap; gap: 8px; }
 .round-operations li button { margin: 0; min-height: 40px; }
+
+/* Round admin: side-by-side rules, archive, field help, operations spacing (P3-D02b). */
+.field-help { margin: 0; color: #8ea4b7; font-size: 12px; line-height: 1.45; }
+.round-admin-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; margin-top: 20px; align-items: start; }
+.round-admin-current, .round-admin-editor { display: grid; gap: 16px; min-width: 0; }
+.round-admin-current summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; }
+.round-admin-current summary h2 { margin: 0; font-size: 20px; }
+.round-admin-editor h2 { margin: 0; font-size: 20px; }
+.round-admin-current-scroll { max-height: 70vh; overflow: auto; padding-right: 4px; }
+.round-base-note { margin: 0; padding: 8px 12px; border: 1px solid #3a7167; border-radius: 8px; color: #80e4d0; font-size: 13px; }
+.rule-set-archive { display: grid; gap: 12px; padding: 16px; border: 1px solid rgba(177, 204, 224, 0.16); border-radius: 14px; background: rgba(22, 35, 50, 0.9); }
+.rule-set-archive h3 { margin: 0; font-size: 16px; }
+.rule-set-archive ul { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.rule-set-archive li button { display: grid; gap: 4px; width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid #40566b; border-radius: 9px; background: #17283a; color: #dce6ef; text-align: left; cursor: pointer; }
+.rule-set-archive li button[aria-pressed="true"] { border-color: #80e4d0; background: #203c46; }
+.rule-set-title { font-weight: 700; }
+.rule-set-meta { color: #a8b8c8; font-size: 12px; overflow-wrap: anywhere; }
+.rule-set-badges { display: flex; flex-wrap: wrap; gap: 6px; }
+.rule-set-badges .badge { padding: 2px 8px; border: 1px solid #536477; border-radius: 999px; font-size: 11px; }
+.rule-set-detail-region { display: grid; gap: 12px; }
+.rule-set-detail dl { display: grid; gap: 8px; margin: 0; }
+.rule-set-detail dl div { display: grid; gap: 2px; }
+.rule-set-detail dt { color: #8ea4b7; font-size: 12px; }
+.rule-set-detail dd { margin: 0; overflow-wrap: anywhere; }
+.rule-set-detail code { overflow-wrap: anywhere; font-size: 11px; color: #a8b8c8; }
+.rule-set-detail h3, .rule-set-detail h4 { margin: 8px 0; }
+.rule-set-actions, .round-dialog-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.rule-set-archive button, .round-operations button { min-height: 44px; }
+.round-toolbar { display: flex; flex-wrap: wrap; gap: 12px; margin: 12px 0 16px; }
+.round-message { margin: 12px 0; }
+.round-operations [role="alert"] { display: grid; gap: 8px; margin: 12px 0; }
+.round-dialog { display: grid; gap: 12px; margin-top: 16px; padding: 18px; border: 1px solid rgba(177, 204, 224, 0.2); border-radius: 12px; background: rgba(14, 25, 38, 0.8); }
+.round-dialog h2 { margin: 0; font-size: 18px; }
+.round-dialog label { font-size: 13px; font-weight: 600; }
+.round-dialog input, .round-dialog select, .round-dialog textarea { width: 100%; min-height: 44px; padding: 9px 11px; border: 1px solid #34495d; border-radius: 9px; background: #0e1926; color: #f3f6fb; font: inherit; }
+.round-dialog textarea { min-height: 96px; resize: vertical; }
+.round-operations li > div { gap: 12px; align-items: flex-start; }
+.round-reconcile { display: grid; gap: 4px; max-width: 360px; }
+
+@media (min-width: 1024px) {
+  .round-admin-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .round-admin-current-scroll { max-height: 60vh; }
+}
+@media (max-width: 520px) {
+  .round-operations, .round-rule-form fieldset { padding: 14px; }
+  .round-reconcile { max-width: none; }
+}
