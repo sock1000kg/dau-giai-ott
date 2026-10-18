@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useReducer } from 'react';
 import type { Piece, Position } from '@ott/game-core';
 import type { ReplaySpeed } from './replay-state.ts';
-import { createReplayTimeline, initialPlaybackState, playbackReducer } from './replay-state.ts';
+import { createReplayMoves, createReplayTimeline, initialPlaybackState, playbackReducer } from './replay-state.ts';
 import type { SpectatorReplayV1 } from './replay-schema.ts';
+import { MoveList } from './MoveList.tsx';
 
 const columns = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'];
 const speedValues: readonly ReplaySpeed[] = [0.5, 1, 2];
@@ -20,6 +21,7 @@ function pieceLabel(piece: Piece): string {
 
 export function ReplayPlayer({ replay }: { readonly replay: SpectatorReplayV1 }) {
   const timeline = useMemo(() => createReplayTimeline(replay), [replay]);
+  const moves = useMemo(() => createReplayMoves(replay), [replay]);
   const [playback, dispatch] = useReducer(playbackReducer, undefined, initialPlaybackState);
   const eventCount = timeline.events.length;
   const currentEvent = playback.eventIndex === 0 ? null : timeline.events[playback.eventIndex - 1] ?? null;
@@ -118,6 +120,9 @@ export function ReplayPlayer({ replay }: { readonly replay: SpectatorReplayV1 })
         </select>
         <p className="replay-playback-status" role="status">{isAtEnd ? 'Đã hết replay' : playback.isPlaying ? `Đang phát · ${playback.speed}x` : 'Đang tạm dừng'}</p>
       </section>
+
+      <MoveList moves={moves} currentEntry={currentEvent?.entryIndex}
+        onSeek={(eventIndex) => dispatch({ type: 'SEEK', eventIndex, eventCount })} />
 
       <nav className="replay-event-nav" aria-label="Dòng sự kiện">
         <h2>Dòng sự kiện</h2>

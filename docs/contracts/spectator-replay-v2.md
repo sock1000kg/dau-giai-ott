@@ -86,3 +86,21 @@ Both endpoints reuse the same server-side integrity check (`loadVerifiedReplay`)
 - Tampered object → `409 REPLAY_INTEGRITY_FAILED` on both public and private reads
 
 Seed, object key, submission metadata, and stderr are never exposed in either representation.
+
+## Player compatibility (P3-L04)
+
+The player accepts representation v1 with event-log format 1, protocol 1 and
+engine `1.0.0`. Both the public v1 endpoint and the authenticated v2 API use this
+same representation. Unsupported engine/protocol/format versions are rejected
+before rendering, after verification of the response SHA-256 checksum.
+
+Board frames are reconstructed from recorded events and the recorded map; the
+player does not invoke current game rules. Each move-list button seeks to the
+last event of its entry, including any terminal event. The active move follows
+the playback slider. Buttons support Tab, Enter/Space, Arrow Up/Down, Home and End,
+and expose the current move with `aria-current="step"`.
+
+Raw protocol/event-log v2 is not a supported spectator representation yet.
+P3-L04 acceptance criterion 3 in `tasks/todo.md` requests historical v1/v2
+fixtures, while this contract preserves representation v1. Support for raw v2
+requires an approved representation contract; it is not silently interpreted as v1.
