@@ -346,10 +346,10 @@ Stable error codes:
 3. **Generate recovery codes post-login**:
    Bootstrap configures the initial TOTP secret. Upon first login with TOTP, the BTC operator calls `POST /api/v1/auth/mfa/recovery-codes` to generate and display the 10 emergency recovery codes.
 
-## Privileged operations, cases and public queue overrides (`P3-D07`)
+## Privileged operations and public queue overrides (`P3-D07`)
 
 Migration `0013_operations_cases.sql` (registered in `src/db/schema.ts`) adds the history-preserving
-tables; code lives in `src/modules/operations/` (`service.ts`, `routes.ts`, `types.ts` validators,
+tables (its cases tables were dropped again by `0018_drop_operations_cases.sql`, see below); code lives in `src/modules/operations/` (`service.ts`, `routes.ts`, `types.ts` validators,
 `export.ts` sanitizer, `results-hash.ts`). Operations never edit `match_results`, `rating_ledger` or any
 historical row.
 
@@ -364,7 +364,7 @@ historical row.
   the same key with a different payload is `409 IDEMPOTENCY_KEY_REUSED`.
 - One transaction writes the state change and one `audit_events` row with
   `details = { before, after, requestHash }` (ids, statuses and counts only; secret-looking keys are
-  stripped before insert). `audit_events`, `operations_case_events` and `queue_overrides` reject
+  stripped before insert). `audit_events` and `queue_overrides` reject
   `UPDATE`/`DELETE` through triggers (`TRUNCATE` stays available for test fixtures).
 
 ### Endpoints (`/api/v1/admin/operations`)
@@ -373,24 +373,20 @@ historical row.
 | --- | --- | --- |
 | `POST /teams/:teamId/suspend`, `/unsuspend` | `accounts.status` ACTIVE↔DISABLED; suspend also revokes DB and Redis sessions | `404 TEAM_NOT_FOUND`, `409 TRANSITION_INVALID` |
 | `POST /submissions/:id/revoke` | `VALID`/`ACTIVE` → `REVOKED` (lifecycle in requirements §8.3); played matches untouched | `404 SUBMISSION_NOT_FOUND`, `409 TRANSITION_INVALID` |
-| `POST /matches/:id/cancel` | `SCHEDULED`/`FAILED` → `CANCELLED`; body `publicReason` (1-200), optional `caseId`; inserts a `queue_overrides` row | `404 MATCH_NOT_FOUND`, `409 CANCEL_NOT_ALLOWED` |
-| `POST /matches/:id/rerun` | see below; body `reason`, `publicReason`, `verifiedInfraFailure: true`, optional `caseId` | `400 RERUN_CONFIRMATION_REQUIRED`, `409 RERUN_*` |
-| `POST /cases`, `GET /cases`, `GET /cases/:id`, `GET /cases/export` | open (kind + subject + allowlisted evidence), list, detail with events, NDJSON export | `400 CASE_SUBJECT_REQUIRED`, `400 INVALID_EVIDENCE`, `409 CASE_ALREADY_EXISTS` |
-| `POST /cases/from-duplicate/:submissionId` | opens a `DUPLICATE` case for an N04-flagged submission; repeat calls return the existing case | `409 SUBMISSION_NOT_FLAGGED` |
-| `POST /cases/:id/evidence`, `/status`, `/decision` | append evidence, move `OPEN→UNDER_REVIEW` / `DECIDED→CLOSED`, record a decision | `409 CASE_LOCKED`, `409 CASE_TRANSITION_INVALID`, `409 DECISION_NOT_ALLOWED_FOR_KIND` |
+| `POST /matches/:id/cancel` | `SCHEDULED`/`FAILED` → `CANCELLED`; body `publicReason` (1-200); inserts a `queue_overrides` row | `404 MATCH_NOT_FOUND`, `409 CANCEL_NOT_ALLOWED` |
+| `POST /matches/:id/rerun` | see below; body `reason`, `publicReason`, `verifiedInfraFailure: true` | `400 RERUN_CONFIRMATION_REQUIRED`, `409 RERUN_*` |
 | `GET /audit` | filters `targetType`, `targetId`, `actorAccountId`, `action`, `from`, `to`, `page`, `pageSize` (≤100) | `400 INVALID_QUERY` |
 | `GET /audit/export` | NDJSON, sanitized | |
 
-### Case lifecycle
+### Removed in P3-D27 (2026-10-18)
 
-`OPEN → UNDER_REVIEW → DECIDED → CLOSED` and `OPEN → DECIDED`; enforced in the API and by a trigger on
-`operations_cases` (only `status`/`decided_at` may change, never `DELETE`). Evidence, status changes and
-decisions are rows in the append-only `operations_case_events` (`seq` unique per case). Decisions:
-`NO_ACTION`, `WARN`, `REVOKE_SUBMISSION`, `SUSPEND_TEAM`, `RERUN_APPROVED`, `APPEAL_UPHELD`,
-`APPEAL_REJECTED` (appeal outcomes only on `APPEAL` cases). A decision never changes results or
-ratings; acting on it is a separate privileged action above. Evidence is a flat object restricted to the
-keys `summary, source, note, links, similarity, matchId, submissionId, seriesId, teamId, confirmed`,
-at most 4096 bytes; secret-looking keys are rejected.
+The anomaly / duplicate / appeal "cases" backend was removed by the project owner's decision: cases were
+only a log that nothing acted on, and appeals are handled outside the platform (email / GitHub issues).
+Migration `0018_drop_operations_cases.sql` drops `operations_case_events`, `operations_cases`,
+`enforce_operations_case_transition()` and `queue_overrides.case_id`; the `/cases` routes no longer exist
+(`404`), and `caseId` is no longer accepted by cancel/rerun (`400 INVALID_REQUEST`). Retained: privileged
+actions, `audit_events` (existing `CASE_*` rows stay readable through `GET /audit` and immutable), queue
+overrides, the shared `reject_append_only_mutation()` function and the round results hash.
 
 ### Rerun rules
 
@@ -425,13 +421,13 @@ queue and act promptly). Reopening a rated round would need a ratings rebuild an
 
 ### Exports and public overrides
 
-Audit and case exports pass through `export.ts`: a field allowlist per record type, and every key
+The audit export passes through `export.ts`: a field allowlist, and every key
 matching `seed|password|secret|credential|stderr|object_?key|token|hash_of_password` (case-insensitive,
 any nesting depth) is dropped.
 
 `GET /api/v1/public/queue-overrides` is unauthenticated and read-only. It returns only
 `{ id, action, matchOpaqueId, publicReason, createdAt }` (`matchOpaqueId` is the first 16 hex characters of
-`sha256("queue-override-match:" + matchId)`); no team names, account ids or case contents. P3-L05 consumes it.
+`sha256("queue-override-match:" + matchId)`); no team names or account ids. P3-L05 consumes it.
 
 ### Round results hash
 

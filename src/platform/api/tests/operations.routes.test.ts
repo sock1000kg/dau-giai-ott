@@ -37,18 +37,25 @@ const adminEndpoints: readonly { readonly method: 'GET' | 'POST'; readonly url: 
   { method: 'POST', url: `/submissions/${uuid}/revoke`, body: { reason: 'malicious' } },
   { method: 'POST', url: `/matches/${uuid}/cancel`, body: { reason: 'r', publicReason: 'p' } },
   { method: 'POST', url: `/matches/${uuid}/rerun`, body: { reason: 'r', publicReason: 'p', verifiedInfraFailure: true } },
-  { method: 'POST', url: '/cases', body: { reason: 'r', kind: 'ANOMALY', matchId: uuid, evidence: { summary: 's' } } },
-  { method: 'POST', url: `/cases/from-duplicate/${uuid}`, body: { reason: 'r' } },
-  { method: 'GET', url: '/cases' },
-  { method: 'GET', url: '/cases/export' },
-  { method: 'GET', url: `/cases/${uuid}` },
-  { method: 'POST', url: `/cases/${uuid}/evidence`, body: { reason: 'r', evidence: { summary: 's' } } },
-  { method: 'POST', url: `/cases/${uuid}/status`, body: { reason: 'r', status: 'UNDER_REVIEW' } },
-  { method: 'POST', url: `/cases/${uuid}/decision`, body: { reason: 'r', decision: 'NO_ACTION' } },
   { method: 'GET', url: '/audit' },
   { method: 'GET', url: '/audit/export' },
 ];
 const base = '/api/v1/admin/operations';
+
+describe('removed cases routes (P3-D27)', () => {
+  it.each([
+    { method: 'POST', url: '/cases', payload: { reason: 'r', kind: 'ANOMALY', matchId: uuid, evidence: { summary: 's' } } },
+    { method: 'GET', url: '/cases' },
+    { method: 'GET', url: `/cases/${uuid}` },
+    { method: 'GET', url: '/cases/export' },
+  ] as const)('$method $url is no longer registered: 404 for a BTC admin, database untouched', async ({ method, url, ...rest }) => {
+    const { app, query } = createApp(btc);
+    const response = await app.inject({ method, url: base + url, ...rest });
+    expect(response.statusCode).toBe(404);
+    expect(query).not.toHaveBeenCalled();
+    await app.close();
+  });
+});
 
 describe('operations RBAC matrix', () => {
   it.each(adminEndpoints)('$method $url: anonymous 401, TEAM 403, BTC passes the gate', async ({ method, url, body }) => {
@@ -221,6 +228,19 @@ describe('operations rerun and cancel gates (mocked rows)', () => {
     expect(texts.some((text) => /INSERT INTO match_results|INSERT INTO rating_ledger/.test(text))).toBe(false);
     const details = JSON.parse(calls.find(({ text }) => text.includes('INSERT INTO audit_events'))!.values![7] as string) as { before: Record<string, unknown> };
     expect(details.before).toMatchObject({ verifiedInfraFailure: true, lastFailureReason: 'MATCH_LEASE_EXPIRED' });
+    await app.close();
+  });
+
+  it('writes the queue override without any case reference and refuses caseId in the body', async () => {
+    const { app, calls } = createApp(btc, rerunHandler({}));
+    const response = await app.inject({ method: 'POST', url: `${base}/matches/${uuid}/rerun`, payload: rerun });
+    expect(response.statusCode).toBe(200);
+    const insert = calls.find(({ text }) => text.includes('INSERT INTO queue_overrides'))!;
+    expect(insert.text).not.toMatch(/case_id/);
+    expect(insert.values).toHaveLength(6);
+    const refused = await app.inject({ method: 'POST', url: `${base}/matches/${uuid}/rerun`, payload: { ...rerun, caseId: uuid } });
+    expect(refused.statusCode).toBe(400);
+    expect(refused.json().error.code).toBe('INVALID_REQUEST');
     await app.close();
   });
 

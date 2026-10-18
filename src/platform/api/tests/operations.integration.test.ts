@@ -34,7 +34,7 @@ enabled('P3-D07 privileged operations integration', () => {
   beforeEach(async () => {
     await redis.flushDb();
     await db.query(
-      `TRUNCATE audit_events, operations_case_events, operations_cases, queue_overrides, match_outbox, match_attempts, match_results, rating_ledger,
+      `TRUNCATE audit_events, queue_overrides, match_outbox, match_attempts, match_results, rating_ledger,
         matches, series, round_participants, rounds, qualification_rounds, round_rule_sets, submissions, sessions, accounts, teams CASCADE`,
     );
     enqueued.length = 0;
@@ -142,19 +142,14 @@ enabled('P3-D07 privileged operations integration', () => {
   const rerunBody = { reason: 'worker lost lease', publicReason: 'Worker restarted during the match', verifiedInfraFailure: true };
 
   describe('append-only history', () => {
-    it('rejects UPDATE and DELETE on audit_events, operations_case_events and queue_overrides', async () => {
+    it('rejects UPDATE and DELETE on audit_events and queue_overrides', async () => {
       const f = await createMatch();
       expect((await post(`/matches/${f.matchId}/rerun`, rerunBody, { 'idempotency-key': 'k1' })).statusCode).toBe(200);
-      const caseResponse = await post('/cases', { reason: 'r', kind: 'ANOMALY', matchId: f.matchId, evidence: { summary: 's' } });
-      expect(caseResponse.statusCode).toBe(201);
 
       await expect(db.query("UPDATE audit_events SET reason = 'tampered'")).rejects.toThrow(/append-only/);
       await expect(db.query('DELETE FROM audit_events')).rejects.toThrow(/append-only/);
-      await expect(db.query("UPDATE operations_case_events SET reason = 'tampered'")).rejects.toThrow(/append-only/);
-      await expect(db.query('DELETE FROM operations_case_events')).rejects.toThrow(/append-only/);
       await expect(db.query("UPDATE queue_overrides SET public_reason = 'tampered'")).rejects.toThrow(/append-only/);
       await expect(db.query('DELETE FROM queue_overrides')).rejects.toThrow(/append-only/);
-      await expect(db.query('DELETE FROM operations_cases')).rejects.toThrow(/cannot be deleted/);
       expect(await count('audit_events WHERE reason = $1', ['tampered'])).toBe(0);
     });
 
@@ -317,7 +312,7 @@ enabled('P3-D07 privileged operations integration', () => {
       }
     });
 
-    it('exposes overrides publicly without team, account or case data', async () => {
+    it('exposes overrides publicly without team or account data', async () => {
       const f = await createMatch();
       await post(`/matches/${f.matchId}/rerun`, rerunBody);
       const response = await app.inject({ method: 'GET', url: '/api/v1/public/queue-overrides' });
@@ -331,71 +326,54 @@ enabled('P3-D07 privileged operations integration', () => {
     });
   });
 
-  describe('cases', () => {
-    it('runs OPEN → UNDER_REVIEW → DECIDED → CLOSED with append-only evidence and enforces the state machine', async () => {
+  describe('cases removed (P3-D27)', () => {
+    it('has no cases tables, no queue_overrides.case_id, and the case routes are gone', async () => {
+      const tables = await db.query<{ table_name: string }>(
+        "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name IN ('operations_cases', 'operations_case_events')",
+      );
+      expect(tables.rows).toEqual([]);
+      const columns = await db.query<{ column_name: string }>(
+        "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'queue_overrides' AND column_name = 'case_id'",
+      );
+      expect(columns.rows).toEqual([]);
+      const fn = await db.query("SELECT 1 FROM pg_proc WHERE proname = 'enforce_operations_case_transition'");
+      expect(fn.rows).toEqual([]);
+      const shared = await db.query("SELECT 1 FROM pg_proc WHERE proname = 'reject_append_only_mutation'");
+      expect(shared.rows).toHaveLength(1);
+      expect((await post('/cases', { reason: 'r', kind: 'ANOMALY', matchId: randomUUID(), evidence: { summary: 's' } })).statusCode).toBe(404);
+      expect((await get('/cases')).statusCode).toBe(404);
+      expect((await get('/cases/export')).statusCode).toBe(404);
+    });
+
+    it('rerun and cancel still write their queue override and audit row, and a rerun body with caseId is refused', async () => {
       const f = await createMatch();
-      const opened = await post('/cases', { reason: 'suspicious play', kind: 'ANOMALY', matchId: f.matchId, seriesId: f.seriesId, evidence: { summary: 'identical moves', similarity: 0.99 } });
-      expect(opened.statusCode).toBe(201);
-      const caseId = opened.json().data.caseId as string;
-
-      expect((await post(`/cases/${caseId}/evidence`, { reason: 'more', evidence: { note: 'replay checked' } })).statusCode).toBe(201);
-      expect((await post(`/cases/${caseId}/evidence`, { reason: 'bad', evidence: { seed: 'SEED_SENTINEL' } })).statusCode).toBe(400);
-      expect((await post(`/cases/${caseId}/status`, { reason: 'review', status: 'UNDER_REVIEW' })).statusCode).toBe(200);
-      expect((await post(`/cases/${caseId}/status`, { reason: 'back', status: 'UNDER_REVIEW' })).json().error.code).toBe('CASE_TRANSITION_INVALID');
-      expect((await post(`/cases/${caseId}/status`, { reason: 'skip', status: 'CLOSED' })).json().error.code).toBe('CASE_TRANSITION_INVALID');
-      expect((await post(`/cases/${caseId}/decision`, { reason: 'wrong kind', decision: 'APPEAL_UPHELD' })).json().error.code).toBe('DECISION_NOT_ALLOWED_FOR_KIND');
-
-      const resultsBefore = await count('match_results');
-      const matchBefore = (await db.query('SELECT * FROM matches WHERE id = $1', [f.matchId])).rows[0];
-      expect((await post(`/cases/${caseId}/decision`, { reason: 'infra, rerun approved', decision: 'RERUN_APPROVED' })).statusCode).toBe(200);
-      // A decision alone never mutates matches, results or ratings.
-      expect(await count('match_results')).toBe(resultsBefore);
-      expect((await db.query('SELECT * FROM matches WHERE id = $1', [f.matchId])).rows[0]).toEqual(matchBefore);
-
-      expect((await post(`/cases/${caseId}/evidence`, { reason: 'late', evidence: { note: 'too late' } })).json().error.code).toBe('CASE_LOCKED');
-      expect((await post(`/cases/${caseId}/decision`, { reason: 'twice', decision: 'NO_ACTION' })).json().error.code).toBe('CASE_TRANSITION_INVALID');
-      expect((await post(`/cases/${caseId}/status`, { reason: 'done', status: 'CLOSED' })).statusCode).toBe(200);
-
-      const detail = (await get(`/cases/${caseId}`)).json().data;
-      expect(detail.status).toBe('CLOSED');
-      expect(detail.events.map((event: { seq: number; eventType: string }) => `${event.seq}:${event.eventType}`)).toEqual([
-        '1:OPENED', '2:EVIDENCE_ADDED', '3:STATUS_CHANGED', '4:DECIDED', '5:STATUS_CHANGED',
-      ]);
-      expect(detail.events[3].decision).toBe('RERUN_APPROVED');
-      expect((await get('/cases?status=CLOSED&kind=ANOMALY')).json().data.items).toHaveLength(1);
-      expect((await get(`/cases/${randomUUID()}`)).statusCode).toBe(404);
-      // Rejected calls roll back, so only the five successful lifecycle steps are audited.
-      const caseAudits = await db.query<{ action: string }>("SELECT action FROM audit_events WHERE target_type = 'CASE' AND target_id = $1 ORDER BY created_at, id", [caseId]);
-      expect(caseAudits.rows.map(({ action }) => action)).toEqual(['CASE_OPENED', 'CASE_EVIDENCE_ADDED', 'CASE_STATUS_CHANGED', 'CASE_DECIDED', 'CASE_STATUS_CHANGED']);
-
-      // DB-level guards behind the API.
-      await expect(db.query("UPDATE operations_cases SET status = 'OPEN' WHERE id = $1", [caseId])).rejects.toThrow(/transition not allowed/);
-      await expect(db.query("UPDATE operations_cases SET kind = 'APPEAL' WHERE id = $1", [caseId])).rejects.toThrow(/immutable/);
+      expect((await post(`/matches/${f.matchId}/rerun`, { ...rerunBody, caseId: randomUUID() })).statusCode).toBe(400);
+      expect((await post(`/matches/${f.matchId}/rerun`, rerunBody)).statusCode).toBe(200);
+      expect(await count("queue_overrides WHERE action = 'RERUN' AND match_id = $1", [f.matchId])).toBe(1);
+      expect(await count("audit_events WHERE action = 'MATCH_RERUN'")).toBe(1);
+      const g = await createMatch({ matchStatus: 'SCHEDULED', seriesStatus: 'SCHEDULED', cancellationReason: null, attempt: null });
+      expect((await post(`/matches/${g.matchId}/cancel`, { reason: 'r', publicReason: 'p' })).statusCode).toBe(200);
+      expect(await count("queue_overrides WHERE action = 'CANCEL' AND match_id = $1", [g.matchId])).toBe(1);
+      expect(await count("audit_events WHERE action = 'MATCH_CANCELLED'")).toBe(1);
     });
 
-    it('opens an appeal needing a team and decides it with appeal outcomes', async () => {
-      const team = await createTeam('Delta');
-      expect((await post('/cases', { reason: 'r', kind: 'APPEAL', evidence: { summary: 's' } })).statusCode).toBe(400);
-      const opened = await post('/cases', { reason: 'we disagree', kind: 'APPEAL', teamId: team.teamId, evidence: { summary: 'wrongly suspended' } });
-      expect(opened.statusCode).toBe(201);
-      const caseId = opened.json().data.caseId as string;
-      expect((await post(`/cases/${caseId}/decision`, { reason: 'upheld', decision: 'APPEAL_UPHELD' })).statusCode).toBe(200);
-      expect((await post('/cases', { reason: 'r', kind: 'ANOMALY', matchId: randomUUID(), evidence: { summary: 's' } })).json().error.code).toBe('CASE_SUBJECT_NOT_FOUND');
+    it('keeps legacy CASE_* audit rows readable and immutable', async () => {
+      const id = randomUUID();
+      await db.query(
+        "INSERT INTO audit_events (id, actor_account_id, action, target_type, target_id, reason, details) VALUES ($1,$2,'CASE_OPENED','CASE',$3,'legacy',$4::jsonb)",
+        [id, adminId, randomUUID(), JSON.stringify({ before: {}, after: { status: 'OPEN' } })],
+      );
+      const items = (await get('/audit?action=CASE_OPENED')).json().data.items as { id: string; action: string; targetType: string; reason: string; details: unknown }[];
+      expect(items).toHaveLength(1);
+      expect(items[0]).toMatchObject({ id, action: 'CASE_OPENED', targetType: 'CASE', reason: 'legacy', details: { before: {}, after: { status: 'OPEN' } } });
+      await expect(db.query("UPDATE audit_events SET reason = 'tampered' WHERE id = $1", [id])).rejects.toThrow(/append-only/);
+      await expect(db.query('DELETE FROM audit_events WHERE id = $1', [id])).rejects.toThrow(/append-only/);
     });
 
-    it('opens a DUPLICATE case from a flagged submission exactly once', async () => {
-      const team = await createTeam('Epsilon');
-      const submissionId = await createSubmission(team.teamId, 'VALID');
-      expect((await post(`/cases/from-duplicate/${submissionId}`, { reason: 'check' })).json().error.code).toBe('SUBMISSION_NOT_FLAGGED');
-      await db.query("UPDATE submissions SET duplicate_review_flag = TRUE, duplicate_review_reason = 'layer overlap' WHERE id = $1", [submissionId]);
-      const first = await post(`/cases/from-duplicate/${submissionId}`, { reason: 'check' });
-      expect(first.statusCode).toBe(201);
-      const second = await post(`/cases/from-duplicate/${submissionId}`, { reason: 'check again' });
-      expect(second.statusCode).toBe(200);
-      expect(second.json().data).toMatchObject({ caseId: first.json().data.caseId, replayed: true });
-      expect(await count("operations_cases WHERE kind = 'DUPLICATE' AND submission_id = $1", [submissionId])).toBe(1);
-      expect(await count("audit_events WHERE action = 'CASE_OPENED'")).toBe(1);
-      expect((await post(`/cases/from-duplicate/${randomUUID()}`, { reason: 'ghost' })).statusCode).toBe(404);
+    it('re-running the migrations is a no-op', async () => {
+      await runMigrations(db);
+      const tables = await db.query("SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'operations_cases'");
+      expect(tables.rows).toEqual([]);
     });
   });
 
@@ -419,20 +397,14 @@ enabled('P3-D07 privileged operations integration', () => {
       expect((await get('/audit?pageSize=500')).statusCode).toBe(400);
     });
 
-    it('exports audit and case NDJSON without seeds, credentials, stderr or object keys', async () => {
+    it('exports audit NDJSON without seeds, credentials, stderr or object keys', async () => {
       const f = await createMatch();
-      const opened = await post('/cases', { reason: 'r', kind: 'ANOMALY', matchId: f.matchId, evidence: { summary: 'ok' } });
-      const caseId = opened.json().data.caseId as string;
       // Hostile rows written straight to the append-only tables, as a buggy writer would.
       await db.query(
         "INSERT INTO audit_events (id, actor_account_id, action, target_type, target_id, reason, details) VALUES ($1,$2,'LEGACY_ACTION','MATCH',$3,'legacy',$4::jsonb)",
         [randomUUID(), adminId, f.matchId, JSON.stringify({ seed: 'SEED_SENTINEL', password: 'PASSWORD_SENTINEL', nested: { stderr: 'STDERR_SENTINEL', objectKey: 'OBJECT_KEY_SENTINEL', keep: 'visible' } })],
       );
-      await db.query(
-        "INSERT INTO operations_case_events (id, case_id, seq, event_type, actor_account_id, reason, evidence, correlation_id) VALUES ($1,$2,99,'EVIDENCE_ADDED',$3,'hostile',$4::jsonb,$5)",
-        [randomUUID(), caseId, adminId, JSON.stringify({ summary: 'fine', stderr: 'STDERR_SENTINEL', seed: 'SEED_SENTINEL' }), randomUUID()],
-      );
-      for (const path of ['/audit/export', '/cases/export']) {
+      for (const path of ['/audit/export']) {
         const response = await get(path);
         expect(response.statusCode, path).toBe(200);
         expect(response.headers['content-type']).toContain('application/x-ndjson');

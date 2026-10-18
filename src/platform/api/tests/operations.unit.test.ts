@@ -2,26 +2,17 @@ import { describe, expect, it } from 'vitest';
 import {
   AUDIT_EXPORT_FIELDS,
   sanitizeAuditRecord,
-  sanitizeCaseRecord,
   stripSecretKeys,
   toNdjson,
 } from '../src/modules/operations/export.ts';
 import {
-  CASE_DECISIONS,
-  CASE_STATUSES,
   INFRA_FAILURE_REASONS,
-  canTransitionCase,
   evaluateRerunEligibility,
-  isDecisionAllowedForKind,
   parseAuditQuery,
   parseCancelBody,
-  parseDecisionBody,
-  parseEvidence,
   parseIdempotencyKey,
-  parseOpenCaseBody,
   parseReasonBody,
   parseRerunBody,
-  parseStatusBody,
   resolveCorrelationId,
   type RerunEligibilityInput,
 } from '../src/modules/operations/types.ts';
@@ -55,44 +46,14 @@ describe('operations validators', () => {
 
   it('requires an explicit verifiedInfraFailure and a bounded public reason for rerun', () => {
     const base = { reason: 'infra', publicReason: 'Worker restarted', verifiedInfraFailure: true };
-    expect(parseRerunBody(base)).toMatchObject({ ok: true, value: { verifiedInfraFailure: true, caseId: null } });
+    expect(parseRerunBody(base)).toMatchObject({ ok: true, value: { verifiedInfraFailure: true } });
     expect(parseRerunBody({ ...base, verifiedInfraFailure: false })).toMatchObject({ ok: false, code: 'RERUN_CONFIRMATION_REQUIRED' });
     expect(parseRerunBody({ reason: 'infra', publicReason: 'x' })).toMatchObject({ ok: false, code: 'RERUN_CONFIRMATION_REQUIRED' });
     expect(parseRerunBody({ ...base, publicReason: '' })).toMatchObject({ ok: false, code: 'INVALID_PUBLIC_REASON' });
     expect(parseRerunBody({ ...base, publicReason: 'x'.repeat(201) })).toMatchObject({ ok: false, code: 'INVALID_PUBLIC_REASON' });
-    expect(parseRerunBody({ ...base, caseId: 'bad' })).toMatchObject({ ok: false, code: 'INVALID_REQUEST' });
-    expect(parseCancelBody({ reason: 'r', publicReason: 'p', caseId: uuid })).toMatchObject({ ok: true, value: { caseId: uuid } });
-  });
-
-  it('validates case bodies: kind, subject and allowlisted evidence', () => {
-    const evidence = { summary: 'same layers', similarity: 0.97 };
-    expect(parseOpenCaseBody({ reason: 'r', kind: 'ANOMALY', matchId: uuid, evidence })).toMatchObject({ ok: true });
-    expect(parseOpenCaseBody({ reason: 'r', kind: 'ANOMALY', evidence })).toMatchObject({ ok: false, code: 'CASE_SUBJECT_REQUIRED' });
-    expect(parseOpenCaseBody({ reason: 'r', kind: 'APPEAL', matchId: uuid, evidence })).toMatchObject({ ok: false, code: 'CASE_SUBJECT_REQUIRED' });
-    expect(parseOpenCaseBody({ reason: 'r', kind: 'DUPLICATE', teamId: uuid, evidence })).toMatchObject({ ok: false, code: 'CASE_SUBJECT_REQUIRED' });
-    expect(parseOpenCaseBody({ reason: 'r', kind: 'OTHER', matchId: uuid, evidence })).toMatchObject({ ok: false, code: 'INVALID_CASE_KIND' });
-    expect(parseOpenCaseBody({ reason: 'r', kind: 'ANOMALY', matchId: 'x', evidence })).toMatchObject({ ok: false, code: 'INVALID_REQUEST' });
-    expect(parseOpenCaseBody({ reason: 'r', kind: 'ANOMALY', matchId: uuid })).toMatchObject({ ok: false, code: 'INVALID_EVIDENCE' });
-  });
-
-  it('rejects non-allowlisted, secret-looking, nested and oversized evidence', () => {
-    expect(parseEvidence({ summary: 'ok', links: ['a', 'b'], confirmed: true })).not.toBeNull();
-    expect(parseEvidence({ seed: 'SEED_SENTINEL' })).toBeNull();
-    expect(parseEvidence({ stderr: 'STDERR_SENTINEL' })).toBeNull();
-    expect(parseEvidence({ unknownKey: 'x' })).toBeNull();
-    expect(parseEvidence({ summary: { nested: 1 } })).toBeNull();
-    expect(parseEvidence({ summary: 'x'.repeat(1001) })).toBeNull();
-    expect(parseEvidence({})).toBeNull();
-    expect(parseEvidence(['x'])).toBeNull();
-    expect(parseEvidence({ links: Array.from({ length: 21 }, () => 'a') })).toBeNull();
-    expect(parseEvidence(Object.fromEntries(['summary', 'source', 'note', 'links', 'matchId'].map((key) => [key, 'x'.repeat(1000)])))).toBeNull();
-  });
-
-  it('accepts only UNDER_REVIEW and CLOSED through the status endpoint and known decisions', () => {
-    expect(parseStatusBody({ reason: 'r', status: 'UNDER_REVIEW' }).ok).toBe(true);
-    expect(parseStatusBody({ reason: 'r', status: 'DECIDED' })).toMatchObject({ ok: false, code: 'INVALID_CASE_STATUS' });
-    for (const decision of CASE_DECISIONS) expect(parseDecisionBody({ reason: 'r', decision }).ok).toBe(true);
-    expect(parseDecisionBody({ reason: 'r', decision: 'DELETE_EVERYTHING' })).toMatchObject({ ok: false, code: 'INVALID_CASE_DECISION' });
+    expect(parseRerunBody({ ...base, caseId: uuid })).toMatchObject({ ok: false, code: 'INVALID_REQUEST' });
+    expect(parseCancelBody({ reason: 'r', publicReason: 'p' })).toMatchObject({ ok: true, value: { reason: 'r', publicReason: 'p' } });
+    expect(parseCancelBody({ reason: 'r', publicReason: 'p', caseId: uuid })).toMatchObject({ ok: false, code: 'INVALID_REQUEST' });
   });
 
   it('parses audit queries with bounded pagination and typed filters', () => {
@@ -101,23 +62,6 @@ describe('operations validators', () => {
     for (const bad of [{ pageSize: '101' }, { page: '0' }, { targetId: 'x' }, { action: 'lower' }, { from: 'yesterday' }, { unknown: '1' }]) {
       expect(parseAuditQuery(bad)).toMatchObject({ ok: false, code: 'INVALID_QUERY' });
     }
-  });
-});
-
-describe('operations case state machine', () => {
-  const allowed = new Set(['OPEN>UNDER_REVIEW', 'OPEN>DECIDED', 'UNDER_REVIEW>DECIDED', 'DECIDED>CLOSED']);
-  it('allows exactly OPEN→UNDER_REVIEW→DECIDED→CLOSED and OPEN→DECIDED', () => {
-    for (const from of CASE_STATUSES) {
-      for (const to of CASE_STATUSES) {
-        expect(canTransitionCase(from, to), `${from}>${to}`).toBe(allowed.has(`${from}>${to}`));
-      }
-    }
-  });
-
-  it('keeps appeal outcomes for appeals only', () => {
-    expect(isDecisionAllowedForKind('APPEAL', 'APPEAL_UPHELD')).toBe(true);
-    expect(isDecisionAllowedForKind('ANOMALY', 'APPEAL_REJECTED')).toBe(false);
-    expect(isDecisionAllowedForKind('DUPLICATE', 'REVOKE_SUBMISSION')).toBe(true);
   });
 });
 
@@ -185,15 +129,12 @@ describe('operations export sanitizer', () => {
     expect(record.details).toEqual({ before: { status: 'A' }, after: { status: 'B' } });
   });
 
-  it('exports cases with events and no secrets, as NDJSON', () => {
-    const record = sanitizeCaseRecord({
-      id: 'c', kind: 'ANOMALY', status: 'OPEN', openedBy: 'u', secretNote: 'PASSWORD_SENTINEL',
-      events: [{ seq: 1, eventType: 'OPENED', reason: 'r', evidence: { summary: 's', stderr: 'STDERR_SENTINEL' }, token: 'PASSWORD_SENTINEL', caseId: 'dropped' }],
-    });
+  it('serializes audit records as NDJSON', () => {
+    const record = sanitizeAuditRecord({ id: 'a', action: 'X', details: { stderr: 'STDERR_SENTINEL', after: { ok: true } } });
     const ndjson = toNdjson([record, record]);
     expect(ndjson.split('\n').filter(Boolean)).toHaveLength(2);
-    expect(ndjson).not.toMatch(/SENTINEL|dropped/);
-    expect(JSON.parse(ndjson.split('\n')[0]!).events[0]).toEqual({ seq: 1, eventType: 'OPENED', reason: 'r', evidence: { summary: 's' } });
+    expect(ndjson).not.toMatch(/SENTINEL/);
+    expect(JSON.parse(ndjson.split('\n')[0]!).details).toEqual({ after: { ok: true } });
     expect(toNdjson([])).toBe('');
   });
 });

@@ -4,20 +4,12 @@ import type { Database } from '../../db/client.ts';
 import { requireAuthenticated, requireRole } from '../auth/authorize.ts';
 import type { SessionStore } from '../auth/sessions.ts';
 import { dispatchScheduledMatches, type MatchJobEnqueuer } from '../scheduling/service.ts';
-import { sanitizeAuditRecord, sanitizeCaseRecord, toNdjson } from './export.ts';
+import { sanitizeAuditRecord, toNdjson } from './export.ts';
 import {
-  addCaseEvidence,
   cancelMatch,
-  changeCaseStatus,
-  decideCase,
   exportAudit,
-  exportCases,
-  getCase,
   listAudit,
-  listCases,
   listPublicQueueOverrides,
-  openCase,
-  openCaseFromDuplicate,
   rerunMatch,
   revokeSubmission,
   suspendTeam,
@@ -26,22 +18,14 @@ import {
   type PrivilegedOutcome,
 } from './service.ts';
 import {
-  CASE_KINDS,
-  CASE_STATUSES,
   OperationsError,
   parseAuditQuery,
   parseCancelBody,
-  parseDecisionBody,
-  parseEvidenceBody,
   parseIdempotencyKey,
-  parseOpenCaseBody,
   parseReasonBody,
   parseRerunBody,
-  parseStatusBody,
   parseUuid,
   resolveCorrelationId,
-  type CaseKind,
-  type CaseStatus,
   type Parsed,
 } from './types.ts';
 
@@ -58,11 +42,6 @@ const clientMessages: Readonly<Record<string, string>> = {
   INVALID_REQUEST: 'Invalid request body',
   INVALID_REASON: 'Reason must be 1-500 characters',
   INVALID_PUBLIC_REASON: 'Public reason must be 1-200 characters',
-  INVALID_EVIDENCE: 'Evidence is invalid',
-  INVALID_CASE_KIND: 'Invalid case kind',
-  INVALID_CASE_STATUS: 'Invalid case status',
-  INVALID_CASE_DECISION: 'Invalid case decision',
-  CASE_SUBJECT_REQUIRED: 'Case subject is required',
   RERUN_CONFIRMATION_REQUIRED: 'verifiedInfraFailure must be true',
   INVALID_QUERY: 'Invalid query',
 };
@@ -109,14 +88,6 @@ function respond<T>(call: AdminCall, outcome: PrivilegedOutcome<T>, status = 200
 function handleFailure(reply: FastifyReply, error: unknown) {
   if (error instanceof OperationsError) return sendError(reply, error.statusCode, error.code, error.message);
   throw error;
-}
-
-function pagination(query: unknown): { readonly page: number; readonly pageSize: number } | null {
-  const q = (typeof query === 'object' && query !== null ? query : {}) as Record<string, unknown>;
-  const page = q.page === undefined ? 1 : Number(q.page);
-  const pageSize = q.pageSize === undefined ? 20 : Number(q.pageSize);
-  if (!Number.isInteger(page) || !Number.isInteger(pageSize) || page < 1 || pageSize < 1 || pageSize > 100) return null;
-  return { page, pageSize };
 }
 
 export function registerOperationsRoutes(app: FastifyInstance, options: OperationsRoutesOptions): void {
@@ -203,98 +174,6 @@ export function registerOperationsRoutes(app: FastifyInstance, options: Operatio
       const outcome = await rerunMatch(database, contextFor(parsed.call, parsed.body.reason), id, parsed.body);
       if (!outcome.replayed) await publishAfterCommit();
       const { status, body } = respond(parsed.call, outcome);
-      return reply.status(status).send(body);
-    } catch (error) {
-      return handleFailure(reply, error);
-    }
-  });
-
-  // ------------------------------------------------------------ cases
-  app.post(`${BASE}/cases`, async (request, reply) => {
-    const parsed = await withBody(request, reply, parseOpenCaseBody);
-    if (parsed === null) return reply;
-    try {
-      const { status, body } = respond(parsed.call, await openCase(database, contextFor(parsed.call, parsed.body.reason), parsed.body), 201);
-      return reply.status(status).send(body);
-    } catch (error) {
-      return handleFailure(reply, error);
-    }
-  });
-
-  app.post<{ Params: { submissionId: string } }>(`${BASE}/cases/from-duplicate/:submissionId`, async (request, reply) => {
-    const parsed = await withBody(request, reply, parseReasonBody);
-    if (parsed === null) return reply;
-    const submissionId = parseUuid(request.params.submissionId);
-    if (submissionId === null) return notFound(reply, 'SUBMISSION_NOT_FOUND', 'Submission not found');
-    try {
-      const { status, body } = respond(parsed.call, await openCaseFromDuplicate(database, contextFor(parsed.call, parsed.body.reason), submissionId), 201);
-      return reply.status(status).send(body);
-    } catch (error) {
-      return handleFailure(reply, error);
-    }
-  });
-
-  app.get(`${BASE}/cases`, async (request, reply) => {
-    const call = beginAdminCall(request, reply);
-    if (call === null) return reply;
-    const page = pagination(request.query);
-    const q = (typeof request.query === 'object' && request.query !== null ? request.query : {}) as Record<string, unknown>;
-    const status = q.status === undefined ? null : (CASE_STATUSES as readonly unknown[]).includes(q.status) ? q.status as CaseStatus : undefined;
-    const kind = q.kind === undefined ? null : (CASE_KINDS as readonly unknown[]).includes(q.kind) ? q.kind as CaseKind : undefined;
-    if (page === null || status === undefined || kind === undefined) return badRequest(reply, 'INVALID_QUERY');
-    const { items, total } = await listCases(database, { status, kind, ...page });
-    return { data: { items }, pagination: { ...page, totalItems: total, totalPages: Math.max(1, Math.ceil(total / page.pageSize)) }, correlationId: call.correlationId };
-  });
-
-  app.get(`${BASE}/cases/export`, async (request, reply) => {
-    const call = beginAdminCall(request, reply);
-    if (call === null) return reply;
-    const records = (await exportCases(database)).map((item) => sanitizeCaseRecord({ ...item }));
-    return reply.type('application/x-ndjson; charset=utf-8').send(toNdjson(records));
-  });
-
-  app.get<{ Params: { id: string } }>(`${BASE}/cases/:id`, async (request, reply) => {
-    const call = beginAdminCall(request, reply);
-    if (call === null) return reply;
-    const id = parseUuid(request.params.id);
-    const item = id === null ? null : await getCase(database, id);
-    if (item === null) return notFound(reply, 'CASE_NOT_FOUND', 'Case not found');
-    return { data: item, correlationId: call.correlationId };
-  });
-
-  app.post<{ Params: { id: string } }>(`${BASE}/cases/:id/evidence`, async (request, reply) => {
-    const parsed = await withBody(request, reply, parseEvidenceBody);
-    if (parsed === null) return reply;
-    const id = parseUuid(request.params.id);
-    if (id === null) return notFound(reply, 'CASE_NOT_FOUND', 'Case not found');
-    try {
-      const { status, body } = respond(parsed.call, await addCaseEvidence(database, contextFor(parsed.call, parsed.body.reason), id, parsed.body.evidence), 201);
-      return reply.status(status).send(body);
-    } catch (error) {
-      return handleFailure(reply, error);
-    }
-  });
-
-  app.post<{ Params: { id: string } }>(`${BASE}/cases/:id/status`, async (request, reply) => {
-    const parsed = await withBody(request, reply, parseStatusBody);
-    if (parsed === null) return reply;
-    const id = parseUuid(request.params.id);
-    if (id === null) return notFound(reply, 'CASE_NOT_FOUND', 'Case not found');
-    try {
-      const { status, body } = respond(parsed.call, await changeCaseStatus(database, contextFor(parsed.call, parsed.body.reason), id, parsed.body.status));
-      return reply.status(status).send(body);
-    } catch (error) {
-      return handleFailure(reply, error);
-    }
-  });
-
-  app.post<{ Params: { id: string } }>(`${BASE}/cases/:id/decision`, async (request, reply) => {
-    const parsed = await withBody(request, reply, parseDecisionBody);
-    if (parsed === null) return reply;
-    const id = parseUuid(request.params.id);
-    if (id === null) return notFound(reply, 'CASE_NOT_FOUND', 'Case not found');
-    try {
-      const { status, body } = respond(parsed.call, await decideCase(database, contextFor(parsed.call, parsed.body.reason), id, parsed.body.decision));
       return reply.status(status).send(body);
     } catch (error) {
       return handleFailure(reply, error);
