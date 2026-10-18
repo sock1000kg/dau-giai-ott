@@ -1,0 +1,8 @@
+/* Rule editor: scrolling field groups; footer (reason + confirm) stays visible below them. */
+.rr-scroll { max-height: 60vh; overflow: auto; padding-right: 4px; }
+.round-rule-form .rr-footer { display: grid; gap: 12px; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--ui-border); }
+.round-rule-form .rr-footer > div { display: grid; gap: 6px; min-width: 0; }
+.round-rule-form .rr-footer textarea { min-height: 72px; resize: vertical; box-sizing: border-box; }
+.round-rule-form .rr-footer [role="alert"], .round-rule-form .rr-footer p[role="alert"] { color: var(--ui-danger); }
+.round-rule-form .rr-footer button[type="submit"] { width: 100%; margin-top: 0; }
+@media (min-width: 640px) { .round-rule-form .rr-footer button[type="submit"] { width: auto; justify-self: end; } }

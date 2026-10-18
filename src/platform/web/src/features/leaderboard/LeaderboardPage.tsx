@@ -54,7 +54,7 @@ export function LeaderboardPage() {
   return (
     <Page
       title="Bảng xếp hạng"
-      description="Thứ hạng và các chỉ số chính thức do máy chủ giải đấu tính. Các đội đồng hạng cần Ban tổ chức quyết định bước tiếp theo."
+      description="Thứ hạng và các chỉ số chính thức do máy chủ giải đấu tính. Các đội đồng hạng được giữ cùng hạng."
     >
       <p className="pub-eyebrow">OTT ARENA · BẢNG ĐIỂM CÔNG KHAI</p>
       <Card as="div">
@@ -80,7 +80,7 @@ export function LeaderboardPage() {
         <Button variant="secondary" disabled={loading || totalPages === 0 || page >= totalPages} onClick={() => setPage(page + 1)}>Trang sau</Button>
       </nav>
       <Card as="div" className="pub-note">
-        <p>Elo, thứ hạng và tie-break không được tính lại trên trình duyệt. Kết quả đồng hạng được giữ nguyên theo dữ liệu chính thức.</p>
+        <p>Thứ hạng và Elo do hệ thống giải đấu tính từ kết quả đã chốt. Các đội bằng điểm được giữ cùng hạng; thứ tự cuối cùng khi chọn đội vào chung kết sẽ được công bố riêng.</p>
       </Card>
     </Page>
   );

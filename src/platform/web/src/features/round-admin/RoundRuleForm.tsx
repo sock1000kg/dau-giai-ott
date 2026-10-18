@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Select } from '../../ui/index.ts';
+import './round-admin.css';
 import { createRuleSet, RoundAdminApiError } from './api.ts';
 import { FIELD_HELP, fieldIdFromDomId } from './field-help.ts';
 import { estimateWorstCase, formatDuration } from './estimate.ts';
@@ -200,6 +202,7 @@ export function RoundRuleForm({
       {readOnly && locked !== null && notice === undefined && (
         <p>Bộ luật đã khóa — thay đổi chỉ áp dụng từ round sau (phiên bản {locked.version}, sha {locked.rulesSha256.slice(0, 8)}).</p>
       )}
+      <div className={readOnly ? undefined : 'rr-scroll'}>
       <fieldset>
         <legend>Thời gian</legend>
         <NumberField id={`${p}-startupMs`} label="Startup (ms)" value={form.startupMs} disabled={inputDisabled} error={errors.startupMs} onChange={(value) => patch({ startupMs: value })} />
@@ -207,10 +210,10 @@ export function RoundRuleForm({
         <NumberField id={`${p}-matchWallClockMs`} label="Wall-clock/trận (ms)" value={form.matchWallClockMs} disabled={inputDisabled} error={errors.matchWallClockMs} onChange={(value) => patch({ matchWallClockMs: value })} />
         <div>
           <label htmlFor={`${p}-perTurnMode`}>Thời gian mỗi lượt</label>
-          <select id={`${p}-perTurnMode`} value={form.perTurnMode} disabled={inputDisabled} aria-describedby={`${p}-perTurnMode-help`} onChange={(event) => patch({ perTurnMode: event.target.value as 'FIXED' | 'DYNAMIC' })}>
+          <Select id={`${p}-perTurnMode`} value={form.perTurnMode} disabled={inputDisabled} aria-describedby={`${p}-perTurnMode-help`} onChange={(event) => patch({ perTurnMode: event.target.value as 'FIXED' | 'DYNAMIC' })}>
             <option value="FIXED">Cố định 3s</option>
             <option value="DYNAMIC">Dynamic</option>
-          </select>
+          </Select>
           <Help id={`${p}-perTurnMode`} />
         </div>
         {form.perTurnMode === 'FIXED' ? (
@@ -332,36 +335,35 @@ export function RoundRuleForm({
         {overWindow && (
           <>
             <p role="alert">Ước tính vượt khung chạy round. Cần xác nhận trước khi lưu.</p>
-            {!readOnly && (
-              <div>
-                <input id={`${p}-acknowledge`} type="checkbox" checked={acknowledged} aria-describedby={`${p}-acknowledge-help`} onChange={(event) => setAcknowledged(event.target.checked)} />
-                <label htmlFor={`${p}-acknowledge`}>Tôi xác nhận ước tính vượt khung chạy round</label>
-                <Help id={`${p}-acknowledge`} />
-              </div>
-            )}
           </>
         )}
       </fieldset>
+      </div>
 
       {!readOnly && (
-        <div>
-          <label htmlFor={`${p}-reason`}>Lý do thay đổi</label>
-          <textarea id={`${p}-reason`} required minLength={1} maxLength={500} value={form.reason} aria-invalid={errors.reason !== undefined} aria-describedby={describedBy(`${p}-reason`, errors.reason)} onChange={(event) => patch({ reason: event.target.value })} />
-          <Help id={`${p}-reason`} />
-          {errors.reason !== undefined && <p id={`${p}-reason-error`}>{errors.reason}</p>}
+        <div className="rr-footer">
+          {overWindow && (
+            <div>
+              <input id={`${p}-acknowledge`} type="checkbox" checked={acknowledged} aria-describedby={`${p}-acknowledge-help`} onChange={(event) => setAcknowledged(event.target.checked)} />
+              <label htmlFor={`${p}-acknowledge`}>Tôi xác nhận ước tính vượt khung chạy round</label>
+              <Help id={`${p}-acknowledge`} />
+            </div>
+          )}
+          <div>
+            <label htmlFor={`${p}-reason`}>Lý do thay đổi</label>
+            <textarea id={`${p}-reason`} required minLength={1} maxLength={500} value={form.reason} aria-invalid={errors.reason !== undefined} aria-describedby={describedBy(`${p}-reason`, errors.reason)} onChange={(event) => patch({ reason: event.target.value })} />
+            <Help id={`${p}-reason`} />
+            {errors.reason !== undefined && <p id={`${p}-reason-error`}>{errors.reason}</p>}
+          </div>
+          {(saveFailure !== null || unknownPaths.length > 0) && (
+            <div role="alert">
+              {saveFailure !== null && <p>{saveFailure}</p>}
+              {unknownPaths.length > 0 && <p>Máy chủ từ chối các trường chưa rõ: {unknownPaths.join(', ')}.</p>}
+            </div>
+          )}
+          {saved !== null && <p role="status">Đã lưu phiên bản {saved.version} ({saved.rulesSha256.slice(0, 8)}).</p>}
+          <button type="submit" disabled={!canSave}>{saving ? 'Đang lưu…' : 'Lưu phiên bản mới'}</button>
         </div>
-      )}
-
-      {(saveFailure !== null || unknownPaths.length > 0) && (
-        <div role="alert">
-          {saveFailure !== null && <p>{saveFailure}</p>}
-          {unknownPaths.length > 0 && <p>Máy chủ từ chối các trường chưa rõ: {unknownPaths.join(', ')}.</p>}
-        </div>
-      )}
-      {saved !== null && <p role="status">Đã lưu phiên bản {saved.version} ({saved.rulesSha256.slice(0, 8)}).</p>}
-
-      {!readOnly && (
-        <button type="submit" disabled={!canSave}>{saving ? 'Đang lưu…' : 'Lưu phiên bản mới'}</button>
       )}
     </form>
   );

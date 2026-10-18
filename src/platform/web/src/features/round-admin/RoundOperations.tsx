@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Select } from '../../ui/index.ts';
 import {
   createRound,
   getRound,
@@ -304,11 +305,11 @@ export function RoundOperations({ stage }: Readonly<{ stage: string }>) {
           {pending.action === 'open' && (
             <>
               <label htmlFor="round-open-ruleset">Phiên bản bộ luật</label>
-              <select id="round-open-ruleset" value={chosenRuleSetId} onChange={(event) => setChosenRuleSetId(event.target.value)}>
+              <Select id="round-open-ruleset" value={chosenRuleSetId} onChange={(event) => setChosenRuleSetId(event.target.value)}>
                 {ruleSets.map((entry) => (
                   <option key={entry.id} value={entry.id}>v{entry.version} ({shortSha(entry.rulesSha256)})</option>
                 ))}
-              </select>
+              </Select>
             </>
           )}
           <label htmlFor="round-action-reason">Lý do</label>

@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { Alert, Button, Field, Input, Table } from './index.ts';
+import { Alert, Button, Field, Input, Select, Table } from './index.ts';
 
 describe('Field', () => {
   it('links label, help and error to the control and marks it invalid', () => {
@@ -65,5 +65,28 @@ describe('Button', () => {
   it('respects the disabled prop', () => {
     render(<Button disabled>Lưu</Button>);
     expect(screen.getByRole<HTMLButtonElement>('button').disabled).toBe(true);
+  });
+});
+
+describe('Select', () => {
+  it('keeps native select semantics under the themed ui-select class', () => {
+    const onChange = vi.fn();
+    render(<Field label="Vòng" error="Sai"><Select value="b" disabled onChange={onChange}><option value="a">A</option><option value="b">B</option></Select></Field>);
+    const select = screen.getByLabelText('Vòng') as HTMLSelectElement;
+    expect(select.tagName).toBe('SELECT');
+    expect(select.classList.contains('ui-select')).toBe(true);
+    expect(select.value).toBe('b');
+    expect(select.disabled).toBe(true);
+    expect(select.getAttribute('aria-invalid')).toBe('true');
+    expect(Array.from(select.options).map((option) => option.value)).toEqual(['a', 'b']);
+  });
+
+  it('merges a caller class and fires onChange', () => {
+    const onChange = vi.fn();
+    render(<Select aria-label="x" className="extra" defaultValue="a" onChange={onChange}><option value="a">A</option><option value="b">B</option></Select>);
+    const select = screen.getByLabelText('x');
+    expect(select.className).toBe('ui-select extra');
+    fireEvent.change(select, { target: { value: 'b' } });
+    expect(onChange).toHaveBeenCalledTimes(1);
   });
 });

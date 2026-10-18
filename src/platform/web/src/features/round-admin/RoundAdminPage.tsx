@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
 import { getRuleSetDetail, listRounds, listRuleSets, listTeamsCount, type RoundSummary, type RuleSetSummary } from './api.ts';
 import { selectCurrentLockedRound, sortRuleSetsNewestFirst } from './current-rule-set.ts';
+import { Badge } from '../../ui/index.ts';
 import { RoundOperations } from './RoundOperations.tsx';
 import { RoundRuleForm, type LockedRuleSetInfo } from './RoundRuleForm.tsx';
 import { RuleSetArchive } from './RuleSetArchive.tsx';
 import type { RoundRuleSetRulesV1 } from './rules-form.ts';
 
 export function RoundAdminPage() {
-  const [stage, setStage] = useState('QUALIFICATION');
+  // Only QUALIFICATION rule sets/rounds are created through this page.
+  const stage = 'QUALIFICATION';
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [prefill, setPrefill] = useState<RoundRuleSetRulesV1 | null>(null);
@@ -64,12 +66,9 @@ export function RoundAdminPage() {
         Mọi thao tác đều cần lý do và được máy chủ kiểm tra trạng thái.
       </p>
 
-      <div>
-        <label htmlFor="round-admin-stage">Stage</label>
-        <select id="round-admin-stage" value={stage} onChange={(event) => setStage(event.target.value)}>
-          <option value="QUALIFICATION">QUALIFICATION</option>
-        </select>
-      </div>
+      <p id="round-admin-stage">
+        <span>Stage</span> · Vòng: <Badge accent>Vòng loại (QUALIFICATION)</Badge>
+      </p>
 
       {loadError !== null && <div role="alert"><p>{loadError}</p><button type="button" onClick={() => void load()}>Thử lại</button></div>}
       {loading && <p role="status" aria-busy="true">Đang tải dữ liệu round…</p>}
@@ -109,7 +108,6 @@ export function RoundAdminPage() {
             <section className="round-admin-editor" aria-label="Phiên bản bộ luật mới">
               <h2>Phiên bản bộ luật mới</h2>
               {baseVersion !== null && <p role="status" className="round-base-note">Đang soạn dựa trên v{baseVersion}</p>}
-              <div className="round-admin-editor-scroll">
               <RoundRuleForm
                 key={`${stage}:${refreshToken}:${editorKey}`}
                 stage={stage}
@@ -118,7 +116,6 @@ export function RoundAdminPage() {
                 initialTeamCount={teamCount}
                 onSaved={() => setRefreshToken((token) => token + 1)}
               />
-              </div>
             </section>
           </div>
           <RoundOperations stage={stage} />

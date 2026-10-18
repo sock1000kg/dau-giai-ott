@@ -65,7 +65,7 @@ export function MatchResultsPage({ isAdmin }: Readonly<{ isAdmin: boolean }>) {
         <Field label="Vòng/stage" help="Lọc theo vòng đấu.">
           <Select value={stage} onChange={setFilter(setStage)}><option value="">Tất cả vòng</option>{options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</Select>
         </Field>
-        <Button variant="secondary" onClick={() => void load()} disabled={loading}>Làm mới</Button>
+        <div className="results-refresh"><Button variant="secondary" onClick={() => void load()} disabled={loading}>Làm mới</Button></div>
       </div></Card>
       {!loading && !error && !empty && <p className="results-summary">Hiển thị {count} kết quả · Trang {page}{totalPages ? ` / ${totalPages}` : ''}</p>}
       {error && <Alert tone="danger"><p>{error}</p><Button variant="secondary" onClick={() => void load()}>Thử lại</Button></Alert>}

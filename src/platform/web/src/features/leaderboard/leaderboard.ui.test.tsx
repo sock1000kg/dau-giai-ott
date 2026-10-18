@@ -52,7 +52,7 @@ describe('leaderboard table', () => {
   it('shows tags, highlights top-3 ranks only and keeps ties', () => {
     render(<LeaderboardTable items={rows} />);
     expect(screen.getByRole('region', { name: 'Bảng xếp hạng các đội' }).getAttribute('tabindex')).toBe('0');
-    expect(screen.getByText('BTC cần quyết định')).toBeTruthy();
+    expect(screen.getByText('Đồng hạng')).toBeTruthy();
     expect(screen.getByText('Chưa xếp hạng')).toBeTruthy();
     const classOf = (name: string) => screen.getByText(name).closest('tr')?.className ?? '';
     expect(classOf('Alpha')).toContain('pub-row-top');

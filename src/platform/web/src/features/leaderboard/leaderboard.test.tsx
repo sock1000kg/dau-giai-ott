@@ -44,7 +44,7 @@ describe('public leaderboard', () => {
     expect(screen.getByText('Beta')).toBeTruthy();
     expect(screen.getByText('Gamma')).toBeTruthy();
     expect(screen.getAllByText('4')).toHaveLength(2);
-    expect(screen.getAllByText(/BTC cần quyết định/i)).toHaveLength(2);
+    expect(screen.getAllByText('Đồng hạng')).toHaveLength(2);
     expect(document.body.textContent).not.toContain('private/object');
     expect(document.body.textContent).not.toContain('private');
     expect(fetch).toHaveBeenCalledTimes(1);

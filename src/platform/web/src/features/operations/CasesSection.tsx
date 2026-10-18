@@ -19,6 +19,15 @@ import {
 } from './api.ts';
 import { DataTable, formatTime, isUuid, matchLabel, PageControls, Panel, shortId, TargetPicker, useDirectory, type TargetMode } from './shared.tsx';
 
+/** Vietnamese names for the case kinds; the enum values stay the API contract. */
+export const CASE_KIND_LABELS: Record<CaseKind, string> = { APPEAL: 'Khiếu nại', DUPLICATE: 'Nghi trùng bot', ANOMALY: 'Bất thường' };
+
+const CASE_KIND_HELP: Record<CaseKind, string> = {
+  APPEAL: 'Đội gửi khiếu nại kết quả hoặc xử lý.',
+  DUPLICATE: 'BTC ghi nhận khi nghi ngờ một bot nộp trùng hoặc sao chép bot khác.',
+  ANOMALY: 'BTC ghi nhận trận hoặc hành vi cần xem xét.',
+};
+
 const SUBJECT_LABELS: Record<CaseKind, string> = {
   ANOMALY: 'Mã trận (UUID)',
   DUPLICATE: 'Mã submission (UUID)',
@@ -208,9 +217,9 @@ export function Cases() {
   return (
     <Panel id="ops-cases" title="Hồ sơ vụ việc" description="Mở hồ sơ cho trận bất thường, submission trùng lặp hoặc khiếu nại; theo dõi bằng chứng và quyết định.">
       <form className="ui-stack" onSubmit={(event) => void open(event)}>
-        <Field label="Loại hồ sơ">
+        <Field label="Loại hồ sơ" help={CASE_KIND_HELP[kind]}>
           <Select value={kind} onChange={(event) => { setKind(event.target.value as CaseKind); setSubjectId(''); }}>
-            {CASE_KINDS.map((value) => <option key={value} value={value}>{value}</option>)}
+            {CASE_KINDS.map((value) => <option key={value} value={value}>{CASE_KIND_LABELS[value]}</option>)}
           </Select>
         </Field>
         <TargetPicker key={kind} mode={SUBJECT_MODES[kind]} value={subjectId} onChange={setSubjectId} disabled={opening} manualLabel={SUBJECT_LABELS[kind]} pickerLabel={SUBJECT_PICKER_LABELS[kind]} />
@@ -228,7 +237,7 @@ export function Cases() {
         <Field label="Lọc theo loại">
           <Select value={kindFilter} onChange={(event) => { setKindFilter(event.target.value as CaseKind | ''); setPage(1); }}>
             <option value="">Tất cả loại</option>
-            {CASE_KINDS.map((value) => <option key={value} value={value}>{value}</option>)}
+            {CASE_KINDS.map((value) => <option key={value} value={value}>{CASE_KIND_LABELS[value]}</option>)}
           </Select>
         </Field>
         <Field label="Lọc theo trạng thái">
@@ -247,7 +256,7 @@ export function Cases() {
         rowProps={(item) => (item.id === selectedId ? { 'aria-current': 'true', className: 'ops-row--selected' } : {})}
         emptyMessage="Chưa có hồ sơ nào"
         columns={[
-          { key: 'kind', header: 'Loại', render: (item) => <Badge accent>{item.kind}</Badge> },
+          { key: 'kind', header: 'Loại', render: (item) => <span title={item.kind}><Badge accent>{CASE_KIND_LABELS[item.kind]}</Badge></span> },
           { key: 'status', header: 'Trạng thái', render: (item) => <Badge accent={item.status === 'OPEN' || item.status === 'UNDER_REVIEW'}>{item.status}</Badge> },
           { key: 'subject', header: 'Đối tượng', render: (item) => subjectLabel(item, directory) },
           { key: 'opened', header: 'Mở lúc', render: (item) => formatTime(item.openedAt) },
@@ -268,7 +277,7 @@ export function Cases() {
           {selected !== null && (
             <article aria-label="Chi tiết hồ sơ" className="ui-stack ops-subform">
               <div className="ops-detail-head">
-                <h3 ref={headingRef} tabIndex={-1}>Hồ sơ {selected.kind} · {selected.status}</h3>
+                <h3 ref={headingRef} tabIndex={-1} title={selected.kind}>Hồ sơ {CASE_KIND_LABELS[selected.kind]} · {selected.status}</h3>
                 <Button variant="ghost" onClick={closeDetail}>Đóng</Button>
               </div>
               <ol className="ops-timeline">

@@ -58,7 +58,7 @@ describe('public-site static snapshots', () => {
     await screen.findByRole('heading', { name: /Week 1/ });
     expect(screen.queryByRole('link', { name: 'Replay' })).toBeNull();
     expect(screen.getByRole('alert').textContent).toMatch(/đã cũ/);
-    expect(screen.getByRole('link', { name: 'Bảng xếp hạng' }).getAttribute('href')).toBe('#leaderboard');
+    expect(screen.getByRole('link', { name: 'Bảng xếp hạng' }).getAttribute('href')).toBe('/leaderboard');
   });
   it('retains the last good snapshot and incident ETA when polling fails', async () => {
     vi.useFakeTimers(); const { fetcher } = setup(); window.history.replaceState({}, '', '/public');

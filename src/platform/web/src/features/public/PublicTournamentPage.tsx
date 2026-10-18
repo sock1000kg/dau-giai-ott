@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { loadPublicSnapshot, type PublicSnapshot } from './snapshot.ts';
 import { Alert, Badge, Card, LinkButton, Page } from '../../ui/index.ts';
 import { RulesPage } from './RulesPage.tsx';
+import { formatScheduleValue, orderSchedule, scheduleLabel } from './schedule.ts';
 import './public.css';
 
 export function formatVnDateTime(iso: string): string {
@@ -51,6 +52,7 @@ export function PublicTournamentPage() {
             && <LinkButton variant="secondary" href={`/spectator/replays/${row.matchId}`}>Replay</LinkButton>}</li>)}</ul></Card></section>
     </div>
     <section id="leaderboard" aria-label="Bảng xếp hạng"><Card as="div" title="Bảng xếp hạng">
+      <div className="pub-section-action"><LinkButton variant="secondary" href="/leaderboard">Xem bảng xếp hạng đầy đủ →</LinkButton></div>
       <div className="ui-table-scroll pub-table-scroll"><table className="ui-table pub-table">
         <caption>Thứ hạng công khai theo bản cập nhật mới nhất</caption>
         <thead><tr><th scope="col">Hạng</th><th scope="col">Đội</th><th scope="col" className="pub-num">Elo</th><th scope="col">Điều kiện finals</th></tr></thead>
@@ -58,10 +60,15 @@ export function PublicTournamentPage() {
           <td><span className="pub-rank-value">{row.rank}</span></td><td className="pub-team">{row.team}</td><td className="pub-num">{row.rating}</td>
           <td>{row.eligible ? <Badge accent>Đủ điều kiện</Badge> : <Badge>Chưa đủ series</Badge>}</td></tr>)}</tbody></table></div></Card></section>
     <RulesPage rules={snapshot.rules} />
-    <div className="pub-grid pub-grid--thirds">
-      {([['Lịch', snapshot.schedule], ['Thông báo', snapshot.announcements], ['FAQ', snapshot.faq]] as const).map(([title, items]) =>
-        <section aria-label={title} key={title}><Card as="div" title={title}><div className="pub-entries">{items.map((row, i) =>
-          <article className="pub-entry" key={i}><h3>{row.title}</h3><p>{row.body}</p></article>)}</div></Card></section>)}
+    <div className={`pub-grid ${snapshot.faq.length > 0 ? 'pub-grid--thirds' : 'pub-grid--halves'}`}>
+      <section aria-label="Lịch"><Card as="div" title="Lịch"><div className="pub-entries">{orderSchedule(snapshot.schedule).map((row, i) =>
+        <article className="pub-entry" key={i}><h3>{scheduleLabel(row.title)}</h3><p>{formatScheduleValue(row.body)}</p></article>)}</div></Card></section>
+      <section aria-label="Thông báo"><Card as="div" title="Thông báo">{snapshot.announcements.length === 0
+        ? <p className="pub-muted">Chưa có thông báo.</p>
+        : <div className="pub-entries">{snapshot.announcements.map((row, i) =>
+          <article className="pub-entry" key={i}><h3>{row.title}</h3><p>{row.body}</p></article>)}</div>}</Card></section>
+      {snapshot.faq.length > 0 && <section aria-label="FAQ"><Card as="div" title="FAQ"><div className="pub-entries">{snapshot.faq.map((row, i) =>
+        <article className="pub-entry" key={i}><h3>{row.title}</h3><p>{row.body}</p></article>)}</div></Card></section>}
     </div>
   </Page>;
 }
