@@ -1019,7 +1019,7 @@ server-lab/CDN AC-14 evidence; finals uses the prepared public DTO interface.
 
 ## Phase 3 — Wave 7: finals domain và LAN control plane
 
-### [ ] P3-L06 — Finals 8-team bracket/BO3/game-adapter scoring
+### [x] P3-L06 — Finals 8-team bracket/BO3/game-adapter scoring
 
 **Owner:** Long Trần
 **Mô tả:** Hiện thực Finals Format v1: 8 unique seed, no-group single-elimination BO3, optional bronze, map/side policy và versioned game-adapter score breakdown.
@@ -1028,6 +1028,7 @@ server-lab/CDN AC-14 evidence; finals uses the prepared public DTO interface.
 **Dependencies:** `P3-T01`, Checkpoint `P3-2B`, `P3-L03`.
 **Files likely touched:** `src/platform/api/src/modules/finals/seeding.ts`, `src/platform/api/src/modules/finals/scheduling.ts`, `src/platform/api/src/modules/finals/scoring.ts`, `src/platform/api/tests/finals-domain.test.ts`, `docs/contracts/finals-format-v1.md`.
 **Estimated scope:** M (5 files)
+**Hoàn tất:** 2026-10-18 — PR #39 merged. Domain thuần trong `src/platform/api/src/modules/finals/`: `seedFinals` (tie-break Elo → series wins → game-point differential → head-to-head chỉ khi bucket đúng 2 đội → draw deterministic từ `drawSeed` đã commit; loại đội dưới ngưỡng D-22 bằng `finalsEligibility` của `P3-L03`; seed 1..8 bất biến kèm `seedingHash` + `verifyLockedSeeding` để chứng minh AC-09 "không đổi sau khi khóa"), `createFinalsBracket` (QF cố định `1–8/4–5/2–7/3–6`, SF/F và bronze với `bronzeMatchEnabled` mặc định bật), `planSeriesGames` (game 1/2 hoán đổi X/O, game 3 lấy phía từ `seriesSeed`, map không lặp đến khi cạn pool), `resolveBracket` (chỉ tiến khi series `FINALIZED`, từ chối winner không thuộc cặp), `applySeriesOverride` (bắt buộc reason/actor/time/evidence), `decideFinalsGame` (winner trực tiếp → ordered `scoreBreakdown` với `HIGHER_WINS`/`LOWER_WINS` → fallback seed tốt hơn ⇒ game không hòa, D-05; adapter id/version phải khớp bản pin) và `scoreFinalsSeries` (BO3 thắng 2). Verification: `finals-domain` 35/35 pass (AC-09 fixture, property test bracket/schedule/scoring và 7 mutation: tie-break, draw seed, side swap, map non-repeat, breakdown order, adapter version, seed fallback), `npm run typecheck --workspace @ott/platform-api` sạch; full `@ott/platform-api` 366 pass/98 skip/1 fail — fail là `tests/db/migrations-registry.test.ts`, đã chứng minh có sẵn trên `main` (park toàn bộ file L06 ra ngoài vẫn fail, pass ở `80e4078`) nên không thuộc task này. Docs: `docs/contracts/finals-format-v1.md` (status + Implementation notes + 19 error code). Ngoài phạm vi: persistence, `FinalsRuleSet`, LAN cutoff và ResultBundle thuộc `P3-D08`/`P3-D09`. GitNexus chưa index worktree L06 nên `detect-changes` không chạy được; bù bằng kiểm tra 0 consumer của `modules/finals` (thay đổi thuần additive).
 
 ### [ ] P3-D08 — Finals control plane, seeding và LAN submission cutoff
 
