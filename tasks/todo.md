@@ -1041,7 +1041,7 @@ server-lab/CDN AC-14 evidence; finals uses the prepared public DTO interface.
 **Acceptance criteria:** (1) chỉ eligible locked ranking được seed; (2) finals submission qua LAN vẫn preflight và fallback qualification ACTIVE chỉ khi tương thích; (3) close cutoff pin artifact/rules/map pool, retry idempotent và audit đầy đủ.
 **Verification:** PostgreSQL/API integration cho seed/cutoff/RBAC; incompatible/finalized mutation rejected; `npm run typecheck --workspace @ott/platform-api`.
 **Dependencies:** `P3-L06`, `P3-D01`, `P3-D03`.
-**Files likely touched:** `src/platform/api/migrations/0014_finals.sql`, `src/platform/api/src/modules/finals/service.ts`, `src/platform/api/src/modules/finals/routes.ts`, `src/platform/api/tests/finals.integration.test.ts`, `docs/contracts/finals-api-v1.md`.
+**Files likely touched:** `src/platform/api/migrations/0016_finals.sql`, `src/platform/api/src/modules/finals/service.ts`, `src/platform/api/src/modules/finals/routes.ts`, `src/platform/api/tests/finals.integration.test.ts`, `docs/contracts/finals-api-v1.md`.
 **Estimated scope:** M (5 files)
 
 ### [ ] P3-N07 — Isolated LAN deployment và single-server local recovery
@@ -1069,8 +1069,8 @@ server-lab/CDN AC-14 evidence; finals uses the prepared public DTO interface.
 **Acceptance criteria:** (1) exporter ký canonical manifest bằng private key chỉ ở offline/finals, online giữ allowlisted public key; (2) importer verify signature/checksum/completeness và từ chối toàn bundle nếu một byte sai; (3) same bundle idempotent, corrected bundle cần version/reason/audit mới và public proof metadata có `VERIFIED`.
 **Verification:** API integration và AC-20 valid/tamper/wrong-key/missing-file tests; test-key fixture; no partial publication query.
 **Dependencies:** `P3-D08`, `P3-N07`.
-**Files likely touched:** `src/platform/api/migrations/0015_result_bundles.sql`, `src/platform/api/src/modules/result-bundles/exporter.ts`, `src/platform/api/src/modules/result-bundles/importer.ts`, `src/platform/api/src/modules/result-bundles/routes.ts`, `src/platform/api/tests/result-bundles.integration.test.ts`.
-**Estimated scope:** M (5 files)
+**Files likely touched:** `src/platform/api/migrations/0017_result_bundles.sql`, `src/platform/api/src/modules/result-bundles/canonical.ts`, `src/platform/api/src/modules/result-bundles/exporter.ts`, `src/platform/api/src/modules/result-bundles/importer.ts`, `src/platform/api/src/modules/result-bundles/routes.ts`, `src/platform/api/tests/result-bundles.integration.test.ts`, `docs/contracts/finals-result-bundle-v1.md`.
+**Estimated scope:** M (7 files)
 
 ### [ ] P3-D10 — Finals bracket, schedule/results và verified replay public UI
 
