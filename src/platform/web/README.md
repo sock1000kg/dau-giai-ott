@@ -163,3 +163,7 @@ the access-denied page). `features/operations/OperationsConsole.tsx` composes:
 
 Server error codes are mapped to stable Vietnamese messages (`operationsErrorMessage` in `api.ts`); server
 text is never displayed. Verification: `npm test --workspace @ott/platform-web -- operations`.
+
+## UI conventions
+
+Shared design tokens and components live in `src/ui` (see `src/ui/README.md`). New pages use the `ui-*` primitives plus a per-feature stylesheet; do not add page-level rules to `app/styles.css`. Authenticated pages are wrapped by `AppShellLayout` (navigation, skip link, `#main`).
