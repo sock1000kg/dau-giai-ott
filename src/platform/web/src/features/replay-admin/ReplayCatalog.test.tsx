@@ -117,7 +117,9 @@ describe('BTC replay publication console', () => {
     window.history.replaceState({}, '', '/admin/replays');
     render(<App />);
     expect(await screen.findByRole('heading', { name: /phát hành replay/i })).toBeTruthy();
-    expect(screen.getByRole('status').textContent).toMatch(/đang tải/i);
+    // The heading renders before the catalog effect has issued its request; wait for that request explicitly.
+    expect((await screen.findByRole('status')).textContent).toMatch(/đang tải/i);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
     if (resolveCatalog === undefined) throw new Error('catalog request was not started');
     resolveCatalog(response(200, catalog()));
     expect(await screen.findByRole('heading', { name: /alpha.*beta/i })).toBeTruthy();

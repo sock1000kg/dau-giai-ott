@@ -26,6 +26,37 @@ The browser host must route `/api/v1` to the platform API on the same origin.
 Production secrets and API credentials must never be embedded in the Vite
 client bundle.
 
+## UI conventions
+
+- **Primitives.** Shared tokens and components live in `src/ui` (`Page`, `Card`, `Field`, `Input`/`Select`/`Textarea`, `Button`, `LinkButton`, `Table`, `Alert`, `Badge`, `AppNav`, `AppShellLayout`); see `src/ui/README.md`. Import from `src/ui/index.ts`.
+- **One stylesheet per feature.** Each feature imports its own CSS file from the component that needs it. Do not add page rules to `app/styles.css`.
+- **Class prefixes.** `ui-` shared primitives; `ops-` operations; `ra-` replay admin; `pub-` public pages (leaderboard, tournament); `results-` results; `submissions-` submissions; `auth-` login; `teams-` team provisioning. Prefix new classes with the feature's prefix.
+- **Pages.** One `h1` per page (via `Page`, except pages that render their own `main`), one `main` landmark, every control labelled through `Field`, tables with a caption, dates in Vietnam time (`lib/format-date.ts`), shared button wording ("Làm mới", "Thử lại", "Trang trước", "Trang sau").
+- **Adding a page.** Create `features/<name>/<Name>Page.tsx` using `Page`, add `<name>.css` for layout, register the route and role in `app/routes.tsx`, add a nav item in `ui/AppNav.tsx` if it needs one, add the row to the inventory below, and add the route to the matrix in `app/app-routes.test.tsx` (it checks landmarks, labels, ids, nav `aria-current`, console output and that every request is mocked in `test/route-fixtures.ts`).
+- **Routed test.** `npm test --workspace @ott/platform-web -- app-routes` renders the whole app per role and path with one shared fetch router and the structural checker in `test/a11y-checks.ts`. It is a structural check, not a browser or screen-reader verification.
+
+## Page inventory
+
+| Route | Role | Component | Feature CSS | Owner task |
+| --- | --- | --- | --- | --- |
+| `/` (and `/login`) | anonymous | `features/auth/LoginPage.tsx` | `auth.css` | `P3-D15` |
+| `/` | BTC, team | `features/home/HomePage.tsx` | `ui/ui.css` | `P3-D11` |
+| `/public` | anyone | `features/public/PublicTournamentPage.tsx` | `public.css` | `P3-L05` |
+| `/leaderboard` | anyone | `features/leaderboard/LeaderboardPage.tsx` | `leaderboard.css` | `P2-T22` |
+| `/admin/teams` | BTC | `features/admin-teams/TeamProvisionPage.tsx` | `admin-teams.css` | `P3-D14` |
+| `/admin/rounds` | BTC | `features/round-admin/RoundAdminPage.tsx` | none (legacy rules in `app/styles.css`) | `P3-D02` / `P3-D02b` |
+| `/admin/operations` | BTC | `features/operations/OperationsConsole.tsx` | `operations.css` | `P3-D12` |
+| `/admin/results` | BTC | `features/results/MatchResultsPage.tsx` | `results.css` | `P3-D13` |
+| `/admin/replays` | BTC | `features/replay-admin/ReplayCatalog.tsx` | `replay-admin.css` | `P2-T25` |
+| `/admin/replays/:id/view`, `/team/replays/:id` | BTC, team | `pages/PrivateReplayPage.tsx` | `app/styles.css` | `P2-T27` |
+| `/spectator/replays/:id` | anyone | `pages/SpectatorReplayPage.tsx` | `app/styles.css` | `P2-T27` |
+| `/team/submissions` | team | `features/submissions/SubmissionForm.tsx` | `submissions.css` | `P2-T20` |
+| `/team/results` | team | `features/results/MatchResultsPage.tsx` | `results.css` | `P3-D13` |
+
+The case detail in the operations console (`/admin/operations`) scrolls into view and takes focus when a case opens, shows load failures inside the detail area with a retry, and returns focus to the row's "Xem" button on "Đóng". Behaviour is covered by jsdom tests only; real scroll and focus feel in a browser is not verified.
+
+## Feature notes (API and behaviour)
+
 ## BTC team provisioning (`P2-T19`, `P3-D04`)
 
 The BTC-only screen uses `GET /api/v1/admin/teams`, `POST /api/v1/admin/teams` with only `{ name }`,
@@ -208,7 +239,3 @@ Matches and series render as bordered tables (horizontal scroll inside the table
 ## Login and MFA screens (`P3-D15`)
 
 `features/auth/LoginPage.tsx` renders the password and 2-step screens with the `ui/*` primitives and `auth.css`, outside `AppShellLayout`. API calls and error mapping are unchanged. The password step has a "Hiện mật khẩu" toggle (`aria-pressed`, resets to hidden when MFA starts). When MFA starts the password is cleared from state; "Quay lại" returns to the password step and clears codes and errors. Nothing credential-like is stored in browser storage.
-
-## UI conventions
-
-Shared design tokens and components live in `src/ui` (see `src/ui/README.md`). New pages use the `ui-*` primitives plus a per-feature stylesheet; do not add page-level rules to `app/styles.css`. Authenticated pages are wrapped by `AppShellLayout` (navigation, skip link, `#main`).

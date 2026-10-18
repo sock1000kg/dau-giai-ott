@@ -195,6 +195,7 @@ describe('replay admin UI: states', () => {
     window.history.replaceState({}, '', '/admin/replays');
     render(<App />);
     expect((await screen.findByText('Đang tải danh sách replay…')).getAttribute('role')).toBe('status');
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
     resolveCatalog?.(response(200, catalog([])));
     expect(await screen.findByText('Chưa có replay đủ điều kiện phát hành.')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Làm mới' }));

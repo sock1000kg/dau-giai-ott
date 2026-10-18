@@ -1,6 +1,7 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type HTMLAttributes, type ReactNode } from 'react';
 import { Alert, Button, Card, Field, Input, Select } from '../../ui/index.ts';
 import { listMatches, listTeams, operationsErrorMessage, type MatchOption, type TeamOption } from './api.ts';
+import { formatVietnamDateTime } from '../../lib/format-date.ts';
 import './operations.css';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -13,10 +14,7 @@ export function shortId(id: string): string {
   return id.slice(0, 8);
 }
 
-export function formatTime(value: string): string {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString('vi-VN');
-}
+export const formatTime = formatVietnamDateTime;
 
 export function matchLabel(match: MatchOption): string {
   return `${match.stage} · Game ${match.gameNumber} · ${match.teams.x.name} vs ${match.teams.o.name} · ${match.status}`;
@@ -38,11 +36,12 @@ export function Panel({ id, title, description, children }: Readonly<{ id: strin
 }
 
 /** Read-only table that always renders (caption stays discoverable) and shows an empty row. */
-export function DataTable<Row>({ caption, columns, rows, rowKey, emptyMessage }: Readonly<{
+export function DataTable<Row>({ caption, columns, rows, rowKey, rowProps, emptyMessage }: Readonly<{
   caption: string;
   columns: readonly { readonly key: string; readonly header: string; readonly render: (row: Row) => ReactNode }[];
   rows: readonly Row[];
   rowKey: (row: Row) => string;
+  rowProps?: (row: Row) => HTMLAttributes<HTMLTableRowElement>;
   emptyMessage: string;
 }>) {
   return (
@@ -52,7 +51,7 @@ export function DataTable<Row>({ caption, columns, rows, rowKey, emptyMessage }:
         <thead><tr>{columns.map((column) => <th key={column.key} scope="col">{column.header}</th>)}</tr></thead>
         <tbody>
           {rows.length === 0 && <tr><td colSpan={columns.length} className="ops-empty-cell">{emptyMessage}</td></tr>}
-          {rows.map((row) => <tr key={rowKey(row)}>{columns.map((column) => <td key={column.key}>{column.render(row)}</td>)}</tr>)}
+          {rows.map((row) => <tr key={rowKey(row)} {...rowProps?.(row)}>{columns.map((column) => <td key={column.key}>{column.render(row)}</td>)}</tr>)}
         </tbody>
       </table>
     </div>

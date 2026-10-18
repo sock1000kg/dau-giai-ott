@@ -20,3 +20,7 @@
 .ops-checkbox input { width: 24px; height: 24px; flex: none; margin: 0; accent-color: var(--ui-accent); }
 .ops-checkbox input:focus-visible { outline: var(--ui-focus-ring); outline-offset: 2px; }
 .ops-code { overflow-wrap: anywhere; font-family: ui-monospace, monospace; font-size: 12px; }
+.ops-row--selected td { background: rgba(128, 228, 208, 0.12); }
+.ops-detail-head { display: flex; align-items: center; justify-content: space-between; gap: var(--ui-space-3); }
+.ops-detail-head h3 { margin: 0; color: var(--ui-text); }
+.ops-detail-head h3:focus-visible { outline: var(--ui-focus-ring); outline-offset: 4px; }

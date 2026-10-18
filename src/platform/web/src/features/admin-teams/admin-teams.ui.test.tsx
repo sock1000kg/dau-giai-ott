@@ -119,6 +119,8 @@ describe('admin teams UI', () => {
     render(<App />);
     const refresh = await screen.findByRole('button', { name: 'Làm mới' });
     expect(refresh.hasAttribute('disabled')).toBe(true);
+    // The button renders before the list effect has issued its request; wait for that request explicitly.
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
     resolveList?.(json(200, { data: [] }));
     expect(await screen.findByText(/chưa có đội nào/i)).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Làm mới' }));

@@ -119,6 +119,11 @@ export function Cases() {
   const [pagination, setPagination] = useState<Pagination>({ page: 1, totalPages: 1, totalItems: 0 });
   const [selected, setSelected] = useState<CaseDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [detailError, setDetailError] = useState<{ readonly id: string; readonly message: string } | null>(null);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const tableRef = useRef<HTMLDivElement>(null);
+  const latestRequest = useRef(0);
   const [kindFilter, setKindFilter] = useState<CaseKind | ''>('');
   const [statusFilter, setStatusFilter] = useState<CaseStatus | ''>('');
   const [page, setPage] = useState(1);
@@ -141,12 +146,37 @@ export function Cases() {
   }, [kindFilter, statusFilter, page]);
   useEffect(() => { void load(); }, [load]);
 
-  async function select(id: string) {
+  const selectedId = selected?.id ?? null;
+  useEffect(() => {
+    if (selectedId === null) return;
+    const heading = headingRef.current;
+    if (heading === null) return;
+    if (typeof heading.scrollIntoView === 'function') heading.scrollIntoView({ block: 'nearest' });
+    heading.focus();
+  }, [selectedId]);
+
+  /** `refresh` re-reads the open case after an action without a loading state or a focus move. */
+  async function select(id: string, refresh = false) {
+    const request = ++latestRequest.current;
+    if (!refresh) setLoadingId(id);
+    setDetailError(null);
     try {
-      setSelected(await getCase(id));
+      const detail = await getCase(id);
+      if (request === latestRequest.current) setSelected(detail);
     } catch (cause) {
-      setError(operationsErrorMessage(cause));
+      if (request === latestRequest.current) setDetailError({ id, message: operationsErrorMessage(cause) });
+    } finally {
+      if (request === latestRequest.current) setLoadingId(null);
     }
+  }
+
+  function closeDetail() {
+    const id = selected?.id ?? detailError?.id ?? null;
+    latestRequest.current += 1;
+    setSelected(null);
+    setDetailError(null);
+    setLoadingId(null);
+    if (id !== null) tableRef.current?.querySelector<HTMLElement>(`[data-case-id="${id}"]`)?.focus();
   }
 
   async function open(event: FormEvent) {
@@ -209,33 +239,50 @@ export function Cases() {
         </Field>
       </div>
       {error !== null && <Alert tone="danger">{error}</Alert>}
+      <div ref={tableRef}>
       <DataTable
         caption="Danh sách hồ sơ"
         rows={cases}
         rowKey={(item) => item.id}
+        rowProps={(item) => (item.id === selectedId ? { 'aria-current': 'true', className: 'ops-row--selected' } : {})}
         emptyMessage="Chưa có hồ sơ nào"
         columns={[
           { key: 'kind', header: 'Loại', render: (item) => <Badge accent>{item.kind}</Badge> },
           { key: 'status', header: 'Trạng thái', render: (item) => <Badge accent={item.status === 'OPEN' || item.status === 'UNDER_REVIEW'}>{item.status}</Badge> },
           { key: 'subject', header: 'Đối tượng', render: (item) => subjectLabel(item, directory) },
           { key: 'opened', header: 'Mở lúc', render: (item) => formatTime(item.openedAt) },
-          { key: 'view', header: 'Xem', render: (item) => <Button variant="secondary" onClick={() => void select(item.id)}>Xem {shortId(item.id)}</Button> },
+          { key: 'view', header: 'Xem', render: (item) => <Button variant="secondary" data-case-id={item.id} loading={loadingId === item.id} onClick={() => void select(item.id)}>Xem {shortId(item.id)}</Button> },
         ]}
       />
+      </div>
       <PageControls page={pagination.page} totalPages={pagination.totalPages} onPage={setPage} />
-      {selected !== null && (
-        <article aria-label="Chi tiết hồ sơ" className="ui-stack ops-subform">
-          <h3>Hồ sơ {selected.kind} · {selected.status}</h3>
-          <ol className="ops-timeline">
-            {[...selected.events].sort((a, b) => a.seq - b.seq).map((event) => (
-              <li key={event.seq}>
-                <span>{event.seq}. {event.eventType}{event.decision !== null ? ` (${event.decision})` : ''} — {event.reason}</span>
-                <time dateTime={event.createdAt}>{formatTime(event.createdAt)}</time>
-              </li>
-            ))}
-          </ol>
-          <CaseForms detail={selected} onDone={() => { void load(); void select(selected.id); }} />
-        </article>
+      {(selected !== null || loadingId !== null || detailError !== null) && (
+        <div className="ui-stack" data-testid="case-detail-area">
+          {loadingId !== null && <Alert>Đang tải hồ sơ…</Alert>}
+          {detailError !== null && (
+            <Alert tone="danger">
+              <span>{detailError.message}</span>{' '}
+              <Button variant="secondary" onClick={() => void select(detailError.id)}>Thử lại</Button>
+            </Alert>
+          )}
+          {selected !== null && (
+            <article aria-label="Chi tiết hồ sơ" className="ui-stack ops-subform">
+              <div className="ops-detail-head">
+                <h3 ref={headingRef} tabIndex={-1}>Hồ sơ {selected.kind} · {selected.status}</h3>
+                <Button variant="ghost" onClick={closeDetail}>Đóng</Button>
+              </div>
+              <ol className="ops-timeline">
+                {[...selected.events].sort((a, b) => a.seq - b.seq).map((event) => (
+                  <li key={event.seq}>
+                    <span>{event.seq}. {event.eventType}{event.decision !== null ? ` (${event.decision})` : ''} — {event.reason}</span>
+                    <time dateTime={event.createdAt}>{formatTime(event.createdAt)}</time>
+                  </li>
+                ))}
+              </ol>
+              <CaseForms detail={selected} onDone={() => { void load(); void select(selected.id, true); }} />
+            </article>
+          )}
+        </div>
       )}
     </Panel>
   );
