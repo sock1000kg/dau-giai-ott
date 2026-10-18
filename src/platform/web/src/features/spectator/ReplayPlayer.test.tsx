@@ -56,6 +56,33 @@ afterEach(() => {
 });
 
 describe('spectator replay player', () => {
+  it('rejects an unsupported historical engine even when its transport checksum is correct', async () => {
+    const future = JSON.parse(replayBody());
+    future.header.engineVersion = '99.0.0'; future.header.game.engineVersion = '99.0.0';
+    await expect(verifyReplayResponse(publicResponse(JSON.stringify(future)))).rejects.toMatchObject({ code: 'UNSUPPORTED_SCHEMA' });
+  });
+  it('does not reconstruct an unknown engine with the current event adapter', async () => {
+    const replay = await verifiedReplay();
+    expect(() => createReplayTimeline({ ...replay, header: { ...replay.header, engineVersion: '99.0.0',
+      game: { ...replay.header.game, engineVersion: '99.0.0' } } })).toThrow();
+  });
+  it('seeks each move to the end of its recorded entry and supports keyboard navigation', async () => {
+    render(<ReplayPlayer replay={await verifiedReplay()} />);
+    const moves = screen.getByRole('region', { name: /danh sách nước đi/i });
+    const buttons = Array.from(moves.querySelectorAll('button'));
+    expect(buttons).toHaveLength(2);
+    fireEvent.click(buttons[0]!);
+    expect(screen.getByText(/sự kiện 1 \/ 3/i)).toBeTruthy();
+    expect(buttons[0]!.getAttribute('aria-current')).toBe('step');
+    fireEvent.keyDown(buttons[0]!, { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(buttons[1]);
+    expect(screen.getByText(/sự kiện 3 \/ 3/i)).toBeTruthy();
+    expect(buttons[1]!.getAttribute('aria-current')).toBe('step');
+    fireEvent.keyDown(buttons[1]!, { key: 'Home' });
+    expect(document.activeElement).toBe(buttons[0]);
+    fireEvent.change(screen.getByRole('slider', { name: /chọn sự kiện/i }), { target: { value: '2' } });
+    expect(buttons[1]!.getAttribute('aria-current')).toBe('step');
+  });
   it('builds repeatable board frames from the recorded events', async () => {
     const replay = await verifiedReplay();
     const first = createReplayTimeline(replay);

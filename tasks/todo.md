@@ -932,6 +932,12 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 **Files likely touched:** `src/platform/web/src/features/spectator/replay-schema.ts`, `src/platform/web/src/features/spectator/replay-state.ts`, `src/platform/web/src/features/spectator/MoveList.tsx`, `src/platform/web/src/features/spectator/ReplayPlayer.tsx`, `src/platform/web/src/features/spectator/ReplayPlayer.test.tsx`.
 **Estimated scope:** M (5 files)
 
+**Local verification:** Move list, seek to the last event of each entry,
+keyboard navigation, aria-current and historical version guards implemented.
+Verified: ReplayPlayer + verify-replay 20 tests passed; web production build passed.
+L04 remains unchecked: AC3 (raw event-log v2 fixtures) awaits resolution with
+`docs/contracts/spectator-replay-v2.md`, which preserves representation v1.
+
 ### [ ] P3-L05 — Static public snapshots, queue/results/rules/status site
 
 **Owner:** Long Trần

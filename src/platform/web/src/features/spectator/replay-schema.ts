@@ -95,6 +95,11 @@ const eventTypes = ['ACTION_APPLIED', 'TURN_SKIPPED', 'MATCH_FINISHED'] as const
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const hashPattern = /^[0-9a-f]{64}$/;
 
+/** Explicit historical adapter registry. Unknown engines never use a current rule implementation. */
+export function supportsHistoricalReplay(engineVersion: string, protocolVersion: number, formatVersion: number): boolean {
+  return engineVersion === '1.0.0' && protocolVersion === 1 && formatVersion === 1;
+}
+
 function invalid(): never { throw new ReplaySchemaError('Invalid replay schema'); }
 
 function object(value: unknown): Record<string, unknown> {
@@ -218,6 +223,9 @@ export function parseSpectatorReplay(value: unknown): SpectatorReplayV1 {
     throw new SpectatorReplayError('UNSUPPORTED_SCHEMA');
   }
   const engineVersion = text(header.engineVersion);
+  if (!supportsHistoricalReplay(engineVersion, Number(header.protocolVersion), Number(header.formatVersion))) {
+    throw new SpectatorReplayError('UNSUPPORTED_SCHEMA');
+  }
   const game = object(header.game);
   const gameEngineVersion = text(game.engineVersion);
   if (gameEngineVersion !== engineVersion) return invalid();

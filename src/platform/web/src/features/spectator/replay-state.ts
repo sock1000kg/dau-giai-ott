@@ -1,5 +1,6 @@
 import type { Piece, PlayerSide, Position } from '@ott/game-core';
 import type { ReplayInput, SpectatorReplayV1 } from './replay-schema.ts';
+import { supportsHistoricalReplay } from './replay-schema.ts';
 
 export interface ReplayFrame {
   readonly pieces: readonly Piece[];
@@ -20,6 +21,22 @@ export interface ReplayTimeline {
   readonly events: readonly ReplayTimelineEvent[];
 }
 
+export interface ReplayMove {
+  readonly entryIndex: number;
+  readonly eventIndex: number;
+  readonly turnId: number;
+  readonly input: ReplayInput;
+}
+
+/** A move seeks to its entry's last frame, including a terminal event emitted by the same move. */
+export function createReplayMoves(replay: SpectatorReplayV1): readonly ReplayMove[] {
+  let eventIndex = 0;
+  return replay.entries.map((entry) => {
+    eventIndex += entry.events.length;
+    return { entryIndex: entry.index, eventIndex, turnId: entry.events[0]!.turnId, input: entry.input };
+  });
+}
+
 export class ReplayTimelineError extends Error {
   public constructor() {
     super('Replay actions cannot be reproduced from the recorded events');
@@ -36,6 +53,8 @@ function sameAction(left: ReplayInput, event: SpectatorReplayV1['entries'][numbe
 
 /** Build read-only board snapshots from the verified event stream; never runs a live game. */
 export function createReplayTimeline(replay: SpectatorReplayV1): ReplayTimeline {
+  if (!supportsHistoricalReplay(replay.header.engineVersion, replay.header.protocolVersion, replay.header.formatVersion)
+    || replay.header.game.engineVersion !== replay.header.engineVersion) throw new ReplayTimelineError();
   const pieces: Piece[] = replay.header.game.map.spawns.map((spawn) => ({
     id: spawn.id,
     owner: spawn.owner,
