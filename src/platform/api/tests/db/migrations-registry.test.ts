@@ -20,7 +20,7 @@ describe('migrations registry guard (DB-free)', () => {
     for (const migration of migrationFiles) {
       const filePath = fileURLToPath(migration.source);
       expect(existsSync(filePath)).toBe(true);
-      expect(filePath.endsWith(`/${migration.id}.sql`)).toBe(true);
+      expect(filePath.replace(/\\/g, '/').endsWith(`/${migration.id}.sql`)).toBe(true);
     }
 
     // 4. Every migrations/*.sql file on disk must be registered

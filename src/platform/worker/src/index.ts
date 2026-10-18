@@ -11,3 +11,5 @@ export { claimMatch, markAttemptFailed, persistFinalizedResult, type ClaimedMatc
 export { SandboxOciBotPort, type SandboxOciBotPortOptions } from './sandbox/oci-bot-port.ts';
 export { ArtifactValidationError, validatePinnedOciArtifact, type ArtifactErrorCode, type PinnedArtifact } from './artifacts.ts';
 export { SANDBOX_POLICY_V1, dockerSandboxHostConfig, type SandboxPolicy } from './sandbox/policy.ts';
+export { runTestJob, type RunTestJobOptions, type RunTestJobResult } from './run-test-job.ts';
+

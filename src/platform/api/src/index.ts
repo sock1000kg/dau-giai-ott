@@ -81,3 +81,24 @@ export { INFRA_FAILURE_REASONS, evaluateRerunEligibility, CASE_TRANSITIONS, canT
 export { computeRoundResultsHash } from './modules/operations/results-hash.ts';
 export { publishPublicSnapshot, projectPublicSnapshot, type PublicSnapshot } from './modules/public-snapshots/publisher.ts';
 export { collectQualificationSnapshot, publishQualificationSnapshot, type PublicEditorial } from './modules/public-snapshots/source.ts';
+
+export {
+  createTestRun,
+  getTestRunById,
+  listTestRuns,
+  refundTestRunQuota,
+  completeTestRun,
+  failTestRun,
+  getDailyConsumedQuota,
+  getRoundTestRunQuota,
+  TestRunError,
+  type TestRunRecord,
+  type TestRunStatus,
+  type TestRunOpponentType,
+  type CreateTestRunInput,
+  type CompleteTestRunInput,
+  type FailTestRunInput,
+  type TestRunEnqueuer,
+} from './modules/test-runs/service.ts';
+export { registerTestRunRoutes, type TestRunRoutesOptions } from './modules/test-runs/routes.ts';
+
