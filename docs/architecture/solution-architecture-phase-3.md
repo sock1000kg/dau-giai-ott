@@ -48,7 +48,7 @@ Giữ nguyên các nguyên tắc Phase 2:
 ```mermaid
 flowchart LR
     TEAM["Team portal<br/>login, reservation/upload, test run"] --> EDGE
-    ADMIN["BTC admin<br/>rule set, round ops, appeals"] --> ADMINEDGE
+    ADMIN["BTC admin<br/>rule set, round ops, privileged ops"] --> ADMINEDGE
     PUBLIC["Public browser<br/>rules, queue, results, leaderboard"] --> CDN
 
     EDGE["Tunnel/WAF<br/>team write/read traffic"] --> API
@@ -60,7 +60,7 @@ flowchart LR
         ROUND["RoundRuleSet + lifecycle"]
         SUB["Submission reservation<br/>OCI metadata + retention"]
         SCHED["Scheduling, rating, finals eligibility"]
-        OPS["Privileged operations<br/>audit, appeal, anti-cheat cases"]
+        OPS["Privileged operations<br/>audit, queue overrides, round results hash"]
         SNAP["Public snapshot publisher"]
         OUTBOX["Transactional outbox dispatcher"]
         API --> ROUND
@@ -211,7 +211,7 @@ ordered `scoreBreakdown`; qualification seed là fallback cuối để game luô
 | `TestRun` | Owner team immutable; opponent allowlist; không tạo rating ledger |
 | Worker registration | Heartbeat/lease/adaptive capacity versioned; stale/quá tải worker không nhận job mới |
 | Public snapshot | Version/checksum/updated-at; last-known-good publish atomic |
-| Operations case | Evidence/status/decision append-only; không sửa result/ledger/audit lịch sử |
+| Privileged operation / audit | Audit append-only (trigger DB); mọi thao tác đặc quyền có actor, reason, correlation ID và before/after; không sửa result/ledger/audit lịch sử. Hồ sơ vụ việc (anomaly/duplicate/appeal) đã bỏ ở P3-D27 (2026-10-18): khiếu nại xử lý ngoài nền tảng (email/GitHub issues) |
 | Finals bracket/series | 8 unique seeds; config/schedule immutable sau lock; advancement chỉ từ finalized results |
 | `ResultBundle` | Bundle/version unique; manifest/signature/checksum verified trước transaction publish |
 
