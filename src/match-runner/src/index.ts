@@ -35,3 +35,4 @@ export * from './core-adapter.ts';
 export * from './config.ts';
 export * from './cli.ts';
 export * from './timing-policy.ts';
+export * from './monotonic-clock.ts';

@@ -30,6 +30,7 @@ export interface MatchConfig {
     readonly timeControl: TimeControlV2;
     /** INIT `botSeed` per side; never the engine seed (`seed`). */
     readonly botSeeds: Readonly<Record<PlayerSide, string>>;
+    readonly ruleSet?: { readonly id: string; readonly version: number; readonly sha256: string };
   };
 }
 
