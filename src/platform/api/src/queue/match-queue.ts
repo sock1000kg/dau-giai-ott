@@ -34,6 +34,8 @@ export interface MatchQueueOptions {
 export interface EnqueueMatchOptions {
   readonly category?: JobQueueCategory;
   readonly priority?: QueuePriority;
+  /** Rerun generation; 0/undefined keeps the original job id, N>0 publishes a fresh `-rN` job. */
+  readonly generation?: number;
 }
 
 export interface EnqueuedMatch {
@@ -94,7 +96,9 @@ export class MatchQueue {
 
   public async enqueue(job: MatchJobV1, options?: EnqueueMatchOptions): Promise<EnqueuedMatch> {
     if (!validateMatchJob(job).ok) throw new Error('MATCH_JOB_INVALID');
-    const jobId = `match-${job.matchId}`;
+    const generation = options?.generation ?? 0;
+    if (!Number.isSafeInteger(generation) || generation < 0) throw new Error('MATCH_GENERATION_INVALID');
+    const jobId = generation > 0 ? `match-${job.matchId}-r${generation}` : `match-${job.matchId}`;
     const existing = await this.queue.getJob(jobId) as QueueJob | undefined;
     if (existing !== undefined) {
       if (payloadHash(existing.data) !== payloadHash(job)) {

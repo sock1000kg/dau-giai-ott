@@ -11,6 +11,8 @@ import { registerLeaderboardRoutes } from './modules/ratings/routes.ts';
 import { registerResultRoutes } from './modules/results/routes.ts';
 import { registerReplayRoutes } from './modules/replays/routes.ts';
 import { registerRoundRoutes } from './modules/rounds/routes.ts';
+import { registerOperationsRoutes } from './modules/operations/routes.ts';
+import type { MatchJobEnqueuer } from './modules/scheduling/service.ts';
 import type { ObjectStorage } from './storage/s3.ts';
 import { createPasswordHasher, type PasswordHashPolicy } from './modules/auth/passwords.ts';
 import { createRedisAuthStore, type RedisAuthCommands } from './modules/auth/sessions.ts';
@@ -35,6 +37,7 @@ export interface CreateAuthAppOptions {
   readonly storage?: ObjectStorage;
   readonly security?: SecurityConfig;
   readonly uploadLimiter?: UploadLimiterOptions;
+  readonly matchEnqueuer?: MatchJobEnqueuer;
   readonly now?: () => Date;
 }
 
@@ -159,6 +162,7 @@ export function createAuthApp(options: CreateAuthAppOptions): FastifyInstance {
   registerLeaderboardRoutes(application, { database: options.database });
   registerResultRoutes(application, { database: options.database });
   registerRoundRoutes(application, { database: options.database });
+  registerOperationsRoutes(application, { database: options.database, sessionStore: authStore, enqueuer: options.matchEnqueuer });
   if (options.storage !== undefined) {
     registerSubmissionRoutes(application, {
       database: options.database,
