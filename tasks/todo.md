@@ -893,6 +893,7 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 **Files likely touched:** `src/platform/api/migrations/0010_oci_layers.sql`, `src/platform/api/src/modules/submissions/layers.ts`, `src/platform/worker/src/artifacts.ts`, `src/bots/starter-kits/README.md`, `src/platform/api/tests/oci-retention.integration.test.ts`.
 **Estimated scope:** M (5 files)
 **Hoàn tất:** 2026-10-18 — OCI layer deduplication, AC-22 duplicate detection, D-18 retention invariants và starter kits FAQ: migration `0010_oci_layers.sql` tạo `oci_layers`, `submission_layers`, thêm `duplicate_of_submission_id`, `duplicate_review_flag`, `duplicate_review_reason` vào bảng `submissions`; `layers.ts` cung cấp `recordSubmissionLayers` (dedup theo digest, track new/shared count), `checkDuplicateSubmission` (AC-22: tự động so khớp manifest digest hoặc non-base layers của đội khác, gắn flag và ghi audit event `DUPLICATE_SUBMISSION_FLAGGED` mà không huỷ submission), `evaluateRetention` và `runRetentionPrune` (D-18 invariants: không xóa ACTIVE, không xóa match submissions, giữ top 3 per team, dry-run report khớp fixture trước delete, bảo vệ race condition re-referencing); `artifacts.ts` bổ sung `OFFICIAL_BASE_IMAGES` (Python 3.12-slim, Node 22-slim, Go 1.22-alpine) và `extractOciLayersFromArchive`; `src/bots/starter-kits/README.md` công bố bảng digest, hướng dẫn reproducible build và FAQ; test `oci-retention.integration.test.ts` 9/9 pass, Python bot unit tests 27/27 pass, worker và api typecheck/build clean.
+**Còn mở (2026-10-18, phát hiện khi review UI):** `checkDuplicateSubmission`, `recordSubmissionLayers`, `evaluateRetention`, `runRetentionPrune` và `getSubmissionLayers` trong `src/platform/api/src/modules/submissions/layers.ts` chỉ được export và test; **không có caller nào trong đường upload/preflight/worker** (`grep -rn` chỉ thấy `layers.ts`, `src/index.ts` và test). Vì vậy `duplicate_review_flag` không bao giờ được set trong hệ thống thật, layer không được ghi vào `submission_layers` và retention prune không chạy. BTC cũng chưa có danh sách submission bị flag (endpoint `GET /api/v1/submissions` chỉ cho `TEAM_ACCOUNT`). Cần: nối vào pipeline upload/preflight, lịch chạy prune, và (sau) một danh sách flagged cho BTC. Chưa tick lại AC-22 cho tới khi nối xong.
 
 
 ### [ ] P3-L03 — Qualification gate, adaptive K và minimum-series eligibility
@@ -1044,7 +1045,7 @@ server-lab/CDN AC-14 evidence; finals uses the prepared public DTO interface.
 **Files likely touched:** `src/platform/api/migrations/0016_finals.sql`, `src/platform/api/src/modules/finals/service.ts`, `src/platform/api/src/modules/finals/routes.ts`, `src/platform/api/tests/finals.integration.test.ts`, `docs/contracts/finals-api-v1.md`.
 **Estimated scope:** M (5 files)
 
-### [ ] P3-N07 — Isolated LAN deployment và single-server local recovery
+### [x] P3-N07 — Isolated LAN deployment và single-server local recovery
 
 **Owner:** Đỗ Khôi Nguyên
 **Mô tả:** Đóng gói topology finals không Internet trên server lab, tách participant/audience network và có backup/restore/control-plane recovery tại chỗ.
@@ -1053,6 +1054,7 @@ server-lab/CDN AC-14 evidence; finals uses the prepared public DTO interface.
 **Dependencies:** `P3-D08`, `P3-N05`.
 **Files likely touched:** `deploy/lan/compose.yml`, `deploy/lan/.env.example`, `scripts/lan-smoke.sh`, `tests/e2e/lan-recovery.test.ts`, `docs/runbooks/finals-lan.md`.
 **Estimated scope:** M (5 files)
+**Hoàn tất:** 2026-10-18 — Finals isolated LAN deployment và single-server recovery: Docker Compose topology `deploy/lan/compose.yml` định nghĩa 2 mạng riêng biệt (`ott-lan-internal` với `internal: true` đảm bảo No-Egress, worker không bind host port và chỉ gắn vào mạng nội bộ, CSDL postgres/redis/seaweedfs hoàn toàn cô lập khỏi mạng đội thi; `ott-lan-public` chỉ mở ingress HTTP/HTTPS cho web/api); cấu hình offline `deploy/lan/.env.example` với startup guards chế độ `finals_lan`; script kiểm tra khói tự động `scripts/lan-smoke.sh` xác thực cấu hình cô lập mạng, không mở cổng worker và ngắt kết nối WAN; test phục hồi toàn diện `tests/e2e/lan-recovery.test.ts` (11/11 pass) xác thực cô lập mạng, worker heartbeat với adaptive capacity, kiểm soát tạm dừng an toàn `pauseAdmission`, outbox generation increment khi restart, đối soát toàn vẹn SHA-256 manifest khi restore CSDL/artifact và rerun chỉ chấp nhận lỗi hạ tầng chống ghi đúp kết quả/nhánh đấu; sổ tay vận hành `docs/runbooks/finals-lan.md` chuẩn hóa toàn bộ quy trình vận hành và tiêu chí nghiệm thu Checkpoint P3-F1.
 
 ## [ ] Checkpoint P3-F1 — Finals chạy hoàn toàn trong LAN
 
