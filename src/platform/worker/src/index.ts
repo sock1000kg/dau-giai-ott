@@ -12,4 +12,27 @@ export { SandboxOciBotPort, type SandboxOciBotPortOptions } from './sandbox/oci-
 export { ArtifactValidationError, validatePinnedOciArtifact, type ArtifactErrorCode, type PinnedArtifact } from './artifacts.ts';
 export { SANDBOX_POLICY_V1, dockerSandboxHostConfig, type SandboxPolicy } from './sandbox/policy.ts';
 export { runTestJob, type RunTestJobOptions, type RunTestJobResult } from './run-test-job.ts';
+export {
+  loadWorkerRuntimeConfig,
+  WorkerRuntimeConfigError,
+  type WorkerRuntimeConfig,
+  type ConfigIssue,
+} from './runtime/config.ts';
+export {
+  createWorkerRuntime,
+  startWorker,
+  pingDocker,
+  routeJob,
+  createRedisReconnectStrategy,
+  WorkerRuntimeShutdownError,
+  type WorkerRuntime,
+  type WorkerRuntimeDependencies,
+  type RedisReconnectStrategyController,
+} from './runtime/server.ts';
+export {
+  createMetricsServer,
+  type WorkerMetricsServer,
+  type WorkerMetricsServerOptions,
+  type WorkerRuntimeLogger,
+} from './runtime/metrics-server.ts';
 

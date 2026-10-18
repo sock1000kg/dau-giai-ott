@@ -6,19 +6,20 @@
   "engines": { "node": "^22.12.0" },
   "exports": { ".": "./src/index.ts" },
   "scripts": {
+    "start": "tsx src/main.ts",
+    "dev": "tsx watch src/main.ts",
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run",
     "build": "tsc -p tsconfig.build.json"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "3.1149.0",
     "@ott/bot-protocol": "*",
     "@ott/game-core": "*",
     "@ott/job-contract": "*",
     "@ott/match-runner": "*",
+    "@ott/platform-api": "*",
     "bullmq": "6.3.13",
     "ioredis": "5.9.3"
-  },
-  "devDependencies": {
-    "@ott/platform-api": "*"
   }
 }
