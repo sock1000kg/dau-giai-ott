@@ -37,7 +37,23 @@ export {
   type SeriesSettlement,
   type MatchJobEnqueuer,
 } from './modules/scheduling/service.ts';
-export { calculateEloDelta, expectedScore } from './modules/ratings/elo.ts';
+export {
+  calculateEloDelta,
+  expectedScore,
+  kFactorFor,
+  RATING_POLICIES,
+  CURRENT_RATING_POLICY,
+  LEGACY_RATING_POLICY,
+  type RatingPolicyVersion,
+} from './modules/ratings/elo.ts';
+export {
+  DEFAULT_MINIMUM_FINALS_SERIES,
+  finalsEligibility,
+  isSubmissionRankable,
+  type FinalsEligibility,
+} from './modules/scheduling/eligibility.ts';
+export { evaluateGate, type GateEvaluation, type GateGameInput } from './modules/qualification-gate/gate.ts';
+export { recordGateResult, listGateResults, type GateResultView, type RecordGateInput } from './modules/qualification-gate/service.ts';
 export { applyRoundRatings, rebuildRatingLedger } from './modules/ratings/service.ts';
 export { createS3Storage, type ObjectStorage, type S3StorageOptions } from './storage/s3.ts';
 export { MatchQueue, MATCH_QUEUE_NAME, type MatchQueueOptions, type EnqueuedMatch } from './queue/match-queue.ts';

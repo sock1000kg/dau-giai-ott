@@ -14,7 +14,7 @@ export function LeaderboardTable({ items }: Readonly<{ items: readonly Leaderboa
         </tr></thead>
         <tbody>{items.map((item) => <tr key={item.team.id}>
           <th scope="row"><span className="rank-value">{item.rank}</span>{item.tieBreakStatus === 'BTC_REQUIRED' && <span className="tie-break-status">BTC cần quyết định</span>}</th>
-          <td className="leaderboard-team">{item.team.name}</td>
+          <td className="leaderboard-team">{item.team.name}{item.ratingStatus === 'UNRANKED_MIN_SERIES' && <span className="unranked-status"> Chưa xếp hạng</span>}</td>
           <td>{numberFormat.format(item.rating)}</td>
           <td>{numberFormat.format(item.headToHeadPoints)}</td>
           <td>{item.series.wins} / {item.series.draws} / {item.series.losses}</td>
