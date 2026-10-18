@@ -102,4 +102,26 @@ export {
   type TestRunEnqueuer,
 } from './modules/test-runs/service.ts';
 export { registerTestRunRoutes, type TestRunRoutesOptions } from './modules/test-runs/routes.ts';
+export {
+  loadRuntimeConfig,
+  RuntimeConfigError,
+  type RuntimeConfig,
+  type ConfigIssue,
+} from './runtime/config.ts';
+export {
+  createRuntime,
+  startServer,
+  createRedisReconnectStrategy,
+  RuntimeShutdownError,
+  type RuntimeServer,
+  type RuntimeDependencies,
+  type RuntimeLogger,
+  type RedisReconnectStrategyController,
+} from './runtime/server.ts';
+export {
+  registerHealthRoutes,
+  type HealthCheck,
+  type HealthLogger,
+  type HealthRoutesOptions,
+} from './runtime/health.ts';
 

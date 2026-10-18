@@ -537,3 +537,90 @@ itself; client points are rejected. A game that is not finalized (running, `FAIL
 
 `npm test --workspace @ott/platform-api -- ratings` and `-- qualification-gate` (unit/route tests need no services;
 `qualification-gate.integration.test.ts` needs `DATABASE_URL`).
+
+## Running the API (P3-D30)
+
+`P3-D30` implements the API runtime host: an executable entrypoint (`src/main.ts`), aggregated environment contract validation (`src/runtime/config.ts`), health and readiness probes (`src/runtime/health.ts`), and clean graceful shutdown handling (`src/runtime/server.ts`).
+
+### Environment Variables
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `DATABASE_URL` | **Yes** | - | PostgreSQL connection URL (`postgres://` or `postgresql://`). |
+| `REDIS_URL` | **Yes** | - | Redis connection URL (`redis://` or `rediss://`). |
+| `S3_ENDPOINT` | **Yes** | - | S3/SeaweedFS HTTP endpoint (`http://` or `https://`). |
+| `S3_BUCKET` | **Yes** | - | S3 bucket name. |
+| `S3_ACCESS_KEY_ID` | **Yes** | - | S3 access key ID. |
+| `S3_SECRET_ACCESS_KEY` | **Yes** | - | S3 secret access key. |
+| `S3_REGION` | No | `us-east-1` | S3 region. |
+| `HOST` | No | `127.0.0.1` | Network interface to bind HTTP listener. |
+| `PORT` | No | `3000` | Port to bind HTTP listener (0–65535, `0` for test ephemeral port). |
+| `OTT_DEPLOYMENT_MODE` | **Yes** | - | Mode: `dev`, `test`, `hosted`, or `production`. |
+| `OTT_RUN_MIGRATIONS` | No | `false` | When `true`, automatically applies pending schema migrations at startup. |
+| `OTT_SHUTDOWN_TIMEOUT_MS` | No | `10000` | Maximum milliseconds to await graceful shutdown before continuing cleanup. |
+| `OTT_MATCH_QUEUE` | No | `ott.match.v1` | Name of the BullMQ match job queue. |
+| `OTT_SECURE_COOKIES` | No | `true` (hosted/prod) / `false` (dev/test) | Set `Secure` attribute on session and challenge cookies. |
+| `OTT_BOOTSTRAP_BTC_USERNAME` | No | - | BTC admin username to idempotently create on startup. |
+| `OTT_BOOTSTRAP_BTC_PASSWORD` | No | - | BTC admin password (required if `OTT_BOOTSTRAP_BTC_USERNAME` is set). |
+| `OTT_BOOTSTRAP_BTC_TOTP_SECRET` | No | - | Optional Base32 TOTP secret for the initial BTC admin. |
+| `OTT_ADMIN_TOTP_REQUIRED` | In hosted/prod | `false` | Require TOTP MFA for BTC admins. |
+| `OTT_ADMIN_ALLOWLIST` | In hosted/prod | `[]` | Comma-separated CIDRs permitted to access admin routes. |
+| `OTT_TRUSTED_PROXIES` | In hosted/prod | `none` | Comma-separated CIDRs of reverse proxies (or literal `none`). |
+| `OTT_TOTP_ENCRYPTION_KEY` | With TOTP | `null` | Base64-encoded 32-byte key for encrypting TOTP secrets at rest. |
+| `OTT_WRITE_RATE_LIMIT_IP` | No | `600` | Max write requests per minute per client IP. |
+| `OTT_WRITE_RATE_LIMIT_ACCOUNT` | No | `300` | Max write requests per minute per authenticated account. |
+
+All environment configuration errors are collected and reported in a single `RuntimeConfigError`. Secret values, URLs with embedded passwords, and sensitive credentials are never reflected in error messages, issue details, or startup logs.
+
+### Health and Probes
+
+- **Liveness probe** (`GET /api/v1/health` and `GET /api/v1/health/live`):
+  - Returns `200 {"status":"ok"}` with `Cache-Control: no-store`.
+  - Always succeeds without executing dependency calls, disclosing hostnames, software versions, or internal details.
+  - Remains `200` even during graceful shutdown drain.
+- **Readiness probe** (`GET /api/v1/health/ready`):
+  - Returns `200 {"status":"ready"}` with `Cache-Control: no-store` only when the server has started listening, is not in shutdown, and all dependencies pass their health checks in parallel within 2 seconds each:
+    - PostgreSQL: `SELECT 1`
+    - Redis: `PING`
+    - S3: `HeadBucket` / `ping()`
+  - If any check fails, times out, or if the server has entered shutdown, returns `503 {"status":"not_ready"}` without leaking internal error messages or traces to the client. Failed check names are logged server-side.
+  - Readily accessible without authentication, session cookies, or admin IP allowlist restrictions, and is never rate-limited as a write.
+
+### Graceful Shutdown
+
+1. `SIGTERM` and `SIGINT` handlers are registered once via `process.once`.
+2. Calling `stop()` is idempotent: subsequent calls return the same in-flight promise.
+3. Shutdown sequence:
+   - Sets `shuttingDown = true` (causes `/api/v1/health/ready` to immediately return `503`).
+   - `app.close()` stops accepting new HTTP connections and drains in-flight requests.
+   - `queue.close()` closes BullMQ queue connections.
+   - S3 storage client is destroyed (`s3Client.destroy()`).
+   - `redis.quit()` cleanly closes Redis client sessions.
+   - `database.close()` ends PostgreSQL pool connections.
+4. Each cleanup step is wrapped independently so a failure in one step does not prevent the others from running.
+5. The shutdown process is bounded by `OTT_SHUTDOWN_TIMEOUT_MS`. If any step fails or times out, the process terminates with exit code 1; on clean completion, it exits with 0.
+
+### Local Run
+
+To start the API runtime locally against development dependencies:
+
+```bash
+# 1. Start local PostgreSQL, Redis, and SeaweedFS
+docker compose -f infra/local/compose.yaml up -d
+
+# 2. Configure environment
+cp .env.example .env
+
+# 3. Launch the API runtime with migration execution enabled
+OTT_RUN_MIGRATIONS=true npm run start:api
+```
+
+### Compose Drift Reconciliation (for upcoming Compose task)
+
+The existing `deploy/lan/compose.yml` and `deploy/lan/.env.example` templates contain several drift items that must be reconciled:
+- `OTT_DEPLOYMENT_MODE=finals_lan`: `finals_lan` is not a valid mode; canonical modes are `dev`, `test`, `hosted`, or `production`.
+- `OTT_ADMIN_NETWORK_ALLOWLIST`: Canonical variable is `OTT_ADMIN_ALLOWLIST`.
+- `OTT_SESSION_SECRET`: Unused by the API runtime host, which delegates session state to Redis.
+- `API_BIND_IP`: Canonical variable is `HOST`.
+- Database & Redis: The compose template specifies raw credentials and ports without `DATABASE_URL` and `REDIS_URL`. The API runtime host expects canonical connection URLs.
+- `OTT_BOOTSTRAP_BTC_TOTP_SECRET`: Specified without the required `OTT_TOTP_ENCRYPTION_KEY` (AES-256 key needed to encrypt the secret in `admin_mfa`).
