@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
-import { getRuleSetDetail, listRounds, listRuleSets, listTeamsCount, type RoundSummary, type RuleSetSummary } from './api.ts';
+import { getRoundCatalog, getRuleSetDetail, listRounds, listRuleSets, listTeamsCount, type RoundCatalog, type RoundSummary, type RuleSetSummary } from './api.ts';
 import { selectCurrentLockedRound, sortRuleSetsNewestFirst } from './current-rule-set.ts';
-import { Badge } from '../../ui/index.ts';
+import { Alert, Badge, Button } from '../../ui/index.ts';
 import { RoundOperations } from './RoundOperations.tsx';
 import { RoundRuleForm, type LockedRuleSetInfo } from './RoundRuleForm.tsx';
 import { RuleSetArchive } from './RuleSetArchive.tsx';
@@ -20,16 +20,35 @@ export function RoundAdminPage() {
   const [editorKey, setEditorKey] = useState(0);
   const [teamCount, setTeamCount] = useState(0);
   const [refreshToken, setRefreshToken] = useState(0);
+  const [catalog, setCatalog] = useState<RoundCatalog | null>(null);
+  const [catalogFailed, setCatalogFailed] = useState(false);
+  const [catalogLoading, setCatalogLoading] = useState(false);
+
+  const loadCatalog = useCallback(async () => {
+    setCatalogLoading(true);
+    try {
+      setCatalog(await getRoundCatalog());
+      setCatalogFailed(false);
+    } catch {
+      setCatalog(null);
+      setCatalogFailed(true);
+    } finally {
+      setCatalogLoading(false);
+    }
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
     try {
-      const [fetchedRuleSets, fetchedRounds, count]: [readonly RuleSetSummary[], readonly RoundSummary[], number] = await Promise.all([
+      const [fetchedRuleSets, fetchedRounds, count, fetchedCatalog]: [readonly RuleSetSummary[], readonly RoundSummary[], number, RoundCatalog | null] = await Promise.all([
         listRuleSets(stage),
         listRounds(stage),
         listTeamsCount().catch(() => 0),
+        getRoundCatalog().catch(() => null),
       ]);
+      setCatalog(fetchedCatalog);
+      setCatalogFailed(fetchedCatalog === null);
       const latest = sortRuleSetsNewestFirst(fetchedRuleSets)[0] ?? null;
       const latestRules = latest ? (await getRuleSetDetail(latest.id).catch(() => null))?.rules ?? null : null;
       setPrefill(latestRules);
@@ -107,12 +126,19 @@ export function RoundAdminPage() {
             </section>
             <section className="round-admin-editor" aria-label="Phiên bản bộ luật mới">
               <h2>Phiên bản bộ luật mới</h2>
+              {catalogFailed && (
+                <div className="round-admin-catalog-warning">
+                  <Alert tone="warning">Không tải được danh mục engine/bản đồ/fault policy — đang dùng ô nhập tay.</Alert>
+                  <Button variant="secondary" loading={catalogLoading} onClick={() => void loadCatalog()}>Thử tải lại danh mục</Button>
+                </div>
+              )}
               {baseVersion !== null && <p role="status" className="round-base-note">Đang soạn dựa trên v{baseVersion}</p>}
               <RoundRuleForm
                 key={`${stage}:${refreshToken}:${editorKey}`}
                 stage={stage}
                 prefill={prefill}
                 locked={null}
+                catalog={catalog}
                 initialTeamCount={teamCount}
                 onSaved={() => setRefreshToken((token) => token + 1)}
               />

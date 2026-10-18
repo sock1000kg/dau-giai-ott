@@ -201,6 +201,20 @@ Verification: `npm test --workspace @ott/platform-web -- RoundAdmin`,
 `npm run typecheck --workspace @ott/platform-web`, plus desktop/mobile
 browser smoke and keyboard tab order over the form and start confirmation.
 
+### Catalog pickers (`P3-D26`)
+
+The editor form (not the read-only current-rules copy) loads `GET /api/v1/admin/rounds/catalog`
+(`getRoundCatalog`, strict parser in `api.ts`) with the other page data and turns engine version,
+fault policy version and map rows into `ui/Select` pickers. Choosing a map fills `mapId` and
+`checksum` from the catalog; the checksum field stays (read-only, full value in `title`). Maps
+chosen in other rows are disabled and "Thêm map" is disabled once every catalog map is used. A
+stored value missing from the catalog stays selected as "… (không còn trong danh mục)". If the
+catalog request fails the page keeps the plain text inputs and shows a warning with
+"Thử tải lại danh mục", which refetches only the catalog. The new server codes
+`UNKNOWN_ENGINE_VERSION`, `UNKNOWN_MAP`, `UNKNOWN_FAULT_POLICY`, `MAX_TURNS_EXCEEDS_RUNNER_LIMIT`
+and `TURN_LIMIT_EXCEEDS_RUNNER_LIMIT` show Vietnamese messages on their field. The endpoint
+exists only once `P3-D25` is merged; the form state shape and the saved rules JSON are unchanged.
+
 ### Round admin UX (`P3-D02b`)
 
 - The page is a two-column grid at ≥1024px: left "Bộ luật hiện hành" (collapsible

@@ -6,3 +6,6 @@
 .round-rule-form .rr-footer [role="alert"], .round-rule-form .rr-footer p[role="alert"] { color: var(--ui-danger); }
 .round-rule-form .rr-footer button[type="submit"] { width: 100%; margin-top: 0; }
 @media (min-width: 640px) { .round-rule-form .rr-footer button[type="submit"] { width: auto; justify-self: end; } }
+
+.round-rule-form .rr-checksum { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.8125rem; overflow: hidden; text-overflow: ellipsis; min-width: 0; max-width: 100%; box-sizing: border-box; }
+.round-admin-catalog-warning { display: grid; gap: 8px; margin-bottom: 12px; }

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Select } from '../../ui/index.ts';
 import './round-admin.css';
-import { createRuleSet, RoundAdminApiError } from './api.ts';
+import { createRuleSet, RoundAdminApiError, type RoundCatalog } from './api.ts';
 import { FIELD_HELP, fieldIdFromDomId } from './field-help.ts';
 import { estimateWorstCase, formatDuration } from './estimate.ts';
 import {
@@ -36,6 +36,25 @@ export function mapServerPathToField(path: string): string | null {
   return null;
 }
 
+/**
+ * Vietnamese messages for the codes added by P3-D25 rule-set validation. The runner limits (200 turns,
+ * 3000 ms per turn) come from `DEFAULT_LIMITS` in `api/src/modules/rounds/catalog.ts`.
+ */
+const SERVER_CODE_MESSAGES: Readonly<Record<string, string>> = {
+  UNKNOWN_ENGINE_VERSION: 'Engine không có trong danh mục.',
+  UNKNOWN_MAP: 'Bản đồ hoặc checksum không có trong danh mục.',
+  UNKNOWN_FAULT_POLICY: 'Fault policy không có trong danh mục.',
+  MAX_TURNS_EXCEEDS_RUNNER_LIMIT: 'Số lượt tối đa vượt giới hạn của bộ chạy trận (200).',
+  TURN_LIMIT_EXCEEDS_RUNNER_LIMIT: 'Thời gian mỗi lượt vượt giới hạn của bộ chạy trận (3000 ms).',
+};
+
+export function serverCodeMessage(code: string): string {
+  return SERVER_CODE_MESSAGES[code] ?? `Máy chủ từ chối: ${code}.`;
+}
+
+const STALE_LABEL = '(không còn trong danh mục)';
+const STALE_VALUE = '__stored__';
+
 function describedBy(id: string, error: string | undefined): string {
   return error !== undefined ? `${id}-help ${id}-error` : `${id}-help`;
 }
@@ -43,6 +62,33 @@ function describedBy(id: string, error: string | undefined): string {
 function Help({ id }: Readonly<{ id: string }>) {
   const text = (FIELD_HELP as Record<string, string>)[fieldIdFromDomId(id)];
   return <p className="field-help" id={`${id}-help`}>{text}</p>;
+}
+
+interface CatalogSelectProps {
+  readonly id: string;
+  readonly label: string;
+  readonly value: string;
+  readonly options: readonly string[];
+  readonly placeholder: string;
+  readonly error: string | undefined;
+  readonly onChange: (value: string) => void;
+}
+
+/** Picker over catalog strings; a stored value missing from the catalog stays selectable instead of being replaced. */
+function CatalogSelect({ id, label, value, options, placeholder, error, onChange }: CatalogSelectProps) {
+  const stale = value !== '' && !options.includes(value);
+  return (
+    <div>
+      <label htmlFor={id}>{label}</label>
+      <Select id={id} value={value} aria-invalid={error !== undefined} aria-describedby={describedBy(id, error)} onChange={(event) => onChange(event.target.value)}>
+        <option value="">{placeholder}</option>
+        {stale && <option value={value}>{value} {STALE_LABEL}</option>}
+        {options.map((option) => <option key={option} value={option}>{option}</option>)}
+      </Select>
+      <Help id={id} />
+      {error !== undefined && <p id={`${id}-error`}>{error}</p>}
+    </div>
+  );
 }
 
 interface NumberFieldProps {
@@ -81,6 +127,7 @@ export function RoundRuleForm({
   initialTeamCount,
   notice,
   idPrefix = 'rr',
+  catalog = null,
   onSaved,
 }: Readonly<{
   stage: string;
@@ -91,6 +138,8 @@ export function RoundRuleForm({
   notice?: string | undefined;
   /** DOM id prefix; two forms on one page (current rules + editor) must not share ids. */
   idPrefix?: string;
+  /** Engine/map/fault-policy catalog; `null` (or a locked form) keeps plain text inputs. */
+  catalog?: RoundCatalog | null;
   onSaved: (result: { readonly version: number; readonly rulesSha256: string }) => void;
 }>) {
   const p = idPrefix;
@@ -176,7 +225,7 @@ export function RoundRuleForm({
         for (const detail of cause.details) {
           const field = mapServerPathToField(detail.path);
           if (field === null) unknown.push(detail.path);
-          else mapped[field] = `Máy chủ từ chối: ${detail.code}.`;
+          else mapped[field] = serverCodeMessage(detail.code);
         }
         setServerErrors(mapped);
         setUnknownPaths(unknown);
@@ -193,8 +242,24 @@ export function RoundRuleForm({
     }
   }
 
+  function mapIsStale(source: RoundCatalog, row: { readonly mapId: string; readonly checksum: string }): boolean {
+    return row.mapId !== '' && !source.maps.some((entry) => entry.mapId === row.mapId && entry.checksum === row.checksum);
+  }
+
+  function mapSelectValue(source: RoundCatalog, row: { readonly mapId: string; readonly checksum: string }): string {
+    if (row.mapId === '') return '';
+    return mapIsStale(source, row) ? STALE_VALUE : row.mapId;
+  }
+
+  function chooseMap(source: RoundCatalog, index: number, mapId: string) {
+    if (mapId === STALE_VALUE) return;
+    const entry = source.maps.find((candidate) => candidate.mapId === mapId);
+    patch({ maps: form.maps.map((row, i) => i === index ? { mapId: entry?.mapId ?? '', checksum: entry?.checksum ?? '' } : row) });
+  }
+
   const errors = { ...clientErrors, ...serverErrors };
   const inputDisabled = readOnly;
+  const picker = catalog !== null && !readOnly ? catalog : null;
 
   return (
     <form className="round-rule-form" aria-label="Biểu mẫu bộ luật round" onSubmit={(event) => void handleSave(event)}>
@@ -241,19 +306,27 @@ export function RoundRuleForm({
 
       <fieldset>
         <legend>Luật game</legend>
+        {picker !== null ? (
+          <CatalogSelect id={`${p}-engineVersion`} label="Engine version" value={form.engineVersion} options={picker.engineVersions} placeholder="— Chọn engine —" error={errors.engineVersion} onChange={(value) => patch({ engineVersion: value })} />
+        ) : (
         <div>
-          <label htmlFor={`${p}-engineVersion`}>Engine version</label>
-          <input id={`${p}-engineVersion`} type="text" value={form.engineVersion} disabled={inputDisabled} aria-invalid={errors.engineVersion !== undefined} aria-describedby={describedBy(`${p}-engineVersion`, errors.engineVersion)} onChange={(event) => patch({ engineVersion: event.target.value })} />
-          <Help id={`${p}-engineVersion`} />
-          {errors.engineVersion !== undefined && <p id={`${p}-engineVersion-error`}>{errors.engineVersion}</p>}
-        </div>
+            <label htmlFor={`${p}-engineVersion`}>Engine version</label>
+            <input id={`${p}-engineVersion`} type="text" value={form.engineVersion} disabled={inputDisabled} aria-invalid={errors.engineVersion !== undefined} aria-describedby={describedBy(`${p}-engineVersion`, errors.engineVersion)} onChange={(event) => patch({ engineVersion: event.target.value })} />
+            <Help id={`${p}-engineVersion`} />
+            {errors.engineVersion !== undefined && <p id={`${p}-engineVersion-error`}>{errors.engineVersion}</p>}
+          </div>
+        )}
         <NumberField id={`${p}-maxTurns`} label="Số lượt tối đa" value={form.maxTurns} disabled={inputDisabled} error={errors.maxTurns} onChange={(value) => patch({ maxTurns: value })} />
+        {picker !== null ? (
+          <CatalogSelect id={`${p}-faultPolicyVersion`} label="Fault policy version" value={form.faultPolicyVersion} options={picker.faultPolicyVersions} placeholder="— Chọn fault policy —" error={errors.faultPolicyVersion} onChange={(value) => patch({ faultPolicyVersion: value })} />
+        ) : (
         <div>
           <label htmlFor={`${p}-faultPolicyVersion`}>Fault policy version</label>
           <input id={`${p}-faultPolicyVersion`} type="text" value={form.faultPolicyVersion} disabled={inputDisabled} aria-invalid={errors.faultPolicyVersion !== undefined} aria-describedby={describedBy(`${p}-faultPolicyVersion`, errors.faultPolicyVersion)} onChange={(event) => patch({ faultPolicyVersion: event.target.value })} />
           <Help id={`${p}-faultPolicyVersion`} />
           {errors.faultPolicyVersion !== undefined && <p id={`${p}-faultPolicyVersion-error`}>{errors.faultPolicyVersion}</p>}
         </div>
+        )}
         <div>
           <span id={`${p}-maps-label`}>Map thi đấu (1–16)</span>
           {errors.maps !== undefined && <p id={`${p}-maps-error`}>{errors.maps}</p>}
@@ -261,11 +334,23 @@ export function RoundRuleForm({
             {form.maps.map((row, index) => (
               <li key={index}>
                 <label htmlFor={`${p}-mapId-${index}`}>Map ID #{index + 1}</label>
-                <input id={`${p}-mapId-${index}`} type="text" value={row.mapId} disabled={inputDisabled} aria-invalid={errors[`maps[${index}].mapId`] !== undefined} aria-describedby={describedBy(`${p}-mapId-${index}`, errors[`maps[${index}].mapId`])} onChange={(event) => patch({ maps: form.maps.map((entry, i) => i === index ? { ...entry, mapId: event.target.value } : entry) })} />
+                {picker !== null ? (
+                  <Select id={`${p}-mapId-${index}`} value={mapSelectValue(picker, row)} aria-invalid={errors[`maps[${index}].mapId`] !== undefined} aria-describedby={describedBy(`${p}-mapId-${index}`, errors[`maps[${index}].mapId`])} onChange={(event) => chooseMap(picker, index, event.target.value)}>
+                    <option value="">— Chọn map —</option>
+                    {mapIsStale(picker, row) && <option value={STALE_VALUE}>{row.mapId} {STALE_LABEL}</option>}
+                    {picker.maps.map((entry) => (
+                      <option key={entry.mapId} value={entry.mapId} disabled={form.maps.some((other, i) => i !== index && other.mapId === entry.mapId)}>
+                        {entry.mapId} · v{entry.version} · {entry.width}×{entry.height}
+                      </option>
+                    ))}
+                  </Select>
+                ) : (
+                  <input id={`${p}-mapId-${index}`} type="text" value={row.mapId} disabled={inputDisabled} aria-invalid={errors[`maps[${index}].mapId`] !== undefined} aria-describedby={describedBy(`${p}-mapId-${index}`, errors[`maps[${index}].mapId`])} onChange={(event) => patch({ maps: form.maps.map((entry, i) => i === index ? { ...entry, mapId: event.target.value } : entry) })} />
+                )}
                 <Help id={`${p}-mapId-${index}`} />
                 {errors[`maps[${index}].mapId`] !== undefined && <p id={`${p}-mapId-${index}-error`}>{errors[`maps[${index}].mapId`]}</p>}
                 <label htmlFor={`${p}-checksum-${index}`}>Checksum #{index + 1}</label>
-                <input id={`${p}-checksum-${index}`} type="text" value={row.checksum} disabled={inputDisabled} aria-invalid={errors[`maps[${index}].checksum`] !== undefined} aria-describedby={describedBy(`${p}-checksum-${index}`, errors[`maps[${index}].checksum`])} onChange={(event) => patch({ maps: form.maps.map((entry, i) => i === index ? { ...entry, checksum: event.target.value } : entry) })} />
+                <input id={`${p}-checksum-${index}`} type="text" value={row.checksum} disabled={inputDisabled} readOnly={picker !== null} title={picker !== null ? row.checksum : undefined} className={picker !== null ? 'rr-checksum' : undefined} aria-invalid={errors[`maps[${index}].checksum`] !== undefined} aria-describedby={describedBy(`${p}-checksum-${index}`, errors[`maps[${index}].checksum`])} onChange={(event) => patch({ maps: form.maps.map((entry, i) => i === index ? { ...entry, checksum: event.target.value } : entry) })} />
                 <Help id={`${p}-checksum-${index}`} />
                 {errors[`maps[${index}].checksum`] !== undefined && <p id={`${p}-checksum-${index}-error`}>{errors[`maps[${index}].checksum`]}</p>}
                 {!readOnly && form.maps.length > 1 && (
@@ -275,7 +360,12 @@ export function RoundRuleForm({
             ))}
           </ul>
           {!readOnly && form.maps.length < 16 && (
-            <button type="button" onClick={() => patch({ maps: [...form.maps, { mapId: '', checksum: '' }] })}>Thêm map</button>
+            <button
+              type="button"
+              disabled={picker !== null && form.maps.length >= picker.maps.length}
+              title={picker !== null && form.maps.length >= picker.maps.length ? 'Đã dùng hết bản đồ trong danh mục' : undefined}
+              onClick={() => patch({ maps: [...form.maps, { mapId: '', checksum: '' }] })}
+            >Thêm map</button>
           )}
         </div>
       </fieldset>

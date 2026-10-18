@@ -32,10 +32,18 @@ export function round(overrides: Partial<RoundSummary> & { roundNumber: number }
   };
 }
 
-export function installPageMock(state: { rounds: RoundSummary[]; ruleSets: ReturnType<typeof ruleSet>[]; detailFails?: Set<string> }) {
+export function installPageMock(state: { rounds: RoundSummary[]; ruleSets: ReturnType<typeof ruleSet>[]; detailFails?: Set<string>; catalog?: unknown; catalogStatus?: number }) {
   const detailCalls: string[] = [];
+  const catalogCalls: string[] = [];
+  const requested: string[] = [];
   const fetchMock = vi.fn(async (url: unknown): Promise<Response> => {
     const path = String(url);
+    requested.push(path);
+    if (path === '/api/v1/admin/rounds/catalog') {
+      catalogCalls.push(path);
+      if (state.catalog === undefined) throw new Error(`unmocked request: ${path}`);
+      return response(state.catalogStatus ?? 200, state.catalogStatus === undefined || state.catalogStatus < 300 ? { data: state.catalog } : { error: { code: 'X' } });
+    }
     if (path.startsWith('/api/v1/admin/round-rule-sets?')) return response(200, { data: { items: state.ruleSets.map(({ rules: _rules, ...summary }) => summary) } });
     const detail = /^\/api\/v1\/admin\/round-rule-sets\/([^/]+)$/.exec(path);
     if (detail) {
@@ -49,7 +57,7 @@ export function installPageMock(state: { rounds: RoundSummary[]; ruleSets: Retur
     throw new Error(`unmocked request: ${path}`);
   });
   vi.stubGlobal('fetch', fetchMock);
-  return { detailCalls };
+  return { detailCalls, catalogCalls, requested };
 }
 
 

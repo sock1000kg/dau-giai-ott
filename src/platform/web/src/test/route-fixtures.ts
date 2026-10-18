@@ -103,6 +103,7 @@ export function installRouteFetch(role: TestRole): RouteApi {
       if (pathname === '/api/v1/admin/teams') return json(200, { data: teams });
       if (pathname === '/api/v1/admin/round-rule-sets') return json(200, { data: { items: [] } });
       if (pathname === '/api/v1/admin/rounds') return json(200, { data: { items: [] } });
+      if (pathname === '/api/v1/admin/rounds/catalog') return json(200, { data: { engineVersions: ['1.0.0'], maps: [], faultPolicyVersions: ['P2_BASELINE_V1'] } });
       if (pathname === '/api/v1/results/matches') return json(200, { data: { items: [matchResult], pagination: page([matchResult]) } });
       if (pathname === '/api/v1/results/series') return json(200, { data: { items: [seriesResult], pagination: page([seriesResult]) } });
       if (pathname === '/api/v1/admin/operations/audit') return json(200, { data: { items: [] }, pagination: page([]) });
