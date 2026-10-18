@@ -161,6 +161,16 @@ the access-denied page). `features/operations/OperationsConsole.tsx` composes:
   require a reason.
 - an audit viewer with action/target filters and the public queue-override list.
 
+`P3-D12` restyles the page with the `ui/*` primitives (four cards, `Field`/`Textarea` with `n/500` counters,
+bordered tables with empty states, badges, alerts) and replaces pasted UUIDs with entity pickers. Teams come from
+`GET /api/v1/admin/teams` (loaded once, filterable by name) and matches from `GET /api/v1/results/matches`
+(server-side `teamId`/`stage` filters, FAILED only for cancel/rerun). Every picker keeps a "Nhập mã thủ công"
+UUID field. API gaps: the match list never returns SCHEDULED matches (cancel of a SCHEDULED match needs the manual
+id) and `GET /api/v1/submissions` is TEAM_ACCOUNT-only, so revoke and DUPLICATE cases take a manual submission id.
+The confirm step shows the target name + short id, moves focus to its heading and returns focus to
+"Xem lại thao tác" on cancel. Tests: `operations.test.tsx`, `operations.pickers.test.tsx`,
+`operations.layout.test.tsx` (shared mocks in `operations.testkit.tsx`).
+
 Server error codes are mapped to stable Vietnamese messages (`operationsErrorMessage` in `api.ts`); server
 text is never displayed. Verification: `npm test --workspace @ott/platform-web -- operations`.
 

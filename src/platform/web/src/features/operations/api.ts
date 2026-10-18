@@ -49,6 +49,45 @@ export interface AuditFilters {
   readonly action?: string;
   readonly targetType?: string;
   readonly targetId?: string;
+  readonly page?: number;
+}
+
+export interface CaseFilters {
+  readonly kind?: CaseKind | '';
+  readonly status?: CaseStatus | '';
+  readonly page?: number;
+}
+
+export interface Pagination {
+  readonly page: number;
+  readonly totalPages: number;
+  readonly totalItems: number;
+}
+
+export interface Paged<T> {
+  readonly items: readonly T[];
+  readonly pagination: Pagination;
+}
+
+export interface TeamOption {
+  readonly id: string;
+  readonly name: string;
+  readonly representativeEmail: string | null;
+}
+
+export interface MatchOption {
+  readonly matchId: string;
+  readonly seriesId: string;
+  readonly stage: string;
+  readonly gameNumber: number;
+  readonly status: string;
+  readonly teams: { readonly x: { readonly id: string; readonly name: string }; readonly o: { readonly id: string; readonly name: string } };
+}
+
+export interface MatchFilters {
+  readonly stage?: string;
+  readonly teamId?: string;
+  readonly page?: number;
 }
 
 export class OperationsApiError extends Error {
@@ -153,8 +192,46 @@ export async function runPrivilegedAction(input: PrivilegedInput, idempotencyKey
   await request(`${BASE}${paths[input.kind]}`, { method: 'POST', body: JSON.stringify(body), idempotencyKey });
 }
 
-export async function listCases(): Promise<readonly CaseSummary[]> {
-  return items<CaseSummary>(await request(`${BASE}/cases`));
+function pagination(source: unknown, fallbackPage: number, itemCount: number): Pagination {
+  const raw = (source ?? {}) as { page?: unknown; totalPages?: unknown; totalItems?: unknown; total?: unknown };
+  const number = (value: unknown, fallback: number) => (typeof value === 'number' && Number.isFinite(value) ? value : fallback);
+  return {
+    page: number(raw.page, fallbackPage),
+    totalPages: Math.max(1, number(raw.totalPages, 1)),
+    totalItems: number(raw.totalItems ?? raw.total, itemCount),
+  };
+}
+
+function query(params: Record<string, string | number | undefined>): string {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) if (value !== undefined && value !== '') search.set(key, String(value));
+  const text = search.toString();
+  return text === '' ? '' : `?${text}`;
+}
+
+function paged<T>(body: unknown, page: number): Paged<T> {
+  const list = items<T>(body);
+  return { items: list, pagination: pagination((body as { pagination?: unknown }).pagination, page, list.length) };
+}
+
+export async function listCases(filters: CaseFilters = {}): Promise<Paged<CaseSummary>> {
+  const page = filters.page ?? 1;
+  const body = await request(`${BASE}/cases${query({ kind: filters.kind, status: filters.status, page: page > 1 ? page : undefined })}`);
+  return paged<CaseSummary>(body, page);
+}
+
+export async function listTeams(): Promise<readonly TeamOption[]> {
+  const body = await request('/api/v1/admin/teams') as { data?: unknown };
+  if (!Array.isArray(body.data)) throw new Error('Invalid operations response');
+  return body.data as TeamOption[];
+}
+
+export async function listMatches(filters: MatchFilters = {}): Promise<Paged<MatchOption>> {
+  const page = filters.page ?? 1;
+  const body = await request(`/api/v1/results/matches${query({ stage: filters.stage, teamId: filters.teamId, page: page > 1 ? page : undefined, pageSize: 100 })}`) as { data?: { items?: unknown; pagination?: unknown } };
+  if (!Array.isArray(body.data?.items)) throw new Error('Invalid operations response');
+  const list = body.data.items as MatchOption[];
+  return { items: list, pagination: pagination(body.data.pagination, page, list.length) };
 }
 
 export async function getCase(id: string): Promise<CaseDetail> {
@@ -183,11 +260,10 @@ export async function decideCase(id: string, reason: string, decision: CaseDecis
   await request(`${BASE}/cases/${encodeURIComponent(id)}/decision`, { method: 'POST', body: JSON.stringify({ reason, decision }) });
 }
 
-export async function listAudit(filters: AuditFilters): Promise<readonly AuditItem[]> {
-  const params = new URLSearchParams();
-  for (const [key, value] of Object.entries(filters)) if (value !== undefined && value !== '') params.set(key, value);
-  const query = params.toString();
-  return items<AuditItem>(await request(`${BASE}/audit${query === '' ? '' : `?${query}`}`));
+export async function listAudit(filters: AuditFilters): Promise<Paged<AuditItem>> {
+  const page = filters.page ?? 1;
+  const body = await request(`${BASE}/audit${query({ action: filters.action, targetType: filters.targetType, targetId: filters.targetId, page: page > 1 ? page : undefined })}`);
+  return paged<AuditItem>(body, page);
 }
 
 export async function listQueueOverrides(): Promise<readonly QueueOverride[]> {

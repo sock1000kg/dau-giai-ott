@@ -22,6 +22,8 @@ function install(options: Mock = {}) {
     if (path.startsWith('/api/v1/auth/')) {
       return response(200, { data: options.role === 'TEAM_ACCOUNT' ? { role: 'TEAM_ACCOUNT', teamId: 't1' } : { role: 'BTC_ADMIN' } });
     }
+    if (path === '/api/v1/admin/teams') return response(200, { data: [] });
+    if (path.startsWith('/api/v1/results/matches')) return response(200, { data: { items: [], pagination: { page: 1, pageSize: 100, total: 0, totalPages: 0 } } });
     if (path === '/api/v1/admin/operations/cases') return response(200, { data: { items: options.cases ?? [] } });
     if (path.startsWith('/api/v1/admin/operations/audit')) return response(200, { data: { items: [] } });
     if (path === '/api/v1/public/queue-overrides') return response(200, { data: { items: [{ id: 'o1', action: 'RERUN', matchOpaqueId: 'abcdef0123456789', publicReason: 'Worker restarted', createdAt: '2026-10-18T00:00:00Z' }] } });
