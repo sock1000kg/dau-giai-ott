@@ -1,0 +1,22 @@
+.ops-panel-head { display: grid; gap: var(--ui-space-2); }
+.ops-panel-head h2 { margin: 0; }
+.ops-muted { color: var(--ui-text-muted); font-size: 13px; line-height: 1.5; }
+.ops-form-grid { display: grid; gap: var(--ui-space-4); grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
+.ops-picker { display: grid; gap: var(--ui-space-4); }
+.ops-manual { padding: var(--ui-space-3) var(--ui-space-4); border: 1px dashed var(--ui-border-strong); border-radius: var(--ui-radius-sm); }
+.ops-manual summary { min-height: var(--ui-control-height); display: flex; align-items: center; color: var(--ui-text); font-weight: 600; cursor: pointer; }
+.ops-manual summary:focus-visible { outline: var(--ui-focus-ring); outline-offset: 2px; }
+.ops-confirm { display: grid; gap: var(--ui-space-4); padding: var(--ui-space-4); border: 1px solid var(--ui-danger-strong); border-radius: var(--ui-radius-md); background: var(--ui-surface-solid); }
+.ops-confirm h3 { margin: 0; font-size: 16px; color: var(--ui-text); }
+.ops-confirm h3:focus-visible { outline: var(--ui-focus-ring); outline-offset: 4px; }
+.ops-confirm p { margin: 0; color: var(--ui-text); line-height: 1.6; }
+.ops-subform { display: grid; gap: var(--ui-space-3); padding: var(--ui-space-4); border: 1px solid var(--ui-border); border-radius: var(--ui-radius-md); }
+.ops-subform h4 { margin: 0; color: var(--ui-text); font-size: 15px; }
+.ops-timeline { display: grid; gap: var(--ui-space-2); margin: 0; padding: 0; list-style: none; }
+.ops-timeline li { display: grid; gap: 2px; padding: var(--ui-space-3) var(--ui-space-4); border: 1px solid var(--ui-border); border-radius: var(--ui-radius-sm); background: var(--ui-surface-solid); color: var(--ui-text); }
+.ops-timeline time { color: var(--ui-text-muted); font-size: 12px; }
+.ops-empty-cell { padding: var(--ui-space-5); color: var(--ui-text-muted); text-align: center; }
+.ops-checkbox { display: flex; align-items: flex-start; gap: var(--ui-space-3); min-height: var(--ui-control-height); color: var(--ui-text); }
+.ops-checkbox input { width: 24px; height: 24px; flex: none; margin: 0; accent-color: var(--ui-accent); }
+.ops-checkbox input:focus-visible { outline: var(--ui-focus-ring); outline-offset: 2px; }
+.ops-code { overflow-wrap: anywhere; font-family: ui-monospace, monospace; font-size: 12px; }
