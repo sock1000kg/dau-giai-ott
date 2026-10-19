@@ -35,6 +35,7 @@ This runbook covers one-command local demonstration stack management (`scripts/d
 # NOTE: Starting round matches requires at least 2 teams with ACTIVE (gate-passed) submissions.
 # For a full tournament demo sequence:
 #   a. team01 and team02 log into the web UI (http://127.0.0.1:8080/) using password ABC123 and upload bots.
+#      (Note: two teams using the exact same starter kit without changes will be flagged for BTC review under AC-22; this is harmless and does not block activation or round matches).
 #   b. Wait until submissions reach ACTIVE status (check team page in the web UI).
 #   c. Run './scripts/demo.sh round close' to close submissions and schedule matches.
 # (If closed on a bot-less stack, submissions close to SUBMISSION_CLOSED but starting matches will exit non-zero).

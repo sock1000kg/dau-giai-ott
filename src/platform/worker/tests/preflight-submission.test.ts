@@ -236,5 +236,198 @@ describe('preflightSubmission infra handling and fault classification', () => {
     expect(customCreateBotPort).toHaveBeenCalledTimes(1);
     expect(capturedOptions[0].dockerSocketPath).toBe('/seam/docker.sock');
   });
+
+  describe('AC-22: OCI layer recording and duplicate check wiring in preflight', () => {
+    it('calls layer recording and duplicate check after smoke success and before activation', async () => {
+      const order: string[] = [];
+      const dockerReachable = vi.fn().mockResolvedValue(true);
+      const mockExtract = vi.fn().mockImplementation(() => {
+        order.push('extract');
+        return {
+          manifestDigest: 'sha256:manifest123',
+          configDigest: 'sha256:config123',
+          layers: [{ digest: 'sha256:l1', mediaType: 'application/vnd.oci.image.layer.v1.tar', size: 100 }],
+          baseLayerDigests: [],
+          nonBaseLayerDigests: ['sha256:l1'],
+        };
+      });
+      const mockRecord = vi.fn().mockImplementation(async () => {
+        order.push('record');
+        return { totalLayers: 1, newLayersCount: 1, sharedLayersCount: 0 };
+      });
+      const mockCheck = vi.fn().mockImplementation(async () => {
+        order.push('check');
+        return { isDuplicate: false };
+      });
+
+      // Track activation in db transaction
+      const origTransaction = mockDb.transaction;
+      mockDb.transaction = vi.fn().mockImplementation(async (cb: any) => {
+        order.push('activate');
+        return origTransaction(cb);
+      });
+
+      const result = await preflightSubmission({
+        submissionId: 'sub-test-123',
+        database: mockDb,
+        storage: mockStorage,
+        dockerReachable,
+        extractLayers: mockExtract,
+        recordLayers: mockRecord,
+        checkDuplicate: mockCheck,
+      });
+
+      expect(result.status).toBe('ACTIVE');
+      expect(order).toEqual(['extract', 'record', 'check', 'activate']);
+      expect(mockRecord).toHaveBeenCalledWith(mockDb, {
+        submissionId: 'sub-test-123',
+        layers: [
+          {
+            digest: 'sha256:l1',
+            mediaType: 'application/vnd.oci.image.layer.v1.tar',
+            sizeBytes: 100,
+            storageKey: 'layers/sha256/l1',
+            isBaseLayer: false,
+          },
+        ],
+      });
+      expect(mockCheck).toHaveBeenCalledWith(mockDb, {
+        submissionId: 'sub-test-123',
+        teamId: 'team-1',
+        manifestDigest: 'sha256:manifest123',
+        nonBaseLayerDigests: ['sha256:l1'],
+      });
+    });
+
+    it('extraction error logs warning and continues to activate (still ACTIVE)', async () => {
+      const dockerReachable = vi.fn().mockResolvedValue(true);
+      const mockExtract = vi.fn().mockImplementation(() => {
+        throw new Error('CORRUPT_TAR');
+      });
+      const mockRecord = vi.fn();
+      const mockCheck = vi.fn();
+      const warnMock = vi.fn();
+
+      const result = await preflightSubmission({
+        submissionId: 'sub-test-123',
+        database: mockDb,
+        storage: mockStorage,
+        dockerReachable,
+        extractLayers: mockExtract,
+        recordLayers: mockRecord,
+        checkDuplicate: mockCheck,
+        logger: { warn: warnMock },
+      });
+
+      expect(result.status).toBe('ACTIVE');
+      expect(mockExtract).toHaveBeenCalledTimes(1);
+      expect(mockRecord).not.toHaveBeenCalled();
+      expect(mockCheck).not.toHaveBeenCalled();
+      expect(warnMock).toHaveBeenCalledTimes(1);
+      const logged = JSON.parse(warnMock.mock.calls[0]![0] as string);
+      expect(logged).toEqual({
+        level: 'warn',
+        message: 'duplicate check skipped',
+        submissionId: 'sub-test-123',
+        code: 'CORRUPT_TAR',
+      });
+    });
+
+    it('duplicate-check error logs warning and continues to activate (still ACTIVE)', async () => {
+      const dockerReachable = vi.fn().mockResolvedValue(true);
+      const mockExtract = vi.fn().mockReturnValue({
+        manifestDigest: 'sha256:manifest123',
+        configDigest: 'sha256:config123',
+        layers: [],
+        baseLayerDigests: [],
+        nonBaseLayerDigests: [],
+      });
+      const mockRecord = vi.fn().mockResolvedValue({ totalLayers: 0, newLayersCount: 0, sharedLayersCount: 0 });
+      const mockCheck = vi.fn().mockRejectedValue(new Error('DB_QUERY_TIMEOUT'));
+      const warnMock = vi.fn();
+
+      const result = await preflightSubmission({
+        submissionId: 'sub-test-123',
+        database: mockDb,
+        storage: mockStorage,
+        dockerReachable,
+        extractLayers: mockExtract,
+        recordLayers: mockRecord,
+        checkDuplicate: mockCheck,
+        logger: { warn: warnMock },
+      });
+
+      expect(result.status).toBe('ACTIVE');
+      expect(mockRecord).toHaveBeenCalledTimes(1);
+      expect(mockCheck).toHaveBeenCalledTimes(1);
+      expect(warnMock).toHaveBeenCalledTimes(1);
+      const logged = JSON.parse(warnMock.mock.calls[0]![0] as string);
+      expect(logged).toEqual({
+        level: 'warn',
+        message: 'duplicate check skipped',
+        submissionId: 'sub-test-123',
+        code: 'DB_QUERY_TIMEOUT',
+      });
+    });
+
+    it('smoke failure means neither layer recording nor duplicate check is called', async () => {
+      const dockerReachable = vi.fn().mockResolvedValue(true);
+      mockBotStart.mockResolvedValue({ ok: false, code: 'TIMEOUT' });
+
+      const mockExtract = vi.fn();
+      const mockRecord = vi.fn();
+      const mockCheck = vi.fn();
+
+      await expect(
+        preflightSubmission({
+          submissionId: 'sub-test-123',
+          database: mockDb,
+          storage: mockStorage,
+          dockerReachable,
+          extractLayers: mockExtract,
+          recordLayers: mockRecord,
+          checkDuplicate: mockCheck,
+        }),
+      ).rejects.toThrow('PREFLIGHT_START_TIMEOUT');
+
+      expect(mockExtract).not.toHaveBeenCalled();
+      expect(mockRecord).not.toHaveBeenCalled();
+      expect(mockCheck).not.toHaveBeenCalled();
+      expect(submissionUpdates.length).toBe(1);
+      expect(submissionUpdates[0].status).toBe('INVALID');
+    });
+
+    it('PREFLIGHT_INFRA_DOCKER and PREFLIGHT_INFRA_STORAGE errors remain unchanged', async () => {
+      const dockerReachable = vi.fn().mockResolvedValue(false);
+      const mockExtract = vi.fn();
+
+      await expect(
+        preflightSubmission({
+          submissionId: 'sub-test-123',
+          database: mockDb,
+          storage: mockStorage,
+          dockerReachable,
+          extractLayers: mockExtract,
+        }),
+      ).rejects.toThrow('PREFLIGHT_INFRA_DOCKER');
+
+      expect(mockExtract).not.toHaveBeenCalled();
+
+      // Storage infra failure
+      mockStorage.get.mockRejectedValue(new Error('S3 down'));
+      const dockerOk = vi.fn().mockResolvedValue(true);
+      await expect(
+        preflightSubmission({
+          submissionId: 'sub-test-123',
+          database: mockDb,
+          storage: mockStorage,
+          dockerReachable: dockerOk,
+          extractLayers: mockExtract,
+        }),
+      ).rejects.toThrow('PREFLIGHT_INFRA_STORAGE');
+
+      expect(mockExtract).not.toHaveBeenCalled();
+    });
+  });
 });
 

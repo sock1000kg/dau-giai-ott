@@ -11,12 +11,12 @@ afterEach(() => {
 const REASON = /Lý do \(bắt buộc, tối đa 500/;
 
 describe('page structure and a11y', () => {
-  it('renders three named cards, each with a description', async () => {
+  it('renders four named cards, each with a description', async () => {
     await openConsole();
-    for (const name of ['Thao tác đặc quyền', 'Nhật ký audit', 'Can thiệp hàng đợi (công khai)']) {
+    for (const name of ['Thao tác đặc quyền', 'Nhật ký audit', 'Can thiệp hàng đợi (công khai)', 'Bản nộp có thể trùng']) {
       expect(screen.getByRole('region', { name })).toBeTruthy();
     }
-    expect(document.querySelectorAll('.ui-card').length).toBe(3);
+    expect(document.querySelectorAll('.ui-card').length).toBe(4);
   });
 
   it('gives every control a visible label and keeps counters live', async () => {

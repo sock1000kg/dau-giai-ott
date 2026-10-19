@@ -541,6 +541,13 @@ describe('Clean-checkout local demo qualification E2E (P2-T37 API-level)', () =>
         t2Active,
         `team02 submission ${submission02Id} must reach ACTIVE within timeout (last status: ${submission02Status})`,
       ).toBe(true);
+
+      // AC-22: BTC queries flagged submissions endpoint; demo fixtures are distinct so total must be 0
+      const flaggedRes = await apiRequest(baseUrl, '/api/v1/admin/submissions/flagged', { jar: btcJar });
+      const flaggedText = await assertStatus(flaggedRes, 200, 'BTC queries flagged submissions');
+      const flaggedJson = JSON.parse(flaggedText) as { data?: unknown[]; total?: number };
+      expect(flaggedJson.total, 'Demo fixtures should produce zero duplicate flags').toBe(0);
+      expect(flaggedJson.data, 'Flagged submissions list should be empty').toEqual([]);
     },
   );
 

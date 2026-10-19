@@ -128,6 +128,13 @@ export async function checkDuplicateSubmission(
      WHERE oci_manifest_digest = $1
        AND id <> $2
        AND (team_id <> $3 OR team_id IS NULL)
+       AND duplicate_review_flag IS NOT TRUE
+       AND NOT EXISTS (
+         SELECT 1 FROM submissions earlier
+         WHERE earlier.team_id = $3
+           AND earlier.oci_manifest_digest = $1
+           AND earlier.created_at <= submissions.created_at
+       )
      ORDER BY created_at ASC
      LIMIT 1`,
     [input.manifestDigest, input.submissionId, input.teamId],
@@ -156,6 +163,7 @@ export async function checkDuplicateSubmission(
        JOIN oci_layers ol ON ol.digest = sl.layer_digest
        WHERE s.id <> $1
          AND (s.team_id <> $2 OR s.team_id IS NULL)
+         AND s.duplicate_review_flag IS NOT TRUE
          AND ol.is_base_layer = FALSE
          AND sl.layer_digest = ANY($3::text[])
        GROUP BY sl.submission_id, s.team_id, s.created_at
@@ -207,20 +215,27 @@ async function flagDuplicate(
     [matchedSubmissionId, reason, submissionId],
   );
 
-  // Record audit event for BTC review
-  const auditId = randomUUID();
-  const details = JSON.stringify({
-    duplicateOfSubmissionId: matchedSubmissionId,
-    matchType,
-    submissionTeamId: teamId,
-    matchedTeamId,
-  });
-
-  await db.query(
-    `INSERT INTO audit_events (id, actor_account_id, action, target_type, target_id, reason, details)
-     VALUES ($1, NULL, 'DUPLICATE_SUBMISSION_FLAGGED', 'SUBMISSION', $2, $3, $4::jsonb)`,
-    [auditId, submissionId, reason, details],
+  // Record audit event for BTC review (idempotent on replay)
+  const existingAudit = await db.query(
+    `SELECT 1 FROM audit_events WHERE target_id = $1 AND action = 'DUPLICATE_SUBMISSION_FLAGGED' LIMIT 1`,
+    [submissionId],
   );
+
+  if (existingAudit.rows.length === 0) {
+    const auditId = randomUUID();
+    const details = JSON.stringify({
+      duplicateOfSubmissionId: matchedSubmissionId,
+      matchType,
+      submissionTeamId: teamId,
+      matchedTeamId,
+    });
+
+    await db.query(
+      `INSERT INTO audit_events (id, actor_account_id, action, target_type, target_id, reason, details)
+       VALUES ($1, NULL, 'DUPLICATE_SUBMISSION_FLAGGED', 'SUBMISSION', $2, $3, $4::jsonb)`,
+      [auditId, submissionId, reason, details],
+    );
+  }
 }
 
 /**

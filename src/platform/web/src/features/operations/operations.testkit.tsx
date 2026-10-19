@@ -37,6 +37,7 @@ export function install(options: Options = {}) {
     if (init?.method === 'POST') return options.post ? options.post(url, init) : response(200, { data: {} });
     if (url.startsWith('/api/v1/admin/operations/audit')) return options.audit?.(url) ?? response(200, { data: { items: [] } });
     if (url === '/api/v1/public/queue-overrides') return response(200, { data: { items: [] } });
+    if (url.startsWith('/api/v1/admin/submissions/flagged')) return response(200, { data: [], total: 0, page: 1, pageSize: 20 });
     throw new Error(`unmocked request: ${url}`);
   });
   vi.stubGlobal('fetch', fetchMock);

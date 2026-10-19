@@ -262,6 +262,11 @@ DATABASE_URL="$YOUR_DISPOSABLE_POSTGRES_URL" \
   - `GET /api/v1/submissions` (Role: `TEAM_ACCOUNT`):
     Each item in `PREFLIGHT` status gains `preflightPosition` (1-based rank among all `PREFLIGHT` submissions ordered by `(created_at, id)`). Non-`PREFLIGHT` items receive `null`.
     Response root includes `preflightQueueLength` (total submissions currently in `PREFLIGHT`).
+    Team-facing endpoints (`GET /api/v1/submissions`, upload responses) never expose internal duplicate review flags (`duplicate_review_flag`, `duplicate_of_submission_id`, `duplicate_review_reason`).
+  - `GET /api/v1/admin/submissions/flagged` (Role: `BTC_ADMIN`):
+    Returns paginated list of submissions flagged for BTC manual duplicate review (AC-22):
+    `{ data: [{ submissionId, teamId, teamName, createdAt, status, duplicateOfSubmissionId, duplicateOfTeamName, matchType, reason }], page, pageSize, total }`.
+    Derives `matchType` ('MANIFEST' | 'NON_BASE_LAYERS') from latest `DUPLICATE_SUBMISSION_FLAGGED` audit event. Protected by admin network allowlist and RBAC (403 for `TEAM_ACCOUNT`, 401 for anonymous). Flagging never blocks activation or auto-rejects submissions.
 
 - **Preflight Queue Position Note**:
   No preflight background job enqueuer exists yet in the platform (submissions sit in `PREFLIGHT` until evaluated). `preflightPosition` and `preflightQueueLength` are therefore derived deterministically from PostgreSQL by counting submissions with `status = 'PREFLIGHT'` ordered by `(created_at, id)`.

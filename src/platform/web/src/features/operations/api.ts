@@ -195,3 +195,32 @@ export async function listAudit(filters: AuditFilters): Promise<Paged<AuditItem>
 export async function listQueueOverrides(): Promise<readonly QueueOverride[]> {
   return items<QueueOverride>(await request('/api/v1/public/queue-overrides'));
 }
+
+export interface FlaggedSubmissionItem {
+  readonly submissionId: string;
+  readonly teamId: string;
+  readonly teamName: string;
+  readonly createdAt: string;
+  readonly status: string;
+  readonly duplicateOfSubmissionId?: string;
+  readonly duplicateOfTeamName?: string;
+  readonly matchType?: string;
+  readonly reason?: string;
+}
+
+export async function listFlaggedSubmissions(page = 1, pageSize = 20): Promise<Paged<FlaggedSubmissionItem>> {
+  const body = await request(`/api/v1/admin/submissions/flagged${query({ page: page > 1 ? page : undefined, pageSize: pageSize !== 20 ? pageSize : undefined })}`);
+  const raw = body as { data?: unknown; total?: number; pageSize?: number };
+  const list = Array.isArray(raw?.data) ? (raw.data as FlaggedSubmissionItem[]) : [];
+  const total = typeof raw.total === 'number' ? raw.total : list.length;
+  const size = typeof raw.pageSize === 'number' ? raw.pageSize : pageSize;
+  const totalPages = Math.max(1, Math.ceil(total / size));
+  return {
+    items: list,
+    pagination: {
+      page,
+      totalPages,
+      totalItems: total,
+    },
+  };
+}

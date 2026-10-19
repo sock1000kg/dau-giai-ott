@@ -3,7 +3,13 @@ import { DEFAULT_LIMITS } from '@ott/bot-protocol';
 import { DEFAULT_MAP } from '@ott/game-core';
 import type { OciArtifactReference } from '@ott/job-contract';
 import { CoreGameAdapter } from '@ott/match-runner';
-import type { Database, ObjectStorage } from '@ott/platform-api';
+import {
+  checkDuplicateSubmission,
+  recordSubmissionLayers,
+  type Database,
+  type ObjectStorage,
+} from '@ott/platform-api';
+import { extractOciLayersFromArchive } from './artifacts.ts';
 import { pingDocker } from './runtime/server.ts';
 import { SandboxOciBotPort } from './sandbox/oci-bot-port.ts';
 import { SANDBOX_POLICY_V1 } from './sandbox/policy.ts';
@@ -38,6 +44,14 @@ export interface PreflightSubmissionOptions {
     start: (msg: any) => Promise<{ ok: boolean; code?: string }>;
     requestAction: (msg: any, timeoutMs: number) => Promise<{ ok: boolean; code?: string }>;
     stop: () => Promise<void>;
+  };
+  readonly extractLayers?: typeof extractOciLayersFromArchive;
+  readonly recordLayers?: typeof recordSubmissionLayers;
+  readonly checkDuplicate?: typeof checkDuplicateSubmission;
+  readonly logger?: {
+    warn: (msg: string, ...args: any[]) => void;
+    info?: (msg: string, ...args: any[]) => void;
+    error?: (msg: string, ...args: any[]) => void;
   };
 }
 
@@ -82,7 +96,7 @@ async function executeProtocolSmokeTest(
   dockerReachable?: () => Promise<boolean>,
   dockerSocketPath?: string,
   createBotPort?: PreflightSubmissionOptions['createBotPort'],
-): Promise<void> {
+): Promise<Uint8Array> {
   if (submission.policy_version !== PLATFORM_POLICY_VERSION) throw new Error('PREFLIGHT_POLICY_UNSUPPORTED');
   let archive: Uint8Array;
   try {
@@ -142,6 +156,7 @@ async function executeProtocolSmokeTest(
   } finally {
     await bot.stop();
   }
+  return archive;
 }
 
 async function recordInvalid(database: Database, submissionId: string, reason: string): Promise<void> {
@@ -199,7 +214,47 @@ export async function preflightSubmission(options: PreflightSubmissionOptions): 
   if (submission.status !== 'PREFLIGHT') throw new Error('PREFLIGHT_SUBMISSION_STATE_CONFLICT');
 
   try {
-    await executeProtocolSmokeTest(submission, options.storage, options.dockerReachable, options.dockerSocketPath, options.createBotPort);
+    const archive = await executeProtocolSmokeTest(
+      submission,
+      options.storage,
+      options.dockerReachable,
+      options.dockerSocketPath,
+      options.createBotPort,
+    );
+
+    try {
+      const extracted = (options.extractLayers ?? extractOciLayersFromArchive)(archive);
+      await (options.recordLayers ?? recordSubmissionLayers)(options.database, {
+        submissionId: submission.id,
+        layers: extracted.layers.map((layer) => ({
+          digest: layer.digest,
+          mediaType: layer.mediaType,
+          sizeBytes: layer.size,
+          storageKey: `layers/sha256/${layer.digest.replace(/^sha256:/, '')}`,
+          isBaseLayer: extracted.baseLayerDigests.includes(layer.digest),
+        })),
+      });
+      await (options.checkDuplicate ?? checkDuplicateSubmission)(options.database, {
+        submissionId: submission.id,
+        teamId: submission.team_id,
+        manifestDigest: extracted.manifestDigest,
+        nonBaseLayerDigests: extracted.nonBaseLayerDigests,
+      });
+    } catch (error) {
+      const code = error instanceof Error ? error.message : 'UNKNOWN_ERROR';
+      const payload = {
+        level: 'warn',
+        message: 'duplicate check skipped',
+        submissionId: submission.id,
+        code,
+      };
+      if (options.logger?.warn) {
+        options.logger.warn(JSON.stringify(payload));
+      } else {
+        console.warn(JSON.stringify(payload));
+      }
+    }
+
     await activate(options.database, submission);
     return { submissionId: submission.id, status: 'ACTIVE', replayed: false };
   } catch (error) {

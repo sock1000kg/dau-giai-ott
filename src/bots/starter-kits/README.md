@@ -124,8 +124,8 @@ Nhằm tối ưu hóa dung lượng lưu trữ trên MinIO/S3 mà vẫn đảm b
 A: Có. Bạn có thể cài đặt thư viện vào image khi build Dockerfile. Tuy nhiên, hãy giữ kích thước archive dưới hạn mức (256MB) và uncompressed size dưới 512MB.
 
 **Q: Tại sao manifest digest của tôi bị trùng với đội khác dù tôi tự code?**  
-A: Nếu hai đội sử dụng cùng một starter kit mẫu và không có thay đổi nào trong code, các custom layer sẽ hoàn toàn trùng khớp. Để tránh bị cờ review, hãy tùy biến chiến thuật và logic bot của đội bạn.
+A: Nếu hai đội sử dụng cùng một starter kit mẫu và không có thay đổi nào trong code, các custom layer sẽ hoàn toàn trùng khớp; bản sao nguyên trạng từ starter kit sẽ được hệ thống gắn cờ để BTC xem xét theo đúng thiết kế (bot vẫn đạt ACTIVE và không bị chặn thi đấu). Để tránh bị cờ review, hãy tùy biến chiến thuật và logic bot của đội bạn.
 
 **Q: Khi nào bot bị loại (disqualify) do duplicate?**  
-A: Cờ `duplicate_review_flag` chỉ là cảnh báo kỹ thuật cho BTC. BTC sẽ đối chiếu thời gian nộp, cam kết bản quyền và phỏng vấn kỹ thuật nếu cần trước khi đưa ra bất kỳ quyết định kỷ luật nào.
+A: Cờ `duplicate_review_flag` chỉ là cảnh báo kỹ thuật cho BTC xem xét, không bao giờ tự động loại hay hủy bot. BTC sẽ đối chiếu thời gian nộp, cam kết bản quyền và phỏng vấn kỹ thuật nếu cần trước khi đưa ra bất kỳ quyết định kỷ luật nào.
 
