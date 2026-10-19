@@ -37,21 +37,64 @@ export function assertDemoEnvironment(env: Readonly<Record<string, string | unde
   }
 }
 
+function parseTeamCount(env: Readonly<Record<string, string | undefined>>): number {
+  const val = env.OTT_DEMO_TEAM_COUNT;
+  if (val === undefined || val === '') {
+    return 2;
+  }
+  const parsed = Number(val);
+  if (!Number.isInteger(parsed) || parsed < 1 || parsed > 50) {
+    throw new Error(
+      `Demo seeder refused: OTT_DEMO_TEAM_COUNT must be an integer between 1 and 50 (got '${val}')`,
+    );
+  }
+  return parsed;
+}
+
+function parsePassword(
+  name: string,
+  raw: string | undefined,
+  defaultPassword: string,
+): string {
+  if (raw === undefined) {
+    return defaultPassword;
+  }
+  if (typeof raw !== 'string' || raw.length < 6 || raw.length > 128) {
+    throw new Error(`Demo seeder refused: ${name} must be between 6 and 128 characters`);
+  }
+  if (/[\x00-\x1F\x7F,"'\r\n]/.test(raw)) {
+    throw new Error(
+      `Demo seeder refused: ${name} contains forbidden control characters, commas, quotes, or newlines`,
+    );
+  }
+  return raw;
+}
+
 export async function seedDemoAccounts(
   options: SeedDemoAccountsOptions,
 ): Promise<readonly SeedDemoAccountSummary[]> {
   const env = options.environment ?? process.env;
   assertDemoEnvironment(env);
 
-  const demoPasswordHash = await options.passwordHasher.hash(PUBLIC_DEMO_PASSWORD);
+  const teamCount = parseTeamCount(env);
+  const btcPassword = parsePassword('OTT_DEMO_BTC_PASSWORD', env.OTT_DEMO_BTC_PASSWORD, PUBLIC_DEMO_PASSWORD);
+  const teamPassword = parsePassword('OTT_DEMO_TEAM_PASSWORD', env.OTT_DEMO_TEAM_PASSWORD, PUBLIC_DEMO_PASSWORD);
+
+  const btcPasswordHash = await options.passwordHasher.hash(btcPassword);
+  const teamPasswordHash =
+    btcPassword === teamPassword ? btcPasswordHash : await options.passwordHasher.hash(teamPassword);
 
   const { results, accountDetails } = await options.database.transaction(async (tx) => {
-    // 1. Teams: Team 01 and Team 02
+    // 1. Teams: Team 01 .. Team NN
     const teamIdsByName = new Map<string, string>();
-    const teamsToEnsure = [
-      { name: 'Team 01', email: 'team01@demo.invalid' },
-      { name: 'Team 02', email: 'team02@demo.invalid' },
-    ];
+    const teamsToEnsure: { name: string; email: string }[] = [];
+    for (let i = 1; i <= teamCount; i++) {
+      const numStr = String(i).padStart(2, '0');
+      teamsToEnsure.push({
+        name: `Team ${numStr}`,
+        email: `team${numStr}@demo.invalid`,
+      });
+    }
 
     for (const team of teamsToEnsure) {
       const newId = randomUUID();
@@ -73,12 +116,41 @@ export async function seedDemoAccounts(
       }
     }
 
-    // 2. Accounts: btc, team01, team02
-    const accountsToSeed = [
-      { username: 'btc', role: 'BTC_ADMIN' as const, teamId: null, teamName: null },
-      { username: 'team01', role: 'TEAM_ACCOUNT' as const, teamId: teamIdsByName.get('Team 01')!, teamName: 'Team 01' },
-      { username: 'team02', role: 'TEAM_ACCOUNT' as const, teamId: teamIdsByName.get('Team 02')!, teamName: 'Team 02' },
+    // 2. Accounts: btc, team01 .. teamNN
+    const accountsToSeed: {
+      username: string;
+      role: 'BTC_ADMIN' | 'TEAM_ACCOUNT';
+      teamId: string | null;
+      teamName: string | null;
+      passwordHash: string;
+      expectedPassword: string;
+    }[] = [
+      {
+        username: 'btc',
+        role: 'BTC_ADMIN' as const,
+        teamId: null,
+        teamName: null,
+        passwordHash: btcPasswordHash,
+        expectedPassword: btcPassword,
+      },
     ];
+
+    for (let i = 1; i <= teamCount; i++) {
+      const numStr = String(i).padStart(2, '0');
+      const teamName = `Team ${numStr}`;
+      const teamId = teamIdsByName.get(teamName);
+      if (teamId === undefined) {
+        throw new Error(`Missing team ID for '${teamName}'`);
+      }
+      accountsToSeed.push({
+        username: `team${numStr}`,
+        role: 'TEAM_ACCOUNT' as const,
+        teamId,
+        teamName,
+        passwordHash: teamPasswordHash,
+        expectedPassword: teamPassword,
+      });
+    }
 
     const summaries: SeedDemoAccountSummary[] = [];
     const details: {
@@ -86,6 +158,7 @@ export async function seedDemoAccounts(
       role: 'BTC_ADMIN' | 'TEAM_ACCOUNT';
       teamName: string | null;
       storedHash: string;
+      expectedPassword: string;
       created: boolean;
     }[] = [];
 
@@ -93,7 +166,7 @@ export async function seedDemoAccounts(
       const newId = randomUUID();
       const insertResult = await tx.query<{ readonly id: string }>(
         'INSERT INTO accounts (id, username, password_hash, role, team_id) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (username) DO NOTHING RETURNING id',
-        [newId, acc.username, demoPasswordHash, acc.role, acc.teamId],
+        [newId, acc.username, acc.passwordHash, acc.role, acc.teamId],
       );
 
       if (insertResult.rows[0] !== undefined) {
@@ -102,7 +175,8 @@ export async function seedDemoAccounts(
           username: acc.username,
           role: acc.role,
           teamName: acc.teamName,
-          storedHash: demoPasswordHash,
+          storedHash: acc.passwordHash,
+          expectedPassword: acc.expectedPassword,
           created: true,
         });
       } else {
@@ -132,6 +206,7 @@ export async function seedDemoAccounts(
           role: acc.role,
           teamName: acc.teamName,
           storedHash: existingRow.password_hash,
+          expectedPassword: acc.expectedPassword,
           created: false,
         });
       }
@@ -149,11 +224,11 @@ export async function seedDemoAccounts(
   for (const acc of accountDetails) {
     let passwordCell = '';
     if (acc.created) {
-      passwordCell = PUBLIC_DEMO_PASSWORD;
+      passwordCell = acc.expectedPassword;
     } else {
-      const verified = await options.passwordHasher.verify(acc.storedHash, PUBLIC_DEMO_PASSWORD);
+      const verified = await options.passwordHasher.verify(acc.storedHash, acc.expectedPassword);
       if (verified) {
-        passwordCell = PUBLIC_DEMO_PASSWORD;
+        passwordCell = acc.expectedPassword;
       } else {
         passwordCell = '';
         process.stdout.write(`account ${acc.username} exists with a non-demo password; CSV cell left empty\n`);

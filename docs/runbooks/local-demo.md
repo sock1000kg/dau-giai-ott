@@ -16,11 +16,18 @@ This runbook covers one-command local demonstration stack management (`scripts/d
 ### 2. Copy-Ready Lifecycle Workflow
 
 ```bash
-# 1. Bring up the full demo stack (preflight, build, migrate, seed, wait healthy)
+# 1a. Bring up the local demo stack (default: 2 teams, password ABC123)
 ./scripts/demo.sh up
 
-# 2. View demo accounts and verify CSV permissions (passwords are redacted from output)
+# 1b. Bring up the public demo stack (10 tester teams, secure cookies, random passwords)
+# See docs/runbooks/public-demo-hosting.md for complete remote hosting instructions.
+./scripts/demo.sh up --public [--bind 127.0.0.1] [--port 8080]
+
+# 2a. View demo accounts (passwords redacted)
 ./scripts/demo.sh accounts
+
+# 2b. Reveal unredacted credentials to distribute to testers
+./scripts/demo.sh accounts --reveal
 
 # 3. Check container health, ready probe, and CSV status
 ./scripts/demo.sh status
@@ -47,11 +54,14 @@ This runbook covers one-command local demonstration stack management (`scripts/d
 # 8. Follow logs from the stack or a specific service
 ./scripts/demo.sh logs api -f
 
-# 9. Stop the running containers (data volumes preserved)
+# 9. Non-destructive refresh: reset database/volumes while preserving credentials and env
+./scripts/demo.sh refresh [--yes]
+
+# 10. Stop the running containers (data volumes preserved)
 ./scripts/demo.sh stop
 
-# 10. Clean reset (removes containers, volumes, demo.env, and accounts.csv)
-./scripts/demo.sh reset
+# 11. Full clean reset (destroys containers, volumes, demo.env, and accounts.csv)
+./scripts/demo.sh reset [--yes]
 ```
 
 Or run via root npm workspace shortcuts:
@@ -152,6 +162,7 @@ To manually verify the web gateway and UI across machines on the same local netw
 | `demo.sh round open/close` refused with in-flight error | A tournament round is currently in `RUNNING` or `SETTLING` status, or is paused. | Round transitions fail-closed to prevent corrupting active match runs. Wait until the round settles, resume if paused, or check status with `./scripts/demo.sh round status`. (Note: `/api/v1/results/series` only returns terminal statuses `FINALIZED`/`CANCELLED`; in-flight protection checks round read models fail-closed). |
 | `round close` fails starting round with 500 / `insufficient teams` | Round start requires ≥2 teams with `ACTIVE` submissions (`SCHEDULING_INSUFFICIENT_TEAMS`). | Have `team01` and `team02` log in at `http://127.0.0.1:8080/`, upload bot archives, and wait for preflight gate PASS (status `ACTIVE`). Then rerun `./scripts/demo.sh round close`. |
 | Cannot login with demo accounts | Database seeding did not run or volume was corrupted. | Run `./scripts/demo.sh status` to verify `accounts.csv`. If necessary, run `./scripts/demo.sh reset` followed by `./scripts/demo.sh up`. |
+| Corrupted tournament state / resetting between test sessions | Old round or submission data needs to be cleared without regenerating credentials. | Run `./scripts/demo.sh refresh --yes` to wipe database and object storage volumes while preserving `demo.env` and `accounts.csv`. |
 
 ---
 

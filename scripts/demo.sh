@@ -7,6 +7,7 @@
 #   up        Preflight, build, migrate, seed demo accounts, and wait healthy
 #   status    Check service health, ready probe, and accounts CSV
 #   accounts  Print accounts and roles from CSV without logging passwords
+#   refresh   Reset data only and bring stack up fresh with existing env
 #   logs      Tail logs from one or all stack services
 #   round     BTC operator controls for round lifecycle (status|open|close|results)
 #   stop      Stop running containers without removing volumes
@@ -52,11 +53,42 @@ trap 'cleanup; exit 143' TERM
 # Helper Functions
 # ------------------------------------------------------------------------------
 detect_docker_gid() {
-  local gid="0"
-  if [[ -S "${DOCKER_SOCKET:-/var/run/docker.sock}" ]]; then
-    gid="$(stat -c %g "${DOCKER_SOCKET:-/var/run/docker.sock}" 2>/dev/null || stat -f %g "${DOCKER_SOCKET:-/var/run/docker.sock}" 2>/dev/null || echo "0")"
+  local gid=""
+  if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+    gid="$(docker run --rm -v "${DOCKER_SOCKET}":/s alpine stat -c %g /s 2>/dev/null || docker run --rm -v "${DOCKER_SOCKET}":/s node:22.12-alpine stat -c %g /s 2>/dev/null || true)"
   fi
-  echo "${gid:-0}"
+  if [[ -z "${gid}" || ! "${gid}" =~ ^[0-9]+$ ]]; then
+    if [[ -e "${DOCKER_SOCKET}" || -S "${DOCKER_SOCKET}" ]]; then
+      gid="$(stat -c %g "${DOCKER_SOCKET}" 2>/dev/null || stat -f %g "${DOCKER_SOCKET}" 2>/dev/null || true)"
+    fi
+  fi
+  if [[ -z "${gid}" || ! "${gid}" =~ ^[0-9]+$ ]]; then
+    gid="0"
+  fi
+  echo "${gid}"
+}
+
+validate_ipv4() {
+  local ip="$1"
+  local rx='^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})$'
+  if [[ "${ip}" =~ $rx ]]; then
+    local i
+    for i in 1 2 3 4; do
+      if (( BASH_REMATCH[i] > 255 )); then
+        return 1
+      fi
+    done
+    return 0
+  fi
+  return 1
+}
+
+generate_tester_password() {
+  if command -v python3 >/dev/null 2>&1; then
+    python3 -c "import secrets; chars = [c for c in 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789' if c not in '0O1lI']; print(''.join(secrets.choice(chars) for _ in range(12)))"
+  else
+    head -c 128 /dev/urandom | tr -dc '2-9A-HJ-NP-Za-km-z' | head -c 12
+  fi
 }
 
 get_app_port() {
@@ -114,20 +146,6 @@ find_free_port() {
 
 generate_secret() {
   openssl rand -hex 16 2>/dev/null || head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n'
-}
-
-detect_docker_gid() {
-  local gid=""
-  if [[ -e "${DOCKER_SOCKET}" || -S "${DOCKER_SOCKET}" ]]; then
-    gid="$(stat -c %g "${DOCKER_SOCKET}" 2>/dev/null || stat -f %g "${DOCKER_SOCKET}" 2>/dev/null || true)"
-  fi
-  if [[ -z "${gid}" || ! "${gid}" =~ ^[0-9]+$ ]]; then
-    gid="$(docker run --rm -v "${DOCKER_SOCKET}":/s alpine stat -c %g /s 2>/dev/null || true)"
-  fi
-  if [[ -z "${gid}" || ! "${gid}" =~ ^[0-9]+$ ]]; then
-    gid="0"
-  fi
-  echo "${gid}"
 }
 
 # ------------------------------------------------------------------------------
@@ -212,6 +230,18 @@ print_urls() {
   echo "================================================================="
 }
 
+print_public_urls() {
+  local port="$1"
+  echo ""
+  echo "================================================================="
+  echo "OTT Public Demo Stack is running!"
+  echo "Local Gateway URL (point tunnel here): http://127.0.0.1:${port}/"
+  echo "Usernames: btc, team01..team10"
+  echo "Credentials CSV: ${ACCOUNTS_CSV}"
+  echo "To view credentials, run: ./scripts/demo.sh accounts --reveal"
+  echo "================================================================="
+}
+
 # ------------------------------------------------------------------------------
 # Help Messages
 # ------------------------------------------------------------------------------
@@ -224,7 +254,8 @@ One-command local demo operations for the OTT Tournament stack.
 Subcommands:
   up        Build, start, migrate, seed demo accounts, and wait until healthy
   status    Check container status, ready probe, and accounts CSV
-  accounts  Print demo accounts and roles (never prints passwords)
+  accounts  Print demo accounts and roles (never prints passwords unless --reveal)
+  refresh   Reset data only (wiping volumes) and re-up stack preserving env/credentials
   logs      Tail logs from one or all services (api, worker, web, postgres, ...)
   round     Manage qualification round lifecycle as BTC administrator
   stop      Stop running containers without destroying data volumes
@@ -242,6 +273,8 @@ Preflights prerequisites, generates configuration, builds images, starts
 containers, runs migrations, seeds demo accounts, and waits for readiness.
 
 Options:
+  --public       Generate public demo mode configuration (10 teams, randomized passwords)
+  --bind <ADDR>  Bind address for web gateway (default: 0.0.0.0)
   --port <PORT>  Port to publish the web gateway on (default: 8080)
   --no-build     Skip image build step (use pre-existing images)
   --help, -h     Show this help message
@@ -265,9 +298,25 @@ accounts_help() {
 Usage: demo.sh accounts [options]
 
 Displays the demo accounts CSV location, verifies permissions mode 0600,
-and lists usernames, roles, and teams. Never outputs plaintext passwords.
+and lists usernames, roles, and teams. Never outputs plaintext passwords
+unless explicit --reveal flag is provided.
 
 Options:
+  --reveal       Print the full credentials CSV including passwords to stdout
+  --help, -h     Show this help message
+EOF
+}
+
+refresh_help() {
+  cat <<EOF
+Usage: demo.sh refresh [options]
+
+Performs a data-only reset of the demo stack: wipes containers and volumes,
+preserves configuration (demo.env) and credentials (accounts.csv), and
+restarts the stack fresh with the existing environment.
+
+Options:
+  --yes          Bypass confirmation prompt (required for cron/non-interactive)
   --help, -h     Show this help message
 EOF
 }
@@ -341,6 +390,9 @@ sub_up() {
   local port="8080"
   local port_specified=0
   local build_flag="--build"
+  local is_public=0
+  local bind_addr="0.0.0.0"
+  local from_refresh=0
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -353,6 +405,21 @@ sub_up() {
         ;;
       --no-build)
         build_flag=""
+        shift
+        ;;
+      --public)
+        is_public=1
+        shift
+        ;;
+      --bind)
+        shift
+        [[ $# -gt 0 ]] || { echo "Error: --bind requires an argument" >&2; exit 2; }
+        bind_addr="$1"
+        shift
+        ;;
+      --from-refresh)
+        # internal flag set by refresh; intentionally not in --help
+        from_refresh=1
         shift
         ;;
       --help|-h)
@@ -368,6 +435,11 @@ sub_up() {
 
   if [[ ! "${port}" =~ ^[0-9]+$ || "${port}" -lt 1 || "${port}" -gt 65535 ]]; then
     echo "Error: Port '${port}' must be an integer between 1 and 65535." >&2
+    exit 2
+  fi
+
+  if ! validate_ipv4 "${bind_addr}"; then
+    echo "Error: Invalid bind address '${bind_addr}'. Must be a valid IPv4 address (e.g. 0.0.0.0 or 127.0.0.1)." >&2
     exit 2
   fi
 
@@ -409,19 +481,33 @@ sub_up() {
     exit 1
   fi
 
+  # Preflight check: mode mixing guard if env file exists
+  if [[ -f "${DEMO_ENV_FILE}" ]]; then
+    if (( is_public == 1 )); then
+      if ! grep -q '^DEMO_PUBLIC=true' "${DEMO_ENV_FILE}" 2>/dev/null; then
+        echo "Error: env was created in local mode; run demo.sh reset first" >&2
+        exit 1
+      fi
+    fi
+  fi
+
   # If env file exists and port was not explicitly passed, reuse port from env file
   if [[ -f "${DEMO_ENV_FILE}" && "${port_specified}" -eq 0 ]]; then
     port="$(get_app_port)"
   fi
 
   # Preflight check 6: Idempotent up check (if stack env already initialized)
-  if [[ -f "${DEMO_ENV_FILE}" ]]; then
+  if [[ -f "${DEMO_ENV_FILE}" && "${from_refresh}" -eq 0 ]]; then
     local ready_probe
     ready_probe="$(curl -sf -m 2 "http://127.0.0.1:${port}/api/v1/health/ready" 2>/dev/null || true)"
     local ready_pattern='"status":[[:space:]]*"ready"'
     if [[ "${ready_probe}" =~ ${ready_pattern} ]]; then
       echo "Demo stack '${COMPOSE_PROJECT}' is already running and healthy at http://127.0.0.1:${port}/."
-      print_urls "${port}"
+      if (( is_public == 1 )) || grep -q '^DEMO_PUBLIC=true' "${DEMO_ENV_FILE}" 2>/dev/null; then
+        print_public_urls "${port}"
+      else
+        print_urls "${port}"
+      fi
       exit 0
     fi
   fi
@@ -449,7 +535,39 @@ sub_up() {
     doc_gid="$(detect_docker_gid)"
 
     local tmp_env="${DEMO_ENV_FILE}.tmp.$$"
-    cat > "${tmp_env}" <<EOF
+    if (( is_public == 1 )); then
+      local btc_pass tester_pass
+      btc_pass="$(generate_secret)"
+      tester_pass="$(generate_tester_password)"
+      cat > "${tmp_env}" <<EOF
+POSTGRES_DB=ott_demo
+POSTGRES_USER=ott_demo
+POSTGRES_PASSWORD=${pg_pass}
+POSTGRES_PORT=${pg_port}
+REDIS_PASSWORD=${rd_pass}
+REDIS_PORT=${rd_port}
+S3_ACCESS_KEY_ID=ott-demo-access
+S3_SECRET_ACCESS_KEY=${s3_sec}
+S3_BUCKET=ott-demo-bucket
+S3_API_PORT=${s3_port}
+APP_PORT=${port}
+APP_BIND=${bind_addr}
+DOCKER_SOCKET=${DOCKER_SOCKET}
+DOCKER_GID=${doc_gid}
+OTT_DEPLOYMENT_MODE=dev
+OTT_SECURE_COOKIES=true
+OTT_DEMO_MODE=true
+OTT_BOOTSTRAP_BTC_USERNAME=btc
+OTT_BOOTSTRAP_BTC_PASSWORD=${btc_pass}
+OTT_DEMO_BTC_PASSWORD=${btc_pass}
+OTT_DEMO_TEAM_COUNT=10
+OTT_DEMO_TEAM_PASSWORD=${tester_pass}
+DEMO_UID=$(id -u)
+DEMO_GID=$(id -g)
+DEMO_PUBLIC=true
+EOF
+    else
+      cat > "${tmp_env}" <<EOF
 POSTGRES_DB=ott_demo
 POSTGRES_USER=ott_demo
 POSTGRES_PASSWORD=${pg_pass}
@@ -471,6 +589,7 @@ OTT_BOOTSTRAP_BTC_PASSWORD=ABC123
 DEMO_UID=$(id -u)
 DEMO_GID=$(id -g)
 EOF
+    fi
     chmod 0600 "${tmp_env}"
     mv -n "${tmp_env}" "${DEMO_ENV_FILE}"
     chmod 0600 "${DEMO_ENV_FILE}"
@@ -520,7 +639,11 @@ EOF
     exit 1
   fi
 
-  print_urls "${port}"
+  if (( is_public == 1 )) || grep -q '^DEMO_PUBLIC=true' "${DEMO_ENV_FILE}" 2>/dev/null; then
+    print_public_urls "${port}"
+  else
+    print_urls "${port}"
+  fi
 }
 
 # ------------------------------------------------------------------------------
@@ -577,8 +700,13 @@ sub_status() {
 # Subcommand: accounts
 # ------------------------------------------------------------------------------
 sub_accounts() {
+  local reveal=0
   while [[ $# -gt 0 ]]; do
     case "$1" in
+      --reveal)
+        reveal=1
+        shift
+        ;;
       --help|-h)
         accounts_help
         exit 0
@@ -595,17 +723,130 @@ sub_accounts() {
     exit 1
   fi
 
-  echo "Accounts CSV: ${ACCOUNTS_CSV}"
   local mode
   mode="$(stat -c %a "${ACCOUNTS_CSV}" 2>/dev/null || stat -f %Lp "${ACCOUNTS_CSV}" 2>/dev/null || echo "")"
   if [[ -n "${mode}" && "${mode}" != "600" ]]; then
     echo "Warning: CSV permissions mode is ${mode} (expected 0600)" >&2
-  else
+  fi
+
+  if (( reveal == 1 )); then
+    echo "Warning: Revealing credentials including plaintext passwords to stdout." >&2
+    cat "${ACCOUNTS_CSV}"
+    return 0
+  fi
+
+  echo "Accounts CSV: ${ACCOUNTS_CSV}"
+  if [[ -z "${mode}" || "${mode}" == "600" ]]; then
     echo "Mode: ${mode:-0600}"
   fi
   echo "passwords are in the file"
   echo ""
   awk -F',' '{printf "%-12s %-16s %s\n", $1, $3, $4}' "${ACCOUNTS_CSV}"
+}
+
+# ------------------------------------------------------------------------------
+# Subcommand: refresh
+# ------------------------------------------------------------------------------
+sub_refresh() {
+  local yes=0
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --yes)
+        yes=1
+        shift
+        ;;
+      --help|-h)
+        refresh_help
+        exit 0
+        ;;
+      *)
+        echo "Error: Unknown argument '$1' for refresh. Usage: demo.sh refresh [--yes]" >&2
+        exit 2
+        ;;
+    esac
+  done
+
+  # Safety check project name pattern
+  if [[ ! "${COMPOSE_PROJECT}" =~ ^ott-demo[a-z0-9-]*$ ]]; then
+    echo "Error: Invalid project name '${COMPOSE_PROJECT}'. Must match pattern ^ott-demo[a-z0-9-]*$" >&2
+    exit 2
+  fi
+
+  if (( yes == 0 )); then
+    local confirmation=""
+    if [[ -t 0 ]]; then
+      read -r -p "Type '${COMPOSE_PROJECT}' to confirm refresh (data reset only): " confirmation
+    else
+      if ! read -r confirmation; then
+        echo "Error: Refresh requires confirmation. Type '${COMPOSE_PROJECT}' or pass --yes." >&2
+        exit 1
+      fi
+    fi
+    if [[ "${confirmation}" != "${COMPOSE_PROJECT}" ]]; then
+      echo "Refresh aborted: Confirmation does not match project name '${COMPOSE_PROJECT}'." >&2
+      exit 1
+    fi
+  fi
+
+  # Check demo.env exists before taking any docker action
+  if [[ ! -f "${DEMO_ENV_FILE}" ]]; then
+    echo "Error: no demo env at ${DEMO_ENV_FILE}; run demo.sh up [--public] first" >&2
+    exit 1
+  fi
+
+  # Concurrency lock against concurrent runs
+  local lock_file="${DEMO_ENV_FILE}.lock"
+  mkdir -p -m 700 "$(dirname "${lock_file}")"
+
+  local lock_dir="${DEMO_ENV_FILE}.lock_dir"
+  local lock_fd
+
+  if command -v flock >/dev/null 2>&1; then
+    exec {lock_fd}>"${lock_file}"
+    if ! flock -n "${lock_fd}"; then
+      echo "Error: Another demo.sh refresh is currently running (locked via ${lock_file})." >&2
+      exit 1
+    fi
+  else
+    if ! mkdir "${lock_dir}" 2>/dev/null; then
+      local old_pid=""
+      if [[ -f "${lock_dir}/pid" ]]; then
+        old_pid="$(cat "${lock_dir}/pid" 2>/dev/null || true)"
+      fi
+      if [[ -n "${old_pid}" ]] && ! kill -0 "${old_pid}" 2>/dev/null; then
+        rm -rf "${lock_dir}" 2>/dev/null || true
+        if ! mkdir "${lock_dir}" 2>/dev/null; then
+          echo "Error: Another demo.sh refresh is currently running." >&2
+          exit 1
+        fi
+      else
+        echo "Error: Another demo.sh refresh is currently running." >&2
+        exit 1
+      fi
+    fi
+    echo "$$" > "${lock_dir}/pid"
+    CLEANUP_FILES+=("${lock_dir}")
+  fi
+
+  echo "Refreshing demo stack for project '${COMPOSE_PROJECT}' (preserving demo.env and accounts.csv)..."
+  export DOCKER_GID="${DOCKER_GID:-$(detect_docker_gid)}"
+  if [[ -f "${DEMO_ENV_FILE}" ]]; then
+    docker compose -p "${COMPOSE_PROJECT}" -f "${COMPOSE_FILE}" --env-file "${DEMO_ENV_FILE}" down --volumes --remove-orphans || true
+  else
+    docker compose -p "${COMPOSE_PROJECT}" -f "${COMPOSE_FILE}" down --volumes --remove-orphans || true
+  fi
+
+  local up_args=(--from-refresh)
+  if docker image inspect ott-api:local ott-worker:local ott-web:local >/dev/null 2>&1; then
+    up_args+=(--no-build)
+  fi
+
+  if [[ -f "${DEMO_ENV_FILE}" ]] && grep -q '^DEMO_PUBLIC=true' "${DEMO_ENV_FILE}" 2>/dev/null; then
+    up_args+=(--public)
+  fi
+
+  sub_up "${up_args[@]}"
 }
 
 # ------------------------------------------------------------------------------
@@ -686,7 +927,11 @@ sub_reset() {
   echo "Target Compose project: ${COMPOSE_PROJECT}"
   echo ""
   echo "Containers to remove:"
-  docker compose -p "${COMPOSE_PROJECT}" -f "${COMPOSE_FILE}" --env-file "${DEMO_ENV_FILE}" ps -a 2>/dev/null || docker ps -a --filter "label=com.docker.compose.project=${COMPOSE_PROJECT}" 2>/dev/null || true
+  if [[ -f "${DEMO_ENV_FILE}" ]]; then
+    docker compose -p "${COMPOSE_PROJECT}" -f "${COMPOSE_FILE}" --env-file "${DEMO_ENV_FILE}" ps -a 2>/dev/null || docker ps -a --filter "label=com.docker.compose.project=${COMPOSE_PROJECT}" 2>/dev/null || true
+  else
+    docker ps -a --filter "label=com.docker.compose.project=${COMPOSE_PROJECT}" 2>/dev/null || true
+  fi
   echo ""
   echo "Volumes to remove:"
   docker volume ls --filter "label=com.docker.compose.project=${COMPOSE_PROJECT}" 2>/dev/null || true
@@ -717,7 +962,20 @@ sub_reset() {
   if [[ -f "${DEMO_ENV_FILE}" ]]; then
     docker compose -p "${COMPOSE_PROJECT}" -f "${COMPOSE_FILE}" --env-file "${DEMO_ENV_FILE}" down --volumes --remove-orphans || true
   else
-    docker compose -p "${COMPOSE_PROJECT}" -f "${COMPOSE_FILE}" down --volumes --remove-orphans || true
+    echo "No env file; removing project resources by label..."
+    local c_ids v_names n_names
+    c_ids="$(docker ps -aq --filter "label=com.docker.compose.project=${COMPOSE_PROJECT}" 2>/dev/null || true)"
+    if [[ -n "${c_ids}" ]]; then
+      docker rm -f ${c_ids} >/dev/null 2>&1 || true
+    fi
+    v_names="$(docker volume ls -q --filter "label=com.docker.compose.project=${COMPOSE_PROJECT}" 2>/dev/null || true)"
+    if [[ -n "${v_names}" ]]; then
+      docker volume rm -f ${v_names} >/dev/null 2>&1 || true
+    fi
+    n_names="$(docker network ls -q --filter "label=com.docker.compose.project=${COMPOSE_PROJECT}" 2>/dev/null || true)"
+    if [[ -n "${n_names}" ]]; then
+      docker network rm ${n_names} >/dev/null 2>&1 || true
+    fi
   fi
 
   rm -f "${ACCOUNTS_CSV}" "${DEMO_ENV_FILE}"
@@ -1078,6 +1336,9 @@ case "${COMMAND}" in
     ;;
   accounts)
     sub_accounts "$@"
+    ;;
+  refresh)
+    sub_refresh "$@"
     ;;
   logs)
     sub_logs "$@"

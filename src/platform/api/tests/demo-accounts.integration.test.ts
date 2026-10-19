@@ -396,4 +396,179 @@ integration('P2-T35 demo accounts and credential CSV', () => {
       await fs.promises.rm(tmpDir, { recursive: true, force: true });
     }
   });
+
+  it('(j) OTT_DEMO_TEAM_COUNT=10 creates 11 accounts with distinct teams and configured passwords, CSV mode 0600, idempotent second run', async () => {
+    const tmpDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'ott-demo-test-'));
+    const csvPath = path.join(tmpDir, 'accounts.csv');
+    try {
+      const btcPass = 'BtcCustomSecretPassword123';
+      const teamPass = 'TeamCustomTesterPassword456';
+      const env = {
+        OTT_DEMO_MODE: 'true',
+        OTT_DEPLOYMENT_MODE: 'dev',
+        OTT_DEMO_TEAM_COUNT: '10',
+        OTT_DEMO_BTC_PASSWORD: btcPass,
+        OTT_DEMO_TEAM_PASSWORD: teamPass,
+      };
+
+      const summary = await seedDemoAccounts({
+        database,
+        passwordHasher: testHasher,
+        environment: env,
+        csvPath,
+      });
+
+      expect(summary).toHaveLength(11);
+      expect(summary.every((s) => s.created)).toBe(true);
+
+      const accountsRes = await database.query<{
+        username: string;
+        role: string;
+        team_id: string | null;
+        team_name: string | null;
+        password_hash: string;
+      }>(
+        `SELECT a.username, a.role, a.team_id, t.name AS team_name, a.password_hash
+         FROM accounts a
+         LEFT JOIN teams t ON a.team_id = t.id
+         ORDER BY a.username`,
+      );
+
+      expect(accountsRes.rows).toHaveLength(11);
+      const btcRow = accountsRes.rows.find((r) => r.username === 'btc');
+      expect(btcRow).toBeDefined();
+      expect(btcRow!.role).toBe('BTC_ADMIN');
+      expect(btcRow!.team_id).toBeNull();
+      expect(await testHasher.verify(btcRow!.password_hash, btcPass)).toBe(true);
+
+      const teamRows = accountsRes.rows.filter((r) => r.username !== 'btc');
+      expect(teamRows).toHaveLength(10);
+      const teamIds = new Set<string>();
+      for (let i = 1; i <= 10; i++) {
+        const numStr = String(i).padStart(2, '0');
+        const username = `team${numStr}`;
+        const row = teamRows.find((r) => r.username === username);
+        expect(row).toBeDefined();
+        expect(row!.role).toBe('TEAM_ACCOUNT');
+        expect(row!.team_name).toBe(`Team ${numStr}`);
+        expect(row!.team_id).toBeTruthy();
+        teamIds.add(row!.team_id!);
+        expect(await testHasher.verify(row!.password_hash, teamPass)).toBe(true);
+      }
+      expect(teamIds.size).toBe(10);
+
+      // Verify CSV
+      const stat = await fs.promises.stat(csvPath);
+      expect(stat.mode & 0o777).toBe(0o600);
+
+      const csvContent = await fs.promises.readFile(csvPath, 'utf8');
+      const lines = csvContent.trim().split('\n');
+      expect(lines).toHaveLength(12); // header + 11 accounts
+      expect(lines[0]).toBe('username,password,role,team');
+      expect(lines[1]).toBe(`btc,${btcPass},BTC_ADMIN,`);
+      for (let i = 1; i <= 10; i++) {
+        const numStr = String(i).padStart(2, '0');
+        expect(lines[i + 1]).toBe(`team${numStr},${teamPass},TEAM_ACCOUNT,Team ${numStr}`);
+      }
+
+      // Second run: idempotent
+      const secondRun = await seedDemoAccounts({
+        database,
+        passwordHasher: testHasher,
+        environment: env,
+        csvPath,
+      });
+      expect(secondRun).toHaveLength(11);
+      expect(secondRun.every((s) => !s.created)).toBe(true);
+      const postCount = await database.query<{ count: string }>('SELECT count(*)::int AS count FROM accounts');
+      expect(Number(postCount.rows[0]?.count)).toBe(11);
+    } finally {
+      await fs.promises.rm(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('(k) invalid count and passwords rejected without echoing secret values', async () => {
+    const tmpDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'ott-demo-test-'));
+    const csvPath = path.join(tmpDir, 'accounts.csv');
+    try {
+      // 1. Invalid team counts
+      for (const badCount of ['0', '51', '-1', '2.5', 'not-a-number']) {
+        await expect(
+          seedDemoAccounts({
+            database,
+            passwordHasher: testHasher,
+            environment: {
+              OTT_DEMO_MODE: 'true',
+              OTT_DEPLOYMENT_MODE: 'dev',
+              OTT_DEMO_TEAM_COUNT: badCount,
+            },
+            csvPath,
+          }),
+        ).rejects.toThrow(/OTT_DEMO_TEAM_COUNT must be an integer between 1 and 50/);
+      }
+
+      // 2. Passwords too short (<6) or too long (>128)
+      const secretShort = '12345';
+      await expect(
+        seedDemoAccounts({
+          database,
+          passwordHasher: testHasher,
+          environment: {
+            OTT_DEMO_MODE: 'true',
+            OTT_DEPLOYMENT_MODE: 'dev',
+            OTT_DEMO_BTC_PASSWORD: secretShort,
+          },
+          csvPath,
+        }),
+      ).rejects.toThrow(/must be between 6 and 128 characters/);
+
+      const secretLong = 'a'.repeat(129);
+      await expect(
+        seedDemoAccounts({
+          database,
+          passwordHasher: testHasher,
+          environment: {
+            OTT_DEMO_MODE: 'true',
+            OTT_DEPLOYMENT_MODE: 'dev',
+            OTT_DEMO_TEAM_PASSWORD: secretLong,
+          },
+          csvPath,
+        }),
+      ).rejects.toThrow(/must be between 6 and 128 characters/);
+
+      // 3. Passwords with control chars, commas, quotes, newlines
+      const forbiddenPasswords = [
+        'has,comma123',
+        'has"quote123',
+        "has'single123",
+        'has\nnewline12',
+        'has\rreturn12',
+        'has\x00null123',
+      ];
+
+      for (const badPass of forbiddenPasswords) {
+        let thrownError: Error | null = null;
+        try {
+          await seedDemoAccounts({
+            database,
+            passwordHasher: testHasher,
+            environment: {
+              OTT_DEMO_MODE: 'true',
+              OTT_DEPLOYMENT_MODE: 'dev',
+              OTT_DEMO_BTC_PASSWORD: badPass,
+            },
+            csvPath,
+          });
+        } catch (err) {
+          thrownError = err as Error;
+        }
+        expect(thrownError).toBeDefined();
+        expect(thrownError!.message).toMatch(/contains forbidden control characters, commas, quotes, or newlines/);
+        // CRITICAL: assert secret value is never echoed in the error message
+        expect(thrownError!.message.includes(badPass)).toBe(false);
+      }
+    } finally {
+      await fs.promises.rm(tmpDir, { recursive: true, force: true });
+    }
+  });
 });

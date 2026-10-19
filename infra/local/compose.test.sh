@@ -154,9 +154,27 @@ run_static_test() {
     fi
     echo "  OK: Coordinator replicas = ${coord_replicas} (single instance)."
 
+    # 6. Assert APP_BIND=127.0.0.1 yields loopback publish for web
+    local loopback_json
+    loopback_json="$(env APP_BIND=127.0.0.1 docker compose -f "${COMPOSE_FILE}" --env-file "${ENV_FILE}" config --format json)"
+    local web_loopback_ip
+    web_loopback_ip="$(echo "${loopback_json}" | jq -r '
+      .services.web.ports[]? | select(.target == 8080) | .host_ip
+    ')"
+    if [ "${web_loopback_ip}" != "127.0.0.1" ]; then
+      echo "FAIL: Expected web to publish to 127.0.0.1 when APP_BIND=127.0.0.1, got: '${web_loopback_ip}'" >&2
+      exit 1
+    fi
+    echo "  OK: APP_BIND=127.0.0.1 binds web to loopback."
+
   else
+    local loopback_json
+    loopback_json="$(env APP_BIND=127.0.0.1 docker compose -f "${COMPOSE_FILE}" --env-file "${ENV_FILE}" config --format json)"
+    local loopback_file="${TMP_DIR}/loopback.json"
+    printf '%s\n' "${loopback_json}" > "${loopback_file}"
+
     # Python3 fallback reading JSON from file argument
-    python3 - "${config_file}" <<'PY'
+    python3 - "${config_file}" "${loopback_file}" <<'PY'
 import json, sys
 
 with open(sys.argv[1], 'r', encoding='utf-8') as f:
@@ -195,6 +213,15 @@ coord = services.get('coordinator', {})
 replicas = (coord.get('deploy') or {}).get('replicas', 1)
 if int(replicas) > 1:
     sys.exit(f'FAIL: Coordinator replicas = {replicas} > 1')
+
+# 6. Check APP_BIND=127.0.0.1 yields loopback publish
+with open(sys.argv[2], 'r', encoding='utf-8') as f:
+    lb_data = json.load(f)
+lb_ports = lb_data.get('services', {}).get('web', {}).get('ports', []) or []
+for p in lb_ports:
+    hip = p.get('host_ip') if isinstance(p, dict) else (p.split(':')[0] if ':' in p else '')
+    if hip != '127.0.0.1':
+        sys.exit(f'FAIL: web should bind 127.0.0.1 when APP_BIND=127.0.0.1, got {hip}')
 PY
     echo "  OK: All checks passed via python3."
   fi

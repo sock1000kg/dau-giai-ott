@@ -128,7 +128,7 @@ run_guard_tests() {
   assert_eq "0" "${TEST_CODE}" "demo.sh --help exits 0"
 
   local sub
-  for sub in up status accounts logs round stop reset; do
+  for sub in up status accounts refresh logs round stop reset; do
     run_cmd bash "${DEMO_SCRIPT}" "${sub}" --help
     assert_eq "0" "${TEST_CODE}" "demo.sh ${sub} --help exits 0"
   done
@@ -144,6 +144,9 @@ run_guard_tests() {
     run_cmd env OTT_DEMO_PROJECT="${bad_proj}" bash "${DEMO_SCRIPT}" status
     assert_eq "2" "${TEST_CODE}" "Rejects invalid project name '${bad_proj}' with exit 2"
     assert_contains "Must match pattern ^ott-demo[a-z0-9-]*$" "${TEST_OUT}" "Reports pattern mismatch error"
+
+    run_cmd env OTT_DEMO_PROJECT="${bad_proj}" bash "${DEMO_SCRIPT}" refresh --yes
+    assert_eq "2" "${TEST_CODE}" "Refresh rejects invalid project name '${bad_proj}' with exit 2"
   done
 
   # ----------------------------------------------------------------------------
@@ -231,6 +234,12 @@ EOF
   assert_contains "Warning" "${TEST_OUT}" "Warns when accounts CSV has mode 644"
   assert_contains "0600" "${TEST_OUT}" "Warning mentions expected 0600 mode"
 
+  # Check accounts --reveal
+  run_cmd env OTT_DEMO_ACCOUNTS_CSV="${sample_csv}" bash "${DEMO_SCRIPT}" accounts --reveal
+  assert_eq "0" "${TEST_CODE}" "Accounts --reveal command exits 0"
+  assert_contains "ABC123" "${TEST_OUT}" "Accounts --reveal outputs plaintext passwords to stdout"
+  assert_contains "Warning: Revealing" "${TEST_OUT}" "Accounts --reveal warns on stderr"
+
   # ----------------------------------------------------------------------------
   # 5. Environment File Generation & Idempotency
   # ----------------------------------------------------------------------------
@@ -311,6 +320,178 @@ EOF
   local env_sha2
   env_sha2="$(sha256sum "${test_env_file}" | awk '{print $1}')"
   assert_eq "${env_sha}" "${env_sha2}" "demo.env is never overwritten on subsequent runs"
+
+  # 5a. Verify plain up generated env keys vs golden keys for non-public
+  local actual_keys
+  actual_keys="$(grep -E '^[A-Z0-9_]+=' "${test_env_file}" | cut -d= -f1 | sort | paste -sd, -)"
+  local golden_keys="APP_PORT,DEMO_GID,DEMO_UID,DOCKER_GID,DOCKER_SOCKET,OTT_BOOTSTRAP_BTC_PASSWORD,OTT_BOOTSTRAP_BTC_USERNAME,OTT_DEMO_MODE,OTT_DEPLOYMENT_MODE,OTT_SECURE_COOKIES,POSTGRES_DB,POSTGRES_PASSWORD,POSTGRES_PORT,POSTGRES_USER,REDIS_PASSWORD,REDIS_PORT,S3_ACCESS_KEY_ID,S3_API_PORT,S3_BUCKET,S3_SECRET_ACCESS_KEY"
+  assert_eq "${golden_keys}" "${actual_keys}" "Plain up generates exactly expected golden keys without modification"
+
+  # 5b. --bind validation
+  run_cmd env PATH="${mock_bin}:${PATH}" bash "${DEMO_SCRIPT}" up --bind not-an-ip
+  assert_eq "2" "${TEST_CODE}" "Rejects invalid bind address with exit 2"
+  assert_contains "Invalid bind address" "${TEST_OUT}" "Reports invalid bind address error"
+
+  run_cmd env PATH="${mock_bin}:${PATH}" bash "${DEMO_SCRIPT}" up --bind 256.0.0.1
+  assert_eq "2" "${TEST_CODE}" "Rejects out-of-range octet in bind address with exit 2"
+
+  run_cmd env PATH="${mock_bin}:${PATH}" bash "${DEMO_SCRIPT}" up --bind 1.2.3
+  assert_eq "2" "${TEST_CODE}" "Rejects incomplete bind address with exit 2"
+
+  # 5c. --public env generation
+  local pub_env_file="${tmp_dir}/pub_demo.env"
+  run_cmd env PATH="${mock_bin}:${PATH}" \
+    OTT_DEMO_PROJECT="${disposable_project}" \
+    OTT_DEMO_ENV_FILE="${pub_env_file}" \
+    DOCKER_SOCKET="${fake_socket}" \
+    bash "${DEMO_SCRIPT}" up --public --no-build --port 19998 --bind 127.0.0.1
+
+  assert_eq "0" "${TEST_CODE}" "up --public succeeds with mock docker"
+
+  local pub_env_mode
+  pub_env_mode="$(stat -c %a "${pub_env_file}" 2>/dev/null || stat -f %Lp "${pub_env_file}" 2>/dev/null || echo "")"
+  assert_eq "600" "${pub_env_mode}" "public demo.env has mode 0600"
+
+  local pub_content
+  pub_content="$(cat "${pub_env_file}")"
+  assert_not_contains "ABC123" "${pub_content}" "public demo.env never contains ABC123"
+  assert_contains "OTT_DEMO_TEAM_COUNT=10" "${pub_content}" "public demo.env has OTT_DEMO_TEAM_COUNT=10"
+  assert_contains "OTT_SECURE_COOKIES=true" "${pub_content}" "public demo.env has OTT_SECURE_COOKIES=true"
+  assert_contains "APP_BIND=127.0.0.1" "${pub_content}" "public demo.env has APP_BIND=127.0.0.1"
+  assert_contains "DEMO_PUBLIC=true" "${pub_content}" "public demo.env has DEMO_PUBLIC=true"
+
+  local pub_btc_pass pub_boot_btc_pass pub_team_pass
+  pub_btc_pass="$(grep '^OTT_DEMO_BTC_PASSWORD=' "${pub_env_file}" | cut -d= -f2-)"
+  pub_boot_btc_pass="$(grep '^OTT_BOOTSTRAP_BTC_PASSWORD=' "${pub_env_file}" | cut -d= -f2-)"
+  pub_team_pass="$(grep '^OTT_DEMO_TEAM_PASSWORD=' "${pub_env_file}" | cut -d= -f2-)"
+
+  assert_eq "${pub_btc_pass}" "${pub_boot_btc_pass}" "OTT_DEMO_BTC_PASSWORD matches OTT_BOOTSTRAP_BTC_PASSWORD"
+  if [[ ${#pub_btc_pass} -ge 24 ]]; then
+    PASSED_TESTS=$((PASSED_TESTS + 1))
+    echo "  PASS: BTC password length >= 24 (${#pub_btc_pass} chars)"
+  else
+    FAILED_TESTS=$((FAILED_TESTS + 1))
+    echo "  FAIL: BTC password too short: ${#pub_btc_pass}" >&2
+  fi
+
+  assert_eq "12" "${#pub_team_pass}" "Tester password has length 12"
+  if [[ "${pub_team_pass}" =~ ^[A-Za-z0-9]+$ ]] && [[ ! "${pub_team_pass}" =~ [0O1lI] ]]; then
+    PASSED_TESTS=$((PASSED_TESTS + 1))
+    echo "  PASS: Tester password contains only [A-Za-z0-9] without ambiguous chars 0O1lI"
+  else
+    FAILED_TESTS=$((FAILED_TESTS + 1))
+    echo "  FAIL: Tester password contains invalid or ambiguous characters: ${pub_team_pass}" >&2
+  fi
+
+  # Second run: public env not overwritten
+  local pub_sha
+  pub_sha="$(sha256sum "${pub_env_file}" | awk '{print $1}')"
+  run_cmd env PATH="${mock_bin}:${PATH}" \
+    OTT_DEMO_PROJECT="${disposable_project}" \
+    OTT_DEMO_ENV_FILE="${pub_env_file}" \
+    DOCKER_SOCKET="${fake_socket}" \
+    bash "${DEMO_SCRIPT}" up --public --no-build --port 19998
+  assert_eq "0" "${TEST_CODE}" "Second up --public run succeeds as idempotent check"
+  local pub_sha2
+  pub_sha2="$(sha256sum "${pub_env_file}" | awk '{print $1}')"
+  assert_eq "${pub_sha}" "${pub_sha2}" "public demo.env is not overwritten on second run"
+
+  # Mode mixing guard: --public against existing local env file
+  run_cmd env PATH="${mock_bin}:${PATH}" \
+    OTT_DEMO_PROJECT="${disposable_project}" \
+    OTT_DEMO_ENV_FILE="${test_env_file}" \
+    DOCKER_SOCKET="${fake_socket}" \
+    bash "${DEMO_SCRIPT}" up --public --no-build --port 19999
+  assert_eq "1" "${TEST_CODE}" "up --public against local env file exits 1"
+  assert_contains "env was created in local mode; run demo.sh reset first" "${TEST_OUT}" "Mixing guard prevents running --public with local env"
+
+  # 5d. refresh command guard tests
+  echo "Testing refresh command guards..."
+
+  # Refresh non-interactive without --yes aborts
+  run_cmd env PATH="${mock_bin}:${PATH}" OTT_DEMO_PROJECT="${disposable_project}" bash "${DEMO_SCRIPT}" refresh < /dev/null
+  assert_eq "1" "${TEST_CODE}" "Refresh non-interactive without --yes aborts with exit code 1"
+  assert_contains "Refresh requires confirmation" "${TEST_OUT}" "Refresh requires confirmation message"
+
+  # Refresh with mismatched confirmation aborts
+  run_cmd bash -c 'printf "wrong\n" | env PATH="'"${mock_bin}:${PATH}"'" OTT_DEMO_PROJECT="'"${disposable_project}"'" bash "'"${DEMO_SCRIPT}"'" refresh'
+  assert_eq "1" "${TEST_CODE}" "Refresh with mismatched confirmation aborts with exit code 1"
+  assert_contains "Refresh aborted" "${TEST_OUT}" "Refresh abort notice on mismatch"
+
+  # Successful refresh with --yes: down --volumes, up + seed, env+CSV checksums untouched
+  local refresh_env_file="${tmp_dir}/refresh_test.env"
+  local refresh_csv_file="${tmp_dir}/refresh_test.csv"
+  cp "${test_env_file}" "${refresh_env_file}"
+  cp "${sample_csv}" "${refresh_csv_file}"
+  local ref_env_sha_before ref_csv_sha_before
+  ref_env_sha_before="$(sha256sum "${refresh_env_file}" | awk '{print $1}')"
+  ref_csv_sha_before="$(sha256sum "${refresh_csv_file}" | awk '{print $1}')"
+
+  > "${docker_log}"
+  run_cmd env PATH="${mock_bin}:${PATH}" \
+    OTT_DEMO_PROJECT="${disposable_project}" \
+    OTT_DEMO_ENV_FILE="${refresh_env_file}" \
+    OTT_DEMO_ACCOUNTS_CSV="${refresh_csv_file}" \
+    DOCKER_SOCKET="${fake_socket}" \
+    bash "${DEMO_SCRIPT}" refresh --yes
+
+  assert_eq "0" "${TEST_CODE}" "refresh --yes succeeds with mock docker"
+  local refresh_log_out
+  refresh_log_out="$(cat "${docker_log}")"
+  assert_contains "down --volumes --remove-orphans" "${refresh_log_out}" "refresh executes down --volumes --remove-orphans"
+  assert_contains "up" "${refresh_log_out}" "refresh re-executes compose up"
+  assert_contains "seed-demo" "${refresh_log_out}" "refresh re-executes seed-demo"
+
+  local ref_env_sha_after ref_csv_sha_after
+  ref_env_sha_after="$(sha256sum "${refresh_env_file}" | awk '{print $1}')"
+  ref_csv_sha_after="$(sha256sum "${refresh_csv_file}" | awk '{print $1}')"
+  assert_eq "${ref_env_sha_before}" "${ref_env_sha_after}" "demo.env checksum untouched across refresh"
+  assert_eq "${ref_csv_sha_before}" "${ref_csv_sha_after}" "accounts.csv checksum untouched across refresh"
+
+  # Concurrent-run lock guard
+  local ref_lock="${refresh_env_file}.lock"
+  touch "${ref_lock}"
+  (
+    exec 9>"${ref_lock}"
+    flock -x 9
+    sleep 3
+  ) &
+  local bg_flock_pid=$!
+  sleep 0.2
+
+  run_cmd env PATH="${mock_bin}:${PATH}" \
+    OTT_DEMO_PROJECT="${disposable_project}" \
+    OTT_DEMO_ENV_FILE="${refresh_env_file}" \
+    OTT_DEMO_ACCOUNTS_CSV="${refresh_csv_file}" \
+    DOCKER_SOCKET="${fake_socket}" \
+    bash "${DEMO_SCRIPT}" refresh --yes
+  assert_eq "1" "${TEST_CODE}" "Concurrent refresh blocked by lock exits 1"
+  assert_contains "Another demo.sh refresh is currently running" "${TEST_OUT}" "Reports lock conflict error"
+
+  kill "${bg_flock_pid}" 2>/dev/null || true
+  wait "${bg_flock_pid}" 2>/dev/null || true
+
+  # Refresh with missing demo.env exits 1, prints error, stub docker log empty, no env created
+  local missing_refresh_env="${tmp_dir}/missing_refresh.env"
+  rm -f "${missing_refresh_env}"
+  > "${docker_log}"
+  run_cmd env PATH="${mock_bin}:${PATH}" \
+    OTT_DEMO_PROJECT="${disposable_project}" \
+    OTT_DEMO_ENV_FILE="${missing_refresh_env}" \
+    DOCKER_SOCKET="${fake_socket}" \
+    bash "${DEMO_SCRIPT}" refresh --yes
+  assert_eq "1" "${TEST_CODE}" "Refresh without env file exits 1"
+  assert_contains "Error: no demo env at ${missing_refresh_env}; run demo.sh up [--public] first" "${TEST_OUT}" "Refresh without env reports clear error"
+  local missing_ref_log
+  missing_ref_log="$(cat "${docker_log}")"
+  assert_eq "" "${missing_ref_log}" "Stub docker log is empty on refresh with missing env"
+  if [[ ! -f "${missing_refresh_env}" ]]; then
+    PASSED_TESTS=$((PASSED_TESTS + 1))
+    echo "  PASS: No env file created by failed refresh"
+  else
+    FAILED_TESTS=$((FAILED_TESTS + 1))
+    echo "  FAIL: Env file was unexpectedly created by refresh" >&2
+  fi
 
   # ----------------------------------------------------------------------------
   # 6. Round Subcommand Guards
@@ -416,6 +597,20 @@ EOF
   reset_log="$(cat "${docker_log}")"
   assert_contains "down --volumes --remove-orphans" "${reset_log}" "Docker compose down was executed on confirmed reset"
   assert_contains "--env-file" "${reset_log}" "Docker compose down passes --env-file when demo.env exists"
+
+  # Reset with absent demo.env skips compose down and cleans by label
+  local absent_reset_env="${tmp_dir}/absent_reset.env"
+  rm -f "${absent_reset_env}"
+  > "${docker_log}"
+  run_cmd env PATH="${mock_bin}:${PATH}" \
+    OTT_DEMO_PROJECT="${disposable_project}" \
+    OTT_DEMO_ENV_FILE="${absent_reset_env}" \
+    bash "${DEMO_SCRIPT}" reset --yes
+  assert_eq "0" "${TEST_CODE}" "Reset with absent demo.env exits 0"
+  assert_contains "No env file; removing project resources by label..." "${TEST_OUT}" "Reset prints removing by label when demo.env absent"
+  local absent_reset_log
+  absent_reset_log="$(cat "${docker_log}")"
+  assert_not_contains "down" "${absent_reset_log}" "Docker compose down was skipped when demo.env is absent"
 
   # ----------------------------------------------------------------------------
   # 9. Docker-Free Canned API Stub Tests (Status, Results, Close Target Lookup)
@@ -1446,6 +1641,138 @@ run_live_tests() {
   local leftover_volumes
   leftover_volumes="$(docker volume ls --filter "label=com.docker.compose.project=${LIVE_PROJECT}" -q)"
   assert_eq "" "${leftover_volumes}" "No volumes left after reset"
+
+  echo "==> Cycle 3: up --public -> login with CSV passwords -> round open -> refresh --yes -> verify logins and data wiped -> reset --yes"
+  bash "${DEMO_SCRIPT}" up --public --port "${live_port}"
+  bash "${DEMO_SCRIPT}" status
+
+  # Assert ready probe returns status:ready
+  local pub_probe
+  pub_probe="$(curl -sf "http://127.0.0.1:${live_port}/api/v1/health/ready")"
+  assert_contains '"status":"ready"' "${pub_probe}" "Public demo ready probe returns status:ready"
+
+  # Read passwords from CSV
+  local csv_file="${REPO_ROOT}/.local/demo/accounts.csv"
+  local live_env_file="${REPO_ROOT}/.local/demo/demo.env"
+  local btc_csv_pass team10_csv_pass
+  btc_csv_pass="$(awk -F',' '$1=="btc"{print $2}' "${csv_file}")"
+  team10_csv_pass="$(awk -F',' '$1=="team10"{print $2}' "${csv_file}")"
+
+  # Assert btc login with CSV password returns 200 + cookie
+  local btc_headers
+  btc_headers="$(mktemp "${TMPDIR:-/tmp}/btc_login_headers.XXXXXX")"
+  local btc_code
+  btc_code="$(curl -s -D "${btc_headers}" -o /dev/null -w "%{http_code}" \
+    -X POST "http://127.0.0.1:${live_port}/api/v1/auth/login" \
+    -H "Content-Type: application/json" \
+    -d "{\"username\":\"btc\",\"password\":\"${btc_csv_pass}\"}")"
+  assert_eq "200" "${btc_code}" "Public demo login as btc with CSV password returns HTTP 200"
+  local btc_cookie
+  btc_cookie="$(grep -i '^set-cookie:' "${btc_headers}" || true)"
+  if [[ -n "${btc_cookie}" ]]; then
+    PASSED_TESTS=$((PASSED_TESTS + 1))
+    echo "  PASS: btc login sets session cookie"
+  else
+    FAILED_TESTS=$((FAILED_TESTS + 1))
+    echo "  FAIL: btc login did not set cookie" >&2
+  fi
+  rm -f "${btc_headers}"
+
+  # Assert team10 login with CSV password returns 200 + cookie
+  local t10_headers
+  t10_headers="$(mktemp "${TMPDIR:-/tmp}/t10_login_headers.XXXXXX")"
+  local t10_code
+  t10_code="$(curl -s -D "${t10_headers}" -o /dev/null -w "%{http_code}" \
+    -X POST "http://127.0.0.1:${live_port}/api/v1/auth/login" \
+    -H "Content-Type: application/json" \
+    -d "{\"username\":\"team10\",\"password\":\"${team10_csv_pass}\"}")"
+  assert_eq "200" "${t10_code}" "Public demo login as team10 with CSV password returns HTTP 200"
+  local t10_cookie
+  t10_cookie="$(grep -i '^set-cookie:' "${t10_headers}" || true)"
+  if [[ -n "${t10_cookie}" ]]; then
+    PASSED_TESTS=$((PASSED_TESTS + 1))
+    echo "  PASS: team10 login sets session cookie"
+  else
+    FAILED_TESTS=$((FAILED_TESTS + 1))
+    echo "  FAIL: team10 login did not set cookie" >&2
+  fi
+  rm -f "${t10_headers}"
+
+  # Assert ABC123 rejected (401)
+  local btc_bad_code
+  btc_bad_code="$(curl -s -o /dev/null -w "%{http_code}" \
+    -X POST "http://127.0.0.1:${live_port}/api/v1/auth/login" \
+    -H "Content-Type: application/json" \
+    -d "{\"username\":\"btc\",\"password\":\"ABC123\"}")"
+  assert_eq "401" "${btc_bad_code}" "Public demo btc login with ABC123 rejected with 401"
+
+  local t10_bad_code
+  t10_bad_code="$(curl -s -o /dev/null -w "%{http_code}" \
+    -X POST "http://127.0.0.1:${live_port}/api/v1/auth/login" \
+    -H "Content-Type: application/json" \
+    -d "{\"username\":\"team10\",\"password\":\"ABC123\"}")"
+  assert_eq "401" "${t10_bad_code}" "Public demo team10 login with ABC123 rejected with 401"
+
+  # Create a row before refresh: open round
+  bash "${DEMO_SCRIPT}" round open --yes
+  local pre_refresh_status
+  pre_refresh_status="$(bash "${DEMO_SCRIPT}" round status)"
+  assert_contains "Status:     SUBMISSION_OPEN" "${pre_refresh_status}" "Round opened before refresh"
+  local pre_round_id
+  pre_round_id="$(echo "${pre_refresh_status}" | grep -oE 'Round [a-zA-Z0-9_-]+' | head -n1 | cut -d' ' -f2 || true)"
+
+  # Record checksums of env and CSV before refresh
+  local pre_env_sha pre_csv_sha
+  pre_env_sha="$(sha256sum "${live_env_file}" | awk '{print $1}')"
+  pre_csv_sha="$(sha256sum "${csv_file}" | awk '{print $1}')"
+
+  # Perform refresh --yes
+  echo "==> Running demo.sh refresh --yes"
+  bash "${DEMO_SCRIPT}" refresh --yes
+
+  # Assert readiness again
+  local post_refresh_probe
+  post_refresh_probe="$(curl -sf "http://127.0.0.1:${live_port}/api/v1/health/ready")"
+  assert_contains '"status":"ready"' "${post_refresh_probe}" "Ready probe returns status:ready after refresh"
+
+  # Assert same logins still work
+  local btc_post_code
+  btc_post_code="$(curl -s -o /dev/null -w "%{http_code}" \
+    -X POST "http://127.0.0.1:${live_port}/api/v1/auth/login" \
+    -H "Content-Type: application/json" \
+    -d "{\"username\":\"btc\",\"password\":\"${btc_csv_pass}\"}")"
+  assert_eq "200" "${btc_post_code}" "btc login still works with same password after refresh"
+
+  local t10_post_code
+  t10_post_code="$(curl -s -o /dev/null -w "%{http_code}" \
+    -X POST "http://127.0.0.1:${live_port}/api/v1/auth/login" \
+    -H "Content-Type: application/json" \
+    -d "{\"username\":\"team10\",\"password\":\"${team10_csv_pass}\"}")"
+  assert_eq "200" "${t10_post_code}" "team10 login still works with same password after refresh"
+
+  # Assert the row created before (the round) is gone
+  local post_refresh_status
+  post_refresh_status="$(bash "${DEMO_SCRIPT}" round status)"
+  if [[ -n "${pre_round_id}" ]]; then
+    assert_not_contains "${pre_round_id}" "${post_refresh_status}" "Pre-refresh round is gone after refresh"
+  fi
+  assert_contains "No qualification rounds found." "${post_refresh_status}" "Round data wiped by refresh"
+
+  # Assert env/CSV checksums unchanged
+  local post_env_sha post_csv_sha
+  post_env_sha="$(sha256sum "${live_env_file}" | awk '{print $1}')"
+  post_csv_sha="$(sha256sum "${csv_file}" | awk '{print $1}')"
+  assert_eq "${pre_env_sha}" "${post_env_sha}" "demo.env checksum unchanged across refresh"
+  assert_eq "${pre_csv_sha}" "${post_csv_sha}" "accounts.csv checksum unchanged across refresh"
+
+  # Final cleanup and leak check
+  bash "${DEMO_SCRIPT}" reset --yes
+  local post_containers
+  post_containers="$(docker ps -a --filter "label=com.docker.compose.project=${LIVE_PROJECT}" -q)"
+  assert_eq "" "${post_containers}" "No containers left after Cycle 3 reset"
+  local post_volumes
+  post_volumes="$(docker volume ls --filter "label=com.docker.compose.project=${LIVE_PROJECT}" -q)"
+  assert_eq "" "${post_volumes}" "No volumes left after Cycle 3 reset"
 
   echo "================================================================="
   echo "Live Tests Summary: ${PASSED_TESTS} passed, ${FAILED_TESTS} failed"

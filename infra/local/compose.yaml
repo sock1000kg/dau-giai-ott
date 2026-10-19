@@ -99,6 +99,9 @@ services:
       OTT_DEMO_MODE: ${OTT_DEMO_MODE:-false}
       OTT_DEPLOYMENT_MODE: ${OTT_DEPLOYMENT_MODE:-dev}
       OTT_DEMO_ACCOUNTS_CSV: /demo/${OTT_DEMO_ACCOUNTS_BASENAME:-accounts.csv}
+      OTT_DEMO_TEAM_COUNT: ${OTT_DEMO_TEAM_COUNT:-2}
+      OTT_DEMO_BTC_PASSWORD: ${OTT_DEMO_BTC_PASSWORD:-ABC123}
+      OTT_DEMO_TEAM_PASSWORD: ${OTT_DEMO_TEAM_PASSWORD:-ABC123}
     volumes:
       - "${OTT_DEMO_ACCOUNTS_DIR:-../../.local/demo}:/demo"
     user: "${DEMO_UID:-1000}:${DEMO_GID:-1000}"
@@ -294,7 +297,7 @@ services:
     volumes:
       - snapshots:/srv/snapshots:ro
     ports:
-      - "0.0.0.0:${APP_PORT:-8080}:8080"
+      - "${APP_BIND:-0.0.0.0}:${APP_PORT:-8080}:8080"
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/healthz > /dev/null || exit 1"]
       interval: 5s
