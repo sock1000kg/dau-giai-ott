@@ -132,3 +132,38 @@ series with no score; a finalized bot forfeit remains an official game result.
 The next round remains blocked until P2-T13 writes both Elo ledger entries for
 each finalized series in the previous round; the API also rejects overlapping
 open rounds in the same stage.
+
+## Docker images build (P2-T33)
+
+Build local images from the repository root using multi-stage Dockerfiles:
+
+```bash
+docker build -f infra/docker/api.Dockerfile -t ott-api:local .
+docker build -f infra/docker/worker.Dockerfile -t ott-worker:local .
+docker build -f infra/docker/web.Dockerfile -t ott-web:local .
+```
+
+### Image specifications
+
+- **API (`ott-api:local`)**:
+  - Base: `node:22.12-alpine`
+  - Non-root user: `node` (UID 1000)
+  - Port: `3000` (default in `src/platform/api/src/runtime/config.ts:131-132`)
+  - Healthcheck: `GET /api/v1/health/live` via Alpine BusyBox `wget`
+  - Default command: `npm run start --workspace @ott/platform-api`
+  - One-shot migration command: `npm run db:migrate --workspace @ott/platform-api`
+- **Worker / Coordinator (`ott-worker:local`)**:
+  - Base: `node:22.12-alpine`
+  - Non-root user: `node` (UID 1000). Compose must attach the host Docker socket group via `group_add: ["${DOCKER_GID:-999}"]` when mounting `/var/run/docker.sock`.
+  - No Docker CLI: communications to the Docker daemon use HTTP over Unix socket directly.
+  - Ports: `9464` (job worker metrics/health) and `9465` (coordinator metrics/health).
+  - Default command: `npm run start --workspace @ott/platform-worker` (job worker)
+  - Coordinator command: `npm run start:coordinator --workspace @ott/platform-worker`
+- **Web gateway (`ott-web:local`)**:
+  - Stage 1 compiles TypeScript and builds Vite SPA assets (`npm run build --workspace @ott/platform-web`).
+  - Stage 2: `nginxinc/nginx-unprivileged:1.27-alpine` (non-root, user 101).
+  - Port: `8080`.
+  - API proxy: `/api/v1/` proxied to `API_UPSTREAM` (default `http://api:3000`) configured via nginx `envsubst` template.
+  - Snapshot serving: mounted directory `/srv/snapshots` served at `/snapshots/`, falling back to 404 if empty or unmounted.
+  - Body limit: `257M` (matching Fastify's 256 MiB submission archive limit plus 1 MiB headroom).
+  - Healthcheck: `GET /healthz` returning 200 'ok'.
