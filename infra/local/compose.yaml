@@ -63,7 +63,203 @@ services:
       retries: 20
       start_period: 5s
 
+  migrate:
+    image: ott-api:local
+    pull_policy: never
+    command:
+      - npm
+      - run
+      - db:migrate
+      - --workspace
+      - "@ott/platform-api"
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:?set POSTGRES_USER in .env}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:?set POSTGRES_DB in .env}
+
+  api:
+    image: ott-api:local
+    build:
+      context: ../..
+      dockerfile: infra/docker/api.Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      seaweedfs:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:?set POSTGRES_USER in .env}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:?set POSTGRES_DB in .env}
+      REDIS_URL: redis://:${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}@redis:6379
+      S3_ENDPOINT: http://seaweedfs:8333
+      S3_BUCKET: ${S3_BUCKET:?set S3_BUCKET in .env}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?set S3_ACCESS_KEY_ID in .env}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?set S3_SECRET_ACCESS_KEY in .env}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_FORCE_PATH_STYLE: ${S3_FORCE_PATH_STYLE:-true}
+      HOST: 0.0.0.0
+      PORT: "3000"
+      OTT_RUN_MIGRATIONS: "false"
+      OTT_MATCH_QUEUE: ${OTT_MATCH_QUEUE:-ott.match.v1}
+      OTT_DEPLOYMENT_MODE: ${OTT_DEPLOYMENT_MODE:-dev}
+      OTT_SECURE_COOKIES: ${OTT_SECURE_COOKIES:-false}
+      OTT_ADMIN_TOTP_REQUIRED: ${OTT_ADMIN_TOTP_REQUIRED:-false}
+      OTT_ADMIN_ALLOWLIST: ${OTT_ADMIN_ALLOWLIST:-}
+      OTT_TRUSTED_PROXIES: ${OTT_TRUSTED_PROXIES:-none}
+      OTT_TOTP_ENCRYPTION_KEY: ${OTT_TOTP_ENCRYPTION_KEY:-}
+      OTT_WRITE_RATE_LIMIT_IP: ${OTT_WRITE_RATE_LIMIT_IP:-600}
+      OTT_WRITE_RATE_LIMIT_ACCOUNT: ${OTT_WRITE_RATE_LIMIT_ACCOUNT:-300}
+      OTT_SHUTDOWN_TIMEOUT_MS: ${OTT_SHUTDOWN_TIMEOUT_MS:-10000}
+      OTT_BOOTSTRAP_BTC_USERNAME: ${OTT_BOOTSTRAP_BTC_USERNAME:?set OTT_BOOTSTRAP_BTC_USERNAME in .env}
+      OTT_BOOTSTRAP_BTC_PASSWORD: ${OTT_BOOTSTRAP_BTC_PASSWORD:?set OTT_BOOTSTRAP_BTC_PASSWORD in .env}
+      OTT_BOOTSTRAP_BTC_TOTP_SECRET: ${OTT_BOOTSTRAP_BTC_TOTP_SECRET:-}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/api/v1/health/live > /dev/null || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+
+  worker:
+    image: ott-worker:local
+    build:
+      context: ../..
+      dockerfile: infra/docker/worker.Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      seaweedfs:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    volumes:
+      - "${DOCKER_SOCKET:-/var/run/docker.sock}:/var/run/docker.sock"
+    group_add:
+      - "${DOCKER_GID:?set DOCKER_GID (stat -c %g /var/run/docker.sock)}"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:?set POSTGRES_USER in .env}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:?set POSTGRES_DB in .env}
+      REDIS_URL: redis://:${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}@redis:6379
+      S3_ENDPOINT: http://seaweedfs:8333
+      S3_BUCKET: ${S3_BUCKET:?set S3_BUCKET in .env}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?set S3_ACCESS_KEY_ID in .env}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?set S3_SECRET_ACCESS_KEY in .env}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      OTT_MATCH_QUEUE: ${OTT_MATCH_QUEUE:-ott.match.v1}
+      OTT_DEAD_LETTER_QUEUE: ${OTT_DEAD_LETTER_QUEUE:-ott.match.dead-letter.v1}
+      OTT_WORKER_ID: ${OTT_WORKER_ID:-}
+      OTT_WORKER_MAX_CONCURRENCY: ${OTT_WORKER_MAX_CONCURRENCY:-4}
+      OTT_WORKER_MIN_CONCURRENCY: ${OTT_WORKER_MIN_CONCURRENCY:-1}
+      OTT_WORKER_HEARTBEAT_MS: ${OTT_WORKER_HEARTBEAT_MS:-5000}
+      OTT_WORKER_HEARTBEAT_TTL_SECONDS: ${OTT_WORKER_HEARTBEAT_TTL_SECONDS:-15}
+      OTT_WORKER_METRICS_HOST: "0.0.0.0"
+      OTT_WORKER_METRICS_PORT: "9464"
+      OTT_DOCKER_SOCKET: /var/run/docker.sock
+      OTT_WORKER_REQUIRE_DOCKER: ${OTT_WORKER_REQUIRE_DOCKER:-true}
+      OTT_SHUTDOWN_TIMEOUT_MS: ${OTT_SHUTDOWN_TIMEOUT_MS:-30000}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:9464/health/live > /dev/null || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+
+  coordinator:
+    image: ott-worker:local
+    pull_policy: never
+    command:
+      - npm
+      - run
+      - start:coordinator
+      - --workspace
+      - "@ott/platform-worker"
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      seaweedfs:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    volumes:
+      - "${DOCKER_SOCKET:-/var/run/docker.sock}:/var/run/docker.sock"
+      - snapshots:/snapshots
+    group_add:
+      - "${DOCKER_GID:?set DOCKER_GID (stat -c %g /var/run/docker.sock)}"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:?set POSTGRES_USER in .env}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:?set POSTGRES_DB in .env}
+      REDIS_URL: redis://:${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}@redis:6379
+      S3_ENDPOINT: http://seaweedfs:8333
+      S3_BUCKET: ${S3_BUCKET:?set S3_BUCKET in .env}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?set S3_ACCESS_KEY_ID in .env}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?set S3_SECRET_ACCESS_KEY in .env}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      OTT_MATCH_QUEUE: ${OTT_MATCH_QUEUE:-ott.match.v1}
+      OTT_DOCKER_SOCKET: /var/run/docker.sock
+      OTT_COORD_REQUIRE_DOCKER: ${OTT_COORD_REQUIRE_DOCKER:-true}
+      OTT_SHUTDOWN_TIMEOUT_MS: ${OTT_SHUTDOWN_TIMEOUT_MS:-30000}
+      OTT_COORD_PREFLIGHT_INTERVAL_MS: ${OTT_COORD_PREFLIGHT_INTERVAL_MS:-2000}
+      OTT_COORD_PREFLIGHT_BATCH: ${OTT_COORD_PREFLIGHT_BATCH:-2}
+      OTT_COORD_DISPATCH_INTERVAL_MS: ${OTT_COORD_DISPATCH_INTERVAL_MS:-1000}
+      OTT_COORD_DISPATCH_LIMIT: ${OTT_COORD_DISPATCH_LIMIT:-100}
+      OTT_COORD_SETTLE_INTERVAL_MS: ${OTT_COORD_SETTLE_INTERVAL_MS:-5000}
+      OTT_COORD_SNAPSHOT_INTERVAL_MS: ${OTT_COORD_SNAPSHOT_INTERVAL_MS:-30000}
+      OTT_SNAPSHOT_DIR: /snapshots
+      OTT_SNAPSHOT_KEEP: ${OTT_SNAPSHOT_KEEP:-24}
+      OTT_EDITORIAL_FILE: ${OTT_EDITORIAL_FILE:-}
+      OTT_COORD_RETENTION: ${OTT_COORD_RETENTION:-off}
+      OTT_COORD_RETENTION_INTERVAL_MS: ${OTT_COORD_RETENTION_INTERVAL_MS:-3600000}
+      OTT_COORD_METRICS_HOST: "0.0.0.0"
+      OTT_COORD_METRICS_PORT: "9465"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:9465/health/live > /dev/null || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+
+  web:
+    image: ott-web:local
+    build:
+      context: ../..
+      dockerfile: infra/docker/web.Dockerfile
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      API_UPSTREAM: http://api:3000
+    volumes:
+      - snapshots:/srv/snapshots:ro
+    ports:
+      - "0.0.0.0:${APP_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/healthz > /dev/null || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+
 volumes:
   postgres-data:
   redis-data:
   seaweedfs-data:
+  snapshots:

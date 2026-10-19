@@ -75,6 +75,10 @@ ENV OTT_DOCKER_SOCKET=/var/run/docker.sock
 # 9465 for coordinator (src/platform/worker/src/coordinator/config.ts:404)
 EXPOSE 9464 9465
 
+# Ensure /snapshots directory exists and is owned by non-root user 'node' (UID 1000)
+# for snapshot volume mount initialization.
+RUN mkdir -p /snapshots && chown node:node /snapshots
+
 # Switch to non-root user
 USER node
 
