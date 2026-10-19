@@ -3,13 +3,13 @@ import { request, type IncomingMessage, type ClientRequest } from 'node:http';
 import type { Duplex } from 'node:stream';
 import { SANDBOX_POLICY_V1, dockerSandboxHostConfig, type SandboxPolicy } from './policy.ts';
 
-const API = '/v1.41';
 const SOCKET = '/var/run/docker.sock';
 
 export interface DockerRuntimeOptions {
   readonly socketPath?: string;
   readonly policy?: SandboxPolicy;
   readonly cgroupRoot?: string | undefined;
+  readonly apiVersion?: string;
 }
 export interface RunningContainer { readonly id: string; readonly stream: Duplex }
 export interface ContainerSandboxSnapshot {
@@ -56,15 +56,72 @@ export class DockerOciRuntime {
   private readonly socketPath: string;
   private readonly policy: SandboxPolicy;
   private readonly cgroupRoot?: string | undefined;
+  private negotiatedPrefix?: string | undefined;
+  private negotiationPromise?: Promise<string> | undefined;
+
   constructor(options: DockerRuntimeOptions = {}) {
     this.socketPath = options.socketPath ?? SOCKET;
     this.policy = options.policy ?? SANDBOX_POLICY_V1;
     this.cgroupRoot = options.cgroupRoot;
+    const override = options.apiVersion ?? (typeof process !== 'undefined' ? process.env.OTT_DOCKER_API_VERSION : undefined);
+    if (override !== undefined) {
+      if (!/^1\.\d{1,3}$/.test(override)) {
+        throw new Error('DOCKER_API_VERSION_UNSUPPORTED');
+      }
+      this.negotiatedPrefix = `/v${override}`;
+    }
+  }
+
+  private async apiPrefix(): Promise<string> {
+    if (this.negotiatedPrefix) return this.negotiatedPrefix;
+    if (this.negotiationPromise) return this.negotiationPromise;
+    this.negotiationPromise = this.negotiateApiPrefix()
+      .then((prefix) => {
+        this.negotiatedPrefix = prefix;
+        this.negotiationPromise = undefined;
+        return prefix;
+      })
+      .catch((err) => {
+        this.negotiatedPrefix = undefined;
+        this.negotiationPromise = undefined;
+        throw err;
+      });
+    return this.negotiationPromise;
+  }
+
+  private async negotiateApiPrefix(): Promise<string> {
+    const versionData = await this.requestJson<{ readonly ApiVersion?: unknown; readonly MinAPIVersion?: unknown }>('GET', '/version');
+    if (!versionData || typeof versionData !== 'object') {
+      throw new Error('DOCKER_API_VERSION_UNSUPPORTED');
+    }
+    const apiVer = typeof versionData.ApiVersion === 'string' ? versionData.ApiVersion : undefined;
+    const minVer = typeof versionData.MinAPIVersion === 'string'
+      ? versionData.MinAPIVersion
+      : versionData.MinAPIVersion === undefined
+        ? '1.12'
+        : undefined;
+    if (apiVer === undefined || minVer === undefined) {
+      throw new Error('DOCKER_API_VERSION_UNSUPPORTED');
+    }
+    const parseMinor = (v: string): number => {
+      const m = /^1\.(\d{1,3})$/.exec(v);
+      const minorStr = m?.[1];
+      if (minorStr === undefined) throw new Error('DOCKER_API_VERSION_UNSUPPORTED');
+      return parseInt(minorStr, 10);
+    };
+    const apiMinor = parseMinor(apiVer);
+    const minMinor = parseMinor(minVer);
+    let chosenMinor = Math.max(41, minMinor);
+    if (chosenMinor > apiMinor) {
+      chosenMinor = apiMinor;
+    }
+    return `/v1.${chosenMinor}`;
   }
 
   async loadAndVerify(archive: Uint8Array, manifestDigest: string, configDigest: string, entrypoint: readonly string[]): Promise<string> {
-    await this.requestBuffer('POST', `${API}/images/load?quiet=1&platform=${encodeURIComponent(this.policy.platform)}`, archive, 'application/x-tar');
-    const image = await this.requestJson<DockerImage>('GET', `${API}/images/${encodeURIComponent(manifestDigest)}/json`);
+    const prefix = await this.apiPrefix();
+    await this.requestBuffer('POST', `${prefix}/images/load?quiet=1&platform=${encodeURIComponent(this.policy.platform)}`, archive, 'application/x-tar');
+    const image = await this.requestJson<DockerImage>('GET', `${prefix}/images/${encodeURIComponent(manifestDigest)}/json`);
     if (image.Id !== manifestDigest || !Array.isArray(image.Config?.Entrypoint)
       || JSON.stringify(image.Config.Entrypoint) !== JSON.stringify(entrypoint)) throw new Error('ARTIFACT_DOCKER_IDENTITY_MISMATCH');
     // Image ID is the manifest digest; config digest is independently pinned in the validated OCI layout.
@@ -73,7 +130,8 @@ export class DockerOciRuntime {
   }
 
   async createAndStart(imageId: string, entrypoint: readonly string[], name: string): Promise<RunningContainer> {
-    const create = await this.requestJson<{ readonly Id: string }>('POST', `${API}/containers/create?name=${encodeURIComponent(name)}`, Buffer.from(JSON.stringify({
+    const prefix = await this.apiPrefix();
+    const create = await this.requestJson<{ readonly Id: string }>('POST', `${prefix}/containers/create?name=${encodeURIComponent(name)}`, Buffer.from(JSON.stringify({
       Image: imageId,
       Entrypoint: [...entrypoint],
       Cmd: [],
@@ -89,7 +147,7 @@ export class DockerOciRuntime {
     let stream: Duplex | undefined;
     try {
       stream = await this.attach(create.Id);
-      await this.requestJson('POST', `${API}/containers/${create.Id}/start`);
+      await this.requestJson('POST', `${prefix}/containers/${create.Id}/start`);
       return { id: create.Id, stream };
     } catch (error) {
       stream?.destroy();
@@ -99,12 +157,14 @@ export class DockerOciRuntime {
   }
 
   async kill(id: string): Promise<void> {
-    await this.requestJson('POST', `${API}/containers/${id}/kill?signal=KILL`).catch((error: unknown) => {
+    const prefix = await this.apiPrefix();
+    await this.requestJson('POST', `${prefix}/containers/${id}/kill?signal=KILL`).catch((error: unknown) => {
       if (!(error instanceof DockerApiError) || error.status !== 409) throw error;
     });
   }
 
   async inspectSandbox(id: string): Promise<ContainerSandboxSnapshot> {
+    const prefix = await this.apiPrefix();
     const value = await this.requestJson<{
       readonly Config?: { readonly User?: string };
       readonly HostConfig?: {
@@ -114,7 +174,7 @@ export class DockerOciRuntime {
         readonly PidsLimit?: number; readonly Mounts?: readonly unknown[]; readonly Binds?: readonly string[];
         readonly Devices?: readonly unknown[]; readonly Tmpfs?: Readonly<Record<string, string>>;
       };
-    }>('GET', `${API}/containers/${id}/json`);
+    }>('GET', `${prefix}/containers/${id}/json`);
     const config = value.HostConfig;
     return {
       user: value.Config?.User ?? '', networkMode: config?.NetworkMode ?? '', readOnlyRootfs: config?.ReadonlyRootfs === true,
@@ -126,9 +186,10 @@ export class DockerOciRuntime {
   }
 
   async benchmarkHostInfo(): Promise<DockerHostBenchmarkInfo> {
+    const prefix = await this.apiPrefix();
     const [version, info] = await Promise.all([
-      this.requestJson<{ readonly Version?: string; readonly ApiVersion?: string; readonly Os?: string; readonly Arch?: string; readonly KernelVersion?: string }>('GET', `${API}/version`),
-      this.requestJson<{ readonly OperatingSystem?: string; readonly Architecture?: string; readonly KernelVersion?: string; readonly NCPU?: number; readonly MemTotal?: number; readonly CgroupVersion?: string }>('GET', `${API}/info`),
+      this.requestJson<{ readonly Version?: string; readonly ApiVersion?: string; readonly Os?: string; readonly Arch?: string; readonly KernelVersion?: string }>('GET', `${prefix}/version`),
+      this.requestJson<{ readonly OperatingSystem?: string; readonly Architecture?: string; readonly KernelVersion?: string; readonly NCPU?: number; readonly MemTotal?: number; readonly CgroupVersion?: string }>('GET', `${prefix}/info`),
     ]);
     return {
       engineVersion: version.Version ?? '', apiVersion: version.ApiVersion ?? '',
@@ -141,13 +202,14 @@ export class DockerOciRuntime {
   /** One Docker stats response; stream=false returns one bounded sample and closes the HTTP request. */
   /** Docker Engine stats formula: cpuDelta / systemCpuDelta * online CPUs * 100; API docs: https://docs.docker.com/reference/api/engine/version/v1.56/#get-container-stats-based-on-resource-usage */
   async benchmarkStats(id: string): Promise<DockerContainerStats> {
+    const prefix = await this.apiPrefix();
     const stats = await this.requestJson<{
       readonly read?: string;
       readonly memory_stats?: { readonly usage?: number; readonly limit?: number; readonly max_usage?: number };
       readonly cpu_stats?: { readonly cpu_usage?: { readonly total_usage?: number; readonly percpu_usage?: readonly number[] }; readonly system_cpu_usage?: number; readonly online_cpus?: number };
       readonly precpu_stats?: { readonly cpu_usage?: { readonly total_usage?: number; readonly percpu_usage?: readonly number[] }; readonly system_cpu_usage?: number; readonly online_cpus?: number };
       readonly pids_stats?: { readonly current?: number };
-    }>('GET', `${API}/containers/${id}/stats?stream=false`);
+    }>('GET', `${prefix}/containers/${id}/stats?stream=false`);
     const cpu = stats.cpu_stats;
     const previousCpu = stats.precpu_stats;
     const cpuUsageNs = cpu?.cpu_usage?.total_usage ?? 0;
@@ -202,21 +264,24 @@ export class DockerOciRuntime {
   }
 
   async wait(id: string): Promise<{ readonly statusCode: number; readonly oomKilled: boolean }> {
-    const value = await this.requestJson<{ readonly StatusCode: number }>('POST', `${API}/containers/${id}/wait?condition=not-running`);
-    const inspect = await this.requestJson<{ readonly State?: { readonly OOMKilled?: boolean; readonly ExitCode?: number } }>('GET', `${API}/containers/${id}/json`);
+    const prefix = await this.apiPrefix();
+    const value = await this.requestJson<{ readonly StatusCode: number }>('POST', `${prefix}/containers/${id}/wait?condition=not-running`);
+    const inspect = await this.requestJson<{ readonly State?: { readonly OOMKilled?: boolean; readonly ExitCode?: number } }>('GET', `${prefix}/containers/${id}/json`);
     const oomKilled = inspect.State?.OOMKilled === true || value.StatusCode === 137 || inspect.State?.ExitCode === 137;
     return { statusCode: value.StatusCode, oomKilled };
   }
 
   async remove(id: string): Promise<void> {
-    await this.requestJson('DELETE', `${API}/containers/${id}?force=true&v=false`).catch((error: unknown) => {
+    const prefix = await this.apiPrefix();
+    await this.requestJson('DELETE', `${prefix}/containers/${id}?force=true&v=false`).catch((error: unknown) => {
       if (!(error instanceof DockerApiError) || error.status !== 404) throw error;
     });
   }
 
   private async attach(id: string): Promise<Duplex> {
+    const prefix = await this.apiPrefix();
     return new Promise((resolve, reject) => {
-      const req = request({ socketPath: this.socketPath, path: `${API}/containers/${id}/attach?stream=1&stdin=1&stdout=1&stderr=1`, method: 'POST', headers: { Connection: 'Upgrade', Upgrade: 'tcp' } });
+      const req = request({ socketPath: this.socketPath, path: `${prefix}/containers/${id}/attach?stream=1&stdin=1&stdout=1&stderr=1`, method: 'POST', headers: { Connection: 'Upgrade', Upgrade: 'tcp' } });
       req.once('upgrade', (_response, socket) => resolve(socket));
       req.once('response', (response) => rejectResponse(response, reject));
       req.once('error', reject);
