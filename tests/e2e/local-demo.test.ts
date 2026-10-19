@@ -800,32 +800,35 @@ describe('Clean-checkout local demo qualification E2E (P2-T37 API-level)', () =>
       const stageErrJson = JSON.parse(stageErrText) as { error?: { code: string } };
       expect(stageErrJson.error?.code, 'Error code must be REPLAY_NOT_PUBLIC_STAGE').toBe('REPLAY_NOT_PUBLIC_STAGE');
 
-      // 5. Team 01, Team 02, and BTC private replay access.
-      // KNOWN GAP (recorded in docs/runbooks/local-demo.md):
-      // Qualification matches run with Bot Protocol v2; src/platform/api loadVerifiedReplay parses
-      // with parseEventLog which rejects v2 logs (UNSUPPORTED_EVENT_LOG_FORMAT), returning 409 REPLAY_INTEGRITY_FAILED.
-      // Web spectator player is v1-only; v2 spectator contract is out of PoC scope.
+      // 5. Team 01, Team 02, and BTC private replay access (v2 format for qualification matches).
       const verifyAuthorizedReplayAccess = async (jar: CookieJar, actor: string) => {
         const res = await apiRequest(baseUrl, `/api/v1/replays/${firstMatchId}`, { jar });
-        const text = await res.text();
-        if (res.status === 200) {
-          expect(res.headers.get('content-type'), `${actor} Content-Type must be spectator-replay`).toContain('application/vnd.ott.spectator-replay+json');
-          expect(res.headers.get('cache-control'), `${actor} Cache-Control must be private, no-store`).toBe('private, no-store');
-          const body = JSON.parse(text) as { matchId?: string; entries?: unknown[] };
-          expect(body.matchId, `${actor} replay body match ID must match`).toBe(firstMatchId);
-          expect(Array.isArray(body.entries), `${actor} replay entries must be an array`).toBe(true);
-        } else if (res.status === 409) {
-          const errJson = JSON.parse(text) as { error?: { code?: string } };
-          expect(
-            errJson.error?.code,
-            `${actor} private replay failure must be REPLAY_INTEGRITY_FAILED (known gap for v2 qualification replays)`,
-          ).toBe('REPLAY_INTEGRITY_FAILED');
-          console.warn(
-            `[KNOWN GAP] ${actor} GET /api/v1/replays/${firstMatchId} returned 409 REPLAY_INTEGRITY_FAILED: qualification matches run on Bot Protocol v2 whereas spectator replay projection and web player currently support v1 only.`,
-          );
-        } else {
-          expect.fail(`${actor} private replay access: expected HTTP 200 (or 409 REPLAY_INTEGRITY_FAILED for known gap), got HTTP ${res.status}. Body: ${text}`);
-        }
+        expect(res.status, `${actor} private replay access: expected HTTP 200`).toBe(200);
+        const rawBuffer = Buffer.from(await res.arrayBuffer());
+        const expectedSha = `sha256:${crypto.createHash('sha256').update(rawBuffer).digest('hex')}`;
+        expect(res.headers.get('x-replay-sha256'), `${actor} x-replay-sha256 header must match raw body sha256`).toBe(expectedSha);
+
+        const contentType = res.headers.get('content-type') ?? '';
+        expect(contentType, `${actor} Content-Type must be spectator-replay`).toContain('application/vnd.ott.spectator-replay+json');
+        expect(contentType, `${actor} Content-Type must specify version 2`).toMatch(/version="?2"?/);
+        expect(res.headers.get('cache-control'), `${actor} Cache-Control must be private, no-store`).toBe('private, no-store');
+
+        const body = JSON.parse(rawBuffer.toString('utf8')) as {
+          matchId?: string;
+          schemaVersion?: number;
+          header?: { formatVersion?: number; protocolVersion?: number; limits?: { timeControl?: unknown } };
+          entries?: unknown[];
+          timing?: unknown[];
+        };
+        expect(body.matchId, `${actor} replay body match ID must match`).toBe(firstMatchId);
+        expect(body.schemaVersion, `${actor} replay schemaVersion must be 2`).toBe(2);
+        expect(body.header?.formatVersion, `${actor} header formatVersion must be 2`).toBe(2);
+        expect(body.header?.protocolVersion, `${actor} header protocolVersion must be 2`).toBe(2);
+        expect(body.header?.limits?.timeControl, `${actor} header limits timeControl must be defined`).toBeDefined();
+        expect(Array.isArray(body.entries), `${actor} replay entries must be an array`).toBe(true);
+        expect(body.entries?.length, `${actor} replay entries array must not be empty`).toBeGreaterThan(0);
+        expect(Array.isArray(body.timing), `${actor} replay timing must be an array`).toBe(true);
+        expect(body.timing?.length, `${actor} replay timing array must not be empty`).toBeGreaterThan(0);
       };
 
       await verifyAuthorizedReplayAccess(team01Jar, 'Team 01');

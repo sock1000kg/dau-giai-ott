@@ -3,7 +3,7 @@ import { fetchPrivateReplay } from '../features/spectator/api.ts';
 import { ReplayPlayer } from '../features/spectator/ReplayPlayer.tsx';
 import { SpectatorReplayError } from '../features/spectator/replay-schema.ts';
 import { Alert, Button } from '../ui/index.ts';
-import type { SpectatorReplayV1 } from '../features/spectator/replay-schema.ts';
+import type { SpectatorReplay } from '../features/spectator/replay-schema.ts';
 
 function messageFor(error: unknown): string {
   if (error instanceof SpectatorReplayError && error.code === 'REPLAY_NOT_FOUND') return 'Replay này không tồn tại hoặc bạn không có quyền xem.';
@@ -15,7 +15,7 @@ function messageFor(error: unknown): string {
 }
 
 export function PrivateReplayPage({ matchId }: { readonly matchId: string }) {
-  const [replay, setReplay] = useState<SpectatorReplayV1 | null>(null);
+  const [replay, setReplay] = useState<SpectatorReplay | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [attempt, setAttempt] = useState(0);

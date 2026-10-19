@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { createClient, type RedisClientType } from 'redis';
 import { DEFAULT_LIMITS } from '@ott/bot-protocol';
 import { DEFAULT_MAP } from '@ott/game-core';
-import { CoreGameAdapter, ScriptedBot, runMatch, serializeEventLog } from '@ott/match-runner';
+import { CoreGameAdapter, FakeClock, ScriptedBot, runMatch, serializeEventLog } from '@ott/match-runner';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { createAuthApp } from '../src/app.ts';
@@ -66,14 +66,18 @@ integration('P3-D05 Replay authorization integration test', () => {
   const finalsSeriesId = randomUUID();
 
   const qualMatchId = randomUUID();
+  const qualV2MatchId = randomUUID();
   const finalsPrivateMatchId = randomUUID();
   const finalsStagedMatchId = randomUUID();
   const finalsPublishedMatchId = randomUUID();
 
   let qualEventLogKey: string;
   let qualOriginalBytes: Buffer;
+  let qualV2EventLogKey: string;
+  let qualV2OriginalBytes: Buffer;
   let finalsPubOriginalBytes: Buffer;
   let setupMatch: (matchId: string, seriesId: string, pubState: 'PRIVATE' | 'STAGED' | 'PUBLISHED') => Promise<{ eventLogKey: string; rawBytes: Buffer }>;
+  let setupMatchV2: (matchId: string, seriesId: string, pubState: 'PRIVATE' | 'STAGED' | 'PUBLISHED') => Promise<{ eventLogKey: string; rawBytes: Buffer }>;
 
   beforeAll(async () => {
     adminDatabase = createDatabase({ connectionString: databaseUrl! });
@@ -173,9 +177,62 @@ integration('P3-D05 Replay authorization integration test', () => {
       return { eventLogKey, rawBytes };
     };
 
+    setupMatchV2 = async (matchId: string, seriesId: string, pubState: 'PRIVATE' | 'STAGED' | 'PUBLISHED') => {
+      const gameConfig = { gameId: matchId, engineVersion: '1.0.0', map: DEFAULT_MAP, maxTurns: 1 };
+      const firstState = game.create(gameConfig);
+      const firstAction = game.listLegalActions(firstState, 'X')[0]!;
+      const report = await runMatch(
+        {
+          matchId,
+          seed: `SEED-${matchId}`,
+          game: gameConfig,
+          limits: { ...DEFAULT_LIMITS, maxTurns: 1 },
+          protocolV2: {
+            timeControl: {
+              startupMs: 5000,
+              totalBotBudgetMs: 60000,
+              matchWallClockMs: 120000,
+              perTurn: { mode: 'FIXED', fixedMs: 3000 },
+            },
+            botSeeds: { X: 'BOT-X', O: 'BOT-O' },
+          },
+        },
+        { game, bots: { X: new ScriptedBot({ replies: [{ kind: 'action', action: firstAction }] }), O: new ScriptedBot({ replies: [] }) }, clock: new FakeClock() },
+      );
+      const rawBytes = Buffer.from(serializeEventLog(report.log), 'utf8');
+      const checksum = `sha256:${createHash('sha256').update(rawBytes).digest('hex')}`;
+      const eventLogKey = `match-results/${matchId}/event-log/${checksum}.json`;
+      await storage.put(eventLogKey, rawBytes);
+
+      const ownSeriesId = randomUUID();
+      await database.query(
+        'INSERT INTO series (id, tournament_stage, status, team_a_id, team_b_id) SELECT $1, tournament_stage, status, team_a_id, team_b_id FROM series WHERE id = $2',
+        [ownSeriesId, seriesId],
+      );
+      await database.query(
+        "INSERT INTO matches (id, series_id, x_submission_id, o_submission_id, status, game_number, seed) VALUES ($1, $2, $3, $4, 'FINALIZED', 1, $5)",
+        [matchId, ownSeriesId, subIds[0], subIds[1], `SEED-${matchId}`],
+      );
+      await database.query(
+        "INSERT INTO match_results (match_id, winner_side, reason, turn_count, final_state_hash, event_log_key, event_log_sha256) VALUES ($1, 'X', 'TURN_LIMIT', 1, $2, $3, $4)",
+        [matchId, report.log.footer.result.finalStateHash, eventLogKey, checksum],
+      );
+      if (pubState === 'STAGED' || pubState === 'PUBLISHED') {
+        await database.query("UPDATE replay_publications SET state = 'STAGED' WHERE match_id = $1", [matchId]);
+      }
+      if (pubState === 'PUBLISHED') {
+        await database.query("UPDATE replay_publications SET state = 'PUBLISHED' WHERE match_id = $1", [matchId]);
+      }
+      return { eventLogKey, rawBytes };
+    };
+
     const qSetup = await setupMatch(qualMatchId, qualSeriesId, 'PRIVATE');
     qualEventLogKey = qSetup.eventLogKey;
     qualOriginalBytes = qSetup.rawBytes;
+
+    const qV2Setup = await setupMatchV2(qualV2MatchId, qualSeriesId, 'PRIVATE');
+    qualV2EventLogKey = qV2Setup.eventLogKey;
+    qualV2OriginalBytes = qV2Setup.rawBytes;
 
     await setupMatch(finalsPrivateMatchId, finalsSeriesId, 'PRIVATE');
     await setupMatch(finalsStagedMatchId, finalsSeriesId, 'STAGED');
@@ -267,10 +324,11 @@ integration('P3-D05 Replay authorization integration test', () => {
 
   it('verifies the full actor × match × endpoint authorization matrix', async () => {
     const testCases = [
-      { matchId: qualMatchId, stage: 'QUALIFICATION', state: 'PRIVATE' },
-      { matchId: finalsPrivateMatchId, stage: 'FINALS', state: 'PRIVATE' },
-      { matchId: finalsStagedMatchId, stage: 'FINALS', state: 'STAGED' },
-      { matchId: finalsPublishedMatchId, stage: 'FINALS', state: 'PUBLISHED' },
+      { matchId: qualMatchId, stage: 'QUALIFICATION', state: 'PRIVATE', version: 1 },
+      { matchId: qualV2MatchId, stage: 'QUALIFICATION', state: 'PRIVATE', version: 2 },
+      { matchId: finalsPrivateMatchId, stage: 'FINALS', state: 'PRIVATE', version: 1 },
+      { matchId: finalsStagedMatchId, stage: 'FINALS', state: 'STAGED', version: 1 },
+      { matchId: finalsPublishedMatchId, stage: 'FINALS', state: 'PUBLISHED', version: 1 },
     ];
 
     for (const tc of testCases) {
@@ -280,6 +338,7 @@ integration('P3-D05 Replay authorization integration test', () => {
       const anonPub = await app.inject({ method: 'GET', url: `/api/v1/public/replays/${tc.matchId}` });
       if (tc.stage === 'FINALS' && tc.state === 'PUBLISHED') {
         expect(anonPub.statusCode).toBe(200);
+        expect(anonPub.headers['content-type']).toMatch(new RegExp(`version="?${tc.version}"?`));
       } else {
         expect(anonPub.statusCode).toBe(404);
       }
@@ -288,11 +347,29 @@ integration('P3-D05 Replay authorization integration test', () => {
       const xPriv = await app.inject({ method: 'GET', url: `/api/v1/replays/${tc.matchId}`, headers: { cookie: teamXCookie } });
       expect(xPriv.statusCode).toBe(200);
       expect(xPriv.headers['cache-control']).toBe('private, no-store');
+      expect(xPriv.headers['content-type']).toMatch(new RegExp(`version="?${tc.version}"?`));
+      const xBody = xPriv.json();
+      expect(xBody.schemaVersion).toBe(tc.version);
+      expect(xBody.header.formatVersion).toBe(tc.version);
+      if (tc.version === 2) {
+        expect(Array.isArray(xBody.timing)).toBe(true);
+        expect(xBody.timing.length).toBeGreaterThan(0);
+        // Secret/seed leak check for v2 (Item 4)
+        expect(xPriv.body).not.toContain(`SEED-${tc.matchId}`);
+        expect(xPriv.body).not.toContain('BOT-X');
+        expect(xPriv.body).not.toContain('BOT-O');
+        expect(xPriv.body).not.toContain(qualV2EventLogKey);
+        expect(xBody.header.seed).toBeUndefined();
+        expect(xPriv.body).not.toMatch(/"seed"\s*:/);
+      }
 
       // 3. Team O
       const oPriv = await app.inject({ method: 'GET', url: `/api/v1/replays/${tc.matchId}`, headers: { cookie: teamOCookie } });
       expect(oPriv.statusCode).toBe(200);
       expect(oPriv.headers['cache-control']).toBe('private, no-store');
+      expect(oPriv.headers['content-type']).toMatch(new RegExp(`version="?${tc.version}"?`));
+      const oBody = oPriv.json();
+      expect(oBody.schemaVersion).toBe(tc.version);
 
       // 4. Third team (404, existence not leaked)
       const thirdPriv = await app.inject({ method: 'GET', url: `/api/v1/replays/${tc.matchId}`, headers: { cookie: thirdTeamCookie } });
@@ -302,6 +379,9 @@ integration('P3-D05 Replay authorization integration test', () => {
       // 5. BTC Admin
       const btcPriv = await app.inject({ method: 'GET', url: `/api/v1/replays/${tc.matchId}`, headers: { cookie: btcCookie } });
       expect(btcPriv.statusCode).toBe(200);
+      expect(btcPriv.headers['content-type']).toMatch(new RegExp(`version="?${tc.version}"?`));
+      const btcBody = btcPriv.json();
+      expect(btcBody.schemaVersion).toBe(tc.version);
     }
   });
 
@@ -317,6 +397,21 @@ integration('P3-D05 Replay authorization integration test', () => {
     // Restore
     await storage.put(qualEventLogKey, qualOriginalBytes);
     const restored = await app.inject({ method: 'GET', url: `/api/v1/replays/${qualMatchId}`, headers: { cookie: teamXCookie } });
+    expect(restored.statusCode).toBe(200);
+  });
+
+  it('fails with 409 REPLAY_INTEGRITY_FAILED on tampered v2 storage artifact during private read', async () => {
+    const tampered = Buffer.from(qualV2OriginalBytes);
+    tampered[0] = tampered[0]! ^ 1;
+    await storage.put(qualV2EventLogKey, tampered);
+
+    const res = await app.inject({ method: 'GET', url: `/api/v1/replays/${qualV2MatchId}`, headers: { cookie: teamXCookie } });
+    expect(res.statusCode).toBe(409);
+    expect(res.json()).toEqual({ error: { code: 'REPLAY_INTEGRITY_FAILED', message: 'Replay integrity verification failed' } });
+
+    // Restore
+    await storage.put(qualV2EventLogKey, qualV2OriginalBytes);
+    const restored = await app.inject({ method: 'GET', url: `/api/v1/replays/${qualV2MatchId}`, headers: { cookie: teamXCookie } });
     expect(restored.statusCode).toBe(200);
   });
 

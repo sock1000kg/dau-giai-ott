@@ -111,8 +111,8 @@ bash scripts/run-local-demo-e2e.sh --clean-checkout
   - **WSL2 / Docker Desktop Compatibility**: Docker Desktop on Windows/WSL2 cannot publish ports in the OS dynamic/ephemeral range (49152+) due to host port reservations (`/forwards/expose 500`). Scanning fixed lower ranges (18080–18380) ensures reliable host-container port mapping.
 - **Note on `--clean-checkout`**: This mode checks out a detached worktree from `HEAD` and runs `npm ci` there. It tests committed code only. When testing uncommitted local work or development changes, run without the `--clean-checkout` flag.
 
-### Known Limitations
-- **Qualification Replays v2 vs Spectator Player v1**: Qualification replays cannot be opened yet (bot protocol v2 logs vs v1-only spectator player); public spectators use the leaderboard + `/snapshots/`; finals replays are separate. In E2E qualification tests, authorized replay GET returns 409 `REPLAY_INTEGRITY_FAILED` due to this version gap.
+### Replay Support
+- **Multi-Version Replay Support**: Qualification matches run on Bot Protocol v2 and are projected as Spectator Replay v2 (`schemaVersion: 2`, `Content-Type: application/vnd.ott.spectator-replay+json;version=2`) including truthful versions and timing decisions. The web spectator player supports both v1 and v2 replays. Team 01, Team 02, and BTC Admin have full authorized private replay access.
 
 ### 2. Manual LAN Spectator & UI Verification
 
@@ -127,7 +127,7 @@ To manually verify the web gateway and UI across machines on the same local netw
 4. Navigate to `http://<LAN_IP>:8080/` (substitute `<LAN_IP>` with the host's actual IP).
 5. Log in as `team01` with password `ABC123`.
 6. Navigate to the leaderboard page, view match results, or fetch `/snapshots/latest.json` through the gateway to confirm LAN reachability and real-time tournament data updates.
-   - **Note on Replay Playback**: Interactive replay playback in the web player is currently blocked by the known limitation (qualification matches produce Bot Protocol v2 logs whereas the web spectator player currently supports v1; see [Known Limitations](#known-limitations)). The Planner is scheduling a fix as a separate task.
+   - **Replay Playback**: Team 01, Team 02, and BTC can view private qualification replays directly in the web player with interactive board scrubbing and per-turn timing details.
 
 ---
 

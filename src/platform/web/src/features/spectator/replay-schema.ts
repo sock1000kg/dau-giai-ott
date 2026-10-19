@@ -68,6 +68,65 @@ export interface SpectatorReplayV1 {
   }>>>;
 }
 
+export type SpectatorPerTurnPolicyV2 =
+  | Readonly<{ mode: 'FIXED'; fixedMs: number }>
+  | Readonly<{ mode: 'DYNAMIC'; baseMs: number; stepMs: number; everyTurns: number; maxMs: number }>
+  | Readonly<{ mode: 'NONE' }>;
+
+export interface SpectatorTimeControlV2 {
+  readonly startupMs: number;
+  readonly totalBotBudgetMs: number;
+  readonly matchWallClockMs: number;
+  readonly perTurn: SpectatorPerTurnPolicyV2;
+}
+
+export type SpectatorTimingExhaustion = 'TURN_LIMIT' | 'BOT_BUDGET' | 'WALL_CLOCK';
+
+export interface SpectatorTimingDecision {
+  readonly turnId: number;
+  readonly side: ReplaySide;
+  readonly turnLimitMs: number | null;
+  readonly deadlineMs: number;
+  readonly remainingBeforeMs: number;
+  readonly wallElapsedBeforeMs: number;
+  readonly elapsedMs: number;
+  readonly timedOut: boolean;
+  readonly chargedMs: number;
+  readonly remainingAfterMs: number;
+  readonly exhaustion: SpectatorTimingExhaustion | null;
+}
+
+export interface SpectatorReplayV2 {
+  readonly schema: 'ott.spectator-replay';
+  readonly schemaVersion: 2;
+  readonly matchId: string;
+  readonly header: Readonly<{
+    format: 'ott.match-event-log';
+    formatVersion: 2;
+    matchId: string;
+    protocolVersion: 2;
+    engineVersion: string;
+    game: Readonly<{ engineVersion: string; maxTurns: number; map: SpectatorMapV1 }>;
+    limits: Readonly<{ timeControl: SpectatorTimeControlV2 }>;
+  }>;
+  readonly entries: readonly SpectatorReplayEntryV1[];
+  readonly timing: readonly SpectatorTimingDecision[];
+  readonly result: Readonly<{
+    winnerSide: ReplaySide | null;
+    reason: ReplayResultReason;
+    turnCount: number;
+    forfeitedSide: ReplaySide | null;
+    finalStateHash: string;
+  }>;
+  readonly faults: Readonly<Record<ReplaySide, Readonly<{
+    recoverableTotal: number;
+    recoverableConsecutive: number;
+    lastErrorCode: string | null;
+  }>>>;
+}
+
+export type SpectatorReplay = SpectatorReplayV1 | SpectatorReplayV2;
+
 export type SpectatorReplayErrorCode =
   | 'REPLAY_NOT_FOUND' | 'REPLAY_UNAVAILABLE' | 'CHECKSUM_MISMATCH' | 'UNSUPPORTED_SCHEMA' | 'INVALID_REPLAY' | 'UNAUTHENTICATED';
 
@@ -92,12 +151,15 @@ const skipReasons = [
 const resultReasons = ['REACHED_GOAL', 'ELIMINATED_ALL_PIECES', 'FORFEIT', 'TURN_LIMIT'] as const;
 const faultCodes = ['BOT_SPAWN_FAILED', 'BOT_CRASHED', 'BOT_EOF', 'STDERR_LIMIT_EXCEEDED', 'RESOURCE_LIMIT_EXCEEDED', 'SANDBOX_VIOLATION'] as const;
 const eventTypes = ['ACTION_APPLIED', 'TURN_SKIPPED', 'MATCH_FINISHED'] as const;
+const timingExhaustions = ['TURN_LIMIT', 'BOT_BUDGET', 'WALL_CLOCK'] as const;
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const hashPattern = /^[0-9a-f]{64}$/;
 
 /** Explicit historical adapter registry. Unknown engines never use a current rule implementation. */
 export function supportsHistoricalReplay(engineVersion: string, protocolVersion: number, formatVersion: number): boolean {
-  return engineVersion === '1.0.0' && protocolVersion === 1 && formatVersion === 1;
+  if (engineVersion === '1.0.0' && protocolVersion === 1 && formatVersion === 1) return true;
+  if (engineVersion === '1.0.0' && protocolVersion === 2 && formatVersion === 2) return true;
+  return false;
 }
 
 function invalid(): never { throw new ReplaySchemaError('Invalid replay schema'); }
@@ -115,6 +177,11 @@ function text(value: unknown, nonEmpty = true): string {
 function integer(value: unknown, minimum = 0): number {
   if (!Number.isSafeInteger(value) || Number(value) < minimum) return invalid();
   return Number(value);
+}
+
+function nonNegativeNumber(value: unknown, minimum = 0): number {
+  if (typeof value !== 'number' || Number.isNaN(value) || value < minimum) return invalid();
+  return value;
 }
 
 function oneOf<T extends string>(value: unknown, values: readonly T[]): T {
@@ -213,17 +280,88 @@ function faultSummary(value: unknown) {
   };
 }
 
-export function parseSpectatorReplay(value: unknown): SpectatorReplayV1 {
+function timingDecision(value: unknown): SpectatorTimingDecision {
+  const row = object(value);
+  const turnId = integer(row.turnId, 1);
+  const turnSide = side(row.side);
+  const turnLimitMs = row.turnLimitMs === null ? null : nonNegativeNumber(row.turnLimitMs);
+  const deadlineMs = nonNegativeNumber(row.deadlineMs);
+  const remainingBeforeMs = nonNegativeNumber(row.remainingBeforeMs);
+  const wallElapsedBeforeMs = nonNegativeNumber(row.wallElapsedBeforeMs);
+  const elapsedMs = nonNegativeNumber(row.elapsedMs);
+  if (typeof row.timedOut !== 'boolean') return invalid();
+  const timedOut = row.timedOut;
+  const chargedMs = nonNegativeNumber(row.chargedMs);
+  const remainingAfterMs = nonNegativeNumber(row.remainingAfterMs);
+  const exhaustion = row.exhaustion === null ? null : oneOf(row.exhaustion, timingExhaustions);
+  return {
+    turnId,
+    side: turnSide,
+    turnLimitMs,
+    deadlineMs,
+    remainingBeforeMs,
+    wallElapsedBeforeMs,
+    elapsedMs,
+    timedOut,
+    chargedMs,
+    remainingAfterMs,
+    exhaustion,
+  };
+}
+
+function timeControlDefinition(value: unknown): SpectatorTimeControlV2 {
+  const tc = object(value);
+  const startupMs = nonNegativeNumber(tc.startupMs);
+  const totalBotBudgetMs = nonNegativeNumber(tc.totalBotBudgetMs, 1);
+  const matchWallClockMs = nonNegativeNumber(tc.matchWallClockMs, 1);
+  const perTurnObj = object(tc.perTurn);
+  const mode = oneOf(perTurnObj.mode, ['FIXED', 'DYNAMIC', 'NONE'] as const);
+  let perTurn: SpectatorPerTurnPolicyV2;
+  if (mode === 'FIXED') {
+    perTurn = { mode: 'FIXED', fixedMs: nonNegativeNumber(perTurnObj.fixedMs, 1) };
+  } else if (mode === 'DYNAMIC') {
+    perTurn = {
+      mode: 'DYNAMIC',
+      baseMs: nonNegativeNumber(perTurnObj.baseMs, 1),
+      stepMs: nonNegativeNumber(perTurnObj.stepMs),
+      everyTurns: integer(perTurnObj.everyTurns, 1),
+      maxMs: nonNegativeNumber(perTurnObj.maxMs),
+    };
+  } else {
+    perTurn = { mode: 'NONE' };
+  }
+  return {
+    startupMs,
+    totalBotBudgetMs,
+    matchWallClockMs,
+    perTurn,
+  };
+}
+
+export function parseSpectatorReplay(value: unknown): SpectatorReplay {
   const replay = object(value);
-  if (replay.schema !== 'ott.spectator-replay' || replay.schemaVersion !== 1) throw new SpectatorReplayError('UNSUPPORTED_SCHEMA');
+  if (replay.schema !== 'ott.spectator-replay') throw new SpectatorReplayError('UNSUPPORTED_SCHEMA');
+  const schemaVersion = replay.schemaVersion;
+  if (schemaVersion !== 1 && schemaVersion !== 2) throw new SpectatorReplayError('UNSUPPORTED_SCHEMA');
   if (!uuidPattern.test(text(replay.matchId)) || !Array.isArray(replay.entries)) return invalid();
   const header = object(replay.header);
   const matchId = replay.matchId as string;
-  if (header.format !== 'ott.match-event-log' || header.formatVersion !== 1 || header.protocolVersion !== 1 || header.matchId !== matchId) {
+  if (header.format !== 'ott.match-event-log' || header.matchId !== matchId) {
+    throw new SpectatorReplayError('UNSUPPORTED_SCHEMA');
+  }
+  const formatVersion = header.formatVersion;
+  const protocolVersion = header.protocolVersion;
+  if (typeof formatVersion !== 'number' || typeof protocolVersion !== 'number') {
+    throw new SpectatorReplayError('UNSUPPORTED_SCHEMA');
+  }
+  if (schemaVersion === 1 && (formatVersion !== 1 || protocolVersion !== 1)) {
+    throw new SpectatorReplayError('UNSUPPORTED_SCHEMA');
+  }
+  if (schemaVersion === 2 && (formatVersion !== 2 || protocolVersion !== 2)) {
     throw new SpectatorReplayError('UNSUPPORTED_SCHEMA');
   }
   const engineVersion = text(header.engineVersion);
-  if (!supportsHistoricalReplay(engineVersion, Number(header.protocolVersion), Number(header.formatVersion))) {
+  if (!supportsHistoricalReplay(engineVersion, protocolVersion, formatVersion)) {
     throw new SpectatorReplayError('UNSUPPORTED_SCHEMA');
   }
   const game = object(header.game);
@@ -238,27 +376,57 @@ export function parseSpectatorReplay(value: unknown): SpectatorReplayV1 {
   const entries = replay.entries.map((entry, index) => replayEntry(entry, index + 1));
   if (turnCount > maxTurns || (entries.length > 0 && entries.at(-1)?.stateHash !== finalStateHash)) return invalid();
   const faults = object(replay.faults);
+  const safeResult = {
+    winnerSide: result.winnerSide === null ? null : side(result.winnerSide),
+    reason: oneOf(result.reason, resultReasons),
+    turnCount,
+    forfeitedSide: result.forfeitedSide === null ? null : side(result.forfeitedSide),
+    finalStateHash,
+  };
+  const safeFaults = { X: faultSummary(faults.X), O: faultSummary(faults.O) };
+
+  if (schemaVersion === 1) {
+    return {
+      schema: 'ott.spectator-replay',
+      schemaVersion: 1,
+      matchId,
+      header: {
+        format: 'ott.match-event-log',
+        formatVersion: 1,
+        matchId,
+        protocolVersion: 1,
+        engineVersion,
+        game: { engineVersion: gameEngineVersion, maxTurns, map },
+      },
+      entries,
+      result: safeResult,
+      faults: safeFaults,
+    };
+  }
+
+  // schemaVersion === 2
+  const limits = object(header.limits);
+  const timeControl = timeControlDefinition(limits.timeControl);
+  if (!Array.isArray(replay.timing)) return invalid();
+  const timing = replay.timing.map(timingDecision);
+
   return {
     schema: 'ott.spectator-replay',
-    schemaVersion: 1,
+    schemaVersion: 2,
     matchId,
     header: {
       format: 'ott.match-event-log',
-      formatVersion: 1,
+      formatVersion: 2,
       matchId,
-      protocolVersion: 1,
+      protocolVersion: 2,
       engineVersion,
       game: { engineVersion: gameEngineVersion, maxTurns, map },
+      limits: { timeControl },
     },
     entries,
-    result: {
-      winnerSide: result.winnerSide === null ? null : side(result.winnerSide),
-      reason: oneOf(result.reason, resultReasons),
-      turnCount,
-      forfeitedSide: result.forfeitedSide === null ? null : side(result.forfeitedSide),
-      finalStateHash,
-    },
-    faults: { X: faultSummary(faults.X), O: faultSummary(faults.O) },
+    timing,
+    result: safeResult,
+    faults: safeFaults,
   };
 }
 

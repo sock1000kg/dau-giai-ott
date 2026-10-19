@@ -4,9 +4,9 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../../app/App.tsx';
 import { ReplayPlayer } from './ReplayPlayer.tsx';
-import { createReplayTimeline } from './replay-state.ts';
+import { createReplayMoves, createReplayTimeline } from './replay-state.ts';
 import { verifyReplayResponse } from './verify-replay.ts';
-import type { SpectatorReplayV1 } from './replay-schema.ts';
+import type { SpectatorReplay, SpectatorReplayV1, SpectatorReplayV2 } from './replay-schema.ts';
 
 const matchId = '00000000-0000-4000-8000-000000000001';
 
@@ -36,6 +36,55 @@ function replayBody(): string {
   return `${JSON.stringify(replay, null, 2)}\n`;
 }
 
+function replayV2Fixture(): SpectatorReplayV2 {
+  const v1 = JSON.parse(replayBody()) as SpectatorReplayV1;
+  return {
+    ...v1,
+    schemaVersion: 2,
+    header: {
+      ...v1.header,
+      formatVersion: 2,
+      protocolVersion: 2,
+      limits: {
+        timeControl: {
+          startupMs: 2000,
+          totalBotBudgetMs: 30000,
+          matchWallClockMs: 60000,
+          perTurn: { mode: 'FIXED', fixedMs: 1000 },
+        },
+      },
+    },
+    timing: [
+      {
+        turnId: 1,
+        side: 'X',
+        turnLimitMs: 1000,
+        deadlineMs: 1000,
+        remainingBeforeMs: 30000,
+        wallElapsedBeforeMs: 0,
+        elapsedMs: 120,
+        timedOut: false,
+        chargedMs: 120,
+        remainingAfterMs: 29880,
+        exhaustion: null,
+      },
+      {
+        turnId: 2,
+        side: 'O',
+        turnLimitMs: 1000,
+        deadlineMs: 1000,
+        remainingBeforeMs: 30000,
+        wallElapsedBeforeMs: 120,
+        elapsedMs: 250,
+        timedOut: false,
+        chargedMs: 250,
+        remainingAfterMs: 29750,
+        exhaustion: null,
+      },
+    ],
+  };
+}
+
 function publicResponse(body: string): Response {
   return new Response(body, {
     headers: {
@@ -46,7 +95,7 @@ function publicResponse(body: string): Response {
 }
 
 async function verifiedReplay(): Promise<SpectatorReplayV1> {
-  return verifyReplayResponse(publicResponse(replayBody()));
+  return verifyReplayResponse(publicResponse(replayBody())) as Promise<SpectatorReplayV1>;
 }
 
 afterEach(() => {
@@ -147,5 +196,35 @@ describe('spectator replay player', () => {
       ? { ...entry, events: [{ ...entry.events[0]!, reason: 'BOT_TIMEOUT' as const }] }
       : entry);
     expect(() => createReplayTimeline({ ...replay, entries: tamperedEvents })).toThrow(/cannot be reproduced/i);
+  });
+
+  it('creates timeline and moves over a v2 replay with matching final state hash', () => {
+    const replayV2 = replayV2Fixture();
+    const timeline = createReplayTimeline(replayV2);
+    const moves = createReplayMoves(replayV2);
+    expect(moves).toHaveLength(replayV2.entries.length);
+    expect(timeline.frames).toHaveLength(timeline.events.length + 1);
+    expect(timeline.frames.at(-1)?.finished).toBe(true);
+    expect(replayV2.entries.at(-1)?.stateHash).toBe(replayV2.result.finalStateHash);
+  });
+
+  it('surfaces the timing line for v2 replay active events and omits it for v1 replay', async () => {
+    // 1. v2 replay: timing line appears when an event is selected
+    const replayV2 = replayV2Fixture();
+    const { unmount } = render(<ReplayPlayer replay={replayV2} />);
+    fireEvent.click(screen.getByRole('button', { name: /sự kiện tiếp theo/i }));
+    expect(screen.getByText(/Thời gian:\s*120ms\s*·\s*Còn:\s*29880ms/i)).toBeTruthy();
+
+    const moves = screen.getByRole('region', { name: /danh sách nước đi/i });
+    const buttons = Array.from(moves.querySelectorAll('button'));
+    fireEvent.click(buttons[1]!);
+    expect(screen.getByText(/Thời gian:\s*250ms\s*·\s*Còn:\s*29750ms/i)).toBeTruthy();
+    unmount();
+
+    // 2. v1 replay: timing line does not appear
+    const replayV1 = await verifiedReplay();
+    render(<ReplayPlayer replay={replayV1} />);
+    fireEvent.click(screen.getByRole('button', { name: /sự kiện tiếp theo/i }));
+    expect(screen.queryByText(/Thời gian:/i)).toBeNull();
   });
 });

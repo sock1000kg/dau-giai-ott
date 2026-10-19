@@ -114,13 +114,14 @@ DATABASE_URL="$YOUR_DISPOSABLE_POSTGRES_URL" \
 
 `P2-T24` exposes BTC-only `GET /api/v1/admin/replays/catalog` and idempotent
 stage/publish POST routes plus anonymous
-`GET /api/v1/public/replays/:matchId`. Before each transition and public read,
+`GET /api/v1/public/replays/:matchId` and authenticated
+`GET /api/v1/replays/:matchId`. Before each transition and read,
 the API loads the storage key from PostgreSQL, reads the private object, checks
-the exact bytes against the stored SHA-256, and parses event-log v1. Public
-responses are an allowlisted `ott.spectator-replay` v1 projection with the
-source seed and private key omitted. `X-Replay-SHA256` hashes the exact public
-response bytes; see [Spectator Replay API v1](../../../docs/contracts/spectator-replay-v1.md)
-for the wire contract.
+the exact bytes against the stored SHA-256, and parses the event log (`parseAnyEventLog`).
+Serving supports both event log formats:
+- Event logs with `formatVersion: 1` are projected as `SpectatorReplayV1` with `schemaVersion: 1` and media type `application/vnd.ott.spectator-replay+json;version=1`.
+- Event logs with `formatVersion: 2` (Bot Protocol v2) are projected as `SpectatorReplayV2` with `schemaVersion: 2` and media type `application/vnd.ott.spectator-replay+json;version=2`, preserving truthful header versions, `header.limits.timeControl`, and top-level `timing` decisions.
+In both versions, the source seed, private object keys, and container resource limits are omitted. `X-Replay-SHA256` hashes the exact response bytes; see [Spectator Replay API v1](../../../docs/contracts/spectator-replay-v1.md) and [Spectator Replay API v2](../../../docs/contracts/spectator-replay-v2.md) for wire contracts.
 
 Run the T24 integration test against disposable PostgreSQL and a local Redis;
 it uses SeaweedFS when the S3 environment variables are set and otherwise uses

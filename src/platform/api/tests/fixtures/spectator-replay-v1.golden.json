@@ -1,0 +1,262 @@
+{
+  "schema": "ott.spectator-replay",
+  "schemaVersion": 1,
+  "matchId": "00000000-0000-4000-8000-000000000001",
+  "header": {
+    "format": "ott.match-event-log",
+    "formatVersion": 1,
+    "matchId": "00000000-0000-4000-8000-000000000001",
+    "protocolVersion": 1,
+    "engineVersion": "1.0.0",
+    "game": {
+      "engineVersion": "1.0.0",
+      "maxTurns": 1,
+      "map": {
+        "schemaVersion": 1,
+        "mapId": "default",
+        "version": 1,
+        "checksum": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "width": 9,
+        "height": 9,
+        "obstacles": [],
+        "spawns": [
+          {
+            "id": "X-ROCK-1",
+            "owner": "X",
+            "type": "ROCK",
+            "position": {
+              "col": 0,
+              "row": 3
+            }
+          },
+          {
+            "id": "X-ROCK-2",
+            "owner": "X",
+            "type": "ROCK",
+            "position": {
+              "col": 1,
+              "row": 2
+            }
+          },
+          {
+            "id": "X-ROCK-3",
+            "owner": "X",
+            "type": "ROCK",
+            "position": {
+              "col": 2,
+              "row": 1
+            }
+          },
+          {
+            "id": "X-PAPER-1",
+            "owner": "X",
+            "type": "PAPER",
+            "position": {
+              "col": 1,
+              "row": 3
+            }
+          },
+          {
+            "id": "X-PAPER-2",
+            "owner": "X",
+            "type": "PAPER",
+            "position": {
+              "col": 2,
+              "row": 2
+            }
+          },
+          {
+            "id": "X-PAPER-3",
+            "owner": "X",
+            "type": "PAPER",
+            "position": {
+              "col": 3,
+              "row": 1
+            }
+          },
+          {
+            "id": "X-SCISSORS-1",
+            "owner": "X",
+            "type": "SCISSORS",
+            "position": {
+              "col": 0,
+              "row": 2
+            }
+          },
+          {
+            "id": "X-SCISSORS-2",
+            "owner": "X",
+            "type": "SCISSORS",
+            "position": {
+              "col": 1,
+              "row": 1
+            }
+          },
+          {
+            "id": "X-SCISSORS-3",
+            "owner": "X",
+            "type": "SCISSORS",
+            "position": {
+              "col": 2,
+              "row": 0
+            }
+          },
+          {
+            "id": "O-ROCK-1",
+            "owner": "O",
+            "type": "ROCK",
+            "position": {
+              "col": 8,
+              "row": 5
+            }
+          },
+          {
+            "id": "O-ROCK-2",
+            "owner": "O",
+            "type": "ROCK",
+            "position": {
+              "col": 7,
+              "row": 6
+            }
+          },
+          {
+            "id": "O-ROCK-3",
+            "owner": "O",
+            "type": "ROCK",
+            "position": {
+              "col": 6,
+              "row": 7
+            }
+          },
+          {
+            "id": "O-PAPER-1",
+            "owner": "O",
+            "type": "PAPER",
+            "position": {
+              "col": 7,
+              "row": 5
+            }
+          },
+          {
+            "id": "O-PAPER-2",
+            "owner": "O",
+            "type": "PAPER",
+            "position": {
+              "col": 6,
+              "row": 6
+            }
+          },
+          {
+            "id": "O-PAPER-3",
+            "owner": "O",
+            "type": "PAPER",
+            "position": {
+              "col": 5,
+              "row": 7
+            }
+          },
+          {
+            "id": "O-SCISSORS-1",
+            "owner": "O",
+            "type": "SCISSORS",
+            "position": {
+              "col": 8,
+              "row": 6
+            }
+          },
+          {
+            "id": "O-SCISSORS-2",
+            "owner": "O",
+            "type": "SCISSORS",
+            "position": {
+              "col": 7,
+              "row": 7
+            }
+          },
+          {
+            "id": "O-SCISSORS-3",
+            "owner": "O",
+            "type": "SCISSORS",
+            "position": {
+              "col": 6,
+              "row": 8
+            }
+          }
+        ],
+        "goals": {
+          "X": {
+            "col": 8,
+            "row": 8
+          },
+          "O": {
+            "col": 0,
+            "row": 0
+          }
+        }
+      }
+    }
+  },
+  "entries": [
+    {
+      "index": 1,
+      "input": {
+        "kind": "apply",
+        "side": "X",
+        "action": {
+          "pieceId": "X-PAPER-1",
+          "to": {
+            "col": 2,
+            "row": 3
+          }
+        }
+      },
+      "events": [
+        {
+          "sequence": 0,
+          "revision": 1,
+          "turnId": 1,
+          "type": "ACTION_APPLIED",
+          "side": "X",
+          "action": {
+            "pieceId": "X-PAPER-1",
+            "to": {
+              "col": 2,
+              "row": 3
+            }
+          },
+          "reason": null
+        },
+        {
+          "sequence": 1,
+          "revision": 1,
+          "turnId": 1,
+          "type": "MATCH_FINISHED",
+          "side": "X",
+          "action": null,
+          "reason": "TURN_LIMIT"
+        }
+      ],
+      "revision": 1,
+      "stateHash": "d294382dee8182da721649349ecf7d0f6323ae88780bd2060c2ec2e6af1d4ef6"
+    }
+  ],
+  "result": {
+    "winnerSide": null,
+    "reason": "TURN_LIMIT",
+    "turnCount": 1,
+    "forfeitedSide": null,
+    "finalStateHash": "d294382dee8182da721649349ecf7d0f6323ae88780bd2060c2ec2e6af1d4ef6"
+  },
+  "faults": {
+    "X": {
+      "recoverableTotal": 0,
+      "recoverableConsecutive": 0,
+      "lastErrorCode": null
+    },
+    "O": {
+      "recoverableTotal": 0,
+      "recoverableConsecutive": 0,
+      "lastErrorCode": null
+    }
+  }
+}
