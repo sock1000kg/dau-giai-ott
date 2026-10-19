@@ -8,6 +8,7 @@
   "scripts": {
     "start:api": "npm run start --workspace @ott/platform-api",
     "start:worker": "npm run start --workspace @ott/platform-worker",
+    "start:coordinator": "npm run start:coordinator --workspace @ott/platform-worker",
     "db:migrate": "npm run db:migrate --workspace @ott/platform-api",
     "typecheck": "npm run typecheck --workspaces && tsc -p tsconfig.json",
     "test": "npm run test --workspaces && vitest run",

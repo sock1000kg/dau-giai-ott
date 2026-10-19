@@ -153,3 +153,76 @@ npm run start:worker
 - **Docker Socket Isolation**: The Docker socket (`/var/run/docker.sock`) must only be accessible to the trusted worker process. It is never mounted into untrusted bot containers.
 - **Bot Sandboxing**: Bot containers run under `OTT_SANDBOX_V1` with `network=none`, read-only root filesystems, dropped capabilities, and strict CPU/memory limits.
 - **Internal Metrics**: The metrics and health HTTP port is strictly internal and must never be exposed or mapped to public/WAN ingress.
+
+## Running the coordinator (P2-T32)
+
+The coordinator is a trusted background lifecycle engine that drives tournament execution end-to-end without manual intervention during round play.
+
+### Automated Lifecycle Loops
+
+| Loop | Default Interval | Description |
+|---|---|---|
+| `preflight` | 2000 ms | Discovers `PREFLIGHT` submissions, verifies them in the Docker sandbox, and activates them. Infrastructure errors leave submissions in `PREFLIGHT` for retry; bot faults mark submissions `INVALID`. |
+| `dispatch` | 1000 ms | Reads unassigned `match_outbox` records and enqueues `MATCH_SCHEDULED` / `MATCH_RERUN` jobs to BullMQ (`ott.match.v1`). |
+| `settle` | 5000 ms | Identifies completed series with terminal matches, invokes `settleSeries`, and triggers Elo rating calculations when all series finalize. |
+| `snapshot` | 30000 ms | Collects and publishes `latest.json` and immutable `snapshot-<sha>.json` artifacts to `OTT_SNAPSHOT_DIR` for the public web UI. |
+| `retention` | 3600000 ms | Periodic maintenance dry-run via `runRetentionPrune` when `OTT_COORD_RETENTION=dry-run` (`off` by default). |
+
+### Single Active Instance & Advisory Lock
+
+The coordinator MUST run as a single active instance to avoid conflicting lifecycle mutations:
+- Active leadership is acquired via a dedicated PostgreSQL connection holding `pg_try_advisory_lock(hashtext('ott:coordinator'))`.
+- Standby instances retry acquisition every 5 seconds, keep all loops paused, and report `{"status":"ready","role":"standby"}` on `/health/ready`.
+- If the database connection drops, the active coordinator transitions immediately to `standby` and pauses loops until reconnection and re-acquisition.
+- All coordinator loops are additionally idempotent so that any transient overlap creates no duplicate effects.
+
+### Snapshot Directory & Pruning
+
+Snapshots are written to `OTT_SNAPSHOT_DIR` (default: `src/platform/web/public/snapshots`), which is served statically by the dev web server. After each publish, the directory is pruned:
+- Keeps the `OTT_SNAPSHOT_KEEP` newest `snapshot-*.json` files (by modification time).
+- Guarantees that the file currently referenced by `latest.json` is **always preserved**, regardless of age.
+- Never deletes unrelated files or follows symlinks.
+
+### Editorial File
+
+The coordinator re-reads the editorial JSON file on every snapshot publish (if `OTT_EDITORIAL_FILE` is set), allowing BTC to update announcements, FAQ, and status without restarting the process:
+
+```json
+{
+  "announcements": [
+    { "title": "Khai mạc vòng loại", "body": "Các trận đấu vòng loại bảng A chính thức bắt đầu." }
+  ],
+  "faq": [
+    { "title": "Cách thức tính điểm?", "body": "Thắng 2 điểm, hòa 1 điểm, thua 0 điểm." }
+  ],
+  "status": {
+    "message": "Hệ thống hoạt động bình thường",
+    "incidentEta": null
+  },
+  "changelog": "Cập nhật luật thi đấu và thời gian tính nước đi.",
+  "minimumSeries": 5
+}
+```
+
+If `OTT_EDITORIAL_FILE` is omitted, the coordinator uses built-in default Vietnamese editorial metadata.
+
+### Manual Steps Retained by BTC
+
+In accordance with user design decisions, macro round phase transitions remain manual:
+- BTC explicitly commands opening, closing, and starting rounds.
+- BTC triggers reconciliation (`RUNNING → SETTLING → RATED`).
+- The coordinator automates per-round mechanics: submission preflighting, outbox job dispatching, series outcome settlement, and public leaderboard snapshot generation.
+
+### Known Gaps & Constraints
+
+- **Layer Recording**: Image layer deduplication is not yet recorded by the submission upload path; real pruning (`OTT_COORD_RETENTION=on`) is deliberately disabled.
+- **Docker Mount**: The coordinator is trusted worker-side code and is the only other process permitted to mount `/var/run/docker.sock` (for preflight smoke tests).
+
+### Integration Testing & Fixture Verification
+
+- **Local corpus build required**: Before running integration tests (`coordinator.integration.test.ts`), build the local bot corpus (`npm --workspace @ott/sandbox-corpus run build:corpus`) so that `first-legal.oci.tar` and `capture-first.oci.tar` are generated in `src/bots/sandbox-corpus/artifacts/oci-fixtures/`.
+- **Dynamic fixture verification**: Committed manifest digests are NOT used for fixture verification because Docker builds differ across architectures and machines. The test dynamically computes archive digests and validates OCI archives via `validateOciSubmission` from `@ott/job-contract`.
+
+### Docker Compatibility
+
+The worker and coordinator communicate with the Docker Engine daemon via the UNIX domain socket (default `/var/run/docker.sock`). `DockerOciRuntime` dynamically negotiates the Engine API version prefix per runtime instance by querying unversioned `GET /version` on first contact. The negotiated version is computed as `max(1.41, MinAPIVersion)` capped at the server's `ApiVersion`. On older engines supporting API 1.41, requests use `/v1.41`; on modern engines such as Docker Engine 29.0+ (`MinAPIVersion 1.44`, `ApiVersion 1.52`), requests automatically use `/v1.44`, avoiding `400 Bad Request` API deprecation errors. The negotiated prefix can be explicitly overridden via the `apiVersion` constructor option or the `OTT_DOCKER_API_VERSION` environment variable (validated against `^1\.\d{1,3}$`).

@@ -35,4 +35,51 @@ export {
   type WorkerMetricsServerOptions,
   type WorkerRuntimeLogger,
 } from './runtime/metrics-server.ts';
+export {
+  loadCoordinatorConfig,
+  CoordinatorConfigError,
+  DEFAULT_PUBLIC_EDITORIAL,
+  validateEditorial,
+  type CoordinatorConfig,
+  type CoordinatorConfigIssue,
+  type PublicEditorial,
+} from './coordinator/config.ts';
+export {
+  CoordinatorMetrics,
+  defaultCoordinatorMetrics,
+  type CoordinatorLoopName,
+  type CoordinatorRole,
+} from './coordinator/metrics.ts';
+export {
+  pruneSnapshotDirectory,
+  type PruneResult,
+  type SnapshotPruneLogger,
+} from './coordinator/snapshot-prune.ts';
+export {
+  CoordinatorLoopRunner,
+  runPreflightIteration,
+  runDispatchIteration,
+  runSettleIteration,
+  runSnapshotIteration,
+  runRetentionIteration,
+  SETTLE_CANDIDATE_SERIES_SQL,
+  SNAPSHOT_QUEUE_MATCHES_SQL,
+  type CoordinatorLogger,
+  type LoopDefinition,
+  type PreflightLoopDeps,
+  type PreflightBackoffState,
+  resetPreflightBackoff,
+  type DispatchLoopDeps,
+  type SettleLoopDeps,
+  type SnapshotLoopDeps,
+  type RetentionLoopDeps,
+} from './coordinator/loops.ts';
+export {
+  createCoordinatorRuntime,
+  startCoordinator,
+  createDefaultAdvisoryLockHandle,
+  type CoordinatorRuntime,
+  type CoordinatorDependencies,
+  type AdvisoryLockHandle,
+} from './coordinator/server.ts';
 

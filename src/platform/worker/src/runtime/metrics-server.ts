@@ -18,6 +18,8 @@ export interface WorkerMetricsServerOptions {
   readonly requireDocker?: boolean;
   readonly getDockerStatus?: () => 'up' | 'down';
   readonly logger?: WorkerRuntimeLogger;
+  readonly scrapeMetrics?: () => string;
+  readonly getReadyBody?: () => Record<string, unknown> | undefined;
 }
 
 export interface WorkerMetricsServer {
@@ -61,7 +63,7 @@ export function createMetricsServer(options: WorkerMetricsServerOptions): Worker
 
     if (path === '/metrics') {
       try {
-        const body = metrics.scrape();
+        const body = options.scrapeMetrics ? options.scrapeMetrics() : metrics.scrape();
         assertMetricsSanitized(body);
         res.statusCode = 200;
         res.setHeader('Content-Type', 'text/plain; version=0.0.4');
@@ -107,7 +109,11 @@ export function createMetricsServer(options: WorkerMetricsServerOptions): Worker
             : []),
         ]);
 
-        if (options.requireDocker === false) {
+        if (options.getReadyBody !== undefined) {
+          const body = options.getReadyBody();
+          res.statusCode = 200;
+          res.end(JSON.stringify(body ?? { status: 'ready' }));
+        } else if (options.requireDocker === false) {
           let dockerState: 'up' | 'down' = 'down';
           if (options.getDockerStatus !== undefined) {
             dockerState = options.getDockerStatus();

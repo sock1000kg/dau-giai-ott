@@ -7,6 +7,7 @@
   "exports": { ".": "./src/index.ts" },
   "scripts": {
     "start": "tsx src/main.ts",
+    "start:coordinator": "tsx src/coordinator-main.ts",
     "dev": "tsx watch src/main.ts",
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run",
