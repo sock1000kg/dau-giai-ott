@@ -739,6 +739,97 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 - [x] Từ detached clean worktree của `404195f`, `npm ci`, build corpus, qualification E2E, `npm run typecheck`, `npm test`, `npm run build`, `git diff --check` và `bash -n scripts/run-local-qualification.sh` đều pass; OCI canary archives được build từ source bằng Docker, Compose harness dọn sạch resource. Root tests: 19 passed, 5 skipped (service-gated); web 65/65; các workspace khác đều xanh.
 - [x] Runbook, env contract và artifact format local tái lập được; runbook ghi rõ build corpus archive bị ignore trước qualification; deploy cloud không thuộc phạm vi Phase 2 này.
 
+> Các task `P2-T30`–`P2-T37` (runtime extension) được phát hành lại từ nhánh `thuandd/docs-p2-t30-local-runtime-plan` (13/10/2026) vì repo chưa có entrypoint API/worker, health endpoint, Dockerfile hay coordinator; xem Checkpoint P2-C.
+
+### [ ] P2-T30 — API runtime host và health lifecycle
+
+**Owner:** Đinh Đức Thuận
+**Mô tả:** Biến Fastify composition hiện có thành một service chạy lâu dài từ clean checkout, tự wire PostgreSQL, Redis và S3-compatible storage bằng environment mà không thay đổi contract/routes hiện tại.
+**Acceptance criteria:** (1) executable entrypoint validate đầy đủ environment, bootstrap BTC idempotent và listen trên host/port cấu hình được; (2) readiness chỉ xanh sau khi dependency/app sẵn sàng, liveness không tiết lộ credential hoặc internals; (3) `SIGTERM`/`SIGINT` ngừng nhận request rồi đóng Fastify, Redis, PostgreSQL và S3 client sạch.
+**Verification:** focused runtime tests cho missing/invalid env, dependency wiring, health và shutdown; API integration trên disposable services; `npm run typecheck`, `npm test`, `npm run build`.
+**Dependencies:** `P2-T29`.
+**Files dự kiến:** `src/platform/api/src/server.ts`, `src/platform/api/tests/server.test.ts`, `src/platform/api/package.json`, `src/platform/api/README.md`, `.env.example`.
+**Ước lượng:** M (5 file)
+**Trạng thái 2026-10-18:** đã implement bởi Phạm Tất Đạt (theo quyết định dự án, owner/reviewer Thuận) trên `datpt/feat-p3-d30-api-runtime-host` (`7a98716`): `src/platform/api/src/{main.ts,runtime/*}`, `npm run start:api`; runtime unit tests + integration thật (PostgreSQL/Redis/S3) 7/7 ×3 do Reviewer chạy. Chưa merge vào `main`, chưa tick.
+
+### [ ] P2-T31 — Worker runtime host và graceful shutdown
+
+**Owner:** Đinh Đức Thuận
+**Mô tả:** Cung cấp process entrypoint chính thức cho BullMQ worker, wire `runMatchJob` với PostgreSQL/S3 và quản lý vòng đời Docker-backed execution plane.
+**Acceptance criteria:** (1) executable entrypoint validate environment rồi khởi động đúng một worker queue; (2) chỉ trusted worker nhận Docker socket, bot containers vẫn no-network/no-mount/no-socket theo sandbox policy; (3) signal handling dừng nhận job, chờ active job trong giới hạn và đóng DB/Redis/S3 idempotent.
+**Verification:** focused runtime tests cho env/start/stop/failure; BullMQ integration và sandbox/finalization regression trên disposable services; root typecheck/test/build.
+**Dependencies:** `P2-T29`.
+**Files dự kiến:** `src/platform/worker/src/main.ts`, `src/platform/worker/tests/main.test.ts`, `src/platform/worker/package.json`, `src/platform/worker/README.md`.
+**Ước lượng:** M (4 file)
+**Trạng thái 2026-10-18:** đang implement bởi Phạm Tất Đạt trên `datpt/feat-p3-d32-worker-runtime-host` (review đang chạy). Không đổi contract: test run được định tuyến bằng tra cứu `test_runs` theo `job.matchId` (xem README worker khi merge).
+
+### [ ] P2-T32 — Local lifecycle coordinator
+
+**Owner:** Đinh Đức Thuận
+**Mô tả:** Ghép các service API hiện có thành vòng đời vận hành local: preflight submission, explicit qualification-round start, outbox dispatch, series settlement và Elo application; không thêm live-match control.
+**Acceptance criteria:** (1) submission `PREFLIGHT` được xử lý và active/reject bằng worker sandbox, BTC có command tường minh để mở một round; (2) outbox được dispatch, series/rating được settle sau terminal matches, retry/restart không tạo duplicate; (3) lỗi hạ tầng giữ retryable semantics và không bị tính thành bot loss.
+**Verification:** coordinator unit/integration tests trên disposable PostgreSQL/Redis/S3/Docker; restart/idempotency test; qualification flow regression; root typecheck/test/build.
+**Dependencies:** `P2-T30`, `P2-T31`.
+**Files dự kiến:** `src/platform/worker/src/coordinator.ts`, `src/platform/worker/src/coordinator-main.ts`, `src/platform/worker/tests/coordinator.integration.test.ts`, `src/platform/worker/package.json`, `src/platform/worker/README.md`.
+**Ước lượng:** M (5 file)
+
+### [ ] P2-T33 — Production-style local Docker images
+
+**Owner:** Đinh Đức Thuận
+**Mô tả:** Tạo multi-stage images cho API, worker/coordinator và React web gateway từ committed lockfile; web gateway serve SPA và proxy same-origin `/api/v1` sang API.
+**Acceptance criteria:** (1) images build reproducibly trên Node.js 22 và chỉ chứa runtime artifacts cần thiết; (2) API/web chạy non-root, không chứa `.env`, local account CSV hay build credentials; (3) gateway có SPA fallback, `/api/v1` proxy, upload body limit phù hợp OCI contract và security headers cơ bản.
+**Verification:** build cả images không dùng untracked launcher; inspect image config/layers cho secret-sensitive paths; container smoke cho static route và proxied health/API; `npm audit` triage trên committed lockfile.
+**Dependencies:** `P2-T30`, `P2-T31`.
+**Files dự kiến:** `.dockerignore`, `infra/docker/api.Dockerfile`, `infra/docker/worker.Dockerfile`, `infra/docker/web.Dockerfile`, `infra/docker/nginx.conf`.
+**Ước lượng:** M (5 file)
+
+### [ ] P2-T34 — Full-stack local Compose wiring
+
+**Owner:** Đinh Đức Thuận
+**Mô tả:** Mở rộng local deployment thành một Compose stack gồm migration one-shot, API, worker, coordinator và web gateway bên cạnh PostgreSQL/Redis/SeaweedFS.
+**Acceptance criteria:** (1) dependency health/migration ordering deterministic và service-to-service URL dùng Compose DNS; (2) chỉ web gateway bind `0.0.0.0:${APP_PORT}`, DB/cache/S3/API/Docker socket không public ra LAN; (3) worker là service duy nhất mount Docker socket và có quyền tối thiểu cần thiết, restart policy không tạo duplicate processing.
+**Verification:** `docker compose config`, fresh-volume `up --build --wait`, health/status/log inspection, API-through-gateway smoke, controlled restart và `down -v` cleanup trên đúng project.
+**Dependencies:** `P2-T32`, `P2-T33`.
+**Files dự kiến:** `infra/local/compose.yaml`, `infra/local/compose.test.sh`, `.env.example`, `docs/runbooks/local-services.md`.
+**Ước lượng:** M (4 file)
+
+### [ ] P2-T35 — Demo-only accounts và local credential CSV
+
+**Owner:** Đinh Đức Thuận
+**Mô tả:** Thêm seeder idempotent chỉ hoạt động khi `OTT_DEMO_MODE=true`, tạo `btc`, `team01`, `team02` với public demo password `ABC123`, hash bằng Argon2id và sinh CSV để BTC dùng khi demo.
+**Acceptance criteria:** (1) seeder từ chối chạy nếu không có demo-mode flag hoặc nếu environment là production; (2) database chỉ lưu password hash, CSV được ghi tại `.local/demo/accounts.csv` với mode `0600`, không log password và bị gitignore; (3) chạy lại không nhân đôi team/account, không đổi production provisioning/reset flow vốn vẫn sinh credential ngẫu nhiên.
+**Verification:** tests cho mode guard, exact three accounts, role/team binding, Argon2 login và idempotency; filesystem permission/git-ignore check; staged-diff secret scan xác nhận CSV sinh ra không được track.
+**Dependencies:** `P2-T30`, `P2-T34`.
+**Files dự kiến:** `src/platform/api/src/demo/seed-accounts.ts`, `src/platform/api/tests/demo-accounts.integration.test.ts`, `.gitignore`, `docs/runbooks/local-demo.md`.
+**Ước lượng:** M (4 file)
+
+### [ ] P2-T36 — One-command local demo operations
+
+**Owner:** Đinh Đức Thuận
+**Mô tả:** Cung cấp một script có subcommand để build/start/status/accounts/logs/round/stop/reset toàn bộ stack mà không phụ thuộc các launcher `/tmp`.
+**Acceptance criteria:** (1) `up` thực hiện preflight, build, migrate, seed và chờ healthy; `accounts` in đúng path/quyền CSV nhưng không tự dump password vào log; (2) `round` là thao tác BTC tường minh và không can thiệp giữa trận; (3) `reset` kiểm tra Compose project cố định, yêu cầu xác nhận và chỉ xóa containers/volumes local thuộc project đó.
+**Verification:** `bash -n`, shell tests cho argument/error/target guards, hai chu kỳ up→status→stop và một reset trên disposable stack; docs commands copy-ready.
+**Dependencies:** `P2-T34`, `P2-T35`.
+**Files dự kiến:** `scripts/demo.sh`, `scripts/tests/demo.test.sh`, `package.json`, `docs/runbooks/local-demo.md`.
+**Ước lượng:** M (4 file)
+
+### [ ] P2-T37 — Clean-checkout browser demo qualification
+
+**Owner:** Đinh Đức Thuận
+**Mô tả:** Chứng minh stack committed có thể chạy từ clean checkout và hoàn tất flow trình duyệt thật, thay cho việc chỉ compose module trong test process.
+**Acceptance criteria:** (1) BTC/team login qua gateway, hai team upload OCI, preflight và explicit round tạo kết quả; (2) BTC stage/publish và anonymous spectator xem replay trên máy khác cùng LAN; (3) restart không mất state/duplicate result, teardown sạch và không còn phụ thuộc file `/tmp`.
+**Verification:** detached clean-worktree `npm ci` + Docker image build + `./scripts/demo.sh up`; browser automation cho login/upload/results/replay; root typecheck/test/build, Compose health/restart/cleanup và GitNexus change review pass.
+**Dependencies:** `P2-T36`.
+**Files dự kiến:** `tests/e2e/local-demo.config.ts`, `tests/e2e/local-demo.browser.test.ts`, `scripts/run-local-demo-e2e.sh`, `docs/runbooks/local-demo.md`.
+**Ước lượng:** M (4 file)
+
+## Checkpoint P2-C — Full-stack local demo runtime
+
+- [ ] `P2-T30`–`P2-T37` hoàn tất trên các task branch riêng và merge vào `main` sau verification.
+- [ ] Clean checkout dựng API, worker, coordinator, web và dependencies bằng một command; chỉ web gateway public ra LAN.
+- [ ] Browser flow BTC/team/submission/result/replay pass với hai OCI canary; account CSV chỉ tồn tại local, mode `0600`, gitignored.
+- [ ] Root gates, Docker image/Compose checks, restart/idempotency và teardown pass; không deploy cloud và không dùng production/shared data.
+
 ## Phase 3 — Gate P3-0: decision và contract approval
 
 > `P3-T01` đã duyệt requirement/ADR/contract ngày 14/10/2026. Task implementation chỉ hoàn tất sau acceptance/verification riêng; Wave 1 có thể bắt đầu trên branch task từ `main`.
