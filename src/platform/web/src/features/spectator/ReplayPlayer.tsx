@@ -2,7 +2,7 @@ import { useEffect, useMemo, useReducer } from 'react';
 import type { Piece, Position } from '@ott/game-core';
 import type { ReplaySpeed } from './replay-state.ts';
 import { createReplayMoves, createReplayTimeline, initialPlaybackState, playbackReducer } from './replay-state.ts';
-import type { SpectatorReplayV1 } from './replay-schema.ts';
+import type { SpectatorReplay } from './replay-schema.ts';
 import { MoveList } from './MoveList.tsx';
 import { Badge, Button, Card, Select } from '../../ui/index.ts';
 import './replay-player.css';
@@ -21,7 +21,7 @@ function pieceLabel(piece: Piece): string {
   return `${piece.owner === 'X' ? 'Đội X' : 'Đội O'} - ${type}`;
 }
 
-export function ReplayPlayer({ replay }: { readonly replay: SpectatorReplayV1 }) {
+export function ReplayPlayer({ replay }: { readonly replay: SpectatorReplay }) {
   const timeline = useMemo(() => createReplayTimeline(replay), [replay]);
   const moves = useMemo(() => createReplayMoves(replay), [replay]);
   const [playback, dispatch] = useReducer(playbackReducer, undefined, initialPlaybackState);
@@ -47,6 +47,9 @@ export function ReplayPlayer({ replay }: { readonly replay: SpectatorReplayV1 })
   const eventRange = eventCount === 0 ? undefined : `${Math.min(eventCount, Math.max(1, playback.eventIndex))} / ${eventCount}`;
 
   const winner = replay.result.winnerSide;
+  const currentTiming = (replay.schemaVersion === 2 && currentEvent)
+    ? replay.timing.find((item) => item.turnId === currentEvent.event.turnId && item.side === currentEvent.event.side)
+    : undefined;
   return (
     <section className="rp-player" aria-label="Trình phát replay">
       <Card className="rp-heading">
@@ -118,6 +121,7 @@ export function ReplayPlayer({ replay }: { readonly replay: SpectatorReplayV1 })
               <p>{currentEvent.event.side === 'X' ? 'Đội X' : 'Đội O'} · lượt {currentEvent.event.turnId}</p>
               {currentEvent.event.action && <p>{currentEvent.event.action.pieceId}: {columns[currentEvent.event.action.to.col]}{currentEvent.event.action.to.row + 1}</p>}
               {currentEvent.event.reason && <p>Lý do: {reasonLabel(currentEvent.event.reason)}</p>}
+              {currentTiming && <p>Thời gian: {currentTiming.elapsedMs}ms · Còn: {currentTiming.remainingAfterMs}ms</p>}
             </> : <h2>Trận đấu chưa bắt đầu</h2>}
           </section>
 

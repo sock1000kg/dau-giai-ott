@@ -3,7 +3,14 @@ import { DEFAULT_LIMITS } from '@ott/bot-protocol';
 import { DEFAULT_MAP } from '@ott/game-core';
 import type { OciArtifactReference } from '@ott/job-contract';
 import { CoreGameAdapter } from '@ott/match-runner';
-import type { Database, ObjectStorage } from '@ott/platform-api';
+import {
+  checkDuplicateSubmission,
+  recordSubmissionLayers,
+  type Database,
+  type ObjectStorage,
+} from '@ott/platform-api';
+import { extractOciLayersFromArchive } from './artifacts.ts';
+import { pingDocker } from './runtime/server.ts';
 import { SandboxOciBotPort } from './sandbox/oci-bot-port.ts';
 import { SANDBOX_POLICY_V1 } from './sandbox/policy.ts';
 
@@ -26,6 +33,26 @@ export interface PreflightSubmissionOptions {
   readonly submissionId: string;
   readonly database: Database;
   readonly storage: ObjectStorage;
+  readonly dockerReachable?: () => Promise<boolean>;
+  readonly dockerSocketPath?: string | undefined;
+  readonly createBotPort?: (options: {
+    readonly archive: Uint8Array;
+    readonly reference: OciArtifactReference;
+    readonly expectedEntrypoint: readonly string[];
+    readonly dockerSocketPath?: string;
+  }) => {
+    start: (msg: any) => Promise<{ ok: boolean; code?: string }>;
+    requestAction: (msg: any, timeoutMs: number) => Promise<{ ok: boolean; code?: string }>;
+    stop: () => Promise<void>;
+  };
+  readonly extractLayers?: typeof extractOciLayersFromArchive;
+  readonly recordLayers?: typeof recordSubmissionLayers;
+  readonly checkDuplicate?: typeof checkDuplicateSubmission;
+  readonly logger?: {
+    warn: (msg: string, ...args: any[]) => void;
+    info?: (msg: string, ...args: any[]) => void;
+    error?: (msg: string, ...args: any[]) => void;
+  };
 }
 
 export interface PreflightSubmissionResult {
@@ -63,12 +90,30 @@ function publicState(state: ReturnType<import('@ott/match-runner').CoreGameAdapt
   };
 }
 
-async function executeProtocolSmokeTest(submission: SubmissionRow, storage: ObjectStorage): Promise<void> {
+async function executeProtocolSmokeTest(
+  submission: SubmissionRow,
+  storage: ObjectStorage,
+  dockerReachable?: () => Promise<boolean>,
+  dockerSocketPath?: string,
+  createBotPort?: PreflightSubmissionOptions['createBotPort'],
+): Promise<Uint8Array> {
   if (submission.policy_version !== PLATFORM_POLICY_VERSION) throw new Error('PREFLIGHT_POLICY_UNSUPPORTED');
-  const archive = await storage.get(submission.object_key);
+  let archive: Uint8Array;
+  try {
+    archive = await storage.get(submission.object_key);
+  } catch {
+    throw new Error('PREFLIGHT_INFRA_STORAGE');
+  }
   const archiveSha256 = `sha256:${createHash('sha256').update(archive).digest('hex')}`;
   if (archiveSha256 !== submission.archive_sha256) throw new Error('PREFLIGHT_ARCHIVE_CHECKSUM_MISMATCH');
   const entrypoint = entrypointOf(submission.entrypoint);
+
+  const checkDocker = dockerReachable ?? (() => pingDocker(dockerSocketPath ?? process.env.OTT_DOCKER_SOCKET ?? '/var/run/docker.sock'));
+  const dockerAvailableBefore = await checkDocker().catch(() => false);
+  if (!dockerAvailableBefore) {
+    throw new Error('PREFLIGHT_INFRA_DOCKER');
+  }
+
   const reference: OciArtifactReference = {
     submissionId: submission.id,
     archiveSha256: submission.archive_sha256,
@@ -77,7 +122,13 @@ async function executeProtocolSmokeTest(submission: SubmissionRow, storage: Obje
     policyVersion: SANDBOX_POLICY_V1.version,
   };
   const matchId = `preflight-${randomUUID()}`;
-  const bot = new SandboxOciBotPort({ archive, reference, expectedEntrypoint: entrypoint });
+  const portOptions = {
+    archive,
+    reference,
+    expectedEntrypoint: entrypoint,
+    ...(dockerSocketPath === undefined ? {} : { dockerSocketPath }),
+  };
+  const bot = createBotPort ? createBotPort(portOptions) : new SandboxOciBotPort(portOptions);
   const maxTurns = 2;
   const game = new CoreGameAdapter();
   const state = game.create({ gameId: matchId, engineVersion: '1.0.0', map: DEFAULT_MAP, maxTurns });
@@ -86,7 +137,15 @@ async function executeProtocolSmokeTest(submission: SubmissionRow, storage: Obje
       type: 'INIT', protocolVersion: 1, matchId, engineVersion: '1.0.0', side: 'X', seed: randomUUID(),
       map: DEFAULT_MAP, limits: { ...DEFAULT_LIMITS, maxTurns },
     });
-    if (!started.ok) throw new Error(`PREFLIGHT_START_${started.code}`);
+    if (!started.ok) {
+      if (started.code === 'BOT_SPAWN_FAILED') {
+        const dockerStillReachable = await checkDocker().catch(() => false);
+        if (!dockerStillReachable) {
+          throw new Error('PREFLIGHT_INFRA_DOCKER');
+        }
+      }
+      throw new Error(`PREFLIGHT_START_${started.code}`);
+    }
     const actions = game.listLegalActions(state, 'X');
     if (actions.length === 0) throw new Error('PREFLIGHT_NO_LEGAL_ACTION');
     const reply = await bot.requestAction({
@@ -97,6 +156,7 @@ async function executeProtocolSmokeTest(submission: SubmissionRow, storage: Obje
   } finally {
     await bot.stop();
   }
+  return archive;
 }
 
 async function recordInvalid(database: Database, submissionId: string, reason: string): Promise<void> {
@@ -154,11 +214,54 @@ export async function preflightSubmission(options: PreflightSubmissionOptions): 
   if (submission.status !== 'PREFLIGHT') throw new Error('PREFLIGHT_SUBMISSION_STATE_CONFLICT');
 
   try {
-    await executeProtocolSmokeTest(submission, options.storage);
+    const archive = await executeProtocolSmokeTest(
+      submission,
+      options.storage,
+      options.dockerReachable,
+      options.dockerSocketPath,
+      options.createBotPort,
+    );
+
+    try {
+      const extracted = (options.extractLayers ?? extractOciLayersFromArchive)(archive);
+      await (options.recordLayers ?? recordSubmissionLayers)(options.database, {
+        submissionId: submission.id,
+        layers: extracted.layers.map((layer) => ({
+          digest: layer.digest,
+          mediaType: layer.mediaType,
+          sizeBytes: layer.size,
+          storageKey: `layers/sha256/${layer.digest.replace(/^sha256:/, '')}`,
+          isBaseLayer: extracted.baseLayerDigests.includes(layer.digest),
+        })),
+      });
+      await (options.checkDuplicate ?? checkDuplicateSubmission)(options.database, {
+        submissionId: submission.id,
+        teamId: submission.team_id,
+        manifestDigest: extracted.manifestDigest,
+        nonBaseLayerDigests: extracted.nonBaseLayerDigests,
+      });
+    } catch (error) {
+      const code = error instanceof Error ? error.message : 'UNKNOWN_ERROR';
+      const payload = {
+        level: 'warn',
+        message: 'duplicate check skipped',
+        submissionId: submission.id,
+        code,
+      };
+      if (options.logger?.warn) {
+        options.logger.warn(JSON.stringify(payload));
+      } else {
+        console.warn(JSON.stringify(payload));
+      }
+    }
+
     await activate(options.database, submission);
     return { submissionId: submission.id, status: 'ACTIVE', replayed: false };
   } catch (error) {
     const reason = stableErrorCode(error);
+    if (reason === 'PREFLIGHT_INFRA_DOCKER' || reason === 'PREFLIGHT_INFRA_STORAGE') {
+      throw error;
+    }
     await recordInvalid(options.database, submission.id, reason);
     throw new Error(reason);
   }

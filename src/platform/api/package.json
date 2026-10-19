@@ -6,11 +6,14 @@
   "engines": { "node": "^22.12.0" },
   "exports": { ".": "./src/index.ts" },
   "scripts": {
+    "start": "tsx src/main.ts",
+    "dev": "tsx watch src/main.ts",
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage --coverage.include=src",
     "build": "tsc -p tsconfig.build.json",
-    "db:migrate": "tsx src/db/migrate.ts"
+    "db:migrate": "tsx src/db/migrate.ts",
+    "demo:seed": "tsx src/demo/seed-accounts.ts"
   },
   "dependencies": {
     "@ott/bot-protocol": "*",

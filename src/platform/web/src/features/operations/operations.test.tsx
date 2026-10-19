@@ -25,6 +25,7 @@ function install(options: Mock = {}) {
     if (path.startsWith('/api/v1/results/matches')) return response(200, { data: { items: [], pagination: { page: 1, pageSize: 100, total: 0, totalPages: 0 } } });
     if (path.startsWith('/api/v1/admin/operations/audit')) return response(200, { data: { items: [] } });
     if (path === '/api/v1/public/queue-overrides') return response(200, { data: { items: [{ id: 'o1', action: 'RERUN', matchOpaqueId: 'abcdef0123456789', publicReason: 'Worker restarted', createdAt: '2026-10-18T00:00:00Z' }] } });
+    if (path.startsWith('/api/v1/admin/submissions/flagged')) return response(200, { data: [], total: 0, page: 1, pageSize: 20 });
     if (init?.method === 'POST' && path.startsWith('/api/v1/admin/operations/')) {
       return options.privileged ? options.privileged(path, init) : response(200, { data: {} });
     }

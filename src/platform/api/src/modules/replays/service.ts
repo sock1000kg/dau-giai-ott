@@ -1,12 +1,13 @@
 import { createHash } from 'node:crypto';
 import { TextDecoder } from 'node:util';
-import { parseEventLog, type EventLogV1 } from '@ott/match-runner';
+import { parseAnyEventLog, type AnyEventLog, type EventLogV1, type EventLogV2, type TimingDecision, type TimingExhaustion } from '@ott/match-runner';
+import type { TimeControlV2, PerTurnPolicyV2 } from '@ott/bot-protocol';
 
 import type { Database } from '../../db/client.ts';
 import type { ObjectStorage } from '../../storage/s3.ts';
 import { listReplayCatalog, publishReplay, stageReplay, type ReplayTransitionInput } from './repository.ts';
 import type { GameResultReason, PieceType, PlayerSide } from '@ott/game-core';
-import type { ReplayCatalogPage, ReplayPublication, SpectatorReplayV1 } from './types.ts';
+import type { ReplayCatalogPage, ReplayPublication, SpectatorReplay, SpectatorReplayV1, SpectatorReplayV2 } from './types.ts';
 
 interface StoredReplayRow {
   readonly status: string;
@@ -19,7 +20,9 @@ interface StoredReplayRow {
 export interface PublicReplayArtifact {
   readonly body: string;
   readonly checksum: string;
+  readonly version: 1 | 2;
 }
+
 
 export class ReplayApiError extends Error {
   public readonly statusCode: 400 | 401 | 404 | 409;
@@ -89,22 +92,30 @@ async function assertPrivateReplayAccess(
   throw new ReplayApiError(404, 'REPLAY_NOT_FOUND', 'Replay is not available');
 }
 
-function failIntegrity(): never {
+function failIntegrity(reason?: string): never {
+  if (reason) console.error('[failIntegrity]', reason);
   throw new ReplayApiError(409, 'REPLAY_INTEGRITY_FAILED', 'Replay integrity verification failed');
 }
 
-function record(value: unknown): Record<string, unknown> {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) failIntegrity();
+function record(value: unknown, name = 'value'): Record<string, unknown> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) failIntegrity(`${name} not an object`);
   return value as Record<string, unknown>;
 }
 
-function integer(value: unknown): number {
-  if (!Number.isSafeInteger(value)) failIntegrity();
+function integer(value: unknown, name = 'value'): number {
+  if (!Number.isSafeInteger(value)) failIntegrity(`${name} not safe integer: ${value}`);
   return Number(value);
 }
 
-function text(value: unknown): string {
-  if (typeof value !== 'string') failIntegrity();
+function nonNegativeNumber(value: unknown, name = 'value'): number {
+  if (typeof value !== 'number' || Number.isNaN(value) || value < 0) {
+    failIntegrity(`${name} not non-negative number: ${value}`);
+  }
+  return value;
+}
+
+function text(value: unknown, name = 'value'): string {
+  if (typeof value !== 'string') failIntegrity(`${name} not a string`);
   return value;
 }
 
@@ -145,11 +156,83 @@ function publicMap(value: unknown): import('@ott/game-core').MapDefinition {
   };
 }
 
-function publicEventLog(log: EventLogV1, matchId: string, finalStateHash: string): SpectatorReplayV1 {
+const timingExhaustions = ['TURN_LIMIT', 'BOT_BUDGET', 'WALL_CLOCK'] as const;
+
+function publicTimingDecision(value: unknown): TimingDecision {
+  const row = record(value);
+  const turnId = integer(row['turnId']);
+  if (turnId < 1) failIntegrity('turnId < 1');
+  const side = row['side'];
+  if (side !== 'X' && side !== 'O') failIntegrity('invalid side');
+  const rawTurnLimit = row['turnLimitMs'];
+  const turnLimitMs = rawTurnLimit === null ? null : nonNegativeNumber(rawTurnLimit, 'turnLimitMs');
+  const deadlineMs = nonNegativeNumber(row['deadlineMs'], 'deadlineMs');
+  const remainingBeforeMs = nonNegativeNumber(row['remainingBeforeMs'], 'remainingBeforeMs');
+  const wallElapsedBeforeMs = nonNegativeNumber(row['wallElapsedBeforeMs'], 'wallElapsedBeforeMs');
+  const elapsedMs = nonNegativeNumber(row['elapsedMs'], 'elapsedMs');
+  const timedOut = row['timedOut'];
+  if (typeof timedOut !== 'boolean') failIntegrity('timedOut not boolean');
+  const chargedMs = nonNegativeNumber(row['chargedMs'], 'chargedMs');
+  const remainingAfterMs = nonNegativeNumber(row['remainingAfterMs'], 'remainingAfterMs');
+  const rawExhaustion = row['exhaustion'];
+  if (rawExhaustion !== null && !timingExhaustions.includes(rawExhaustion as (typeof timingExhaustions)[number])) failIntegrity('invalid exhaustion');
+  return {
+    turnId,
+    side,
+    turnLimitMs,
+    deadlineMs,
+    remainingBeforeMs,
+    wallElapsedBeforeMs,
+    elapsedMs,
+    timedOut,
+    chargedMs,
+    remainingAfterMs,
+    exhaustion: rawExhaustion as TimingExhaustion | null,
+  };
+}
+
+function publicTimeControl(value: unknown): TimeControlV2 {
+  const tc = record(value);
+  const startupMs = nonNegativeNumber(tc['startupMs'], 'startupMs');
+  const totalBotBudgetMs = nonNegativeNumber(tc['totalBotBudgetMs'], 'totalBotBudgetMs');
+  const matchWallClockMs = nonNegativeNumber(tc['matchWallClockMs'], 'matchWallClockMs');
+  if (startupMs < 0 || totalBotBudgetMs < 1 || matchWallClockMs < 1) failIntegrity('invalid timeControl bounds');
+  const perTurn = record(tc['perTurn']);
+  const mode = text(perTurn['mode']);
+  let safePerTurn: PerTurnPolicyV2;
+  if (mode === 'FIXED') {
+    const fixedMs = nonNegativeNumber(perTurn['fixedMs'], 'fixedMs');
+    if (fixedMs < 1) failIntegrity('fixedMs < 1');
+    safePerTurn = { mode: 'FIXED', fixedMs };
+  } else if (mode === 'DYNAMIC') {
+    const baseMs = nonNegativeNumber(perTurn['baseMs'], 'baseMs');
+    const stepMs = nonNegativeNumber(perTurn['stepMs'], 'stepMs');
+    const everyTurns = integer(perTurn['everyTurns']);
+    const maxMs = nonNegativeNumber(perTurn['maxMs'], 'maxMs');
+    if (baseMs < 1 || stepMs < 0 || everyTurns < 1 || maxMs < 0) failIntegrity('invalid dynamic bounds');
+    safePerTurn = { mode: 'DYNAMIC', baseMs, stepMs, everyTurns, maxMs };
+  } else if (mode === 'NONE') {
+    safePerTurn = { mode: 'NONE' };
+  } else {
+    failIntegrity('unknown perTurn mode');
+  }
+  return {
+    startupMs,
+    totalBotBudgetMs,
+    matchWallClockMs,
+    perTurn: safePerTurn,
+  };
+}
+
+export function publicEventLog(log: AnyEventLog, matchId: string, finalStateHash: string): SpectatorReplay {
   if (log.header.matchId !== matchId || log.footer.result.finalStateHash !== finalStateHash
-    || log.footer.entryCount !== log.entries.length || !/^[0-9a-f]{64}$/.test(finalStateHash)) failIntegrity();
-  const game = record(log.header.game);
-  if (game['gameId'] !== matchId || game['engineVersion'] !== log.header.engineVersion) failIntegrity();
+    || log.footer.entryCount !== log.entries.length || !/^[0-9a-f]{64}$/.test(finalStateHash)) {
+    failIntegrity(`publicEventLog mismatch: header matchId ${log.header.matchId} vs ${matchId}, footer hash ${log.footer.result.finalStateHash} vs ${finalStateHash}, entries ${log.footer.entryCount} vs ${log.entries.length}`);
+  }
+  const game = record(log.header.game, 'header.game');
+  if (game['gameId'] !== matchId || game['engineVersion'] !== log.header.engineVersion) {
+    failIntegrity(`publicEventLog game: gameId ${game['gameId']} vs ${matchId}, engineVersion ${game['engineVersion']} vs ${log.header.engineVersion}`);
+  }
   const gameMap = publicMap(game['map']);
   const entries = log.entries.map((entry) => ({
     index: integer(entry.index),
@@ -171,32 +254,68 @@ function publicEventLog(log: EventLogV1, matchId: string, finalStateHash: string
     stateHash: text(entry.stateHash),
   }));
   const result = log.footer.result;
-  return {
-    schema: 'ott.spectator-replay',
-    schemaVersion: 1,
-    matchId,
-    header: {
-      format: text(log.header.format),
-      formatVersion: 1,
-      matchId,
-      protocolVersion: 1,
-      engineVersion: text(log.header.engineVersion),
-      game: { engineVersion: text(game['engineVersion']), maxTurns: integer(game['maxTurns']), map: gameMap },
-    },
-    entries,
-    result: {
-      winnerSide: result.winnerSide,
-      reason: result.reason as GameResultReason,
-      turnCount: integer(result.turnCount),
-      forfeitedSide: result.forfeitedSide,
-      finalStateHash: text(result.finalStateHash),
-    },
-    faults: {
-      X: { recoverableTotal: integer(log.footer.faults.X.recoverableTotal), recoverableConsecutive: integer(log.footer.faults.X.recoverableConsecutive), lastErrorCode: log.footer.faults.X.lastErrorCode },
-      O: { recoverableTotal: integer(log.footer.faults.O.recoverableTotal), recoverableConsecutive: integer(log.footer.faults.O.recoverableConsecutive), lastErrorCode: log.footer.faults.O.lastErrorCode },
-    },
+  const safeResult = {
+    winnerSide: result.winnerSide,
+    reason: result.reason as GameResultReason,
+    turnCount: integer(result.turnCount),
+    forfeitedSide: result.forfeitedSide,
+    finalStateHash: text(result.finalStateHash),
   };
+  const safeFaults = {
+    X: { recoverableTotal: integer(log.footer.faults.X.recoverableTotal), recoverableConsecutive: integer(log.footer.faults.X.recoverableConsecutive), lastErrorCode: log.footer.faults.X.lastErrorCode },
+    O: { recoverableTotal: integer(log.footer.faults.O.recoverableTotal), recoverableConsecutive: integer(log.footer.faults.O.recoverableConsecutive), lastErrorCode: log.footer.faults.O.lastErrorCode },
+  };
+
+  if (log.header.formatVersion === 1) {
+    if (log.header.protocolVersion !== 1) failIntegrity();
+    return {
+      schema: 'ott.spectator-replay',
+      schemaVersion: 1,
+      matchId,
+      header: {
+        format: text(log.header.format),
+        formatVersion: 1,
+        matchId,
+        protocolVersion: 1,
+        engineVersion: text(log.header.engineVersion),
+        game: { engineVersion: text(game['engineVersion']), maxTurns: integer(game['maxTurns']), map: gameMap },
+      },
+      entries,
+      result: safeResult,
+      faults: safeFaults,
+    };
+  }
+
+  if (log.header.formatVersion === 2) {
+    const v2Log = log as EventLogV2;
+    if (v2Log.header.protocolVersion !== 2) failIntegrity();
+    if (!Array.isArray(v2Log.timing)) failIntegrity();
+    const limits = record(v2Log.header.limits);
+    const timeControl = publicTimeControl(limits['timeControl']);
+    const timing = v2Log.timing.map(publicTimingDecision);
+    return {
+      schema: 'ott.spectator-replay',
+      schemaVersion: 2,
+      matchId,
+      header: {
+        format: text(v2Log.header.format),
+        formatVersion: 2,
+        matchId,
+        protocolVersion: 2,
+        engineVersion: text(v2Log.header.engineVersion),
+        game: { engineVersion: text(game['engineVersion']), maxTurns: integer(game['maxTurns']), map: gameMap },
+        limits: { timeControl },
+      },
+      entries,
+      timing,
+      result: safeResult,
+      faults: safeFaults,
+    };
+  }
+
+  failIntegrity();
 }
+
 
 async function storedReplay(database: Database, matchId: string, publishedOnly: boolean): Promise<StoredReplayRow> {
   const result = await database.query<StoredReplayRow>(`
@@ -215,33 +334,37 @@ async function storedReplay(database: Database, matchId: string, publishedOnly: 
   if (row.status !== 'FINALIZED' || row.event_log_key === null || row.event_log_sha256 === null || row.final_state_hash === null) {
     throw new ReplayApiError(409, 'REPLAY_NOT_ELIGIBLE', 'Match does not have a verified terminal replay');
   }
-  if (!replayChecksum.test(row.event_log_sha256) || row.event_log_key !== `match-results/${matchId}/event-log/${row.event_log_sha256}.json`) failIntegrity();
+  if (!replayChecksum.test(row.event_log_sha256) || row.event_log_key !== `match-results/${matchId}/event-log/${row.event_log_sha256}.json`) {
+    failIntegrity(`storedReplay key mismatch: ${row.event_log_key} vs match-results/${matchId}/event-log/${row.event_log_sha256}.json`);
+  }
   return row;
 }
 
 async function loadVerifiedReplay(database: Database, storage: ObjectStorage, matchId: string): Promise<{
   readonly checksum: string;
-  readonly log: EventLogV1;
+  readonly log: AnyEventLog;
   readonly finalStateHash: string;
 }> {
   const identity = await storedReplay(database, matchId, false);
   let bytes: Uint8Array;
   try {
     bytes = await storage.get(identity.event_log_key!);
-  } catch {
-    return failIntegrity();
+  } catch (err) {
+    return failIntegrity(`storage.get failed: ${err instanceof Error ? err.message : String(err)}`);
   }
-  if (bytes.byteLength === 0 || bytes.byteLength > maxArtifactBytes) failIntegrity();
+  if (bytes.byteLength === 0 || bytes.byteLength > maxArtifactBytes) failIntegrity(`byteLength ${bytes.byteLength}`);
   const checksum = `sha256:${createHash('sha256').update(bytes).digest('hex')}`;
-  if (checksum !== identity.event_log_sha256) failIntegrity();
-  let log: EventLogV1;
+  if (checksum !== identity.event_log_sha256) failIntegrity(`checksum ${checksum} != ${identity.event_log_sha256}`);
+  let log: AnyEventLog;
   try {
     const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
-    log = parseEventLog(text);
-  } catch {
-    return failIntegrity();
+    log = parseAnyEventLog(text);
+  } catch (err) {
+    return failIntegrity(`parseAnyEventLog failed: ${err instanceof Error ? err.message : String(err)}`);
   }
-  if (log.header.matchId !== matchId || log.footer.result.finalStateHash !== identity.final_state_hash) failIntegrity();
+  if (log.header.matchId !== matchId || log.footer.result.finalStateHash !== identity.final_state_hash) {
+    failIntegrity(`matchId (${log.header.matchId} vs ${matchId}) or hash (${log.footer.result.finalStateHash} vs ${identity.final_state_hash})`);
+  }
   return { checksum, log, finalStateHash: identity.final_state_hash! };
 }
 
@@ -282,12 +405,17 @@ export async function getPublicReplay(
   const verified = await loadVerifiedReplay(database, storage, matchId);
   const safeReplay = publicEventLog(verified.log, matchId, verified.finalStateHash);
   const body = `${JSON.stringify(safeReplay, null, 2)}\n`;
-  return { body, checksum: `sha256:${createHash('sha256').update(body, 'utf8').digest('hex')}` };
+  return {
+    body,
+    checksum: `sha256:${createHash('sha256').update(body, 'utf8').digest('hex')}`,
+    version: safeReplay.schemaVersion,
+  };
 }
 
 export interface PrivateReplayArtifact {
   readonly body: string;
   readonly checksum: string;
+  readonly version: 1 | 2;
 }
 
 export async function getPrivateReplay(
@@ -300,5 +428,9 @@ export async function getPrivateReplay(
   const verified = await loadVerifiedReplay(database, storage, matchId);
   const safeReplay = publicEventLog(verified.log, matchId, verified.finalStateHash);
   const body = `${JSON.stringify(safeReplay, null, 2)}\n`;
-  return { body, checksum: `sha256:${createHash('sha256').update(body, 'utf8').digest('hex')}` };
+  return {
+    body,
+    checksum: `sha256:${createHash('sha256').update(body, 'utf8').digest('hex')}`,
+    version: safeReplay.schemaVersion,
+  };
 }

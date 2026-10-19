@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Page } from '../../ui/index.ts';
 import { AuditViewer, QueueOverrides } from './AuditSection.tsx';
+import { DuplicateSubmissionsSection } from './DuplicateSubmissionsSection.tsx';
 import { PrivilegedActions } from './PrivilegedActions.tsx';
 import { DirectoryProvider } from './shared.tsx';
 
@@ -15,6 +16,7 @@ export function OperationsConsole() {
         <PrivilegedActions onDone={() => setRefreshToken((token) => token + 1)} />
         <AuditViewer refreshToken={refreshToken} />
         <QueueOverrides refreshToken={refreshToken} />
+        <DuplicateSubmissionsSection refreshToken={refreshToken} />
       </Page>
     </DirectoryProvider>
   );

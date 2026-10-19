@@ -54,4 +54,104 @@ enabled('P2-T07 OCI upload', () => { let db: Database; let redis: RedisClientTyp
  });
  afterAll(async () => { await redis?.quit(); await db?.close(); s3?.destroy(); });
  it('records an immutable PREFLIGHT identity after OCI promotion', async () => { const login = await app.inject({ method: 'POST', url: '/api/v1/auth/login', payload: { username: 'team', password: 'pass' } }); const response = await app.inject({ method: 'POST', url: '/api/v1/submissions', headers: { cookie: String(login.headers['set-cookie']).split(';')[0], 'content-type': 'application/octet-stream' }, payload: Buffer.from(archive()) }); expect(response.statusCode).toBe(201); expect(response.json()).toMatchObject({ data: { status: 'PREFLIGHT', archiveSha256: expect.stringMatching(/^sha256:/) } }); });
+
+  it('allows two teams to upload identical bytes without collision, creating distinct object keys both kept in storage', async () => {
+    const teamB = randomUUID();
+    await db.query('INSERT INTO teams(id,name) VALUES($1,$2)', [teamB, 'B']);
+    await db.query("INSERT INTO accounts(id,username,password_hash,role,team_id) VALUES($1,$2,$3,'TEAM_ACCOUNT',$4)", [
+      randomUUID(),
+      'teamB',
+      await createPasswordHasher({ memoryCost: 4096, timeCost: 1 }).hash('passB'),
+      teamB,
+    ]);
+
+    const loginA = await app.inject({ method: 'POST', url: '/api/v1/auth/login', payload: { username: 'team', password: 'pass' } });
+    const cookieA = String(loginA.headers['set-cookie']).split(';')[0];
+    const loginB = await app.inject({ method: 'POST', url: '/api/v1/auth/login', payload: { username: 'teamB', password: 'passB' } });
+    const cookieB = String(loginB.headers['set-cookie']).split(';')[0];
+
+    const bytes = Buffer.from(archive());
+
+    const resA = await app.inject({
+      method: 'POST',
+      url: '/api/v1/submissions',
+      headers: { cookie: cookieA, 'content-type': 'application/octet-stream' },
+      payload: bytes,
+    });
+    expect(resA.statusCode).toBe(201);
+    const subAId = resA.json().data.id;
+
+    const resB = await app.inject({
+      method: 'POST',
+      url: '/api/v1/submissions',
+      headers: { cookie: cookieB, 'content-type': 'application/octet-stream' },
+      payload: bytes,
+    });
+    expect(resB.statusCode).toBe(201);
+    const subBId = resB.json().data.id;
+
+    const rows = await db.query<{ id: string; object_key: string }>(
+      'SELECT id, object_key FROM submissions WHERE id IN ($1, $2)',
+      [subAId, subBId]
+    );
+    expect(rows.rows).toHaveLength(2);
+    const rowA = rows.rows.find((r) => r.id === subAId)!;
+    const rowB = rows.rows.find((r) => r.id === subBId)!;
+
+    expect(rowA.object_key).not.toBe(rowB.object_key);
+    expect(rowA.object_key).toMatch(/^submissions\/[0-9a-f]{64}\/[0-9a-f-]{36}\.oci\.tar$/);
+    expect(rowB.object_key).toMatch(/^submissions\/[0-9a-f]{64}\/[0-9a-f-]{36}\.oci\.tar$/);
+
+    const storage = createS3Storage({ client: s3, bucket: process.env.S3_BUCKET! });
+    const objA = await storage.get(rowA.object_key);
+    const objB = await storage.get(rowB.object_key);
+    expect(Buffer.compare(objA, bytes)).toBe(0);
+    expect(Buffer.compare(objB, bytes)).toBe(0);
+  });
+
+  it('idempotent retry with the same completed reservation returns 200 without extra orphan object in storage', async () => {
+    const login = await app.inject({ method: 'POST', url: '/api/v1/auth/login', payload: { username: 'team', password: 'pass' } });
+    const cookie = String(login.headers['set-cookie']).split(';')[0];
+
+    const bytes = Buffer.from(archive());
+    const archiveSha256 = sha(bytes);
+
+    // Create reservation
+    const reserveRes = await app.inject({
+      method: 'POST',
+      url: '/api/v1/submission-reservations',
+      headers: { cookie },
+      payload: { archiveSha256 },
+    });
+    expect(reserveRes.statusCode).toBe(201);
+    const reservationId = reserveRes.json().data.id;
+
+    // First upload
+    const uploadRes = await app.inject({
+      method: 'POST',
+      url: '/api/v1/submissions',
+      headers: { cookie, 'content-type': 'application/octet-stream', 'x-reservation-id': reservationId },
+      payload: bytes,
+    });
+    expect(uploadRes.statusCode).toBe(201);
+    const subId = uploadRes.json().data.id;
+
+    const row = await db.query<{ object_key: string }>('SELECT object_key FROM submissions WHERE id = $1', [subId]);
+    const originalKey = row.rows[0]?.object_key;
+    expect(originalKey).toBeDefined();
+
+    // Idempotent retry
+    const retryRes = await app.inject({
+      method: 'POST',
+      url: '/api/v1/submissions',
+      headers: { cookie, 'content-type': 'application/octet-stream', 'x-reservation-id': reservationId },
+      payload: bytes,
+    });
+    expect(retryRes.statusCode).toBe(200);
+    expect(retryRes.json().data.id).toBe(subId);
+
+    const storage = createS3Storage({ client: s3, bucket: process.env.S3_BUCKET! });
+    const origObj = await storage.get(originalKey!);
+    expect(Buffer.compare(origObj, bytes)).toBe(0);
+  });
 });

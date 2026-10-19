@@ -44,3 +44,24 @@ export interface SpectatorReplayV1 {
   readonly result: import('@ott/game-core').GameResult;
   readonly faults: Readonly<Record<'X' | 'O', import('@ott/bot-protocol').FaultSummary>>;
 }
+
+export interface SpectatorReplayV2 {
+  readonly schema: 'ott.spectator-replay';
+  readonly schemaVersion: 2;
+  readonly matchId: string;
+  readonly header: Readonly<{
+    format: string;
+    formatVersion: 2;
+    matchId: string;
+    protocolVersion: 2;
+    engineVersion: string;
+    game: Readonly<{ engineVersion: string; maxTurns: number; map: import('@ott/game-core').MapDefinition }>;
+    limits: Readonly<{ timeControl: import('@ott/bot-protocol').TimeControlV2 }>;
+  }>;
+  readonly entries: readonly import('@ott/match-runner').EventLogEntry[];
+  readonly timing: readonly import('@ott/match-runner').TimingDecision[];
+  readonly result: import('@ott/game-core').GameResult;
+  readonly faults: Readonly<Record<'X' | 'O', import('@ott/bot-protocol').FaultSummary>>;
+}
+
+export type SpectatorReplay = SpectatorReplayV1 | SpectatorReplayV2;

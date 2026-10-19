@@ -114,13 +114,14 @@ DATABASE_URL="$YOUR_DISPOSABLE_POSTGRES_URL" \
 
 `P2-T24` exposes BTC-only `GET /api/v1/admin/replays/catalog` and idempotent
 stage/publish POST routes plus anonymous
-`GET /api/v1/public/replays/:matchId`. Before each transition and public read,
+`GET /api/v1/public/replays/:matchId` and authenticated
+`GET /api/v1/replays/:matchId`. Before each transition and read,
 the API loads the storage key from PostgreSQL, reads the private object, checks
-the exact bytes against the stored SHA-256, and parses event-log v1. Public
-responses are an allowlisted `ott.spectator-replay` v1 projection with the
-source seed and private key omitted. `X-Replay-SHA256` hashes the exact public
-response bytes; see [Spectator Replay API v1](../../../docs/contracts/spectator-replay-v1.md)
-for the wire contract.
+the exact bytes against the stored SHA-256, and parses the event log (`parseAnyEventLog`).
+Serving supports both event log formats:
+- Event logs with `formatVersion: 1` are projected as `SpectatorReplayV1` with `schemaVersion: 1` and media type `application/vnd.ott.spectator-replay+json;version=1`.
+- Event logs with `formatVersion: 2` (Bot Protocol v2) are projected as `SpectatorReplayV2` with `schemaVersion: 2` and media type `application/vnd.ott.spectator-replay+json;version=2`, preserving truthful header versions, `header.limits.timeControl`, and top-level `timing` decisions.
+In both versions, the source seed, private object keys, and container resource limits are omitted. `X-Replay-SHA256` hashes the exact response bytes; see [Spectator Replay API v1](../../../docs/contracts/spectator-replay-v1.md) and [Spectator Replay API v2](../../../docs/contracts/spectator-replay-v2.md) for wire contracts.
 
 Run the T24 integration test against disposable PostgreSQL and a local Redis;
 it uses SeaweedFS when the S3 environment variables are set and otherwise uses
@@ -256,10 +257,16 @@ DATABASE_URL="$YOUR_DISPOSABLE_POSTGRES_URL" \
     Uploads before `submissionOpensAt` return 409 `SUBMISSION_NOT_OPEN`.
     Uploads after `graceEndsAt` always return 403 `SUBMISSION_CLOSED`.
     Archive hash must match reservation hash; mismatch returns 409 `RESERVATION_HASH_MISMATCH` and cleans up storage.
-    Retrying an upload of the same archive after completion returns 200 with the existing submission ID idempotently without duplicate storage or rows.
+    Archives are promoted to private storage under `submissions/<sha256-hex>/<uuid>.oci.tar` to prevent collisions when multiple teams upload identical bytes.
+    Retrying an upload of the same archive after completion returns 200 with the existing submission ID idempotently without duplicate storage or rows (the newly copied object is removed).
   - `GET /api/v1/submissions` (Role: `TEAM_ACCOUNT`):
     Each item in `PREFLIGHT` status gains `preflightPosition` (1-based rank among all `PREFLIGHT` submissions ordered by `(created_at, id)`). Non-`PREFLIGHT` items receive `null`.
     Response root includes `preflightQueueLength` (total submissions currently in `PREFLIGHT`).
+    Team-facing endpoints (`GET /api/v1/submissions`, upload responses) never expose internal duplicate review flags (`duplicate_review_flag`, `duplicate_of_submission_id`, `duplicate_review_reason`).
+  - `GET /api/v1/admin/submissions/flagged` (Role: `BTC_ADMIN`):
+    Returns paginated list of submissions flagged for BTC manual duplicate review (AC-22):
+    `{ data: [{ submissionId, teamId, teamName, createdAt, status, duplicateOfSubmissionId, duplicateOfTeamName, matchType, reason }], page, pageSize, total }`.
+    Derives `matchType` ('MANIFEST' | 'NON_BASE_LAYERS') from latest `DUPLICATE_SUBMISSION_FLAGGED` audit event. Protected by admin network allowlist and RBAC (403 for `TEAM_ACCOUNT`, 401 for anonymous). Flagging never blocks activation or auto-rejects submissions.
 
 - **Preflight Queue Position Note**:
   No preflight background job enqueuer exists yet in the platform (submissions sit in `PREFLIGHT` until evaluated). `preflightPosition` and `preflightQueueLength` are therefore derived deterministically from PostgreSQL by counting submissions with `status = 'PREFLIGHT'` ordered by `(created_at, id)`.
@@ -537,3 +544,103 @@ itself; client points are rejected. A game that is not finalized (running, `FAIL
 
 `npm test --workspace @ott/platform-api -- ratings` and `-- qualification-gate` (unit/route tests need no services;
 `qualification-gate.integration.test.ts` needs `DATABASE_URL`).
+
+## Finals ResultBundle artifact schemas (`P3-D28`, proposed)
+
+Pure contract + validators + deterministic builder for the finals artifacts inside a ResultBundle (`bracket.json`,
+`series/*`, `matches/*`, `replays/*`). Contract: `docs/contracts/finals-result-bundle-v1.md` (section "Artifact schemas v1")
+and `docs/contracts/finals-result-bundle-artifacts-v1.schema.json`. Module:
+`src/platform/api/src/modules/result-bundles/artifacts.ts` (`validateBundleArtifacts` returns the read model after
+recomputing all outcomes with the L06 domain functions; `buildFinalsBundleArtifacts` feeds `exporter.ts`). Not wired into
+the importer or any route yet (D29). Tests: `tests/finals-bundle-artifacts.test.ts` (no database).
+
+## Running the API (P3-D30)
+
+`P3-D30` implements the API runtime host: an executable entrypoint (`src/main.ts`), aggregated environment contract validation (`src/runtime/config.ts`), health and readiness probes (`src/runtime/health.ts`), and clean graceful shutdown handling (`src/runtime/server.ts`).
+
+### Environment Variables
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `DATABASE_URL` | **Yes** | - | PostgreSQL connection URL (`postgres://` or `postgresql://`). |
+| `REDIS_URL` | **Yes** | - | Redis connection URL (`redis://` or `rediss://`). |
+| `S3_ENDPOINT` | **Yes** | - | S3/SeaweedFS HTTP endpoint (`http://` or `https://`). |
+| `S3_BUCKET` | **Yes** | - | S3 bucket name. |
+| `S3_ACCESS_KEY_ID` | **Yes** | - | S3 access key ID. |
+| `S3_SECRET_ACCESS_KEY` | **Yes** | - | S3 secret access key. |
+| `S3_REGION` | No | `us-east-1` | S3 region. |
+| `HOST` | No | `127.0.0.1` | Network interface to bind HTTP listener. |
+| `PORT` | No | `3000` | Port to bind HTTP listener (0–65535, `0` for test ephemeral port). |
+| `OTT_DEPLOYMENT_MODE` | **Yes** | - | Mode: `dev`, `test`, `hosted`, or `production`. |
+| `OTT_RUN_MIGRATIONS` | No | `false` | When `true`, automatically applies pending schema migrations at startup. |
+| `OTT_SHUTDOWN_TIMEOUT_MS` | No | `10000` | Maximum milliseconds to await graceful shutdown before continuing cleanup. |
+| `OTT_MATCH_QUEUE` | No | `ott.match.v1` | Name of the BullMQ match job queue. |
+| `OTT_SECURE_COOKIES` | No | `true` (hosted/prod) / `false` (dev/test) | Set `Secure` attribute on session and challenge cookies. |
+| `OTT_BOOTSTRAP_BTC_USERNAME` | No | - | BTC admin username to idempotently create on startup. |
+| `OTT_BOOTSTRAP_BTC_PASSWORD` | No | - | BTC admin password (required if `OTT_BOOTSTRAP_BTC_USERNAME` is set). |
+| `OTT_BOOTSTRAP_BTC_TOTP_SECRET` | No | - | Optional Base32 TOTP secret for the initial BTC admin. |
+| `OTT_ADMIN_TOTP_REQUIRED` | In hosted/prod | `false` | Require TOTP MFA for BTC admins. |
+| `OTT_ADMIN_ALLOWLIST` | In hosted/prod | `[]` | Comma-separated CIDRs permitted to access admin routes. |
+| `OTT_TRUSTED_PROXIES` | In hosted/prod | `none` | Comma-separated CIDRs of reverse proxies (or literal `none`). |
+| `OTT_TOTP_ENCRYPTION_KEY` | With TOTP | `null` | Base64-encoded 32-byte key for encrypting TOTP secrets at rest. |
+| `OTT_WRITE_RATE_LIMIT_IP` | No | `600` | Max write requests per minute per client IP. |
+| `OTT_WRITE_RATE_LIMIT_ACCOUNT` | No | `300` | Max write requests per minute per authenticated account. |
+
+All environment configuration errors are collected and reported in a single `RuntimeConfigError`. Secret values, URLs with embedded passwords, and sensitive credentials are never reflected in error messages, issue details, or startup logs.
+
+### Health and Probes
+
+- **Liveness probe** (`GET /api/v1/health` and `GET /api/v1/health/live`):
+  - Returns `200 {"status":"ok"}` with `Cache-Control: no-store`.
+  - Always succeeds without executing dependency calls, disclosing hostnames, software versions, or internal details.
+  - Remains `200` even during graceful shutdown drain.
+- **Readiness probe** (`GET /api/v1/health/ready`):
+  - Returns `200 {"status":"ready"}` with `Cache-Control: no-store` only when the server has started listening, is not in shutdown, and all dependencies pass their health checks in parallel within 2 seconds each:
+    - PostgreSQL: `SELECT 1`
+    - Redis: `PING`
+    - S3: `HeadBucket` / `ping()`
+  - If any check fails, times out, or if the server has entered shutdown, returns `503 {"status":"not_ready"}` without leaking internal error messages or traces to the client. Failed check names are logged server-side.
+  - Readily accessible without authentication, session cookies, or admin IP allowlist restrictions, and is never rate-limited as a write.
+
+### Graceful Shutdown
+
+1. `SIGTERM` and `SIGINT` handlers are registered once via `process.once`.
+2. Calling `stop()` is idempotent: subsequent calls return the same in-flight promise.
+3. Shutdown sequence:
+   - Sets `shuttingDown = true` (causes `/api/v1/health/ready` to immediately return `503`).
+   - `app.close()` stops accepting new HTTP connections and drains in-flight requests.
+   - `queue.close()` closes BullMQ queue connections.
+   - S3 storage client is destroyed (`s3Client.destroy()`).
+   - `redis.quit()` cleanly closes Redis client sessions.
+   - `database.close()` ends PostgreSQL pool connections.
+4. Each cleanup step is wrapped independently so a failure in one step does not prevent the others from running.
+5. The shutdown process is bounded by `OTT_SHUTDOWN_TIMEOUT_MS`. If any step fails or times out, the process terminates with exit code 1; on clean completion, it exits with 0.
+
+### Local Run
+
+To start the API runtime locally against development dependencies:
+
+```bash
+# 1. Start local PostgreSQL, Redis, and SeaweedFS
+docker compose -f infra/local/compose.yaml up -d
+
+# 2. Configure environment
+cp .env.example .env
+
+# 3. Launch the API runtime with migration execution enabled
+OTT_RUN_MIGRATIONS=true npm run start:api
+```
+
+### Compose Drift Reconciliation (for upcoming Compose task)
+
+The existing `deploy/lan/compose.yml` and `deploy/lan/.env.example` templates contain several drift items that must be reconciled:
+- `OTT_DEPLOYMENT_MODE=finals_lan`: `finals_lan` is not a valid mode; canonical modes are `dev`, `test`, `hosted`, or `production`.
+- `OTT_ADMIN_NETWORK_ALLOWLIST`: Canonical variable is `OTT_ADMIN_ALLOWLIST`.
+- `OTT_SESSION_SECRET`: Unused by the API runtime host, which delegates session state to Redis.
+- `API_BIND_IP`: Canonical variable is `HOST`.
+- Database & Redis: The compose template specifies raw credentials and ports without `DATABASE_URL` and `REDIS_URL`. The API runtime host expects canonical connection URLs.
+- `OTT_BOOTSTRAP_BTC_TOTP_SECRET`: Specified without the required `OTT_TOTP_ENCRYPTION_KEY` (AES-256 key needed to encrypt the secret in `admin_mfa`).
+
+## Demo accounts and credential CSV (`P2-T35`)
+
+To seed idempotent local demo accounts (`btc`, `team01`, `team02`) with public demo credentials and export the local CSV to `.local/demo/accounts.csv`, see the runbook at [`docs/runbooks/local-demo.md`](../../../docs/runbooks/local-demo.md).

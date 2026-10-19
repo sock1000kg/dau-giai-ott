@@ -102,4 +102,47 @@ export {
   type TestRunEnqueuer,
 } from './modules/test-runs/service.ts';
 export { registerTestRunRoutes, type TestRunRoutesOptions } from './modules/test-runs/routes.ts';
+export {
+  loadRuntimeConfig,
+  RuntimeConfigError,
+  type RuntimeConfig,
+  type ConfigIssue,
+} from './runtime/config.ts';
+export {
+  createRuntime,
+  startServer,
+  createRedisReconnectStrategy,
+  RuntimeShutdownError,
+  type RuntimeServer,
+  type RuntimeDependencies,
+  type RuntimeLogger,
+  type RedisReconnectStrategyController,
+} from './runtime/server.ts';
+export {
+  registerHealthRoutes,
+  type HealthCheck,
+  type HealthLogger,
+  type HealthRoutesOptions,
+} from './runtime/health.ts';
 
+export {
+  buildFinalsBundleArtifacts,
+  evaluateFinalsBracket,
+  findForbiddenKey,
+  parseBracketArtifact,
+  parseMatchArtifact,
+  parseReplayArtifactEnvelope,
+  parseSeriesArtifact,
+  validateBundleArtifacts,
+  FINALS_ARTIFACT_MEDIA_TYPE,
+  FINALS_REPLAY_MEDIA_TYPE,
+  MAX_FINALS_ARTIFACT_BYTES,
+  MAX_FINALS_REPLAY_BYTES,
+  type BracketArtifact,
+  type FinalsArtifactError,
+  type FinalsArtifactErrorCode,
+  type FinalsBundleBuildInput,
+  type FinalsBundleView,
+  type MatchArtifact,
+  type SeriesArtifact,
+} from './modules/result-bundles/artifacts.ts';

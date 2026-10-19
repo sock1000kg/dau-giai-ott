@@ -4,3 +4,7 @@ coverage/
 src/bots/sandbox-corpus/artifacts/
 *.tsbuildinfo
 /.env
+.env
+.local/
+__pycache__/
+*.pyc

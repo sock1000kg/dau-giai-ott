@@ -1,5 +1,5 @@
 import type { Piece, PlayerSide, Position } from '@ott/game-core';
-import type { ReplayInput, SpectatorReplayV1 } from './replay-schema.ts';
+import type { ReplayInput, SpectatorReplay } from './replay-schema.ts';
 import { supportsHistoricalReplay } from './replay-schema.ts';
 
 export interface ReplayFrame {
@@ -11,7 +11,7 @@ export interface ReplayFrame {
 }
 
 export interface ReplayTimelineEvent {
-  readonly event: SpectatorReplayV1['entries'][number]['events'][number];
+  readonly event: SpectatorReplay['entries'][number]['events'][number];
   readonly entryIndex: number;
 }
 
@@ -29,7 +29,7 @@ export interface ReplayMove {
 }
 
 /** A move seeks to its entry's last frame, including a terminal event emitted by the same move. */
-export function createReplayMoves(replay: SpectatorReplayV1): readonly ReplayMove[] {
+export function createReplayMoves(replay: SpectatorReplay): readonly ReplayMove[] {
   let eventIndex = 0;
   return replay.entries.map((entry) => {
     eventIndex += entry.events.length;
@@ -44,7 +44,7 @@ export class ReplayTimelineError extends Error {
   }
 }
 
-function sameAction(left: ReplayInput, event: SpectatorReplayV1['entries'][number]['events'][number]): boolean {
+function sameAction(left: ReplayInput, event: SpectatorReplay['entries'][number]['events'][number]): boolean {
   if (left.kind === 'apply') return event.type === 'ACTION_APPLIED' && event.side === left.side
     && JSON.stringify(event.action) === JSON.stringify(left.action) && event.reason === null;
   if (left.kind === 'skip') return event.type === 'TURN_SKIPPED' && event.side === left.side && event.reason === left.reason;
@@ -52,7 +52,7 @@ function sameAction(left: ReplayInput, event: SpectatorReplayV1['entries'][numbe
 }
 
 /** Build read-only board snapshots from the verified event stream; never runs a live game. */
-export function createReplayTimeline(replay: SpectatorReplayV1): ReplayTimeline {
+export function createReplayTimeline(replay: SpectatorReplay): ReplayTimeline {
   if (!supportsHistoricalReplay(replay.header.engineVersion, replay.header.protocolVersion, replay.header.formatVersion)
     || replay.header.game.engineVersion !== replay.header.engineVersion) throw new ReplayTimelineError();
   const pieces: Piece[] = replay.header.game.map.spawns.map((spawn) => ({

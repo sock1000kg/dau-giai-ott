@@ -145,6 +145,76 @@ export function registerSubmissionRoutes(app: FastifyInstance, options: Submissi
     };
   });
 
+  // GET /api/v1/admin/submissions/flagged
+  app.get<{ Querystring: SubmissionListQuery }>('/api/v1/admin/submissions/flagged', async (request, reply) => {
+    requireRole(requireAuthenticated(request.principal), 'BTC_ADMIN');
+    const page = paginationValue(request.query.page, 1, 100_000);
+    const pageSize = paginationValue(request.query.pageSize, 20, 100);
+    if (page === null || pageSize === null) {
+      return reply.status(400).send({ error: { code: 'INVALID_PAGINATION', message: 'Invalid page or pageSize' } });
+    }
+    const offset = (page - 1) * pageSize;
+
+    const count = await options.database.query<{ readonly total: string }>(
+      'SELECT COUNT(*)::text AS total FROM submissions WHERE duplicate_review_flag = TRUE'
+    );
+    const total = Number(count.rows[0]?.total ?? '0');
+
+    const result = await options.database.query<{
+      readonly id: string;
+      readonly team_id: string;
+      readonly team_name: string | null;
+      readonly created_at: Date;
+      readonly status: string;
+      readonly duplicate_of_submission_id: string | null;
+      readonly duplicate_of_team_name: string | null;
+      readonly reason: string | null;
+      readonly match_type: string | null;
+    }>(
+      `SELECT
+         s.id,
+         s.team_id,
+         t.name AS team_name,
+         s.created_at,
+         s.status,
+         s.duplicate_of_submission_id,
+         dup_t.name AS duplicate_of_team_name,
+         s.duplicate_review_reason AS reason,
+         (
+           SELECT ae.details->>'matchType'
+           FROM audit_events ae
+           WHERE ae.target_id = s.id AND ae.action = 'DUPLICATE_SUBMISSION_FLAGGED'
+           ORDER BY ae.created_at DESC
+           LIMIT 1
+         ) AS match_type
+       FROM submissions s
+       LEFT JOIN teams t ON t.id = s.team_id
+       LEFT JOIN submissions dup_s ON dup_s.id = s.duplicate_of_submission_id
+       LEFT JOIN teams dup_t ON dup_t.id = dup_s.team_id
+       WHERE s.duplicate_review_flag = TRUE
+       ORDER BY s.created_at DESC, s.id DESC
+       LIMIT $1 OFFSET $2`,
+      [pageSize, offset]
+    );
+
+    return {
+      data: result.rows.map((row) => ({
+        submissionId: row.id,
+        teamId: row.team_id,
+        teamName: row.team_name ?? 'Không rõ',
+        createdAt: row.created_at.toISOString(),
+        status: row.status,
+        duplicateOfSubmissionId: row.duplicate_of_submission_id ?? undefined,
+        duplicateOfTeamName: row.duplicate_of_team_name ?? undefined,
+        matchType: row.match_type ?? undefined,
+        reason: row.reason ?? undefined,
+      })),
+      page,
+      pageSize,
+      total,
+    };
+  });
+
   // POST /api/v1/submissions
   app.post<{ Body: Buffer }>(
     '/api/v1/submissions',
@@ -221,9 +291,10 @@ export function registerSubmissionRoutes(app: FastifyInstance, options: Submissi
         });
       }
 
-      const objectKey = `submissions/${checked.value.archiveSha256.slice('sha256:'.length)}.oci.tar`;
+      const sha256Hex = checked.value.archiveSha256.slice('sha256:'.length);
+      const objectKey = `submissions/${sha256Hex}/${randomUUID()}.oci.tar`;
       let createdNewObject = false;
-      let isRetry = false;
+      let keepObject = false;
 
       try {
         await options.storage.copy(quarantine, objectKey);
@@ -341,14 +412,17 @@ export function registerSubmissionRoutes(app: FastifyInstance, options: Submissi
           }
         });
 
-        isRetry = result.isRetry;
+        if (!result.isRetry) {
+          keepObject = true;
+        }
+
         return reply.status(result.statusCode).send({ data: result.data });
       } catch (error) {
-        if (createdNewObject && !isRetry) {
-          await options.storage.remove(objectKey).catch(() => undefined);
-        }
         throw error;
       } finally {
+        if (createdNewObject && !keepObject) {
+          await options.storage.remove(objectKey).catch(() => undefined);
+        }
         await options.storage.remove(quarantine).catch(() => undefined);
       }
     }

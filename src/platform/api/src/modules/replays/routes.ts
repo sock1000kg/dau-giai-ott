@@ -111,7 +111,7 @@ export function registerReplayRoutes(app: FastifyInstance, options: ReplayRoutes
     try {
       const artifact = await getPublicReplay(options.database, options.storage, request.params.matchId);
       return reply
-        .header('content-type', 'application/vnd.ott.spectator-replay+json;version=1')
+        .header('content-type', `application/vnd.ott.spectator-replay+json;version=${artifact.version}`)
         .header('x-replay-sha256', artifact.checksum)
         .header('cache-control', 'public, max-age=3600, immutable')
         .header('x-content-type-options', 'nosniff')
@@ -132,7 +132,7 @@ export function registerReplayRoutes(app: FastifyInstance, options: ReplayRoutes
     try {
       const artifact = await getPrivateReplay(options.database, options.storage, request.params.matchId, privatePrincipal);
       return reply
-        .header('content-type', 'application/vnd.ott.spectator-replay+json;version=1')
+        .header('content-type', `application/vnd.ott.spectator-replay+json;version=${artifact.version}`)
         .header('x-replay-sha256', artifact.checksum)
         .header('cache-control', 'private, no-store')
         .header('x-content-type-options', 'nosniff')

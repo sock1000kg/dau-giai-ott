@@ -2,44 +2,107 @@
 
 ## Scope
 
-`P2-T02` provides PostgreSQL, Redis and SeaweedFS for local
-Phase 2 development. All published ports bind only to `127.0.0.1`; application
-code is introduced by later tasks. `weed mini -bucket` creates the private
-submission bucket idempotently at start.
+`infra/local/compose.yaml` (Compose project `ott-local`) provides the full local
+development and demo stack for Phase 2:
+- **Core Infrastructure**: PostgreSQL 16 (`postgres`), Redis 7 (`redis`), and SeaweedFS (`seaweedfs`).
+- **Database Migration**: `migrate` runs database migrations to completion deterministically before application startup.
+- **Application Services**:
+  - `api`: Fastify HTTP platform API (port 3000, internal network).
+  - `worker`: Match execution worker consuming jobs from BullMQ.
+  - `coordinator`: Single-instance tournament lifecycle coordinator managing preflighting, match dispatching, series settlement, and snapshot generation.
+  - `web`: Unprivileged Nginx reverse proxy serving the React SPA and proxying `/api/v1/` and `/snapshots/` (published to `0.0.0.0:${APP_PORT:-8080}`).
+
+All internal datastores (PostgreSQL, Redis, SeaweedFS) publish only to `127.0.0.1` for host-side tooling; only the `web` gateway binds `0.0.0.0:${APP_PORT:-8080}`.
 
 ## Prerequisites
 
-- Docker Engine and Docker Compose v2 or newer.
-- Node.js `^22.12.0` for Phase 2 packages once they exist.
-- A local `.env`; do not commit it.
+- Docker Engine ≥ 24.0 and Docker Compose v2.
+- Node.js `^22.12.0` (for host-side tooling and test execution).
+- A local `.env` file (copied from `.env.example`; do not commit it).
 
 SeaweedFS runs with local-only S3 access credentials from `.env`; no license
 file is required. The service image is pinned by digest in Compose.
 
-## First start
+## Environment Setup
+
+1. Copy the example configuration template:
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Configure secrets:
+   Replace all `CHANGE_ME_*` placeholders with local secrets.
+
+3. Configure Docker GID for socket access:
+   Both the `worker` and `coordinator` run as unprivileged user `node` (UID 1000). To allow access to `/var/run/docker.sock`, determine the GID of the Docker socket on your host:
+   ```bash
+   stat -c %g /var/run/docker.sock
+   ```
+   Set this value in `.env`:
+   ```bash
+   DOCKER_GID=<gid>
+   ```
+
+## Security Notice: Docker Socket Mount
+
+> [!WARNING]
+> Mounting `/var/run/docker.sock` grants the container root-equivalent privileges on the host. This configuration is for local demonstration and development only. In production and hosted environments, workers execute on isolated worker hosts with sandboxing boundaries.
+
+Both `worker` and `coordinator` mount the Docker daemon socket (`/var/run/docker.sock`):
+- **Worker**: Required to spawn isolated bot containers in ephemeral Docker sandboxes with CPU/memory limits and disabled networking.
+- **Coordinator**: Required because the coordinator's `preflight` loop runs protocol verification checks by spinning up submission bot containers in sandboxes before activating them for matchmaking (`preflightSubmission`).
+
+Both services drop all Linux capabilities (`cap_drop: [ALL]`) and set `no-new-privileges:true`.
+
+## Starting Services
+
+### 1. Standalone Infrastructure Only
+
+To run only the core datastores (PostgreSQL, Redis, SeaweedFS) without building or running application containers (e.g. for host-side development and running package tests locally):
+
+```bash
+docker compose -f infra/local/compose.yaml --env-file .env up -d --wait postgres redis seaweedfs
+docker compose -f infra/local/compose.yaml --env-file .env ps
+```
+
+### 2. Full Application Stack
 
 From repository root:
 
 ```bash
-cp .env.example .env
-# Replace every CHANGE_ME value in .env with a distinct local-only secret.
-docker compose -f infra/local/compose.yaml config
-docker compose -f infra/local/compose.yaml up -d --wait
-docker compose -f infra/local/compose.yaml ps
+# Validate configuration and variable substitution
+docker compose -f infra/local/compose.yaml --env-file .env config
+
+# Build images and start all services with health checks
+docker compose -f infra/local/compose.yaml --env-file .env up --build --wait
+
+# Inspect service statuses
+docker compose -f infra/local/compose.yaml --env-file .env ps
 ```
 
-Expected services:
+### Startup and Ordering Guarantee
 
-| Service | Local endpoint | Health condition |
-| --- | --- | --- |
-| PostgreSQL | `127.0.0.1:${POSTGRES_PORT}` | `pg_isready` against configured database/user |
-| Redis | `127.0.0.1:${REDIS_PORT}` | authenticated `PING` |
-| SeaweedFS S3 API | `http://127.0.0.1:${S3_API_PORT}` | `/cluster/status` |
+Services start deterministically according to health conditions:
+1. `postgres`, `redis`, and `seaweedfs` initialize and achieve healthy status via their healthchecks.
+2. `migrate` starts only after `postgres` is healthy, executes `npm run db:migrate --workspace @ott/platform-api`, and terminates with code 0 (`service_completed_successfully`).
+3. `api`, `worker`, and `coordinator` start only after `migrate` completes successfully and datastores are healthy.
+4. `web` waits for `api` to be healthy before accepting traffic.
 
-SeaweedFS creates `${S3_BUCKET}` idempotently at startup. It publishes only the
-S3 endpoint; management endpoints remain inside the Compose network.
+## Service Endpoints & URLs
 
-## Local BTC bootstrap configuration
+| Service / Endpoint | Address | Exposure | Description |
+| --- | --- | --- | --- |
+| Web Gateway / SPA | `http://127.0.0.1:${APP_PORT:-8080}` | `0.0.0.0:${APP_PORT}` | Web UI, static assets, reverse proxy entrypoint |
+| Platform API | `http://127.0.0.1:${APP_PORT:-8080}/api/v1/` | Via `web` proxy | REST API endpoints |
+| Public Snapshots | `http://127.0.0.1:${APP_PORT:-8080}/snapshots/` | Via `web` proxy | Public leaderboard snapshots generated by coordinator |
+| Gateway Health | `http://127.0.0.1:${APP_PORT:-8080}/healthz` | Via `web` | Gateway liveness endpoint (returns 200 `ok`) |
+| PostgreSQL | `127.0.0.1:${POSTGRES_PORT:-5432}` | Host loopback only | PostgreSQL database |
+| Redis | `127.0.0.1:${REDIS_PORT:-6379}` | Host loopback only | Redis cache and BullMQ job queue |
+| SeaweedFS S3 API | `http://127.0.0.1:${S3_API_PORT:-8333}` | Host loopback only | S3-compatible object storage |
+| Worker Health | `http://127.0.0.1:9464/health/live` | Internal container only | Worker metrics and liveness |
+| Coordinator Health | `http://127.0.0.1:9465/health/live` | Internal container only | Coordinator metrics and liveness |
+
+## Local BTC Bootstrap Configuration
 
 Set both `OTT_BOOTSTRAP_BTC_USERNAME` and `OTT_BOOTSTRAP_BTC_PASSWORD` in the
 uncommitted `.env` only. They are consumed when the API host calls
@@ -47,10 +110,20 @@ uncommitted `.env` only. They are consumed when the API host calls
 Argon2id hash. Do not place the resulting plaintext password in a command
 history, issue tracker, audit record or repository file.
 
-The bootstrap is idempotent for an existing BTC username. Leave both variables
-absent to skip it. Setting only one variable is a configuration error and must
-stop startup. Team credentials are not created here: they are created/reset by
-the BTC-only team API in `P2-T06`.
+The bootstrap is idempotent for an existing BTC username. Note that the
+Compose stack (`infra/local/compose.yaml`) requires both variables to be set in
+`.env`; leaving both variables absent to skip it applies only when running the
+API directly outside Compose. Setting only one variable is a configuration error
+and must stop startup. Team credentials are not created here: they are
+created/reset by the BTC-only team API in `P2-T06`.
+
+In `OTT_DEPLOYMENT_MODE=dev`, TOTP is not required, and login is immediately possible via:
+
+```bash
+curl -s -X POST "http://127.0.0.1:${APP_PORT:-8080}/api/v1/auth/login" \
+  -H "Content-Type: application/json" \
+  -d "{\"username\":\"${OTT_BOOTSTRAP_BTC_USERNAME}\",\"password\":\"${OTT_BOOTSTRAP_BTC_PASSWORD}\"}"
+```
 
 The Phase 2 auth integration test needs explicit local connection URLs and
 resets the selected PostgreSQL `public` schema and Redis database:
@@ -62,39 +135,81 @@ DATABASE_URL=postgresql://... REDIS_URL=redis://:...@127.0.0.1:6379 \
 
 Never point that command at shared or production services.
 
-## Lifecycle
+## Operational Procedures
+
+### Viewing Logs
 
 ```bash
-# Stop containers but retain all local data.
-docker compose -f infra/local/compose.yaml stop
+# Follow logs for all services
+docker compose -f infra/local/compose.yaml --env-file .env logs -f
 
-# Start retained data again.
-docker compose -f infra/local/compose.yaml up -d --wait
-
-# Inspect logs.
-docker compose -f infra/local/compose.yaml logs postgres redis seaweedfs
+# Follow logs for a specific service
+docker compose -f infra/local/compose.yaml --env-file .env logs -f api
+docker compose -f infra/local/compose.yaml --env-file .env logs -f worker
+docker compose -f infra/local/compose.yaml --env-file .env logs -f coordinator
+docker compose -f infra/local/compose.yaml --env-file .env logs -f web
 ```
 
-## Clean reset
+### Restarting Services
 
-This removes all local Phase 2 database, queue and object data. Confirm that
-the current directory is this repository before running it:
+The coordinator is designed to run as a single instance. If restarted, it acquires the PostgreSQL advisory lock and resumes dispatch and settlement loops:
 
 ```bash
-docker compose -f infra/local/compose.yaml down -v
-docker compose -f infra/local/compose.yaml up -d --wait
+# Restart coordinator
+docker compose -f infra/local/compose.yaml --env-file .env restart coordinator
+
+# Verify health status
+docker compose -f infra/local/compose.yaml --env-file .env ps coordinator
+```
+
+### Stopping Services
+
+```bash
+# Stop containers while preserving state (database, cache, S3, snapshots)
+docker compose -f infra/local/compose.yaml --env-file .env stop
+
+# Resume stopped containers
+docker compose -f infra/local/compose.yaml --env-file .env up -d --wait
+```
+
+### Resetting State: `down` vs `down -v`
+
+- **Preserve Data (`down`)**:
+  Stops and removes containers and networks, but retains Docker named volumes (`postgres-data`, `redis-data`, `seaweedfs-data`, `snapshots`):
+  ```bash
+  docker compose -f infra/local/compose.yaml --env-file .env down
+  ```
+
+- **Clean Reset (`down -v`)**:
+  This removes all local Phase 2 database, queue and object data. Confirm that
+  the current directory is this repository before running it:
+  ```bash
+  docker compose -f infra/local/compose.yaml --env-file .env down -v
+  ```
+
+## Automated Verification Suite
+
+Run the automated verification script:
+
+```bash
+# Static validation (config syntax, port bindings, socket mounts, replica constraints)
+./infra/local/compose.test.sh static
+
+# Live end-to-end integration test (spins up isolated 'ott-local-test' stack, tests curls, login, restart, cleans up)
+./infra/local/compose.test.sh live
 ```
 
 ## Troubleshooting
 
 | Symptom | Check |
 | --- | --- |
-| Compose rejects a missing variable | Copy `.env.example` to `.env`; set every variable, especially each `CHANGE_ME` secret. |
-| SeaweedFS exits before healthy | Inspect `docker compose -f infra/local/compose.yaml logs seaweedfs`; ensure port `${S3_API_PORT}` is free and the data volume is writable. |
-| A port is unavailable | Change only the corresponding `*_PORT` in `.env`, then run `up -d --wait` again. |
-| Services retain unwanted state | Use the explicit clean-reset command above; it deletes the named Docker volumes. |
+| Compose rejects missing variable | Copy `.env.example` to `.env`; ensure all required variables are defined. |
+| Permission denied on Docker socket | Check that `DOCKER_GID` in `.env` matches `stat -c %g /var/run/docker.sock` on the host. |
+| SeaweedFS exits before healthy | Inspect `docker compose -f infra/local/compose.yaml logs seaweedfs`; verify port `${S3_API_PORT}` is free. |
+| A host port is already allocated | Change `APP_PORT`, `POSTGRES_PORT`, `REDIS_PORT`, or `S3_API_PORT` in `.env`. |
+| Services retain stale data | Run `docker compose -f infra/local/compose.yaml --env-file .env down -v` to reset volumes. |
 
-## AWS S3 migration boundary
+## AWS S3 Migration Boundary
 
 Later application code uses only AWS SDK v3 S3 operations. For local SeaweedFS,
 set `S3_ENDPOINT` and `S3_FORCE_PATH_STYLE=true`. For AWS S3, leave endpoint

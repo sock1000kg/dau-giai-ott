@@ -152,6 +152,20 @@ Tất cả alert rules được định nghĩa tại [`ops/prometheus/rules.yml`
   > *Đền bù*: BTC quyết định gia hạn thời hạn nộp bài thêm **[X + 15] phút**, hạn nộp bài mới là **[HH:MM DD/MM/2026]**.  
   > Trân trọng cảm ơn các đội thi!
 
+### Kịch bản 4: Rà soát bản nộp có thể trùng lặp (AC-22 Duplicate Review SOP)
+- **Trường hợp áp dụng**: Trước khi đóng nộp bài và bắt đầu vòng đấu, BTC rà soát danh sách các bài nộp có dấu hiệu trùng khớp OCI manifest hoặc các custom non-base layers.
+- **Owner**: **Phạm Tất Đạt** (rà soát kỹ thuật) & **Đinh Đức Thuận** (phê duyệt quyết định).
+- **Quy trình hành động**:
+  1. Kiểm tra danh sách trên giao diện Vận hành đặc quyền (`/admin/operations`) tại bảng "Bản nộp có thể trùng", hoặc truy vấn API `GET /api/v1/admin/submissions/flagged`.
+  2. Đối chiếu chi tiết: đội nộp, thời điểm nộp, kiểu trùng lặp (`MANIFEST` hoặc `NON_BASE_LAYERS`), đội gốc và lý do so khớp.
+  3. **Nguyên tắc hợp đồng (AC-22)**:
+     - Cờ duplicate chỉ mang tính chất thông báo cho BTC xem xét ("có thể trùng — cần BTC xem xét").
+     - Hệ thống **TUYỆT ĐỐI KHÔNG** tự động loại (auto-disqualify), không chuyển trạng thái INVALID và không chặn activation hay lịch thi đấu của bot.
+     - Starter kit nộp nguyên trạng cũng sẽ được gắn cờ theo thiết kế (vẫn được ACTIVE thi đấu bình thường).
+  4. **Quyết định của BTC**:
+     - Nếu xác định trùng lặp hợp lệ (ví dụ hai đội cùng dùng starter kit mẫu chưa sửa đổi): Giữ nguyên trạng thái để bot tham gia thi đấu bình thường.
+     - Nếu BTC quyết định thu hồi sau khi xem xét: dùng `POST /api/v1/admin/operations/submissions/:id/revoke` (kèm lý do tối thiểu và correlation ID); quyết định là của BTC, hệ thống chỉ gắn cờ "có thể trùng — cần BTC xem xét".
+
 ---
 
 ## 4. Quy trình Sao lưu & Phục hồi Thảm họa (Backup & Disaster Recovery)

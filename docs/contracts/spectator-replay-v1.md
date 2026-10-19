@@ -2,7 +2,7 @@
 
 **Status:** Accepted for Phase 2 local (`P2-T24`).
 
-> **Note:** Superseded by [Spectator Replay API v2](spectator-replay-v2.md) for authorization rules, private endpoint, and `REPLAY_NOT_PUBLIC_STAGE` error. v1 representation, headers, and base errors remain valid.
+> **Note:** Superseded by [Spectator Replay API v2](spectator-replay-v2.md) for authorization rules, private endpoint, and `REPLAY_NOT_PUBLIC_STAGE` error. v1 representation, headers, and base errors remain valid. Matches with event-log `formatVersion: 1` continue to be served byte-identically under this v1 representation with media-type parameter `version=1`; matches with event-log `formatVersion: 2` (Bot Protocol v2) are served under [Spectator Replay API v2](spectator-replay-v2.md) with `version=2`. Clients negotiate/distinguish the representation via the `version` parameter of media type `application/vnd.ott.spectator-replay+json`.
 
 ## BTC control plane
 

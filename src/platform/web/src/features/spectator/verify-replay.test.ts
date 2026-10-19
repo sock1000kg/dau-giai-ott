@@ -50,11 +50,87 @@ function validReplay() {
   };
 }
 
+function validReplayV2() {
+  return {
+    schema: 'ott.spectator-replay',
+    schemaVersion: 2,
+    matchId,
+    header: {
+      format: 'ott.match-event-log',
+      formatVersion: 2,
+      matchId,
+      protocolVersion: 2,
+      engineVersion: '1.0.0',
+      limits: {
+        timeControl: {
+          startupMs: 2000,
+          totalBotBudgetMs: 30000,
+          matchWallClockMs: 60000,
+          perTurn: { mode: 'FIXED', fixedMs: 1000 },
+        },
+      },
+      game: {
+        engineVersion: '1.0.0',
+        maxTurns: 1,
+        map: {
+          schemaVersion: 1,
+          mapId: 'default',
+          version: 1,
+          checksum: 'a'.repeat(64),
+          width: 9,
+          height: 9,
+          obstacles: [],
+          spawns: [{ id: 'x-one', owner: 'X', type: 'ROCK', position: { col: 1, row: 1 } }],
+          goals: { X: { col: 0, row: 0 }, O: { col: 8, row: 8 } },
+        },
+      },
+    },
+    entries: [{
+      index: 1,
+      input: { kind: 'skip', side: 'X', reason: 'NO_LEGAL_ACTION' },
+      events: [
+        { sequence: 0, revision: 1, turnId: 1, type: 'TURN_SKIPPED', side: 'X', action: null, reason: 'NO_LEGAL_ACTION' },
+        { sequence: 1, revision: 1, turnId: 1, type: 'MATCH_FINISHED', side: 'X', action: null, reason: 'TURN_LIMIT' },
+      ],
+      revision: 1,
+      stateHash: 'b'.repeat(64),
+    }],
+    timing: [
+      {
+        turnId: 1,
+        side: 'X',
+        turnLimitMs: 1000,
+        deadlineMs: 1000,
+        remainingBeforeMs: 30000,
+        wallElapsedBeforeMs: 0,
+        elapsedMs: 120,
+        timedOut: false,
+        chargedMs: 120,
+        remainingAfterMs: 29880,
+        exhaustion: null,
+      },
+    ],
+    result: { winnerSide: null, reason: 'TURN_LIMIT', turnCount: 1, forfeitedSide: null, finalStateHash: 'b'.repeat(64) },
+    faults: {
+      X: { recoverableTotal: 0, recoverableConsecutive: 0, lastErrorCode: null },
+      O: { recoverableTotal: 0, recoverableConsecutive: 0, lastErrorCode: null },
+    },
+  };
+}
+
 function response(body: string, options: { status?: number; contentType?: string; checksum?: string } = {}): Response {
   const checksum = options.checksum ?? `sha256:${createHash('sha256').update(body).digest('hex')}`;
   return new Response(body, {
     status: options.status ?? 200,
     headers: { 'content-type': options.contentType ?? 'application/vnd.ott.spectator-replay+json;version=1', 'x-replay-sha256': checksum },
+  });
+}
+
+function responseV2(body: string, options: { status?: number; contentType?: string; checksum?: string } = {}): Response {
+  const checksum = options.checksum ?? `sha256:${createHash('sha256').update(body).digest('hex')}`;
+  return new Response(body, {
+    status: options.status ?? 200,
+    headers: { 'content-type': options.contentType ?? 'application/vnd.ott.spectator-replay+json;version=2', 'x-replay-sha256': checksum },
   });
 }
 
@@ -80,6 +156,35 @@ describe('spectator replay integrity client', () => {
     expect(replay.matchId).toBe(matchId);
   });
 
+  it('accepts valid v2 replay with version=2 and Fastify-normalized media type parameters', async () => {
+    const body = `${JSON.stringify(validReplayV2(), null, 2)}\n`;
+    const replay = await verifyReplayResponse(responseV2(body, {
+      contentType: 'application/vnd.ott.spectator-replay+json; version="2"; charset=utf-8',
+    }));
+    expect(replay.matchId).toBe(matchId);
+    expect(replay.schemaVersion).toBe(2);
+    if (replay.schemaVersion === 2) {
+      expect(replay.timing).toHaveLength(1);
+      expect(replay.timing[0]?.elapsedMs).toBe(120);
+      expect(replay.timing[0]?.remainingAfterMs).toBe(29880);
+      expect(replay.header.limits.timeControl.perTurn.mode).toBe('FIXED');
+    }
+  });
+
+  it('rejects media-type version mismatch between header and body', async () => {
+    const v2Body = `${JSON.stringify(validReplayV2(), null, 2)}\n`;
+    // header says version=1, body says schemaVersion=2
+    await expect(verifyReplayResponse(response(v2Body, {
+      contentType: 'application/vnd.ott.spectator-replay+json;version=1',
+    }))).rejects.toMatchObject({ code: 'UNSUPPORTED_SCHEMA' });
+
+    const v1Body = `${JSON.stringify(validReplay(), null, 2)}\n`;
+    // header says version=2, body says schemaVersion=1
+    await expect(verifyReplayResponse(responseV2(v1Body, {
+      contentType: 'application/vnd.ott.spectator-replay+json;version=2',
+    }))).rejects.toMatchObject({ code: 'UNSUPPORTED_SCHEMA' });
+  });
+
   it('rejects a modified response before exposing any replay data', async () => {
     const canonicalBody = `${JSON.stringify(validReplay(), null, 2)}\n`;
     const tamperedBody = canonicalBody.replace('TURN_LIMIT', 'FORFEIT__');
@@ -100,9 +205,46 @@ describe('spectator replay integrity client', () => {
   });
 
   it('rejects unsupported schema versions even when their bytes have a valid checksum', async () => {
-    const replay = { ...validReplay(), schemaVersion: 2 };
+    const replay = { ...validReplay(), schemaVersion: 3 };
     const body = `${JSON.stringify(replay, null, 2)}\n`;
-    await expect(verifyReplayResponse(response(body))).rejects.toMatchObject({ code: 'UNSUPPORTED_SCHEMA' });
+    await expect(verifyReplayResponse(response(body, {
+      contentType: 'application/vnd.ott.spectator-replay+json;version=3',
+    }))).rejects.toMatchObject({ code: 'UNSUPPORTED_SCHEMA' });
+  });
+
+  it('rejects v2 replay when versions violate allowlist', async () => {
+    const badReplay = {
+      ...validReplayV2(),
+      header: {
+        ...validReplayV2().header,
+        formatVersion: 1, // protocol 2 with format 1 is invalid
+      },
+    };
+    const body = `${JSON.stringify(badReplay, null, 2)}\n`;
+    await expect(verifyReplayResponse(responseV2(body))).rejects.toMatchObject({ code: 'UNSUPPORTED_SCHEMA' });
+  });
+
+  it('rejects malformed timing entry in v2', async () => {
+    const badTimingReplay = {
+      ...validReplayV2(),
+      timing: [
+        {
+          turnId: 1,
+          side: 'X',
+          turnLimitMs: 1000,
+          deadlineMs: 1000,
+          remainingBeforeMs: 30000,
+          wallElapsedBeforeMs: 0,
+          elapsedMs: -10,
+          timedOut: false,
+          chargedMs: 120,
+          remainingAfterMs: 29880,
+          exhaustion: null,
+        },
+      ],
+    };
+    const body = `${JSON.stringify(badTimingReplay, null, 2)}\n`;
+    await expect(verifyReplayResponse(responseV2(body))).rejects.toMatchObject({ code: 'INVALID_REPLAY' });
   });
 
   it('rejects malformed payloads after checksum verification', async () => {

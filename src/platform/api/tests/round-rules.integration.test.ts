@@ -99,23 +99,26 @@ integration('P3-D01 round-rules PostgreSQL integration', () => {
   });
 
   afterAll(async () => {
-    for (const cleanupStage of cleanupStages) {
-      const fixtureRounds = await database.query<{ readonly id: string }>('SELECT id FROM rounds WHERE tournament_stage = $1', [cleanupStage]);
-      for (const { id } of fixtureRounds.rows) {
-        await database.query('DELETE FROM match_outbox WHERE match_id IN (SELECT m.id FROM matches m JOIN series s ON s.id = m.series_id WHERE s.round_id = $1)', [id]);
-        await database.query('DELETE FROM match_results WHERE match_id IN (SELECT m.id FROM matches m JOIN series s ON s.id = m.series_id WHERE s.round_id = $1)', [id]);
-        await database.query('DELETE FROM match_events WHERE match_id IN (SELECT m.id FROM matches m JOIN series s ON s.id = m.series_id WHERE s.round_id = $1)', [id]);
-        await database.query('DELETE FROM match_attempts WHERE match_id IN (SELECT m.id FROM matches m JOIN series s ON s.id = m.series_id WHERE s.round_id = $1)', [id]);
-        await database.query('DELETE FROM rating_ledger WHERE series_id IN (SELECT id FROM series WHERE round_id = $1)', [id]);
-        await database.query('DELETE FROM matches WHERE series_id IN (SELECT id FROM series WHERE round_id = $1)', [id]);
-        await database.query('DELETE FROM round_participants WHERE round_id = $1', [id]);
-        await database.query('DELETE FROM series WHERE round_id = $1', [id]);
+    try {
+      for (const cleanupStage of cleanupStages) {
+        const fixtureRounds = await database.query<{ readonly id: string }>('SELECT id FROM rounds WHERE tournament_stage = $1', [cleanupStage]);
+        for (const { id } of fixtureRounds.rows) {
+          await database.query('DELETE FROM match_outbox WHERE match_id IN (SELECT m.id FROM matches m JOIN series s ON s.id = m.series_id WHERE s.round_id = $1)', [id]);
+          await database.query('DELETE FROM match_results WHERE match_id IN (SELECT m.id FROM matches m JOIN series s ON s.id = m.series_id WHERE s.round_id = $1)', [id]);
+          await database.query('DELETE FROM match_events WHERE match_id IN (SELECT m.id FROM matches m JOIN series s ON s.id = m.series_id WHERE s.round_id = $1)', [id]);
+          await database.query('DELETE FROM match_attempts WHERE match_id IN (SELECT m.id FROM matches m JOIN series s ON s.id = m.series_id WHERE s.round_id = $1)', [id]);
+          await database.query('DELETE FROM rating_ledger WHERE series_id IN (SELECT id FROM series WHERE round_id = $1)', [id]);
+          await database.query('DELETE FROM matches WHERE series_id IN (SELECT id FROM series WHERE round_id = $1)', [id]);
+          await database.query('DELETE FROM round_participants WHERE round_id = $1', [id]);
+          await database.query('DELETE FROM series WHERE round_id = $1', [id]);
+        }
       }
+    } finally {
+      // qualification_rounds, round_rule_sets, rounds, accounts, teams and submissions cannot be
+      // deleted (immutability triggers and FK from qualification_rounds.schedule_round_id). Every
+      // fixture uses a random, run-unique stage/account so leftover rows are inert in a throwaway DB.
+      await database.close();
     }
-    // qualification_rounds, round_rule_sets, rounds, accounts, teams and submissions cannot be
-    // deleted (immutability triggers and FK from qualification_rounds.schedule_round_id). Every
-    // fixture uses a random, run-unique stage/account so leftover rows are inert in a throwaway DB.
-    await database.close();
   });
 
   it('creates versions with incrementing version numbers', async () => {
@@ -154,11 +157,21 @@ integration('P3-D01 round-rules PostgreSQL integration', () => {
   });
 
   it('close before grace period is rejected', async () => {
-    await expect(executeTransition(database, { roundId, action: { type: 'close' }, reason: 'too early', actorAccountId: accountId })).rejects.toThrow('ROUND_TRANSITION_INVALID');
+    await expect(
+      executeTransition(
+        database,
+        { roundId, action: { type: 'close' }, reason: 'too early', actorAccountId: accountId },
+        { now: () => new Date('2026-10-18T11:00:00.000Z') },
+      ),
+    ).rejects.toThrow('ROUND_TRANSITION_INVALID');
   });
 
   it('close after grace period succeeds', async () => {
-    const result = await executeTransition(database, { roundId, action: { type: 'close' }, reason: 'grace passed', actorAccountId: accountId }, { now: () => new Date('2026-10-18T13:00:00.000Z') });
+    const result = await executeTransition(
+      database,
+      { roundId, action: { type: 'close' }, reason: 'grace passed', actorAccountId: accountId },
+      { now: () => new Date('2026-10-18T13:00:00.000Z') },
+    );
     expect(result.status).toBe('SUBMISSION_CLOSED');
   });
 
