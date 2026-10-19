@@ -923,7 +923,7 @@ Parent `P3-L02` chỉ hoàn tất khi mọi phần được verify; không dùng
 **Estimated scope:** M (5 files)
 **Hoàn tất:** 2026-10-16 — Chuẩn hóa các hằng số hàng đợi và độ ưu tiên nghiêm ngặt (`QUEUE_PRIORITY`: official=1, preflight=2, test-run=3) tại `queue-names.ts` và re-export qua `@ott/job-contract`. Mở rộng `MatchQueue` hỗ trợ enqueue theo priority/category, kiểm tra và truy vấn trạng thái hàng đợi. Xây dựng `WorkerPool` quản lý adaptive concurrency (mặc định 4 game, tự động điều chỉnh theo tải CPU/RAM thông qua `CapacityProbe`), kiểm soát admission ưu tiên ngăn chặn starvation của job official (AC-21), định kỳ phát heartbeat lên Redis kèm TTL và hỗ trợ pause/resume không drop các job đang thực thi. Mở rộng `createMatchWorker` hỗ trợ cấu hình concurrency, workerId, pause/resume và xử lý kết nối an toàn. 18/18 test mới trong `worker-pool.integration.test.ts` pass, 27/27 test python pass, toàn bộ typecheck và build pass.
 
-### [ ] P3-D02 — Admin round-rule và operations console
+### [x] P3-D02 — Admin round-rule và operations console
 
 **Owner:** Phạm Tất Đạt
 **Mô tả:** Cung cấp UI BTC để version/lock rule set, ước tính thời lượng và thực hiện open/close/start/pause/resume/publish có confirmation.
@@ -934,6 +934,7 @@ Parent `P3-L02` chỉ hoàn tất khi mọi phần được verify; không dùng
 **Estimated scope:** M (5 files)
 **Trạng thái 2026-10-15:** đã implement trên `datpt/feat-p3-d02-round-admin` — trang `/admin/rounds` (form RoundRuleSet đủ nhóm thời gian/tài nguyên/luật game/lịch giờ Việt Nam/test run, mặc định D-15/D-17/D-18, ước tính xấu nhất `ceil(2·floor(T/2)/C)·matchWallClockMs` khớp §10.4, cảnh báo vượt khung phải xác nhận; bộ luật đã khóa chỉ đọc; nút thao tác chỉ theo `allowedActions` của server, 409 → tải lại trạng thái; start hai bước với reason + gõ số round, một idempotency key cho mỗi lần xác nhận, chống double-click). API bổ sung: `GET round-rule-sets/:id` trả `rules`, 400 `RULE_SET_INVALID` có `details[]`, round có `allowedActions`. `RoundAdmin` 28/28, platform-web 93/93, platform-api 117 pass trên PostgreSQL (round-rules integration 20/20), typecheck/build sạch; mutation idempotency/allowedActions/double-click/estimate/details đều làm test fail. **Còn thiếu để tick:** browser smoke desktop/mobile + keyboard (chưa có browser trong môi trường chạy).
 **D02b (2026-10-18):** sau manual smoke của user, UI `/admin/rounds` được chỉnh trên `datpt/feat-p3-d02b-round-admin-ux` — bộ luật hiện hành cạnh editor, archive phiên bản, help từng field, spacing "Vận hành round", đổi nhãn reconcile. Chỉ web; manual browser smoke chờ user kiểm tra lại, **chưa tick D02**.
+**Hoàn tất:** 2026-10-18 — merged PR #46 (UI revamp, gồm D02b). Browser smoke desktop/mobile/bàn phím do Phạm Tất Đạt review thủ công trên trình duyệt ngày 2026-10-18 (mock API); các chỉnh sửa sau review (editor scroll, version archive, field help, catalog dropdown D26) đã gộp trong PR #46.
 
 ## [ ] Checkpoint P3-B — Round có thể khóa và chạy
 
@@ -998,7 +999,7 @@ Parent `P3-L02` chỉ hoàn tất khi mọi phần được verify; không dùng
 **Còn mở (2026-10-18, phát hiện khi review UI):** `checkDuplicateSubmission`, `recordSubmissionLayers`, `evaluateRetention`, `runRetentionPrune` và `getSubmissionLayers` trong `src/platform/api/src/modules/submissions/layers.ts` chỉ được export và test; **không có caller nào trong đường upload/preflight/worker** (`grep -rn` chỉ thấy `layers.ts`, `src/index.ts` và test). Vì vậy `duplicate_review_flag` không bao giờ được set trong hệ thống thật, layer không được ghi vào `submission_layers` và retention prune không chạy. BTC cũng chưa có danh sách submission bị flag (endpoint `GET /api/v1/submissions` chỉ cho `TEAM_ACCOUNT`). Cần: nối vào pipeline upload/preflight, lịch chạy prune, và (sau) một danh sách flagged cho BTC. Chưa tick lại AC-22 cho tới khi nối xong.
 
 
-### [ ] P3-L03 — Qualification gate, adaptive K và minimum-series eligibility
+### [x] P3-L03 — Qualification gate, adaptive K và minimum-series eligibility
 
 **Owner:** Long Trần
 **Mô tả:** Thực thi capture-first gate, K=64 cho 5 series đầu rồi K=32 và nhãn chưa đủ điều kiện finals.
@@ -1008,6 +1009,7 @@ Parent `P3-L02` chỉ hoàn tất khi mọi phần được verify; không dùng
 **Files likely touched:** `src/platform/api/src/modules/ratings/elo.ts`, `src/platform/api/src/modules/ratings/service.ts`, `src/platform/api/src/modules/scheduling/eligibility.ts`, `src/platform/api/tests/ratings-v2.test.ts`, `src/platform/api/tests/qualification-gate.integration.test.ts`.
 **Estimated scope:** M (5 files)
 **Hoàn tất:** Chưa tick — code và test không cần dịch vụ đã xong (platform-api: 328 pass / 96 skipped, ratings-v2 48 pass, qualification-gate 37 pass, platform-web 125 pass, typecheck sạch); các integration PostgreSQL (`qualification-gate.integration.test.ts`) và mutation DB chưa chạy, chờ Reviewer. Ngoài phạm vi: xếp lịch/chạy 2 game gate trong preflight queue và cấu hình gate bot theo stage.
+**Cập nhật 2026-10-18:** merged PR #35. Reviewer chạy integration thật trên PostgreSQL/Redis/S3: `qualification-gate` 46/46, ratings/leaderboard/scheduling/operations/round-rules 268/268 ×3 trên DB mới, full API suite 424/424, mutation rebuild-by-`created_at` và bỏ trigger gate-results đều làm test fail.
 
 ### [x] P3-D05 — Qualification replay authorization từ dữ liệu đầu tiên
 
@@ -1028,7 +1030,7 @@ Parent `P3-L02` chỉ hoàn tất khi mọi phần được verify; không dùng
 
 ## Phase 3 — Wave 5: public experience và authentication hardening
 
-### [ ] P3-L04 — Replay move list, seek và historical-version compatibility
+### [x] P3-L04 — Replay move list, seek và historical-version compatibility
 
 **Owner:** Long Trần
 **Mô tả:** Bổ sung danh sách nước đi đồng bộ player và adapter đọc replay theo engine/protocol/rule version cũ.
@@ -1043,8 +1045,9 @@ keyboard navigation, aria-current and historical version guards implemented.
 Verified: ReplayPlayer + verify-replay 20 tests passed; web production build passed.
 L04 remains unchecked: AC3 (raw event-log v2 fixtures) awaits resolution with
 `docs/contracts/spectator-replay-v2.md`, which preserves representation v1.
+**Hoàn tất:** 2026-10-18 — merged PR #36 (`longt/feat-p3-l04-replay-compatibility`): move list đồng bộ với player, seek theo event index, guard phiên bản replay cũ/không hỗ trợ; build web không kéo Node-only runtime. Test: `npm test --workspace @ott/platform-web -- ReplayPlayer`.
 
-### [ ] P3-L05 — Static public snapshots, queue/results/rules/status site
+### [x] P3-L05 — Static public snapshots, queue/results/rules/status site
 
 **Owner:** Long Trần
 **Mô tả:** Xuất và hiển thị last-known-good static snapshot cho round, queue order/ETA, results, leaderboard, current rules, announcements và stale state.
@@ -1064,6 +1067,7 @@ Live qualification producer reads locked rules/results/official rankings from
 PostgreSQL and ordered job IDs from Redis, with a 30s loop; 2 PostgreSQL integration
 tests pass. Task remains unchecked pending configured live deployment and
 server-lab/CDN AC-14 evidence; finals uses the prepared public DTO interface.
+**Hoàn tất:** 2026-10-18 — merged PR #37 (`longt/feat-p3-l05-public-snapshots`): publisher static snapshot có checksum + trang `/public` (hàng đợi, kết quả, bảng xếp hạng, luật, lịch, trạng thái) đọc snapshot, stale warning. Test: `public-snapshots`, `public-site`. Còn mở: chưa có tiến trình định kỳ gọi publisher (xem P2-T32) và chưa có UI nhập thông báo.
 
 ### [x] P3-D06 — TOTP, admin network allowlist và hosted startup guard
 
@@ -1128,7 +1132,7 @@ server-lab/CDN AC-14 evidence; finals uses the prepared public DTO interface.
 
 ## Phase 3 — Wave 7: finals domain và LAN control plane
 
-### [ ] P3-L06 — Finals 8-team bracket/BO3/game-adapter scoring
+### [x] P3-L06 — Finals 8-team bracket/BO3/game-adapter scoring
 
 **Owner:** Long Trần
 **Mô tả:** Hiện thực Finals Format v1: 8 unique seed, no-group single-elimination BO3, optional bronze, map/side policy và versioned game-adapter score breakdown.
@@ -1137,8 +1141,9 @@ server-lab/CDN AC-14 evidence; finals uses the prepared public DTO interface.
 **Dependencies:** `P3-T01`, Checkpoint `P3-2B`, `P3-L03`.
 **Files likely touched:** `src/platform/api/src/modules/finals/seeding.ts`, `src/platform/api/src/modules/finals/scheduling.ts`, `src/platform/api/src/modules/finals/scoring.ts`, `src/platform/api/tests/finals-domain.test.ts`, `docs/contracts/finals-format-v1.md`.
 **Estimated scope:** M (5 files)
+**Hoàn tất:** 2026-10-18 — merged PR #39 (`longt/feat-p3-l06-finals-domain`): `src/platform/api/src/modules/finals/{seeding,scheduling,scoring}.ts`, `docs/contracts/finals-format-v1.md`, `tests/finals-domain.test.ts`. Domain thuần; chưa có runtime tạo/chạy trận finals (ngoài scope card).
 
-### [ ] P3-D08 — Finals control plane, seeding và LAN submission cutoff
+### [x] P3-D08 — Finals control plane, seeding và LAN submission cutoff
 
 **Owner:** Phạm Tất Đạt
 **Mô tả:** Thêm model/API cho finals rule set, group/series, LAN submission window và pin artifact trước giải.
@@ -1147,6 +1152,7 @@ server-lab/CDN AC-14 evidence; finals uses the prepared public DTO interface.
 **Dependencies:** `P3-L06`, `P3-D01`, `P3-D03`.
 **Files likely touched:** `src/platform/api/migrations/0016_finals.sql`, `src/platform/api/src/modules/finals/service.ts`, `src/platform/api/src/modules/finals/routes.ts`, `src/platform/api/tests/finals.integration.test.ts`, `docs/contracts/finals-api-v1.md`.
 **Estimated scope:** M (5 files)
+**Hoàn tất:** 2026-10-18 — merged PR #41 (`datpt/feat-p3-d08-finals-control-plane`): migration `0016_finals.sql`, `modules/finals/{service,routes}.ts`, `docs/contracts/finals-api-v1.md`, `tests/finals.integration.test.ts`. Reviewer chạy `finals.integration` 3/3 ×3 trên DB mới (và 2 lần trên cùng DB) sau fix cleanup ở D31. Chưa có runtime tạo trận finals.
 
 ### [x] P3-N07 — Isolated LAN deployment và single-server local recovery
 
@@ -1167,7 +1173,7 @@ server-lab/CDN AC-14 evidence; finals uses the prepared public DTO interface.
 
 ## Phase 3 — Wave 8: result sync và trình diễn
 
-### [ ] P3-D09 — Signed ResultBundle export/import idempotent
+### [x] P3-D09 — Signed ResultBundle export/import idempotent
 
 **Owner:** Phạm Tất Đạt
 **Mô tả:** Xuất bracket/results/event logs với RFC 8785 manifest, SHA-256 và Ed25519; online import theo all-or-nothing versioned transaction.
@@ -1176,6 +1182,7 @@ server-lab/CDN AC-14 evidence; finals uses the prepared public DTO interface.
 **Dependencies:** `P3-D08`, `P3-N07`.
 **Files likely touched:** `src/platform/api/migrations/0017_result_bundles.sql`, `src/platform/api/src/modules/result-bundles/canonical.ts`, `src/platform/api/src/modules/result-bundles/exporter.ts`, `src/platform/api/src/modules/result-bundles/importer.ts`, `src/platform/api/src/modules/result-bundles/routes.ts`, `src/platform/api/tests/result-bundles.integration.test.ts`, `docs/contracts/finals-result-bundle-v1.md`.
 **Estimated scope:** M (7 files)
+**Hoàn tất:** 2026-10-18 — merged PR #42 (`datpt/feat-p3-d09-result-bundle`): migration `0017_result_bundles.sql`, canonicalization RFC 8785, exporter/importer Ed25519, `GET /api/v1/public/result-bundles/:bundleId`, `tests/result-bundles.integration.test.ts` (10/10 ×3 trên DB mới, Reviewer 2026-10-18). Schema artifact (`bracket/series/matches/replays`) đề xuất ở nhánh D28, chưa merge.
 
 ### [ ] P3-D10 — Finals bracket, schedule/results và verified replay public UI
 
