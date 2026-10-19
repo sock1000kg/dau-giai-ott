@@ -859,6 +859,469 @@ EOF
   stdin_argv_content="$(grep -F -- "-X GET" "${stdin_curl_argv_log}" || true)"
   assert_not_contains "--data-binary" "${stdin_argv_content}" "GET calls never include --data-binary or read stdin"
 
+  # ----------------------------------------------------------------------------
+  # 15. Custom OTT_DEMO_ACCOUNTS_CSV Isolation & Compose Environment Export
+  # ----------------------------------------------------------------------------
+  echo "[15/15] Testing custom OTT_DEMO_ACCOUNTS_CSV directory isolation and compose export..."
+
+  local isolation_bin="${tmp_dir}/isolation_bin"
+  mkdir -p "${isolation_bin}"
+  local docker_seed_log="${tmp_dir}/docker_seed_env.log"
+  touch "${docker_seed_log}"
+
+  cat > "${isolation_bin}/docker" <<'EOF'
+#!/usr/bin/env bash
+for arg in "$@"; do
+  if [[ "${arg}" == "seed-demo" ]]; then
+    echo "SEED_DEMO_RUN: OTT_DEMO_ACCOUNTS_DIR=${OTT_DEMO_ACCOUNTS_DIR:-} OTT_DEMO_ACCOUNTS_BASENAME=${OTT_DEMO_ACCOUNTS_BASENAME:-}" >> "${DOCKER_SEED_LOG}"
+  fi
+done
+if [[ "$1" == "info" || "$1" == "version" ]]; then
+  echo "Server Version: 25.0.0"
+  exit 0
+fi
+if [[ "$1" == "compose" && "$2" == "version" ]]; then
+  echo "Docker Compose version v2.24.0"
+  exit 0
+fi
+exit 0
+EOF
+  chmod +x "${isolation_bin}/docker"
+
+  cat > "${isolation_bin}/curl" <<'EOF'
+#!/usr/bin/env bash
+for arg in "$@"; do
+  if [[ "${arg}" == *"health/ready"* ]]; then
+    echo '{"status":"ready"}'
+    exit 0
+  fi
+  if [[ "${arg}" == *"health/live"* ]]; then
+    echo '{"status":"ok"}'
+    exit 0
+  fi
+done
+exit 0
+EOF
+  chmod +x "${isolation_bin}/curl"
+
+  # Case A: Custom accounts CSV path
+  local custom_e2e_dir="${tmp_dir}/custom_e2e"
+  local custom_csv="${custom_e2e_dir}/accounts.csv"
+  local custom_env="${custom_e2e_dir}/demo.env"
+
+  # Baseline fingerprint of real repo's .local/demo before custom up run
+  local real_dev_demo="${REPO_ROOT}/.local/demo"
+  local real_demo_before="absent"
+  if [[ -d "${real_dev_demo}" ]]; then
+    real_demo_before="$(cd "${real_dev_demo}" && ls -la 2>/dev/null && sha256sum * 2>/dev/null || echo "empty")"
+  fi
+
+  run_cmd env PATH="${isolation_bin}:${PATH}" \
+    DOCKER_SEED_LOG="${docker_seed_log}" \
+    OTT_DEMO_PROJECT="${disposable_project}" \
+    OTT_DEMO_ACCOUNTS_CSV="${custom_csv}" \
+    OTT_DEMO_ENV_FILE="${custom_env}" \
+    DOCKER_SOCKET="${fake_socket}" \
+    bash "${DEMO_SCRIPT}" up --no-build --port 19997
+
+  assert_eq "0" "${TEST_CODE}" "up with custom OTT_DEMO_ACCOUNTS_CSV succeeds"
+
+  local custom_dir_mode
+  custom_dir_mode="$(stat -c %a "${custom_e2e_dir}" 2>/dev/null || stat -f %Lp "${custom_e2e_dir}" 2>/dev/null || echo "")"
+  assert_eq "700" "${custom_dir_mode}" "custom accounts directory is created with mode 700"
+
+  local seed_log_content
+  seed_log_content="$(cat "${docker_seed_log}")"
+  assert_contains "SEED_DEMO_RUN: OTT_DEMO_ACCOUNTS_DIR=${custom_e2e_dir} OTT_DEMO_ACCOUNTS_BASENAME=accounts.csv" "${seed_log_content}" "stub docker sees custom accounts dir and basename during seed-demo run"
+
+  # Verify real repo .local/demo remains completely untouched
+  local real_demo_after="absent"
+  if [[ -d "${real_dev_demo}" ]]; then
+    real_demo_after="$(cd "${real_dev_demo}" && ls -la 2>/dev/null && sha256sum * 2>/dev/null || echo "empty")"
+  fi
+  assert_eq "${real_demo_before}" "${real_demo_after}" "real repo .local/demo remains completely untouched by custom accounts run"
+
+  # Case B: Default-path case (no OTT_DEMO_ACCOUNTS_CSV / OTT_DEMO_ENV_FILE env vars)
+  local fake_repo="${tmp_dir}/fake_repo"
+  mkdir -p "${fake_repo}/scripts" "${fake_repo}/infra/local"
+  cp "${DEMO_SCRIPT}" "${fake_repo}/scripts/demo.sh"
+  if [[ -d "${REPO_ROOT}/scripts/lib" ]]; then
+    cp -r "${REPO_ROOT}/scripts/lib" "${fake_repo}/scripts/lib"
+  fi
+  cat > "${fake_repo}/infra/local/compose.yaml" <<'EOF'
+services: {}
+EOF
+
+  local default_seed_log="${tmp_dir}/default_seed_env.log"
+  touch "${default_seed_log}"
+
+  run_cmd bash -c 'cd "'"${fake_repo}"'" && env PATH="'"${isolation_bin}:${PATH}"'" \
+    DOCKER_SEED_LOG="'"${default_seed_log}"'" \
+    OTT_DEMO_PROJECT="'"${disposable_project}"'" \
+    DOCKER_SOCKET="'"${fake_socket}"'" \
+    bash scripts/demo.sh up --no-build --port 19996'
+
+  assert_eq "0" "${TEST_CODE}" "default-path up succeeds with fake repo"
+
+  local default_log_content
+  default_log_content="$(cat "${default_seed_log}")"
+  assert_contains "SEED_DEMO_RUN: OTT_DEMO_ACCOUNTS_DIR=${fake_repo}/.local/demo OTT_DEMO_ACCOUNTS_BASENAME=accounts.csv" "${default_log_content}" "default-path run exports .local/demo and accounts.csv"
+
+  local default_dir_mode
+  default_dir_mode="$(stat -c %a "${fake_repo}/.local/demo" 2>/dev/null || stat -f %Lp "${fake_repo}/.local/demo" 2>/dev/null || echo "")"
+  assert_eq "700" "${default_dir_mode}" "default .local/demo directory created with mode 700"
+
+  # ----------------------------------------------------------------------------
+  # 16. Demo Credential Fingerprint Stability and Sibling Isolation
+  # ----------------------------------------------------------------------------
+  echo "[16/17] Testing demo credential fingerprint stability and sibling isolation..."
+
+  RUN_LOCAL_DEMO_E2E_SOURCED=1 source "${REPO_ROOT}/scripts/run-local-demo-e2e.sh"
+
+  local fp_test_parent="${tmp_dir}/fp_test_parent"
+  local fp_demo_dir="${fp_test_parent}/demo"
+  mkdir -p "${fp_demo_dir}"
+  echo "secret" > "${fp_demo_dir}/demo.env"
+  echo "dotfile-content" > "${fp_demo_dir}/.env.local"
+
+  local base_fp
+  base_fp="$(compute_demo_fingerprint "${fp_demo_dir}")"
+
+  # Sibling creation and removal does not affect fingerprint
+  mkdir -p "${fp_test_parent}/demo-e2e"
+  echo "temp" > "${fp_test_parent}/demo-e2e/temp.csv"
+  rm -rf "${fp_test_parent}/demo-e2e"
+  local post_sibling_fp
+  post_sibling_fp="$(compute_demo_fingerprint "${fp_demo_dir}")"
+  assert_eq "${base_fp}" "${post_sibling_fp}" "fingerprint unchanged after sibling directory creation and removal"
+
+  # Modifying a file changes fingerprint
+  echo "secret-modified" > "${fp_demo_dir}/demo.env"
+  local modified_fp
+  modified_fp="$(compute_demo_fingerprint "${fp_demo_dir}")"
+  if [[ "${base_fp}" != "${modified_fp}" ]]; then
+    PASSED_TESTS=$((PASSED_TESTS + 1))
+    echo "  PASS: fingerprint changes when file content is modified"
+  else
+    FAILED_TESTS=$((FAILED_TESTS + 1))
+    echo "  FAIL: fingerprint did not change after file modification" >&2
+  fi
+
+  # Adding a dotfile changes fingerprint
+  echo "new-dot" > "${fp_demo_dir}/.newdot"
+  local dot_added_fp
+  dot_added_fp="$(compute_demo_fingerprint "${fp_demo_dir}")"
+  if [[ "${modified_fp}" != "${dot_added_fp}" ]]; then
+    PASSED_TESTS=$((PASSED_TESTS + 1))
+    echo "  PASS: fingerprint changes when dotfile is added"
+  else
+    FAILED_TESTS=$((FAILED_TESTS + 1))
+    echo "  FAIL: fingerprint did not change after dotfile was added" >&2
+  fi
+
+  # Removing dotfile changes fingerprint
+  rm -f "${fp_demo_dir}/.newdot"
+  local dot_removed_fp
+  dot_removed_fp="$(compute_demo_fingerprint "${fp_demo_dir}")"
+  if [[ "${dot_added_fp}" != "${dot_removed_fp}" ]]; then
+    PASSED_TESTS=$((PASSED_TESTS + 1))
+    echo "  PASS: fingerprint changes when dotfile is removed"
+  else
+    FAILED_TESTS=$((FAILED_TESTS + 1))
+    echo "  FAIL: fingerprint did not change after dotfile was removed" >&2
+  fi
+
+  # Absent directory returns 'absent'
+  local absent_fp
+  absent_fp="$(compute_demo_fingerprint "${fp_test_parent}/nonexistent")"
+  assert_eq "absent" "${absent_fp}" "absent directory returns 'absent'"
+
+  # Empty directory returns 'absent'
+  local empty_dir="${fp_test_parent}/empty_dir"
+  mkdir -p "${empty_dir}"
+  local empty_fp
+  empty_fp="$(compute_demo_fingerprint "${empty_dir}")"
+  assert_eq "absent" "${empty_fp}" "empty directory returns 'absent'"
+
+  # ----------------------------------------------------------------------------
+  # 17. E2E Gateway Port Scanner (18080..18180) and Bind Checks
+  # ----------------------------------------------------------------------------
+  echo "[17/17] Testing E2E gateway port scanner (18080..18180) and bind checks..."
+
+  # Case 1: 18080 busy => returns 18081
+  is_port_bindable() {
+    local p="$1"
+    if (( p == 18080 )); then
+      return 1
+    fi
+    return 0
+  }
+
+  local picked_port
+  picked_port="$(find_free_demo_port)"
+  assert_eq "18081" "${picked_port}" "find_free_demo_port skips busy 18080 and selects 18081"
+
+  # Case 2: All busy => non-zero exit code + message
+  is_port_bindable() {
+    return 1
+  }
+
+  local all_busy_out
+  local all_busy_rc=0
+  all_busy_out="$(find_free_demo_port 2>&1)" || all_busy_rc=$?
+  if (( all_busy_rc != 0 )); then
+    PASSED_TESTS=$((PASSED_TESTS + 1))
+    echo "  PASS: find_free_demo_port returns non-zero when all candidate ports are busy"
+  else
+    FAILED_TESTS=$((FAILED_TESTS + 1))
+    echo "  FAIL: find_free_demo_port succeeded when all candidate ports were busy" >&2
+  fi
+  assert_contains "No free port found in range 18080..18180" "${all_busy_out}" "all busy failure message names range 18080..18180"
+
+  # Case 3: Override honoured without scanning
+  local test_override_port="19099"
+  local selected_port="${test_override_port}"
+  if [[ -z "${selected_port}" ]]; then
+    selected_port="$(find_free_demo_port)"
+  fi
+  assert_eq "19099" "${selected_port}" "APP_PORT override is honoured directly without scanning"
+
+  # Restore default functions from runner
+  RUN_LOCAL_DEMO_E2E_SOURCED=1 source "${REPO_ROOT}/scripts/run-local-demo-e2e.sh"
+
+  # ----------------------------------------------------------------------------
+  # 18. Runner Subprocess EXIT Trap and Global State Lifecycle
+  # ----------------------------------------------------------------------------
+  echo "[18/19] Testing runner subprocess EXIT trap and global state lifecycle..."
+
+  local trap_sub_bin="${tmp_dir}/trap_sub_bin"
+  mkdir -p "${trap_sub_bin}"
+  local sub_log="${tmp_dir}/sub_stub_demo.log"
+  local sub_demo="${tmp_dir}/sub_stub_demo.sh"
+
+  cat > "${sub_demo}" <<'EOF'
+#!/usr/bin/env bash
+echo "CALL: $@ | OTT_DEMO_ENV_FILE=${OTT_DEMO_ENV_FILE:-} | OTT_DEMO_ACCOUNTS_CSV=${OTT_DEMO_ACCOUNTS_CSV:-}" >> "${SUB_STUB_LOG}"
+if [[ "$1" == "up" ]]; then
+  if [[ -n "${OTT_DEMO_ACCOUNTS_CSV:-}" ]]; then
+    mkdir -p "$(dirname "${OTT_DEMO_ACCOUNTS_CSV}")"
+    touch "${OTT_DEMO_ACCOUNTS_CSV}"
+  fi
+  exit 0
+fi
+if [[ "$1" == "reset" ]]; then
+  exit 0
+fi
+exit 0
+EOF
+  chmod +x "${sub_demo}"
+
+  cat > "${trap_sub_bin}/docker" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$1" == "info" || "$1" == "version" ]]; then exit 0; fi
+if [[ "$1" == "ps" || "$1" == "volume" ]]; then exit 0; fi
+exit 0
+EOF
+  chmod +x "${trap_sub_bin}/docker"
+
+  cat > "${trap_sub_bin}/node" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$1" == "-v" || "$1" == "--version" ]]; then
+  echo "v22.0.0"
+  exit 0
+fi
+exec /usr/bin/node "$@"
+EOF
+  chmod +x "${trap_sub_bin}/node"
+
+  cat > "${trap_sub_bin}/npx" <<'EOF'
+#!/usr/bin/env bash
+echo "vitest stub passed"
+exit 0
+EOF
+  chmod +x "${trap_sub_bin}/npx"
+
+  cat > "${trap_sub_bin}/npm" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${STUB_NPM_FAIL:-0}" == "1" ]]; then
+  echo "npm ci simulated failure" >&2
+  exit 1
+fi
+exit 0
+EOF
+  chmod +x "${trap_sub_bin}/npm"
+
+  cat > "${trap_sub_bin}/git" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$1" == "-C" ]]; then
+  shift 2
+fi
+if [[ "$1" == "worktree" && "$2" == "add" ]]; then
+  mkdir -p "$4"
+  touch "$4/package.json"
+  exit 0
+fi
+if [[ "$1" == "worktree" && ("$2" == "remove" || "$2" == "prune") ]]; then
+  if [[ "$2" == "remove" ]]; then
+    rm -rf "$4" 2>/dev/null || true
+  fi
+  exit 0
+fi
+if [[ "$1" == "worktree" && "$2" == "list" ]]; then
+  echo "/repo HEAD [main]"
+  exit 0
+fi
+exec /usr/bin/git "$@"
+EOF
+  chmod +x "${trap_sub_bin}/git"
+
+  # Case A: Early failure hook right after trap installation
+  rm -f "${sub_log}"
+  run_cmd env PATH="${trap_sub_bin}:${PATH}" \
+    SUB_STUB_LOG="${sub_log}" \
+    OTT_DEMO_SCRIPT="${sub_demo}" \
+    DEMO_E2E_FAIL_AFTER="trap" \
+    bash "${REPO_ROOT}/scripts/run-local-demo-e2e.sh"
+
+  assert_eq "1" "${TEST_CODE}" "runner with DEMO_E2E_FAIL_AFTER=trap exits non-zero"
+  assert_contains "Cleaning up demo E2E stack" "${TEST_OUT}" "cleanup trap ran on early exit hook"
+  assert_not_contains "unbound variable" "${TEST_OUT}" "no unbound variable errors in trap execution"
+  local sub_log_content
+  sub_log_content="$(cat "${sub_log}" 2>/dev/null || echo "")"
+  assert_contains "CALL: reset --yes" "${sub_log_content}" "stub demo.sh was invoked with reset --yes"
+  assert_contains "demo-e2e/demo.env" "${sub_log_content}" "demo.sh reset was passed isolated OTT_DEMO_ENV_FILE"
+  assert_contains "demo-e2e/accounts.csv" "${sub_log_content}" "demo.sh reset was passed isolated OTT_DEMO_ACCOUNTS_CSV"
+
+  # Case B: Success path reaches cleanup once with exit 0
+  rm -f "${sub_log}"
+  run_cmd env PATH="${trap_sub_bin}:${PATH}" \
+    SUB_STUB_LOG="${sub_log}" \
+    OTT_DEMO_SCRIPT="${sub_demo}" \
+    bash "${REPO_ROOT}/scripts/run-local-demo-e2e.sh"
+
+  assert_eq "0" "${TEST_CODE}" "runner success path exits 0"
+  assert_not_contains "unbound variable" "${TEST_OUT}" "no unbound variable in success path output"
+  local sub_cleanup_count
+  sub_cleanup_count="$(grep -c "Cleaning up demo E2E stack" <<< "${TEST_OUT}" || echo 0)"
+  assert_eq "1" "${sub_cleanup_count}" "cleanup trap called exactly once on success path"
+
+  # Case C: Clean checkout early failure path removes worktree directory
+  rm -f "${sub_log}"
+  run_cmd env PATH="${trap_sub_bin}:${PATH}" \
+    SUB_STUB_LOG="${sub_log}" \
+    STUB_NPM_FAIL="1" \
+    OTT_DEMO_SCRIPT="${sub_demo}" \
+    bash "${REPO_ROOT}/scripts/run-local-demo-e2e.sh" --clean-checkout
+
+  assert_eq "1" "${TEST_CODE}" "runner fails when npm ci fails during clean-checkout"
+  assert_contains "Removing temporary worktree" "${TEST_OUT}" "trap removes temporary worktree on npm failure"
+  local created_wt_path
+  created_wt_path="$(echo "${TEST_OUT}" | grep -oE '/tmp/ott-e2e\.[a-zA-Z0-9]+' | head -n1 || echo "")"
+  if [[ -n "${created_wt_path}" && ! -d "${created_wt_path}" ]]; then
+    PASSED_TESTS=$((PASSED_TESTS + 1))
+    echo "  PASS: temporary clean-checkout worktree was removed on early failure"
+  else
+    FAILED_TESTS=$((FAILED_TESTS + 1))
+    echo "  FAIL: temporary worktree ${created_wt_path} was not cleaned up" >&2
+  fi
+
+  # ----------------------------------------------------------------------------
+  # 19. Datastore Port Scan (18181..18380) Verification
+  # ----------------------------------------------------------------------------
+  echo "[19/19] Testing datastore port scanner (18181..18380) and fallback..."
+
+  # (a) find-port output is within 18181..18380
+  local ds_port
+  ds_port="$(python3 -B "${REPO_ROOT}/scripts/lib/demo_json.py" find-port)"
+  if (( ds_port >= 18181 && ds_port <= 18380 )); then
+    PASSED_TESTS=$((PASSED_TESTS + 1))
+    echo "  PASS: demo_json.py find-port returns port in range 18181..18380 (${ds_port})"
+  else
+    FAILED_TESTS=$((FAILED_TESTS + 1))
+    echo "  FAIL: find-port returned ${ds_port}, expected 18181..18380" >&2
+  fi
+
+  # (b) each avoid list value is skipped
+  local ds_avoid_port
+  ds_avoid_port="$(python3 -B "${REPO_ROOT}/scripts/lib/demo_json.py" find-port 18181 18182)"
+  if (( ds_avoid_port >= 18183 )); then
+    PASSED_TESTS=$((PASSED_TESTS + 1))
+    echo "  PASS: find-port skips avoid list values (got ${ds_avoid_port} >= 18183)"
+  else
+    FAILED_TESTS=$((FAILED_TESTS + 1))
+    echo "  FAIL: find-port did not skip avoid list, returned ${ds_avoid_port}" >&2
+  fi
+
+  # (c) occupy 18181 with background python listener (kill by PID with trap, no pkill/pgrep -f)
+  python3 -c '
+import socket, time
+s = socket.socket()
+s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+s.bind(("127.0.0.1", 18181))
+s.listen(1)
+time.sleep(10)
+' &
+  local listener_pid=$!
+  sleep 0.2
+
+  local ds_occupied_port
+  ds_occupied_port="$(python3 -B "${REPO_ROOT}/scripts/lib/demo_json.py" find-port)"
+  kill "${listener_pid}" 2>/dev/null || true
+  wait "${listener_pid}" 2>/dev/null || true
+
+  if (( ds_occupied_port != 18181 && ds_occupied_port >= 18182 && ds_occupied_port <= 18380 )); then
+    PASSED_TESTS=$((PASSED_TESTS + 1))
+    echo "  PASS: find-port skips occupied port 18181 and returns another port (${ds_occupied_port})"
+  else
+    FAILED_TESTS=$((FAILED_TESTS + 1))
+    echo "  FAIL: find-port returned occupied port or out of range (${ds_occupied_port})" >&2
+  fi
+
+  # (d) exhaustion (all 200 ports in avoid list) => exit 1 + message
+  local all_avoid_ports=($(seq 18181 18380))
+  local exhaust_out
+  local exhaust_rc=0
+  exhaust_out="$(python3 -B "${REPO_ROOT}/scripts/lib/demo_json.py" find-port "${all_avoid_ports[@]}" 2>&1)" || exhaust_rc=$?
+
+  assert_eq "1" "${exhaust_rc}" "find-port returns exit 1 on range exhaustion"
+  assert_contains "no free port in 18181..18380" "${exhaust_out}" "find-port reports exhaustion error message"
+
+  # (e) shell fallback in demo.sh when python3 is hidden from PATH
+  eval "$(sed -n '/^find_free_port() {/,/^}/p' "${REPO_ROOT}/scripts/demo.sh")"
+  local mock_no_py="${tmp_dir}/mock_no_py"
+  mkdir -p "${mock_no_py}"
+  cat > "${mock_no_py}/python3" <<'EOF'
+#!/bin/sh
+exit 1
+EOF
+  chmod +x "${mock_no_py}/python3"
+
+  local shell_fallback_port
+  shell_fallback_port="$(DEMO_JSON_PY="${REPO_ROOT}/scripts/lib/demo_json.py" PATH="${mock_no_py}:${PATH}" find_free_port)"
+  if (( shell_fallback_port >= 18181 && shell_fallback_port <= 18380 )); then
+    PASSED_TESTS=$((PASSED_TESTS + 1))
+    echo "  PASS: shell find_free_port fallback returns port in range 18181..18380 (${shell_fallback_port})"
+  else
+    FAILED_TESTS=$((FAILED_TESTS + 1))
+    echo "  FAIL: shell find_free_port fallback returned ${shell_fallback_port}, expected 18181..18380" >&2
+  fi
+
+  # ----------------------------------------------------------------------------
+  # 20. Local Demo Schedule Builder Unit Tests (Docker-free vitest)
+  # ----------------------------------------------------------------------------
+  echo "[20/20] Testing demo schedule builder contract (Docker-free vitest)..."
+  local sched_test_out
+  local sched_rc=0
+  sched_test_out="$(npx vitest run tests/e2e/local-demo-schedule.test.ts --config tests/e2e/local-demo.config.ts 2>&1)" || sched_rc=$?
+  if (( sched_rc == 0 )); then
+    PASSED_TESTS=$((PASSED_TESTS + 1))
+    echo "  PASS: local-demo-schedule.test.ts passed all ordering and timing assertions"
+  else
+    FAILED_TESTS=$((FAILED_TESTS + 1))
+    echo "  FAIL: local-demo-schedule.test.ts failed (exit ${sched_rc}):" >&2
+    echo "${sched_test_out}" >&2
+  fi
+
   echo "================================================================="
   echo "Guard Tests Summary: ${PASSED_TESTS} passed, ${FAILED_TESTS} failed"
   echo "================================================================="

@@ -13,6 +13,7 @@
     "typecheck": "npm run typecheck --workspaces && tsc -p tsconfig.json",
     "test": "npm run test --workspaces && vitest run",
     "test:e2e:qualification": "bash scripts/run-local-qualification.sh",
+    "test:e2e:demo": "bash scripts/run-local-demo-e2e.sh",
     "demo:up": "bash scripts/demo.sh up",
     "demo:status": "bash scripts/demo.sh status",
     "demo:accounts": "bash scripts/demo.sh accounts",

@@ -31,6 +31,7 @@ COPY src/platform/job-contract/ ./src/platform/job-contract/
 COPY src/platform/api/ ./src/platform/api/
 COPY src/platform/worker/ ./src/platform/worker/
 COPY src/bots/ ./src/bots/
+COPY docs/contracts/ ./docs/contracts/
 
 # Build platform-worker workspace package
 RUN npm run build --workspace @ott/platform-worker
@@ -63,6 +64,8 @@ COPY --chown=node:node --from=build /app/src/platform/job-contract ./src/platfor
 COPY --chown=node:node --from=build /app/src/platform/api ./src/platform/api
 COPY --chown=node:node --from=build /app/src/platform/worker ./src/platform/worker
 COPY --chown=node:node --from=build /app/src/bots ./src/bots
+# bot-protocol JSON schemas are read at runtime (oci-bot-port, match-runner config, result-repository)
+COPY --chown=node:node --from=build /app/docs/contracts ./docs/contracts
 
 # Production runtime configuration
 ENV NODE_ENV=production

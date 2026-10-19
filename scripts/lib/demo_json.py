@@ -394,25 +394,24 @@ def cmd_check_port(args: argparse.Namespace) -> int:
 
 
 def cmd_find_port(args: argparse.Namespace) -> int:
-    """Find and print an unused ephemeral port."""
+    """Find and print an unused loopback port from the fixed demo range 18181..18380.
+
+    Ephemeral ports (49152+) are not publishable on Docker Desktop/WSL2, so a fixed
+    low range is scanned instead.
+    """
     avoid = {int(p) for p in args.avoid if p.isdigit()}
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(("127.0.0.1", 0))
-        p = s.getsockname()[1]
-        if p not in avoid:
-            print(p)
-            return 0
-    for p in range(15000, 60000):
-        if p not in avoid:
-            try:
-                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                    s.bind(("127.0.0.1", p))
-                    print(p)
-                    return 0
-            except Exception:
-                continue
-    print(18080)
-    return 0
+    for p in range(18181, 18381):
+        if p in avoid:
+            continue
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.bind(("127.0.0.1", p))
+                print(p)
+                return 0
+        except OSError:
+            continue
+    print("no free port in 18181..18380", file=sys.stderr)
+    return 1
 
 
 def main() -> int:

@@ -163,7 +163,7 @@ docker build -f infra/docker/web.Dockerfile -t ott-web:local .
   - Stage 1 compiles TypeScript and builds Vite SPA assets (`npm run build --workspace @ott/platform-web`).
   - Stage 2: `nginxinc/nginx-unprivileged:1.27-alpine` (non-root, user 101).
   - Port: `8080`.
-  - API proxy: `/api/v1/` proxied to `API_UPSTREAM` (default `http://api:3000`) configured via nginx `envsubst` template.
+  - API proxy: `/api/v1/` proxied to `API_UPSTREAM` (default `http://api:3000`) configured via nginx `envsubst` template. Upstream is re-resolved every 5s via Docker DNS (`127.0.0.11`) to maintain connectivity across backend restarts; `API_UPSTREAM` must not contain a URI part.
   - Snapshot serving: mounted directory `/srv/snapshots` served at `/snapshots/`, falling back to 404 if empty or unmounted.
   - Body limit: `257M` (matching Fastify's 256 MiB submission archive limit plus 1 MiB headroom).
   - Healthcheck: `GET /healthz` returning 200 'ok'.

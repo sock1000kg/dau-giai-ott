@@ -72,6 +72,65 @@ When `./scripts/demo.sh up` completes, it displays the access URLs:
 
 ---
 
+## Verification (P2-T37 API E2E)
+
+The local demo stack includes automated clean-checkout end-to-end qualification verification through the gateway (`scripts/run-local-demo-e2e.sh` and `tests/e2e/local-demo.test.ts`), plus manual LAN verification procedures.
+
+### 1. Automated Gateway API E2E Suite
+
+The automated suite verifies the entire lifecycle on a clean checkout without browser dependencies:
+- Gateway health (`/healthz`), readiness (`/api/v1/health/ready`), SPA (`/`), and snapshots (`/snapshots/`) reachability.
+- Demo account authentication (`btc`, `team01`, `team02` with `ABC123` from `.local/demo/accounts.csv`) and invalid password rejection (401).
+- BTC qualification round opening (`SUBMISSION_OPEN`).
+- Two teams uploading distinct OCI bot fixtures (`first-legal` and `node-action` from `src/bots/sandbox-corpus/artifacts/oci-fixtures/*.oci.tar`) via the reservation + upload API.
+- Coordinator preflight evaluation promoting submissions to `ACTIVE`.
+- BTC round close and start, round match scheduling, and match finalization.
+- Public visibility: anonymous spectators can view the public leaderboard (`/api/v1/leaderboard`) and public snapshots (`/snapshots/latest.json` referencing published round snapshots) through the gateway without authentication.
+- Replay verification & privacy contract: asserts 401 `UNAUTHENTICATED` for anonymous private replay requests, 404 `REPLAY_NOT_FOUND` for the public route, 409 `REPLAY_NOT_PUBLIC_STAGE` for BTC staging attempts (replays are public only for finals per ADR-0005), and accepts authorized private `GET /api/v1/replays/:matchId` by participating teams and BTC as 200 or the known gap 409 `REPLAY_INTEGRITY_FAILED` (see [Known Limitations](#known-limitations)).
+- Gateway dynamic resolver: upstream is re-resolved every 5s via Docker DNS (`127.0.0.11`) to maintain connectivity across backend container restarts; `API_UPSTREAM` must not contain a URI part (scheme://host:port only).
+- Stack restart resilience: stopping and restarting `api`, `worker`, and `coordinator` containers, verifying state retention and zero duplicate results.
+- Teardown: `./scripts/demo.sh reset --yes` with fail-closed resource leak detection verifying zero containers or volumes remain.
+
+#### How to Run
+
+```bash
+# Option A: Run against current tree
+npm run test:e2e:demo
+# or:
+bash scripts/run-local-demo-e2e.sh
+
+# Option B: Run in a clean isolated worktree checkout from HEAD
+bash scripts/run-local-demo-e2e.sh --clean-checkout
+```
+
+- **Approximate Time**: ~4–6 minutes (includes submission window D ~75s + grace period before round close, coordinator preflight evaluation, and match execution).
+- **Port Allocation & Ranges**:
+  - **Gateway Default**: Port `8080` for standard `./scripts/demo.sh up`.
+  - **E2E Runner Gateway**: Automatically scans fixed range `18080..18180` (skipping `8080`, `5432`, `6379`, `8333`), verifying host bindability on `0.0.0.0`. Can be overridden with `--port <PORT>` or `APP_PORT=<PORT>`.
+  - **Datastore Loopback Ports**: Automatically scanned in fixed range `18181..18380` (for PostgreSQL, Redis, and SeaweedFS S3 loopback endpoints).
+  - **WSL2 / Docker Desktop Compatibility**: Docker Desktop on Windows/WSL2 cannot publish ports in the OS dynamic/ephemeral range (49152+) due to host port reservations (`/forwards/expose 500`). Scanning fixed lower ranges (18080–18380) ensures reliable host-container port mapping.
+- **Note on `--clean-checkout`**: This mode checks out a detached worktree from `HEAD` and runs `npm ci` there. It tests committed code only. When testing uncommitted local work or development changes, run without the `--clean-checkout` flag.
+
+### Known Limitations
+- **Qualification Replays v2 vs Spectator Player v1**: Qualification replays cannot be opened yet (bot protocol v2 logs vs v1-only spectator player); public spectators use the leaderboard + `/snapshots/`; finals replays are separate. In E2E qualification tests, authorized replay GET returns 409 `REPLAY_INTEGRITY_FAILED` due to this version gap.
+
+### 2. Manual LAN Spectator & UI Verification
+
+To manually verify the web gateway and UI across machines on the same local network:
+
+1. Bring up the demo stack on the host machine:
+   ```bash
+   ./scripts/demo.sh up
+   ```
+2. Note the LAN URL printed in the output banner (e.g. `http://192.168.1.50:8080/`).
+3. Open a browser on a second laptop, tablet, or phone connected to the same Wi-Fi / local network.
+4. Navigate to `http://<LAN_IP>:8080/` (substitute `<LAN_IP>` with the host's actual IP).
+5. Log in as `team01` with password `ABC123`.
+6. Navigate to the leaderboard page, view match results, or fetch `/snapshots/latest.json` through the gateway to confirm LAN reachability and real-time tournament data updates.
+   - **Note on Replay Playback**: Interactive replay playback in the web player is currently blocked by the known limitation (qualification matches produce Bot Protocol v2 logs whereas the web spectator player currently supports v1; see [Known Limitations](#known-limitations)). The Planner is scheduling a fix as a separate task.
+
+---
+
 ## Security Notes
 
 > [!CAUTION]

@@ -98,9 +98,9 @@ services:
       DATABASE_URL: postgres://${POSTGRES_USER:?set POSTGRES_USER in .env}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:?set POSTGRES_DB in .env}
       OTT_DEMO_MODE: ${OTT_DEMO_MODE:-false}
       OTT_DEPLOYMENT_MODE: ${OTT_DEPLOYMENT_MODE:-dev}
-      OTT_DEMO_ACCOUNTS_CSV: /demo/accounts.csv
+      OTT_DEMO_ACCOUNTS_CSV: /demo/${OTT_DEMO_ACCOUNTS_BASENAME:-accounts.csv}
     volumes:
-      - "../../.local/demo:/demo"
+      - "${OTT_DEMO_ACCOUNTS_DIR:-../../.local/demo}:/demo"
     user: "${DEMO_UID:-1000}:${DEMO_GID:-1000}"
 
   api:
@@ -200,6 +200,24 @@ services:
       retries: 20
       start_period: 5s
 
+  # The snapshots volume is first mounted by whichever container starts first
+  # (the web gateway owns it as uid 101), so make it writable for the coordinator (uid 1000).
+  snapshots-init:
+    image: ott-worker:local
+    pull_policy: never
+    user: "0:0"
+    entrypoint: ["sh", "-c", "chown 1000:1000 /snapshots && chmod 755 /snapshots"]
+    restart: "no"
+    volumes:
+      - snapshots:/snapshots
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - FOWNER
+    security_opt:
+      - no-new-privileges:true
+
   coordinator:
     image: ott-worker:local
     pull_policy: never
@@ -218,6 +236,8 @@ services:
       seaweedfs:
         condition: service_healthy
       migrate:
+        condition: service_completed_successfully
+      snapshots-init:
         condition: service_completed_successfully
     volumes:
       - "${DOCKER_SOCKET:-/var/run/docker.sock}:/var/run/docker.sock"

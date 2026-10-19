@@ -95,7 +95,7 @@ find_free_port() {
   fi
   # Fallback shell port scanning
   local p
-  for p in 15432 16379 18333 25432 26379 28333 35432 36379 38333; do
+  for p in $(seq 18181 18380); do
     local clash=0
     local a
     for a in "${avoid[@]:-}"; do
@@ -476,8 +476,12 @@ EOF
     chmod 0600 "${DEMO_ENV_FILE}"
   fi
 
-  # Ensure .local/demo directory exists with mode 0700 for seed accounts CSV mount
-  mkdir -p -m 700 "${REPO_ROOT}/.local/demo"
+  # Ensure the accounts CSV directory exists (mode 0700) and is what seed-demo mounts.
+  # OTT_DEMO_ACCOUNTS_CSV may point outside .local/demo (e.g. the e2e runner); never write the default dir then.
+  mkdir -p -m 700 "$(dirname "${ACCOUNTS_CSV}")"
+  OTT_DEMO_ACCOUNTS_DIR="$(cd "$(dirname "${ACCOUNTS_CSV}")" && pwd)"
+  OTT_DEMO_ACCOUNTS_BASENAME="$(basename "${ACCOUNTS_CSV}")"
+  export OTT_DEMO_ACCOUNTS_DIR OTT_DEMO_ACCOUNTS_BASENAME
 
   echo "Bringing up Docker Compose project '${COMPOSE_PROJECT}'..."
   docker compose -p "${COMPOSE_PROJECT}" -f "${COMPOSE_FILE}" --env-file "${DEMO_ENV_FILE}" up ${build_flag:+"$build_flag"} --wait
