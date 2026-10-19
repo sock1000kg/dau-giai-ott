@@ -256,7 +256,8 @@ DATABASE_URL="$YOUR_DISPOSABLE_POSTGRES_URL" \
     Uploads before `submissionOpensAt` return 409 `SUBMISSION_NOT_OPEN`.
     Uploads after `graceEndsAt` always return 403 `SUBMISSION_CLOSED`.
     Archive hash must match reservation hash; mismatch returns 409 `RESERVATION_HASH_MISMATCH` and cleans up storage.
-    Retrying an upload of the same archive after completion returns 200 with the existing submission ID idempotently without duplicate storage or rows.
+    Archives are promoted to private storage under `submissions/<sha256-hex>/<uuid>.oci.tar` to prevent collisions when multiple teams upload identical bytes.
+    Retrying an upload of the same archive after completion returns 200 with the existing submission ID idempotently without duplicate storage or rows (the newly copied object is removed).
   - `GET /api/v1/submissions` (Role: `TEAM_ACCOUNT`):
     Each item in `PREFLIGHT` status gains `preflightPosition` (1-based rank among all `PREFLIGHT` submissions ordered by `(created_at, id)`). Non-`PREFLIGHT` items receive `null`.
     Response root includes `preflightQueueLength` (total submissions currently in `PREFLIGHT`).

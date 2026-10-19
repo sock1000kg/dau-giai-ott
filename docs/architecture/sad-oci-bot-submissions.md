@@ -71,7 +71,7 @@ Validation order:
 1. Stream upload to a quarantine key with size cap; calculate SHA-256. No extraction or container runtime action occurs in the API request handler.
 2. A validator reads the tar defensively: no traversal paths, links, device files, duplicate conflicting paths, foreign layers or file-size expansion above limits.
 3. Validate OCI layout/index/manifest/config digests, require exactly `linux/amd64`, a non-empty OCI `Entrypoint`, and an image/config size inside the published policy.
-4. Promote the original archive to content-addressed private storage only after structural validation. Store the derived identity transactionally.
+4. Promote the original archive to private storage under an isolated unique key (`submissions/<sha256-hex>/<uuid>.oci.tar`) only after structural validation. Store the derived identity transactionally.
 5. In an isolated sandbox, run the preflight fixture against Bot Protocol v1. Only a bot that starts and responds with a valid `ACTION` becomes `VALID`.
 
 `INVALID` exposes a stable, team-actionable code but never host paths, security profile details, credentials or raw worker logs. `ACTIVE` is immutable and a cutoff pins its derived digest.
@@ -171,7 +171,7 @@ policyVersion
 archiveBytes / uncompressedBytes
 ```
 
-The archive and every event log use server-generated content-addressed object keys. `Match` stores the submission/digests and policy version in its immutable execution snapshot. Audit records upload, validation result, activation, revoke and any BTC exception, but never archive content, bot stderr, session material or credential plaintext.
+The archive uses a server-generated unique object key (`submissions/<sha256-hex>/<uuid>.oci.tar`), while every event log uses a server-generated content-addressed key. `Match` stores the submission/digests and policy version in its immutable execution snapshot. Audit records upload, validation result, activation, revoke and any BTC exception, but never archive content, bot stderr, session material or credential plaintext.
 
 ## 7. Local development and test matrix
 

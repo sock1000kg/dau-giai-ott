@@ -221,9 +221,10 @@ export function registerSubmissionRoutes(app: FastifyInstance, options: Submissi
         });
       }
 
-      const objectKey = `submissions/${checked.value.archiveSha256.slice('sha256:'.length)}.oci.tar`;
+      const sha256Hex = checked.value.archiveSha256.slice('sha256:'.length);
+      const objectKey = `submissions/${sha256Hex}/${randomUUID()}.oci.tar`;
       let createdNewObject = false;
-      let isRetry = false;
+      let keepObject = false;
 
       try {
         await options.storage.copy(quarantine, objectKey);
@@ -341,14 +342,17 @@ export function registerSubmissionRoutes(app: FastifyInstance, options: Submissi
           }
         });
 
-        isRetry = result.isRetry;
+        if (!result.isRetry) {
+          keepObject = true;
+        }
+
         return reply.status(result.statusCode).send({ data: result.data });
       } catch (error) {
-        if (createdNewObject && !isRetry) {
-          await options.storage.remove(objectKey).catch(() => undefined);
-        }
         throw error;
       } finally {
+        if (createdNewObject && !keepObject) {
+          await options.storage.remove(objectKey).catch(() => undefined);
+        }
         await options.storage.remove(quarantine).catch(() => undefined);
       }
     }
