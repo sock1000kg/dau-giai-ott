@@ -12,7 +12,8 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage --coverage.include=src",
     "build": "tsc -p tsconfig.build.json",
-    "db:migrate": "tsx src/db/migrate.ts"
+    "db:migrate": "tsx src/db/migrate.ts",
+    "demo:seed": "tsx src/demo/seed-accounts.ts"
   },
   "dependencies": {
     "@ott/bot-protocol": "*",

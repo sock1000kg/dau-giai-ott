@@ -634,3 +634,7 @@ The existing `deploy/lan/compose.yml` and `deploy/lan/.env.example` templates co
 - `API_BIND_IP`: Canonical variable is `HOST`.
 - Database & Redis: The compose template specifies raw credentials and ports without `DATABASE_URL` and `REDIS_URL`. The API runtime host expects canonical connection URLs.
 - `OTT_BOOTSTRAP_BTC_TOTP_SECRET`: Specified without the required `OTT_TOTP_ENCRYPTION_KEY` (AES-256 key needed to encrypt the secret in `admin_mfa`).
+
+## Demo accounts and credential CSV (`P2-T35`)
+
+To seed idempotent local demo accounts (`btc`, `team01`, `team02`) with public demo credentials and export the local CSV to `.local/demo/accounts.csv`, see the runbook at [`docs/runbooks/local-demo.md`](../../../docs/runbooks/local-demo.md).

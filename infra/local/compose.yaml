@@ -79,6 +79,30 @@ services:
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:?set POSTGRES_USER in .env}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:?set POSTGRES_DB in .env}
 
+  seed-demo:
+    image: ott-api:local
+    pull_policy: never
+    profiles:
+      - demo
+    restart: "no"
+    command:
+      - npm
+      - run
+      - demo:seed
+      - --workspace
+      - "@ott/platform-api"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:?set POSTGRES_USER in .env}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:?set POSTGRES_DB in .env}
+      OTT_DEMO_MODE: ${OTT_DEMO_MODE:-false}
+      OTT_DEPLOYMENT_MODE: ${OTT_DEPLOYMENT_MODE:-dev}
+      OTT_DEMO_ACCOUNTS_CSV: /demo/accounts.csv
+    volumes:
+      - "../../.local/demo:/demo"
+    user: "${DEMO_UID:-1000}:${DEMO_GID:-1000}"
+
   api:
     image: ott-api:local
     build:
