@@ -6,3 +6,5 @@ src/bots/sandbox-corpus/artifacts/
 /.env
 .env
 .local/
+__pycache__/
+*.pyc

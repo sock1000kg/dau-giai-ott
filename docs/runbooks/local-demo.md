@@ -1,12 +1,103 @@
-# Local Demo Accounts Runbook (P2-T35)
+# Local Demo Stack & Operations Runbook (`scripts/demo.sh` / P2-T36)
 
-This runbook documents the demo-only account provisioning seeder, the public demo credentials, and the local credential CSV export for throw-away local demonstration environments.
-
-> [!WARNING]
-> **Public demo password — never use outside a throw-away demo!**
-> The demo accounts use a well-known public password (`ABC123`). The seeder strictly refuses to run if `OTT_DEPLOYMENT_MODE` is `hosted` or `production`, or if `OTT_DEMO_MODE` is not explicitly set to `true`. Never enable demo mode on any shared or persistent deployment.
+This runbook covers one-command local demonstration stack management (`scripts/demo.sh` or npm scripts `demo:*`), system prerequisites, LAN spectator access, BTC round lifecycle controls, troubleshooting, and demo account provisioning.
 
 ---
+
+## Quick Start
+
+### 1. System Requirements
+- **Docker**: Version ≥ 24.0 with Docker Compose v2 reachable (`docker compose`).
+- **Python**: Python 3 (`python3`) installed on host (required for JSON processing and BTC operator CLI actions in `./scripts/demo.sh round`).
+- **Memory**: Minimum ~4 GB RAM available for the local stack.
+- **Ports**: Default `8080` for web gateway (customizable via `--port <PORT>`). Local datastores (PostgreSQL, Redis, SeaweedFS) dynamically bind to unused loopback ports. If port 8080 is already occupied, use `./scripts/demo.sh up --port <PORT>`.
+- **Node.js**: Not required on the host for Docker operations.
+
+### 2. Copy-Ready Lifecycle Workflow
+
+```bash
+# 1. Bring up the full demo stack (preflight, build, migrate, seed, wait healthy)
+./scripts/demo.sh up
+
+# 2. View demo accounts and verify CSV permissions (passwords are redacted from output)
+./scripts/demo.sh accounts
+
+# 3. Check container health, ready probe, and CSV status
+./scripts/demo.sh status
+
+# 4. View qualification round status as BTC operator
+./scripts/demo.sh round status
+
+# 5. Open round submissions (creates round and rule set if needed)
+./scripts/demo.sh round open
+
+# 6. Close submissions and schedule round matches
+# NOTE: Starting round matches requires at least 2 teams with ACTIVE (gate-passed) submissions.
+# For a full tournament demo sequence:
+#   a. team01 and team02 log into the web UI (http://127.0.0.1:8080/) using password ABC123 and upload bots.
+#   b. Wait until submissions reach ACTIVE status (check team page in the web UI).
+#   c. Run './scripts/demo.sh round close' to close submissions and schedule matches.
+# (If closed on a bot-less stack, submissions close to SUBMISSION_CLOSED but starting matches will exit non-zero).
+./scripts/demo.sh round close
+
+# 7. View tournament leaderboard and series results
+./scripts/demo.sh round results
+
+# 8. Follow logs from the stack or a specific service
+./scripts/demo.sh logs api -f
+
+# 9. Stop the running containers (data volumes preserved)
+./scripts/demo.sh stop
+
+# 10. Clean reset (removes containers, volumes, demo.env, and accounts.csv)
+./scripts/demo.sh reset
+```
+
+Or run via root npm workspace shortcuts:
+```bash
+npm run demo:up
+npm run demo:status
+npm run demo:accounts
+npm run demo:logs
+npm run demo:round -- status
+npm run demo:stop
+npm run demo:reset
+```
+
+### 3. Accessing the Demo (Local & LAN)
+
+When `./scripts/demo.sh up` completes, it displays the access URLs:
+- **Local Machine**: `http://127.0.0.1:8080/`
+- **Second Device on Same LAN / Wi-Fi**: `http://<LAN_IP>:8080/` (where `<LAN_IP>` is the host's LAN IP, e.g. `http://192.168.1.50:8080/`). The web gateway binds to `0.0.0.0:8080`, allowing colleagues or spectator devices on the same Wi-Fi network to browse match results, replays, and leaderboards without additional tunneling tools.
+
+---
+
+## Security Notes
+
+> [!CAUTION]
+> **Demo Mode Only — Public Password & Host Docker Socket Access**
+> 1. **Public Credentials**: All demo accounts share the well-known password `ABC123`. Never run demo mode on shared, internet-facing, or production servers.
+> 2. **Docker Socket Mount**: The worker and coordinator containers mount `/var/run/docker.sock` to execute sandbox runner containers. Mounting the Docker daemon socket is root-equivalent on the host. Do not run untrusted third-party code outside the sandbox corpus.
+> 3. **Throw-Away Environment**: The demo environment file `.local/demo/demo.env` and credential export `.local/demo/accounts.csv` are git-ignored and intended solely for ephemeral local testing.
+
+---
+
+## Troubleshooting Guide
+
+| Issue / Symptom | Probable Cause | Remediation |
+|---|---|---|
+| `Error: Port 8080 is already in use` | Another service is using port 8080 on the host. | Run `./scripts/demo.sh up --port 8081` (or another free port). |
+| `DOCKER_GID` permission error / socket access denied | Worker/coordinator cannot communicate with Docker daemon socket. | Verify socket permissions: `ls -l /var/run/docker.sock`. Check that your host user belongs to the `docker` group (`getent group docker`). On Linux, `stat -c %g /var/run/docker.sock` detects the GID automatically. |
+| Healthcheck timeout waiting for `/api/v1/health/ready` | A service failed to initialize or migrate within 180s. | Run `./scripts/demo.sh logs` to inspect recent errors across all services, or `./scripts/demo.sh logs api` / `migrate` specifically. |
+| `demo.sh round open/close` refused with in-flight error | A tournament round is currently in `RUNNING` or `SETTLING` status, or is paused. | Round transitions fail-closed to prevent corrupting active match runs. Wait until the round settles, resume if paused, or check status with `./scripts/demo.sh round status`. (Note: `/api/v1/results/series` only returns terminal statuses `FINALIZED`/`CANCELLED`; in-flight protection checks round read models fail-closed). |
+| `round close` fails starting round with 500 / `insufficient teams` | Round start requires ≥2 teams with `ACTIVE` submissions (`SCHEDULING_INSUFFICIENT_TEAMS`). | Have `team01` and `team02` log in at `http://127.0.0.1:8080/`, upload bot archives, and wait for preflight gate PASS (status `ACTIVE`). Then rerun `./scripts/demo.sh round close`. |
+| Cannot login with demo accounts | Database seeding did not run or volume was corrupted. | Run `./scripts/demo.sh status` to verify `accounts.csv`. If necessary, run `./scripts/demo.sh reset` followed by `./scripts/demo.sh up`. |
+
+---
+
+## Demo Accounts & Seeder Reference (P2-T35)
+
+This section documents the underlying demo account provisioning details, credential CSV format, and bootstrap alignment established in P2-T35.
 
 ## 1. Demo Accounts Overview
 
