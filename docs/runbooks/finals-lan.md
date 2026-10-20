@@ -283,12 +283,12 @@ Nhằm bảo đảm tính minh bạch, an toàn tuyệt đối và phân quyền
 
 ## 10. Checklist Nghiệm Thu & Bàn Giao Checkpoint P3-F (Final Rehearsal Handoff Checklist)
 
-Trước khi đóng giải và chuyển sang trạng thái vận hành chính thức, toàn bộ các mục sau phải được kiểm tra và tích duyệt:
+Trước khi đóng giải và chuyển sang trạng thái vận hành chính thức, toàn bộ các mục sau phải được kiểm tra trên deployment LAN thật và được Thuận duyệt. Rehearsal Vitest 14/14 ngày 2026-10-20 là bằng chứng mô phỏng, chưa tick checklist vận hành này:
 
-- [x] **AC-09/20 End-to-End Rehearsal:** Diễn tập trọn vẹn kịch bản từ cutoff LAN → thi đấu 7 loạt trận BO3 → ký bundle Ed25519 → import online → hiển thị proof và replay công khai.
-- [x] **Tamper Detection Drill:** Thử nghiệm cố ý sửa 1 byte dữ liệu hoặc chữ ký giả mạo; xác nhận hệ thống từ chối import và giữ nguyên dữ liệu sạch trước đó.
-- [x] **Worker / Server Crash Resilience:** Mô phỏng tắt worker giữa trận; xác nhận lease hết hạn, generation tăng và kết quả muộn từ worker cũ bị hủy bỏ an toàn (`STALE_OR_DUPLICATE_GENERATION_IGNORED`).
-- [x] **Rerun Policy Enforcement:** Xác nhận chỉ cho phép rerun khi gặp lỗi hạ tầng (`INFRA_FAILURE_REASONS`); tuyệt đối chặn rerun với lỗi bot của đội thi.
-- [x] **Operator Roles & Key Custody:** Danh sách 4 vai trò vận hành đã ký xác nhận biên bản trách nhiệm và quy trình bàn giao.
-- [x] **Rollback & Revocation Readiness:** Đã thử nghiệm thành công quy trình thu hồi khóa và rollback snapshot về trạng thái hợp lệ gần nhất.
-- [x] **Full Clean Checkout Scan:** Kiểm tra toàn bộ mã nguồn, typecheck, build production và security scan đều đạt chuẩn không lỗi.
+- [ ] **AC-09/20 End-to-End Rehearsal:** Chạy cutoff LAN → trận finals qua worker thật → ký bundle Ed25519 → import online → kiểm tra proof/replay. Trận tranh hạng ba là tùy chọn nên có 7 hoặc 8 series.
+- [ ] **Tamper Detection Drill:** Sửa byte dữ liệu hoặc chữ ký trên bundle thật; xác nhận import bị từ chối và snapshot trước đó không đổi.
+- [ ] **Worker / Server Crash Resilience:** Dừng worker/server thật giữa trận, xác nhận lease/generation và chống ghi kết quả cũ (`STALE_OR_DUPLICATE_GENERATION_IGNORED`).
+- [ ] **Rerun Policy Enforcement:** Kiểm chứng rerun chỉ cho lỗi hạ tầng (`INFRA_FAILURE_REASONS`) trên deployment LAN.
+- [ ] **Operator Roles & Key Custody:** Bốn vai trò vận hành xác nhận biên bản trách nhiệm, key ceremony và bàn giao.
+- [ ] **Rollback & Revocation Readiness:** Thực hành thu hồi khóa và rollback snapshot trên stack cô lập.
+- [ ] **Full Clean Checkout Scan:** Root test/typecheck/build, security scan và stack LAN smoke pass trên clean checkout. `npm test` ngày 2026-10-20 còn lỗi Redis `127.0.0.1:16379`.

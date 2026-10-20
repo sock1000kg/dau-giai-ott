@@ -15,7 +15,7 @@ Ba thành viên Dev phát triển độc lập trên `localhost`:
 **Đinh Đức Thuận** sở hữu decision gate và toàn bộ Phase 2 local. Backend `P2-T01`–`P2-T15`, frontend, replay và E2E `P2-T17A`–`P2-T29` đã hoàn tất; Phase 2 đóng tại qualification E2E/runbook local. CI/CD và triển khai cloud không thuộc Definition of Done Phase 2.
 
 Ở Phase 3, Thuận là approver cho decision/checkpoint; Long, Nguyên và Đạt nhận các lane implementation
-`P3-L*`, `P3-N*`, `P3-D*`. Gate `P3-0`/`P3-T01` đã hoàn tất ngày 14/10/2026; ba task Wave 1 sẵn sàng.
+`P3-L*`, `P3-N*`, `P3-D*`. Gate `P3-0`/`P3-T01` đã hoàn tất ngày 14/10/2026; tại `main` ngày 20/10, 25/25 task Phase 3 đã tick và 8 checkpoint còn mở.
 
 ## 2. Hiện trạng đã kiểm tra
 
@@ -196,7 +196,7 @@ flowchart LR
 #### Phase 3 — Qualification hosted PoC-ready và finals offline
 
 Kiến trúc và trust boundary: [Solution Architecture Phase 3](architecture/solution-architecture-phase-3.md).
-`P3-T01` đã hoàn tất; Wave 1 sẵn sàng, các wave sau chờ dependency/checkpoint tương ứng.
+`P3-T01` và 24 task implementation đã được tick trên `main` ngày 2026-10-20. Cả tám checkpoint vẫn mở; các cạnh dưới đây biểu diễn thứ tự nghiệm thu dự kiến, không xác nhận rằng gate trước đã được Thuận duyệt.
 
 ```mermaid
 flowchart TB
@@ -204,12 +204,12 @@ flowchart TB
     T31["✅ P3-T01 (Thuận)<br/>Decision, ADR và contract gate"]
 
     subgraph QUAL["P3-2B — Qualification hosted PoC-ready"]
-        W1["Wave 1<br/>P3-L01 / P3-D01 / P3-N01<br/>Protocol, rules, resource metrics"]
-        W2["Wave 2<br/>P3-L02 / P3-N02 / P3-D02<br/>Timing, single-host admission, admin"]
-        W3["Wave 3<br/>P3-D03 / P3-D04 / P3-N03<br/>Upload, accounts, test run"]
-        W4["Wave 4<br/>P3-N04 / P3-L03 / P3-D05<br/>OCI, rating, replay privacy"]
-        W5["Wave 5<br/>P3-L04 / P3-L05 / P3-D06<br/>Replay, public snapshot, auth"]
-        W6["Wave 6<br/>P3-N05 / P3-D07 / P3-N06<br/>Operations, cases, server-lab pilot"]
+        W1["✅ Wave 1<br/>P3-L01 / P3-D01 / P3-N01<br/>Protocol, rules, resource metrics"]
+        W2["✅ Wave 2<br/>P3-L02 / P3-N02 / P3-D02<br/>Timing, single-host admission, admin"]
+        W3["✅ Wave 3<br/>P3-D03 / P3-D04 / P3-N03<br/>Upload, accounts, test run"]
+        W4["✅ Wave 4<br/>P3-N04 / P3-L03 / P3-D05<br/>OCI, rating, replay privacy"]
+        W5["✅ Wave 5<br/>P3-L04 / P3-L05 / P3-D06<br/>Replay, public snapshot, auth"]
+        W6["✅ Wave 6<br/>P3-N05 / P3-D07 / P3-N06<br/>Operations, server-lab pilot"]
         GA["Checkpoint P3-A<br/>Contract foundation"]
         GB["Checkpoint P3-B<br/>Round lock/run"]
         GC["Checkpoint P3-C<br/>Participant workflows"]
@@ -220,9 +220,9 @@ flowchart TB
     end
 
     subgraph FINALS["P3-F — Finals offline-ready"]
-        W7["Wave 7<br/>P3-L06 / P3-D08 / P3-N07<br/>Finals domain, LAN control"]
+        W7["✅ Wave 7<br/>P3-L06 / P3-D08 / P3-N07<br/>Finals domain, LAN control"]
         F1["Checkpoint P3-F1<br/>Finals chạy hoàn toàn trong LAN"]
-        W8["Wave 8<br/>P3-D09 / P3-D10 / P3-N08<br/>Signed sync, public UI, rehearsal"]
+        W8["✅ Wave 8<br/>P3-D09 / P3-D10 / P3-N08<br/>Signed sync, public UI, rehearsal"]
         FG["Checkpoint P3-F<br/>Thuận duyệt Phase 3"]
         W7 --> F1 --> W8 --> FG
     end
@@ -235,13 +235,13 @@ flowchart TB
     classDef blocked fill:#3b2a12,stroke:#f59e0b,color:#ffffff,stroke-width:2px;
     classDef gate stroke-width:3px;
     class PB2,T31 done;
-    class W1 ready;
-    class GA,W2,GB,W3,GC,W4,GD,W5,GE,W6,QG,W7,F1,W8,FG blocked;
+    class W1,W2,W3,W4,W5,W6,W7,W8 done;
+    class GA,GB,GC,GD,GE,QG,F1,FG blocked;
     class T31,GA,GB,GC,GD,GE,QG,F1,FG gate;
 ```
 
 `✅` chỉ gắn cho node có task/checkpoint đã hoàn tất trong `tasks/todo.md` và có bằng chứng verification.
-Phase 1, Phase 2/P2-B và `P3-T01` đã hoàn tất; Wave 1 sẵn sàng, các node Phase 3 khác còn chờ dependency.
+Phase 1, Phase 2 local/P2-B, `P3-T01` và tám wave task Phase 3 đã được tick; các checkpoint Phase 3 còn chờ nghiệm thu. Phase 2 demo runtime extension `P2-T30`–`P2-T37`/`P2-C` cũng còn mở.
 
 Các điểm đồng bộ bắt buộc:
 
@@ -680,11 +680,13 @@ Thuận sở hữu toàn bộ Phase 2 local theo chuỗi `P2-T01`–`P2-T29`:
 
 Backend `P2-T01`–`P2-T15`, rebaseline `P2-T16`, web workspace `P2-T17A`, app shell `P2-T17B`, login/session/role guard `P2-T18`, BTC team provisioning `P2-T19`, team OCI submission portal `P2-T20`, results UI `P2-T21`, public leaderboard UI `P2-T22`, replay persistence/catalog repository `P2-T23`, replay publication/public artifact API `P2-T24`, BTC replay catalog/publication console `P2-T25`, spectator replay client/integrity verification `P2-T26`, spectator replay player `P2-T27`, isolated qualification harness `P2-T28` và full-flow qualification `P2-T29` đã hoàn tất theo verification trong `tasks/todo.md`. Checkpoint `P2-B` đạt sau detached clean-worktree verification; mỗi task dùng branch riêng, test → docs/status → commit → merge `main`.
 
+Extension `P2-T30`–`P2-T37` do Thuận sở hữu acceptance/checkpoint `P2-C`; Đạt đã triển khai một phần runtime theo quyết định dự án. Source `main` hiện có entrypoint API/worker/coordinator, Dockerfiles, Compose và demo script, nhưng tám card chưa tick do thiếu verification toàn tuyến. Đọc dependency và trạng thái riêng từng card tại `tasks/todo.md`; không suy diễn từ sự hiện diện của file.
+
 Trạng thái bàn giao Phase 2:
 
 - `P2-T17A`–`P2-T22` web/auth/portal/results/leaderboard đã hoàn tất.
 - `P2-T23`–`P2-T27` replay persistence, publication và spectator presentation đã hoàn tất.
-- `P2-T28`–`P2-T29` qualification E2E/handoff và Checkpoint `P2-B` đã hoàn tất; không còn task Phase 2 để chọn.
+- `P2-T28`–`P2-T29` qualification E2E/handoff và Checkpoint `P2-B` đã hoàn tất; extension `P2-T30`–`P2-T37`/`P2-C` vẫn mở trong `tasks/todo.md`.
 
 Ranh giới tuần tự bắt buộc:
 
@@ -769,7 +771,7 @@ Chi tiết và rationale: `docs/decisions/0002-phase-1-engine-and-bot-protocol-v
 
 ## 15. Phân công Phase 3 — Phase 2B carry-over và chung kết offline
 
-> Trạng thái: **Đã duyệt baseline tại Gate `P3-0`; implementation Wave 1 sẵn sàng.**
+> Trạng thái 2026-10-20: **Baseline `P3-0` đã duyệt; 25/25 task Phase 3 được tick, 0/8 checkpoint được duyệt.**
 
 Phase 3 gộp hai phần nhưng nghiệm thu riêng:
 

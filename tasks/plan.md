@@ -1,6 +1,6 @@
 # Implementation Plan: Phase 1–3 theo phân công nhóm Dev
 
-**Trạng thái:** Phase 1–2 hoàn tất; baseline Phase 3 đã duyệt tại `P3-T01`, implementation chưa hoàn tất
+**Trạng thái 2026-10-20:** Phase 1 và Phase 2 local `P2-T01`–`P2-T29` hoàn tất; extension `P2-T30`–`P2-T37`/`P2-C` còn mở. Phase 3 có 25/25 task tick nhưng 0/8 checkpoint được duyệt; xem `tasks/todo.md` để biết giới hạn verification.
 **Phê duyệt Phase 3:** D-14–D-30, ADR-0008–0010 và contract baseline được duyệt ngày 14/10/2026
 **Người duyệt Gate P3-0:** Đinh Đức Thuận
 **Nguồn:** `docs/team-assignment.md`, `docs/tai-lieu-yeu-cau.md`
@@ -256,9 +256,9 @@ Phase 1 complete
 - [x] `P2-T28` — Qualification E2E harness và deterministic fixtures; isolated Compose PostgreSQL/Redis/SeaweedFS, migrations + 2 canary submissions, hai lượt liên tiếp 4/4 và teardown sạch (2026-10-13).
 - [x] `P2-T29` — Qualification full-flow E2E/local handoff; BTC provisioning → team auth/upload → real OCI sandbox preflight → BullMQ/worker/finalization → series/Elo/results → replay publish/tamper rejection/client timeline, retry idempotency verified (2026-10-13).
 
-## 9. Cảnh báo tải Phase 2
+## 9. Phase 2 local và demo runtime extension
 
-Thuận là owner duy nhất của `P2-T01`–`P2-T29`. Toàn bộ task Phase 2 local và Checkpoint `P2-B` đã hoàn tất sau qualification, root gates và detached clean-worktree verification pass (`404195f`, 2026-10-13). Deploy cloud không nằm trong Definition of Done. Không mở nhiều branch chạm chung `src/platform/web` hoặc replay schema trong cùng lúc.
+Thuận là owner của `P2-T01`–`P2-T37`. Phạm vi `P2-T01`–`P2-T29` và Checkpoint `P2-B` đã hoàn tất sau qualification, root gates và detached clean-worktree verification pass (`404195f`, 2026-10-13). Extension `P2-T30`–`P2-T37`/`P2-C` vẫn mở; source `main` đã có runtime/Compose/demo nhưng cần đối chiếu acceptance và clean-checkout browser verification. Deploy cloud không nằm trong Definition of Done. Không mở nhiều branch chạm chung `src/platform/web` hoặc replay schema trong cùng lúc.
 
 1. Hạ tầng local và database.
 2. Authentication/RBAC, team và submission.
@@ -267,7 +267,19 @@ Thuận là owner duy nhất của `P2-T01`–`P2-T29`. Toàn bộ task Phase 2 
 5. Web shell/login, team portal, BTC credential console, results UI và replay UI.
 6. Qualification E2E.
 
-Phase 2 kết thúc tại local qualification E2E và runbook. Không thêm CI/CD, cloud infrastructure, production credential hoặc deploy stage vào các task `P2-T17A`, `P2-T17B`, `P2-T18`–`P2-T29`.
+Baseline Phase 2 local kết thúc tại qualification E2E và runbook; extension demo runtime có gate riêng `P2-C`. Không thêm CI/CD, cloud infrastructure, production credential hoặc deploy stage vào các task `P2-T17A`, `P2-T17B`, `P2-T18`–`P2-T29`.
+
+### Extension `P2-T30`–`P2-T37` — còn mở tại `main` ngày 2026-10-20
+
+```text
+P2-T29 ──► P2-T30 API host ─────┐
+       └─► P2-T31 worker host ──┼─► P2-T32 coordinator
+                                └─► P2-T33 Docker images
+P2-T32 + P2-T33 ──► P2-T34 Compose ──► P2-T35 demo accounts
+P2-T34 + P2-T35 ──► P2-T36 demo commands ──► P2-T37 clean-checkout browser flow ──► P2-C
+```
+
+Các entrypoint, Dockerfiles, Compose và `scripts/demo.sh` đã có trên `main`; trạng thái tám task vẫn `[ ]` trong `tasks/todo.md` vì chưa có đối chiếu acceptance theo từng card và clean-checkout browser/restart gate. Root `npm test` ngày 2026-10-20 bị chặn ở worker BullMQ integration do Redis `127.0.0.1:16379` không chạy.
 
 ## 10. Rủi ro
 
@@ -292,7 +304,7 @@ Phase 2 kết thúc tại local qualification E2E và runbook. Không thêm CI/C
 - [x] Mỗi implementation task Phase 3 dự kiến là một lát S/M và có tối đa khoảng 5 file chính; task rehearsal có thể kèm external evidence.
 - [x] Có gate quyết định, checkpoint sau từng wave, gate qualification và hai checkpoint finals.
 - [x] Phase 3 được tích hợp vào plan hiện hành nhưng giữ trạng thái riêng, không làm sai lịch sử hoàn tất Phase 1–2.
-- [x] Gate `P3-0`/`P3-T01` đã duyệt requirement/ADR/contract; Wave 1 sẵn sàng. Không task implementation nào được coi là hoàn tất từ việc duyệt plan.
+- [x] Gate `P3-0`/`P3-T01` đã duyệt requirement/ADR/contract. Tại `main` ngày 2026-10-20, 25/25 task Phase 3 đã tick trong checklist; 8 checkpoint vẫn mở và chỉ Thuận quyết định nghiệm thu.
 
 ## 13. Review coverage sau Phase 2
 
@@ -372,9 +384,9 @@ P3-D09 + P3-D10 + P3-N07 ──► P3-N08 event rehearsal ──► Checkpoint P
 
 ### Wave 1 — Contract và foundation
 
-- [ ] `P3-L01` — Bot Protocol v2: time budget và private seed — Long Trần.
-- [ ] `P3-D01` — `RoundRuleSet` và lifecycle round version hóa — Phạm Tất Đạt.
-- [ ] `P3-N01` — Resource profile, cgroup peak và Prometheus metrics — Đỗ Khôi Nguyên.
+- [x] `P3-L01` — Bot Protocol v2: time budget và private seed — Long Trần.
+- [x] `P3-D01` — `RoundRuleSet` và lifecycle round version hóa — Phạm Tất Đạt.
+- [x] `P3-N01` — Resource profile, cgroup peak và Prometheus metrics — Đỗ Khôi Nguyên.
 
 ### Checkpoint P3-A — Contract foundation
 
@@ -382,9 +394,9 @@ P3-D09 + P3-D10 + P3-N07 ──► P3-N08 event rehearsal ──► Checkpoint P
 
 ### Wave 2 — Runtime và vận hành round
 
-- [ ] `P3-L02` — Chess-clock/dynamic timing trong MatchRunner và replay — Long Trần.
-- [ ] `P3-N02` — Priority queue, worker heartbeat/capacity và pause/resume — Đỗ Khôi Nguyên.
-- [ ] `P3-D02` — Admin round-rule và operations console — Phạm Tất Đạt.
+- [x] `P3-L02` — Chess-clock/dynamic timing trong MatchRunner và replay — Long Trần.
+- [x] `P3-N02` — Priority queue, worker heartbeat/capacity và pause/resume — Đỗ Khôi Nguyên.
+- [x] `P3-D02` — Admin round-rule và operations console — Phạm Tất Đạt.
 
 ### Checkpoint P3-B — Round có thể khóa và chạy
 
@@ -392,9 +404,9 @@ P3-D09 + P3-D10 + P3-N07 ──► P3-N08 event rehearsal ──► Checkpoint P
 
 ### Wave 3 — Submission và test run ở quy mô lớn
 
-- [ ] `P3-D03` — Hash reservation, upload throttling và preflight queue visibility — Phạm Tất Đạt.
-- [ ] `P3-D04` — CSV team provisioning và credential file tải một lần — Phạm Tất Đạt.
-- [ ] `P3-N03` — Test-run quota, opponent policy và private artifacts — Đỗ Khôi Nguyên.
+- [x] `P3-D03` — Hash reservation, upload throttling và preflight queue visibility — Phạm Tất Đạt.
+- [x] `P3-D04` — CSV team provisioning và credential file tải một lần — Phạm Tất Đạt.
+- [x] `P3-N03` — Test-run quota, opponent policy và private artifacts — Đỗ Khôi Nguyên.
 
 ### Checkpoint P3-C — Participant workflows
 
@@ -402,9 +414,9 @@ P3-D09 + P3-D10 + P3-N07 ──► P3-N08 event rehearsal ──► Checkpoint P
 
 ### Wave 4 — OCI lifecycle, ranking và replay privacy
 
-- [ ] `P3-N04` — OCI layer dedup, retention, base image và duplicate flag — Đỗ Khôi Nguyên.
-- [ ] `P3-L03` — Qualification gate, adaptive K và minimum-series eligibility — Long Trần.
-- [ ] `P3-D05` — Qualification replay authorization từ dữ liệu đầu tiên — Phạm Tất Đạt.
+- [x] `P3-N04` — OCI layer dedup, retention, base image và duplicate flag — Đỗ Khôi Nguyên.
+- [x] `P3-L03` — Qualification gate, adaptive K và minimum-series eligibility — Long Trần.
+- [x] `P3-D05` — Qualification replay authorization từ dữ liệu đầu tiên — Phạm Tất Đạt.
 
 ### Checkpoint P3-D — Fairness/data policy
 
@@ -412,9 +424,9 @@ P3-D09 + P3-D10 + P3-N07 ──► P3-N08 event rehearsal ──► Checkpoint P
 
 ### Wave 5 — Public experience và authentication hardening
 
-- [ ] `P3-L04` — Replay move list, seek và historical-version compatibility — Long Trần.
-- [ ] `P3-L05` — Static public snapshots, queue/results/rules/status site — Long Trần.
-- [ ] `P3-D06` — TOTP, admin network allowlist, rate/security headers và hosted startup guard — Phạm Tất Đạt.
+- [x] `P3-L04` — Replay move list, seek và historical-version compatibility — Long Trần.
+- [x] `P3-L05` — Static public snapshots, queue/results/rules/status site — Long Trần.
+- [x] `P3-D06` — TOTP, admin network allowlist, rate/security headers và hosted startup guard — Phạm Tất Đạt.
 
 ### Checkpoint P3-E — Public/security boundary
 
@@ -422,9 +434,9 @@ P3-D09 + P3-D10 + P3-N07 ──► P3-N08 event rehearsal ──► Checkpoint P
 
 ### Wave 6 — Operations readiness
 
-- [ ] `P3-N05` — Metrics/alerts, backup-restore và incident runbooks — Đỗ Khôi Nguyên.
-- [ ] `P3-D07` — Privileged operations, anti-cheat review và appeal workflow — Phạm Tất Đạt.
-- [ ] `P3-N06` — Single-server smoke/load và pilot qualification round — Đỗ Khôi Nguyên.
+- [x] `P3-N05` — Metrics/alerts, backup-restore và incident runbooks — Đỗ Khôi Nguyên.
+- [x] `P3-D07` — Privileged operations, audit và round results hash (D27: appeals ngoài nền tảng) — Phạm Tất Đạt.
+- [x] `P3-N06` — Single-server smoke/load và pilot qualification round — Đỗ Khôi Nguyên.
 
 ### Checkpoint P3-2B — Qualification hosted PoC-ready
 
@@ -434,9 +446,9 @@ P3-D09 + P3-D10 + P3-N07 ──► P3-N08 event rehearsal ──► Checkpoint P
 
 ### Wave 7 — Finals domain và LAN control plane
 
-- [ ] `P3-L06` — Finals 8-team bracket/BO3/game-adapter scoring — Long Trần.
-- [ ] `P3-D08` — Finals control plane, seeding và LAN submission cutoff — Phạm Tất Đạt.
-- [ ] `P3-N07` — Isolated LAN deployment và single-server local recovery — Đỗ Khôi Nguyên.
+- [x] `P3-L06` — Finals 8-team bracket/BO3/game-adapter scoring — Long Trần.
+- [x] `P3-D08` — Finals control plane, seeding và LAN submission cutoff — Phạm Tất Đạt.
+- [x] `P3-N07` — Isolated LAN deployment và single-server local recovery — Đỗ Khôi Nguyên.
 
 ### Checkpoint P3-F1 — Finals chạy hoàn toàn trong LAN
 
@@ -444,9 +456,9 @@ P3-D09 + P3-D10 + P3-N07 ──► P3-N08 event rehearsal ──► Checkpoint P
 
 ### Wave 8 — Result sync và trình diễn
 
-- [ ] `P3-D09` — Signed `ResultBundle` export/import idempotent — Phạm Tất Đạt.
-- [ ] `P3-D10` — Finals bracket, schedule/results và verified replay public UI — Phạm Tất Đạt.
-- [ ] `P3-N08` — Full event rehearsal, tamper/recovery và handoff — Đỗ Khôi Nguyên.
+- [x] `P3-D09` — Signed `ResultBundle` export/import idempotent — Phạm Tất Đạt.
+- [x] `P3-D10` — Finals bracket, schedule/results và verified replay public UI — Phạm Tất Đạt.
+- [x] `P3-N08` — Full event rehearsal, tamper/recovery và handoff — Đỗ Khôi Nguyên.
 
 ### Checkpoint P3-F — Phase 3 hoàn tất
 

@@ -10,8 +10,8 @@ Mở AI tại repository root, đính kèm file này và gửi:
 
 ```text
 Đọc toàn bộ file docs/ai-context/long-tran.md và dùng nó làm context triển khai.
-Từ tasks/todo.md, chọn task đầu tiên của Long Trần đã đủ dependency và chỉ làm task đó.
-Nếu chưa đủ dependency, dừng và báo chính xác task nào đang chặn.
+Đọc trạng thái tại tasks/todo.md trước khi nhận việc mới; các task P3-L01–P3-L06 đã được tick tại main ngày 20/10.
+Chỉ xử lý review/regression hoặc task mới được Thuận giao, giữ các checkpoint Phase 3 là chưa duyệt.
 Không commit, push hoặc sửa phạm vi của người khác nếu tôi chưa yêu cầu.
 ```
 
@@ -47,7 +47,7 @@ Long là owner duy nhất của:
 Long không còn task implementation Phase 2; `P2-L02`/`P2-L03` đã hủy và phát hành lại thành `P2-T17A`/`P2-T17B`/`P2-T18`/`P2-T20` cho Thuận.
 
 Phase 3 giao Long `P3-L01`–`P3-L06`: Protocol v2, timing runtime, qualification/rating eligibility, replay
-move list, static public snapshot/site và finals deterministic domain. `P3-T01` đã hoàn tất; `P3-L01` sẵn sàng.
+move list, static public snapshot/site và finals deterministic domain. `P3-L01`–`P3-L06` đã được tick trên `main` ngày 2026-10-20; checkpoint Phase 3 còn mở.
 
 ## 4. Task theo thứ tự bắt buộc
 

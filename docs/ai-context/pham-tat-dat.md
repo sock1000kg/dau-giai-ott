@@ -10,8 +10,8 @@ Mở AI tại repository root, đính kèm file này và gửi:
 
 ```text
 Đọc toàn bộ file docs/ai-context/pham-tat-dat.md và dùng nó làm context triển khai.
-Từ tasks/todo.md, chọn task đầu tiên của Phạm Tất Đạt đã đủ dependency và chỉ làm task đó.
-Nếu dependency chưa đủ, dừng và báo blocker; không tạo contract thay Long.
+Đọc trạng thái tại tasks/todo.md trước khi nhận việc mới; các task P3-D01–P3-D10 đã được tick tại main ngày 20/10.
+Chỉ xử lý review/regression hoặc task mới được Thuận giao; checkpoint Phase 3 còn chờ Thuận duyệt.
 Không commit, push, deploy hoặc sửa game rules/bot strategy nếu tôi chưa yêu cầu.
 ```
 
@@ -44,8 +44,7 @@ Phase 1:
 Phase 2 local không còn task implementation của Đạt; `P2-D13`–`P2-D16` đã hủy và phát hành lại thành `P2-T23`–`P2-T29` cho Thuận.
 
 Phase 3 giao Đạt `P3-D01`–`P3-D10`: round/control plane, admin/submission/account workflow, replay
-authorization, auth hardening, privileged operations và finals/result sync/public UI. `P3-T01` đã hoàn tất;
-`P3-D01` sẵn sàng.
+authorization, auth hardening, privileged operations và finals/result sync/public UI. `P3-D01`–`P3-D10` đã được tick trên `main` ngày 2026-10-20; checkpoint Phase 3 còn mở.
 
 Đạt không sở hữu game rules hoặc chiến thuật bot.
 
@@ -62,7 +61,7 @@ authorization, auth hardening, privileged operations và finals/result sync/publ
 
 ### Phase 2 local
 
-Không chọn task `P2-Dxx`. Toàn bộ Phase 2 đã hoàn tất dưới lane `P2-T*` của Thuận. Đạt chỉ review contract tương thích với event log/replay verifier Phase 1 khi có yêu cầu cụ thể.
+Không chọn task `P2-Dxx`. Baseline `P2-T01`–`P2-T29` đã đóng dưới lane Thuận; extension `P2-T30`–`P2-T37`/`P2-C` còn mở. Đạt chỉ review hoặc hỗ trợ theo phân công được ghi ở task card.
 
 ### Phase 3
 
@@ -74,7 +73,7 @@ Không chọn task `P2-Dxx`. Toàn bộ Phase 2 đã hoàn tất dưới lane `P
 | 4 | `P3-D04` — bulk team provisioning | `P3-T01` |
 | 5 | `P3-D05` — qualification replay private từ dữ liệu đầu tiên | `P3-T01`, `P3-D01` |
 | 6 | `P3-D06` — TOTP/network allowlist/hosted startup guard | `P3-T01`, `P3-D04` |
-| 7 | `P3-D07` — privileged operations/cases | `P3-D01`, `P3-N02`, `P3-N04` |
+| 7 | `P3-D07` — privileged operations/audit/round hash; appeals ngoài nền tảng theo D27 | `P3-D01`, `P3-N02`, `P3-N04` |
 | 8 | `P3-D08` — finals control/LAN cutoff | `P3-L06`, `P3-D01`, `P3-D03` |
 | 9 | `P3-D09` — signed ResultBundle | `P3-D08`, `P3-N07` |
 | 10 | `P3-D10` — finals bracket/verified public UI | `P3-D09`, `P3-L05`, `P3-L06` |

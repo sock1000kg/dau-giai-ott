@@ -1,6 +1,6 @@
 # Task Checklist: Phase 1–3
 
-**Trạng thái:** Phase 1–2 hoàn tất; Phase 3 baseline đã duyệt tại `P3-T01`, Wave 1 sẵn sàng
+**Trạng thái tại `main` ngày 2026-10-20:** Phase 1 đã đóng; Phase 2 local `P2-T01`–`P2-T29` đã đóng nhưng extension `P2-T30`–`P2-T37` và Checkpoint `P2-C` còn mở. Phase 3 có 25/25 task được tick; cả 8 checkpoint vẫn chờ Thuận nghiệm thu.
 **Mức khuyến nghị Phase 3:** Cần Đinh Đức Thuận duyệt thủ công
 **Plan:** `tasks/plan.md`
 **Nguồn:** `docs/team-assignment.md`
@@ -12,6 +12,8 @@
 > Module TypeScript tạo và dùng `package.json` theo [convention package module](../docs/conventions/module-package.md). Trước `P1-T02`, verification chạy trong thư mục module bằng `npm --prefix src/<module> ...`.
 >
 > Mỗi task phải cập nhật tài liệu liên quan cùng branch với code. Chỉ tick `[x]` sau khi acceptance criteria, verification và docs sync đều hoàn tất; sau đó cập nhật diagram nếu task/checkpoint có node.
+
+> **Rà soát 2026-10-20:** `npm run typecheck`, `npm run build` và `npm run test:e2e:finals` (14/14 test) pass tại `5e6994d`. `npm test` chưa pass toàn bộ: BullMQ integration của worker timeout vì Redis `127.0.0.1:16379` từ chối kết nối; API có 447 pass/145 skip, worker có 162 pass/22 skip và 1 suite lỗi, web có 391/391 pass. Đây là bằng chứng local/test harness, chưa phải xác nhận stack LAN/server lab chạy xuyên suốt hay chữ ký phê duyệt checkpoint. Tình trạng chi tiết và dependency nằm ở các card dưới đây.
 
 ## Phase 1 — Gate 0: quyết định và workspace
 
@@ -750,7 +752,7 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 **Dependencies:** `P2-T29`.
 **Files dự kiến:** `src/platform/api/src/server.ts`, `src/platform/api/tests/server.test.ts`, `src/platform/api/package.json`, `src/platform/api/README.md`, `.env.example`.
 **Ước lượng:** M (5 file)
-**Trạng thái 2026-10-18:** đã implement bởi Phạm Tất Đạt (theo quyết định dự án, owner/reviewer Thuận) trên `datpt/feat-p3-d30-api-runtime-host` (`7a98716`): `src/platform/api/src/{main.ts,runtime/*}`, `npm run start:api`; runtime unit tests + integration thật (PostgreSQL/Redis/S3) 7/7 ×3 do Reviewer chạy. Chưa merge vào `main`, chưa tick.
+**Trạng thái 2026-10-18:** đã implement bởi Phạm Tất Đạt (theo quyết định dự án, owner/reviewer Thuận) trên `datpt/feat-p3-d30-api-runtime-host` (`7a98716`): `src/platform/api/src/{main.ts,runtime/*}`, `npm run start:api`; runtime unit tests + integration thật (PostgreSQL/Redis/S3) 7/7 ×3 do Reviewer chạy. **Cập nhật 2026-10-20:** source và script đã có trên `main`; card vẫn chưa tick, cần Thuận đối chiếu acceptance/root gates trên clean checkout. Câu “chưa merge” ở snapshot 18/10 không còn áp dụng.
 
 ### [ ] P2-T31 — Worker runtime host và graceful shutdown
 
@@ -761,7 +763,7 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 **Dependencies:** `P2-T29`.
 **Files dự kiến:** `src/platform/worker/src/main.ts`, `src/platform/worker/tests/main.test.ts`, `src/platform/worker/package.json`, `src/platform/worker/README.md`.
 **Ước lượng:** M (4 file)
-**Trạng thái 2026-10-18:** đang implement bởi Phạm Tất Đạt trên `datpt/feat-p3-d32-worker-runtime-host` (review đang chạy). Không đổi contract: test run được định tuyến bằng tra cứu `test_runs` theo `job.matchId` (xem README worker khi merge).
+**Trạng thái 2026-10-18:** đang implement bởi Phạm Tất Đạt trên `datpt/feat-p3-d32-worker-runtime-host` (review đang chạy). Không đổi contract: test run được định tuyến bằng tra cứu `test_runs` theo `job.matchId`. **Cập nhật 2026-10-20:** `src/platform/worker/src/main.ts` đã có trên `main` (commit `429ddfd` trong lịch sử); card chưa tick vì BullMQ integration/root test hiện bị chặn tại Redis `127.0.0.1:16379` và cần review acceptance riêng.
 
 ### [ ] P2-T32 — Local lifecycle coordinator
 
@@ -824,6 +826,8 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 **Ước lượng:** M (4 file)
 
 ## Checkpoint P2-C — Full-stack local demo runtime
+
+> Rà soát `main` ngày 2026-10-20: đã có entrypoint API/worker/coordinator, Dockerfiles, Compose và `scripts/demo.sh`. Mô tả trạng thái cũ ở `P2-T30`–`P2-T31` về branch chưa merge đã lỗi thời. Giữ tám task chưa tick cho đến khi đối chiếu acceptance riêng, clean-checkout browser demo, restart/teardown và root gates; root `npm test` hiện bị chặn bởi Redis `127.0.0.1:16379`.
 
 - [ ] `P2-T30`–`P2-T37` hoàn tất trên các task branch riêng và merge vào `main` sau verification.
 - [ ] Clean checkout dựng API, worker, coordinator, web và dependencies bằng một command; chỉ web gateway public ra LAN.
@@ -910,7 +914,7 @@ Parent `P3-L02` chỉ hoàn tất khi mọi phần được verify; không dùng
 **Dependencies:** `P3-L01`, `P3-D01`, `P3-N01`.
 **Files likely touched:** `src/match-runner/src/timing-policy.ts`, `src/match-runner/src/match-runner.ts`, `src/match-runner/src/event-log.ts`, `src/match-runner/src/replay.ts`, `src/match-runner/tests/timing-policy.test.ts`.
 **Estimated scope:** M (5 files)
-**Verification local 2026-10-18:** timing thuần đã merge tại PR #34; phần tích hợp còn lại hoàn tất trên `longt/feat-p3-l02-runtime-integration` (chưa commit/merge/deploy). Đã nối immutable snapshot DB → worker → BotProcess/sandbox v2 → replay, clock `performance.now`, pin rule-set identity và cleanup startup timeout. Focused runner 49, worker 14, scheduling/snapshot/start 6 và round integration 20 test pass; protocol 55, core 46 pass; root typecheck/build pass. Full runner còn 9 lỗi Windows/Python; full API còn 1 lỗi path separator của registry test; không che/skip các lỗi đó. GitNexus structured detect-changes: `partial=false`, `truncated=false`, risk critical, đã review caller/process và ghi giới hạn coverage. Chi tiết bằng chứng/giới hạn: [runtime integration report](../docs/reports/phase-3-l02-runtime-integration.md). Tick này xác nhận implementation/verification local; không thay checkpoint hoặc xác nhận đã merge.
+**Verification local 2026-10-18:** timing thuần đã merge tại PR #34; phần tích hợp còn lại khi đó hoàn tất trên `longt/feat-p3-l02-runtime-integration` (chưa commit/merge/deploy tại thời điểm ghi). Đã nối immutable snapshot DB → worker → BotProcess/sandbox v2 → replay, clock `performance.now`, pin rule-set identity và cleanup startup timeout. Focused runner 49, worker 14, scheduling/snapshot/start 6 và round integration 20 test pass; protocol 55, core 46 pass; root typecheck/build pass. Full runner khi đó còn 9 lỗi Windows/Python; full API còn 1 lỗi path separator của registry test. Chi tiết bằng chứng/giới hạn: [runtime integration report](../docs/reports/phase-3-l02-runtime-integration.md). **Cập nhật 2026-10-20:** phần tích hợp đã vào `main` qua PR #48; tick task không thay checkpoint hay xác nhận deploy.
 
 ### [x] P3-N02 — Priority queue, worker heartbeat/capacity và pause/resume
 
@@ -1101,17 +1105,17 @@ server-lab/CDN AC-14 evidence; finals uses the prepared public DTO interface.
 **Hoàn tất:** 2026-10-18 — Alerting, Grafana dashboard, backup-restore và incident runbooks: `ops/prometheus/rules.yml` định nghĩa 8 alert rules (`QueueAgeHigh`, `WorkerHeartbeatMissing`, `InfraFailureSpike`, `FinalizeStuck`, `SandboxResourcePressure`, `DeadLetterQueueNotEmpty`, `BotForfeitSpike`, `WorkerCapacityThrottled`); `ops/grafana/dashboards/tournament.json` trực quan hoá throughput, queue age, active worker pool, bot forfeits by reason, host CPU/RAM và bot cgroup memory.peak; `scripts/backup-local.sh` và `scripts/restore-local.sh` sao lưu/khôi phục PostgreSQL, MinIO storage, SHA-256 manifest và xác thực toàn vẹn audit events/matches; `docs/runbooks/production-operations.md` quy định 4 emergency playbooks có Owner/Action (Pause upload, Read-only public mode, Secret rotation, Thông báo sự cố/đền bù), bảng tự đánh giá OWASP Top 10 và biên bản diễn tập có chữ ký xác nhận; `ops-alerts-backup.test.ts` 6/6 pass, worker typecheck/build clean, bot protocol 27/27 pass.
 
 
-### [x] P3-D07 — Privileged operations, anti-cheat review và appeal workflow
+### [x] P3-D07 — Privileged operations, audit và round results hash
 
 **Owner:** Phạm Tất Đạt
-**Mô tả:** Hoàn thiện thao tác BTC còn thiếu: revoke/suspend, retry/cancel lỗi hạ tầng, review anomaly/duplicate và xử lý khiếu nại mà không sửa lịch sử.
-**Acceptance criteria:** (1) mọi privileged action có RBAC, reason, correlation ID và append-only before/after audit; (2) rerun chỉ cho infra failure, không duplicate result/Elo, queue override được công khai; (3) anomaly/duplicate/appeal case có evidence/status/decision, round hash được công bố và lịch sử không bị xóa.
+**Mô tả:** Hoàn thiện thao tác BTC: revoke/suspend, retry/cancel lỗi hạ tầng, audit bất biến và công bố round results hash. Theo quyết định D27 ngày 2026-10-18, khiếu nại xử lý ngoài nền tảng; task này không triển khai case workflow.
+**Acceptance criteria:** (1) mọi privileged action có RBAC, reason, correlation ID và append-only before/after audit; (2) rerun chỉ cho infra failure, không duplicate result/Elo, queue override được công khai; (3) round results hash được công bố, lịch sử không bị xóa.
 **Verification:** `npm test --workspace @ott/platform-api -- operations`; unauthorized/invalid-rerun/audit immutability mutations fail; export audit/case fixtures không chứa seed, credential hoặc private stderr.
 **Dependencies:** `P3-D01`, `P3-N02`, `P3-N04`.
 **Files likely touched:** `src/platform/api/migrations/0013_operations_cases.sql`, `src/platform/api/src/modules/operations/service.ts`, `src/platform/api/src/modules/operations/routes.ts`, `src/platform/api/tests/operations.integration.test.ts`, `src/platform/web/src/features/operations/OperationsConsole.tsx`.
 **Estimated scope:** M (5 files)
 **Hoàn tất:** 2026-10-18 — Migration `0013_operations_cases.sql` (audit_events/operations_case_events/queue_overrides append-only bằng trigger, `operations_cases` state machine, `match_outbox.generation`, `qualification_rounds.results_hash`), module `src/modules/operations/` (suspend/unsuspend, revoke, cancel, rerun chỉ cho infra failure, cases + evidence/status/decision, audit read/export qua sanitizer, public `GET /api/v1/public/queue-overrides`), round results hash lúc publish, `/admin/operations` trên web. Đã chạy: `npm test --workspace @ott/platform-api -- operations` = 66 passed, 16 skipped (integration, 3 file passed, 1 skipped); full api = 243 passed, 87 skipped (22 file passed, 15 skipped); web = 124 passed (17 file); typecheck toàn workspace và build web pass; 5 mutation không-DB (bỏ RBAC, nhận failure_reason ngoài allowlist, rerun khi round settled, bỏ sanitizer, bỏ idempotency) đều làm test fail rồi khôi phục. **Integration:** Reviewer chạy `operations.integration.test.ts` ở loop 23 = 80/82 passed (2 expectation sai về số audit row, đã sửa trong test); chạy lại sau khi sửa, lặp ×3, full API suite và mutation bỏ audit-immutability trigger: NOT RUN, đang chờ Reviewer (xem `.relayer/commands.md`). Giới hạn đã biết: rerun bị từ chối khi round đã `FINALIZED`/đã áp dụng Elo.
-**Điều chỉnh 2026-10-18 (D27):** anomaly/duplicate/appeal cases (acceptance (3)) removed by the project owner's decision — appeals handled outside the platform; audit immutability, privileged actions, queue overrides and round results hash are retained; requirement §17.6 and architecture invariant (phase-3 §214 'Operations case') need Thuận's update.
+**Điều chỉnh 2026-10-18 (D27):** anomaly/duplicate/appeal cases removed by project owner; appeals handled outside platform. Architecture Phase 3 §214 đã cập nhật. Requirement §17.6 vẫn quy định cửa sổ khiếu nại và rerun chỉ khi có lỗi hạ tầng; quy trình ngoài nền tảng cần biên bản BTC trước khi duyệt checkpoint liên quan.
 
 ### [x] P3-N06 — Single-server smoke/load và pilot qualification round
 
@@ -1206,6 +1210,8 @@ server-lab/CDN AC-14 evidence; finals uses the prepared public DTO interface.
 **Files likely touched:** `tests/e2e/finals.test.ts`, `tests/e2e/finals.config.ts`, `scripts/run-finals-rehearsal.sh`, `docs/runbooks/finals-lan.md`, `docs/reports/finals-rehearsal.md`.
 **Estimated scope:** M (5 files)
 **Hoàn tất:** 2026-10-20 — Full event rehearsal, tamper/recovery và handoff: Tạo kịch bản diễn tập `tests/e2e/finals.test.ts` (14/14 tests) và config `tests/e2e/finals.config.ts`; điều phối script `scripts/run-finals-rehearsal.sh` tích hợp vào `package.json` (`npm run test:e2e:finals`); cập nhật sổ tay `docs/runbooks/finals-lan.md` bổ sung 4 vai trò vận hành, Ed25519 Key Ceremony, Emergency Rollback và checklist bàn giao; hoàn thiện báo cáo diễn tập `docs/reports/finals-rehearsal.md` với config hashes và form ký duyệt của Thuận. Đáp ứng đủ 3 AC: (1) AC-09/20 pass E2E xuyên suốt từ LAN cutoff 8 đội, 7 series BO3 adapter, bundle Ed25519 canonicalization RFC 8785, import proof và replay publication; (2) tamper detection chặn đứng payload giả mạo/sai chữ ký, worker crash phục hồi theo generation lease chống duplicate results, không publish dữ liệu rác; (3) bàn giao checklist, operator roles và rollback sẵn sàng.
+
+**Giới hạn xác minh 2026-10-20:** Lệnh rehearsal chạy Vitest với dữ liệu mô phỏng (`simulateTournament`), không dựng Compose LAN, không thực thi trận finals qua worker thật và không tự chứng minh một lượt export/import giữa hai deployment. Test pass 14/14 tại `5e6994d`; Checkpoint `P3-F1`/`P3-F` vẫn mở và chưa có chữ ký duyệt độc lập. Bảng ký trong báo cáo là mẫu/hồ sơ do task tạo, không thay thế quyết định của Thuận.
 
 ## [ ] Checkpoint P3-F — Phase 3 hoàn tất
 

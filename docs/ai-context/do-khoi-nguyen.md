@@ -10,8 +10,8 @@ Mở AI tại repository root, đính kèm file này và gửi:
 
 ```text
 Đọc toàn bộ file docs/ai-context/do-khoi-nguyen.md và dùng nó làm context triển khai.
-Từ tasks/todo.md, chọn task đầu tiên của Đỗ Khôi Nguyên đã đủ dependency và chỉ làm task đó.
-Nếu Bot Protocol/schema/fixtures chưa khóa hoặc dependency chưa đủ, dừng và báo blocker.
+Đọc trạng thái tại tasks/todo.md trước khi nhận việc mới; các task P3-N01–P3-N08 đã được tick tại main ngày 20/10.
+Chỉ xử lý review/regression hoặc task mới được Thuận giao; rehearsal mô phỏng chưa thay thế nghiệm thu LAN thật.
 Không commit, push hoặc sửa core/runner nếu tôi chưa yêu cầu.
 ```
 
@@ -45,8 +45,7 @@ Tạo các bot Python làm consumer độc lập của Bot Protocol v1:
 Bot phải hoạt động từ schema/fixtures của Long, không được import implementation TypeScript của core hoặc runner.
 
 Phase 3 giao Nguyên `P3-N01`–`P3-N08`: resource enforcement/metrics, single-host worker, test run, OCI
-lifecycle, observability/backup, server-lab load/recovery, LAN deployment và rehearsal. `P3-T01` đã hoàn tất;
-`P3-N01` sẵn sàng.
+lifecycle, observability/backup, server-lab load/recovery, LAN deployment và rehearsal. `P3-N01`–`P3-N08` đã được tick trên `main` ngày 2026-10-20; checkpoint Phase 3 còn mở.
 
 ## 4. Task theo thứ tự và nhánh song song
 

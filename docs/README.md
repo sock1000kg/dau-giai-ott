@@ -1,6 +1,6 @@
 # Tài liệu dự án đấu giải OTT
 
-> Cập nhật: 14/10/2026
+> Cập nhật trạng thái: 20/10/2026 (`main` tại `5e6994d`)
 >
 > Đây là mục lục và quy tắc quản trị tài liệu chính thức. AI phải đọc file này trước khi kết hợp nhiều tài liệu.
 
@@ -24,6 +24,15 @@ Nếu hai nguồn sự thật khác loại mâu thuẫn nhau, AI phải dừng t
 
 ## 2. Trạng thái hiện tại
 
+| Phần việc | Tiến độ theo `tasks/todo.md` | Cổng nghiệm thu |
+| --- | --- | --- |
+| Phase 1 | 26/26 task | `P1-A`, `P1-B`, `P1-C` đã đóng |
+| Phase 2 local | `P2-T01`–`P2-T29` đã hoàn tất | `P2-B` đã đóng |
+| Phase 2 demo runtime extension | `P2-T30`–`P2-T37` còn mở; entrypoint, Compose, Dockerfiles và demo script đã có trên `main` | `P2-C` chờ clean-checkout/browser/restart verification |
+| Phase 3 | 25/25 task đã tick | 0/8 checkpoint được Thuận duyệt |
+
+`npm run typecheck`, `npm run build` và rehearsal finals 14/14 pass ngày 20/10. Root `npm test` chưa pass vì BullMQ worker integration không kết nối được Redis `127.0.0.1:16379`; API 447 pass/145 skip, worker 162 pass/22 skip và 1 suite lỗi, web 391 pass. Rehearsal là test mô phỏng, chưa xác nhận toàn tuyến LAN/server lab hoặc phê duyệt `P3-F`. Chi tiết và trạng thái task/checkpoint phải đọc tại [checklist](../tasks/todo.md).
+
 - `P1-T01` đã hoàn tất: ADR-0002, Engine API v1, Bot Protocol v1, schema và fixtures đã khóa.
 - `main` là nhánh tích hợp và nguồn deploy. `develop` được giữ lại như nhánh legacy sau lần chuyển convention ngày 2026-10-12 và không còn là base/target branch.
 - Ngày 2026-10-09 owner Phase 1 đổi theo lane: Long Trần làm core/protocol (`P1-L*`), Đỗ Khôi Nguyên làm bot Python (`P1-N*`), Phạm Tất Đạt làm MatchRunner (`P1-D*`). Backend local Phase 2 được phát hành cho Thuận dưới `P2-T02`–`P2-T15` ngày 2026-10-12; ngày 2026-10-13 toàn bộ frontend, replay và E2E Phase 2 còn lại cũng được phát hành lại cho Thuận dưới `P2-T17A`, `P2-T17B`, `P2-T18`–`P2-T29`. Deploy cloud không thuộc phạm vi Phase 2 hiện tại. Bảng lịch sử ID: [`tasks/plan.md` mục 2.2.1](../tasks/plan.md).
@@ -31,9 +40,7 @@ Nếu hai nguồn sự thật khác loại mâu thuẫn nhau, AI phải dừng t
 - Các feature branch remote hiện có đều đã là tổ tiên của `main`; `main` còn chứa validator protocol, lifecycle/hash/event core, BotProcess và CLI mới hơn `develop`.
 - Source root là [`src/`](../src/README.md); Phase 1 đã có implementation cho game-core, bot-protocol, MatchRunner và Python bots.
 - Kế hoạch GitNexus ngày 08/10 trong `docs/plans/` đã bị supersede; không dùng task ID hoặc owner trong tài liệu đó.
-- Phase 3 đã được Đinh Đức Thuận duyệt baseline requirement/ADR/contract tại `P3-T01` ngày 14/10/2026.
-  Wave 1 (`P3-L01`, `P3-D01`, `P3-N01`) sẵn sàng nhận việc; mọi implementation/checkpoint còn lại vẫn mở
-  và chỉ được tick sau verification trong `tasks/todo.md`.
+- Phase 3 baseline requirement/ADR/contract được duyệt tại `P3-T01` ngày 14/10/2026. Các task implementation đã có trạng thái trong checklist; checkpoint vẫn chờ Thuận review bằng chứng thực tế trước khi deploy.
 
 ## 3. Quy trình branch thống nhất
 

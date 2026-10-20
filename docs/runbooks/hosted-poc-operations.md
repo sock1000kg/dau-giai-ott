@@ -25,7 +25,7 @@ Trước khi mở hệ thống tiếp nhận bài nộp hoặc bắt đầu thi 
    npm run db:migrate --workspace @ott/platform-api
    npm test --workspace @ott/platform-api -- migrations-registry
    ```
-   Đảm bảo toàn bộ 15 migrations (`0001_initial` đến `0015_test_runs`) đã được áp dụng và sắp xếp tăng dần.
+   Đối chiếu registry hiện tại trong `src/platform/api/src/db/schema.ts`; tại `main` ngày 2026-10-20 có 19 migrations (`0001_initial` đến `0019_match_protocol_v2`).
 
 ---
 
@@ -113,7 +113,7 @@ SELECT count(*) FROM ratings_ledger;
 
 Đợt chạy vòng loại pilot được công nhận hợp lệ để bước sang Phase finals khi:
 - [x] AC-13 đến AC-19 và AC-21 đến AC-23 đều pass hoặc có biên bản xác nhận từ BTC.
-- [x] Báo cáo số đo năng lực server lab [`docs/reports/phase-3-capacity.md`](file:///d:/5th%20semester/network_programming/dau-giai-ott/docs/reports/phase-3-capacity.md) được hoàn tất.
+- [ ] Báo cáo [năng lực Phase 3](../reports/phase-3-capacity.md) hiện là kết quả mô phỏng; cần bổ sung log đo trên server lab thật trước `P3-2B`.
 - [x] Không có bất kỳ tình trạng mất bài nộp, ghi đúp điểm Elo hay rò rỉ dữ liệu nhạy cảm.
 - [x] Trưởng ban kỹ thuật Đinh Đức Thuận ký duyệt biên bản kiểm thử.
 

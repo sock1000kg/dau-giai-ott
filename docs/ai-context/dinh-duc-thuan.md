@@ -10,7 +10,7 @@ Mở AI tại repository root, đính kèm file này và gửi đúng câu sau:
 
 ```text
 Đọc toàn bộ file docs/ai-context/dinh-duc-thuan.md và dùng nó làm context điều hành.
-Gate P3-0/P3-T01 đã đạt ngày 14/10/2026. Đối chiếu checkpoint Phase 3 đang được yêu cầu với
+Gate P3-0/P3-T01 đã đạt ngày 14/10/2026. Tại main ngày 20/10, 25/25 task Phase 3 đã tick nhưng 8 checkpoint còn mở. Đối chiếu checkpoint đang được yêu cầu với
 tasks/todo.md, requirement, ADR-0008–0010 và contract liên quan.
 Không nhận implementation P3-L*, P3-N* hoặc P3-D* thay ba owner.
 Không push hoặc deploy nếu tôi chưa yêu cầu.
@@ -40,11 +40,11 @@ Nếu `origin/main` chưa tồn tại hoặc working tree đang có thay đổi 
 
 - `P1-T01` đã hoàn tất; bảo vệ các contract/ADR đã khóa khỏi thay đổi không được review.
 - Xác nhận contract/checkpoint và xử lý mâu thuẫn giữa các tài liệu.
-- `P2-T01`–`P2-T29` đã hoàn tất; không còn task implementation Phase 2 local đang mở. Kiểm tra clean checkout và xác nhận Checkpoint `P2-B` là bước cuối.
+- `P2-T01`–`P2-T29` và Checkpoint `P2-B` đã hoàn tất. Extension `P2-T30`–`P2-T37`/`P2-C` còn mở; đối chiếu runtime đã merge trên `main` với acceptance, clean-checkout browser demo và restart/teardown trước khi tick.
 - Dùng [Solution Architecture Phase 2](../architecture/solution-architecture-phase-2.md), [SAD OCI Bot Submission](../architecture/sad-oci-bot-submissions.md), ADR-0005 và ADR-0006 làm ranh giới thực thi; `P2-T15` là cổng benchmark resource profile trước khi mở nhận bot của đội thi.
 - Phase 2 local và Checkpoint `P2-B` đã hoàn tất sau detached clean-worktree verification; deploy cloud bị loại khỏi phạm vi.
 - Không thêm CI/CD, cloud infrastructure, production secrets hoặc deploy stage vào Phase 2 hiện tại.
-- `P3-T01` đã hoàn tất; implementation `P3-L*`, `P3-N*`, `P3-D*` thuộc Long, Nguyên và Đạt.
+- `P3-T01` và 24 task implementation `P3-L*`, `P3-N*`, `P3-D*` đã được tick; không đồng nhất tick task với duyệt checkpoint.
 - D-14–D-30 đã duyệt. Thuận review amendment và các checkpoint `P3-A`–`P3-F`; không tick bằng báo cáo chưa có verification.
 - Dùng [Solution Architecture Phase 3](../architecture/solution-architecture-phase-3.md), ADR-0008–0010 và contract Phase 3 làm baseline review.
 
@@ -77,7 +77,7 @@ Nếu có mâu thuẫn, AI phải nêu rõ hai nguồn và đề xuất lựa ch
 | `P2-T16` — rebaseline ownership/execution loop | Đã hoàn tất ngày 13/10/2026 |
 | `P2-T17A`–`P2-T29` — frontend, replay, E2E local | Đã hoàn tất; không tạo task mới ngoài phạm vi đã duyệt |
 | Duyệt Checkpoint `P2-B` | Đã hoàn tất; detached clean-worktree verification pass |
-| `P3-T01` — khóa D-14–D-30, ADR và contract | Đã hoàn tất ngày 14/10/2026; Wave 1 sẵn sàng |
+| `P3-T01` — khóa D-14–D-30, ADR và contract | Đã hoàn tất ngày 14/10/2026; 25/25 task Phase 3 đã tick nhưng 8 checkpoint còn mở |
 | Duyệt `P3-A`–`P3-2B` | Chỉ sau task/checkpoint dependency có fresh test/build/security evidence |
 | Duyệt `P3-F1` và `P3-F` | Chỉ sau `P3-2B`, LAN recovery/signed bundle rehearsal và docs sync |
 

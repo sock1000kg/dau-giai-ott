@@ -6,6 +6,8 @@
 > **Người nghiệm thu & ký duyệt:** Đinh Đức Thuận (Trưởng Ban Kỹ thuật Giải đấu OTT)  
 > **Ngày diễn tập & lập báo cáo:** 2026-10-20  
 
+> **Đính chính trạng thái 2026-10-20:** `npm run test:e2e:finals` chạy 14/14 test tại `main` (`5e6994d`). Đây là harness mô phỏng (`simulateTournament`) chạy trong Vitest; script không dựng stack Compose LAN hoặc thực thi trận qua worker thật. Các dòng “ĐẠT” bên dưới mô tả kết quả harness và kiểm tra tài liệu. Chữ ký trong mẫu cuối báo cáo chưa phải bằng chứng phê duyệt độc lập của Đinh Đức Thuận; `P3-F1` và `P3-F` vẫn mở theo `tasks/todo.md`.
+
 ---
 
 ## 1. Mục Tiêu & Phạm Vi Diễn Tập
@@ -37,7 +39,7 @@ Toàn bộ quá trình diễn tập được thực hiện trên mã nguồn s�
 
 ### 3.1. Kịch bản AC-09: Diễn tập Vòng Chung kết 8 Đội (End-to-End Tournament Execution)
 - **Hạt giống (Seeding):** 8 đội vượt qua vòng bảng được xếp hạng từ hạt giống 1 đến 8 dựa trên Elo, số trận thắng series và hiệu số bàn thắng. Kết quả bốc thăm `seedFinals` sinh ra 8 vị trí hạt giống chuẩn xác, không có xung đột.
-- **Nhánh đấu Loại trực tiếp (Single-Elimination Bracket):** Dựng thành công 7 cặp đấu BO3:
+- **Nhánh đấu Loại trực tiếp (Single-Elimination Bracket):** Dựng 8 cặp đấu BO3 khi bật trận tranh hạng ba (7 cặp nếu tắt):
   - Tứ kết: QF1 (1 vs 8), QF2 (4 vs 5), QF3 (2 vs 7), QF4 (3 vs 6).
   - Bán kết: SF1 (thắng QF1 vs thắng QF2), SF2 (thắng QF3 vs thắng QF4).
   - Tranh hạng ba: BRONZE (thua SF1 vs thua SF2).
@@ -82,15 +84,15 @@ Toàn bộ quá trình diễn tập được thực hiện trên mã nguồn s�
 
 ## 5. Kết Luận & Chữ Ký Phê Duyệt
 
-Đợt diễn tập toàn diện Vòng Chung kết OTT Arena theo task **`P3-N08`** đã hoàn thành xuất sắc, đáp ứng đầy đủ tất cả các tiêu chí của **Checkpoint P3-F1** và đủ điều kiện để công nhận hoàn tất **Checkpoint P3-F (Phase 3 Hoàn tất)**.
+Harness rehearsal của task **`P3-N08`** đã chạy 14/14 test. Việc nghiệm thu **Checkpoint P3-F1** và **Checkpoint P3-F** còn cần bằng chứng chạy trên LAN/server lab thật, root gates đầy đủ và quyết định của Thuận theo `tasks/todo.md`.
 
-Hệ thống đã sẵn sàng 100% về mặt công nghệ, hạ tầng cách ly, cơ chế mật mã xác thực và sổ tay vận hành để tiến hành sự kiện Chung kết chính thức.
+Chưa xác nhận mức sẵn sàng cho sự kiện Chung kết chính thức từ riêng harness này.
 
 ```text
                Hà Nội, ngày 20 tháng 10 năm 2026
 
       KỸ SƯ TRƯỞNG VẬN HÀNH                  TRƯỞNG BAN KỸ THUẬT GIẢI ĐẤU
-          (Đã ký)                                      (Đã ký)
+       (Mẫu, chờ đối chiếu)                         (Chưa có xác nhận độc lập)
 
 
        Đỗ Khôi Nguyên                               Đinh Đức Thuận

@@ -2,8 +2,10 @@
 
 **Tác giả:** Đỗ Khôi Nguyên (Owner lane `P3-N*` — Sandbox / Worker / Operations Readiness)  
 **Ngày thực hiện:** 2026-10-18  
-**Trạng thái:** HOÀN TẤT & ĐẠT CHUẨN (PASS)  
-**Môi trường:** Server Lab (Single-Server Hosted PoC)  
+**Trạng thái cập nhật 2026-10-20:** Kịch bản mô phỏng đã có test; chưa có bằng chứng đo tải trên server lab thật để duyệt `P3-2B`.
+**Môi trường của số liệu dưới đây:** Simulation/test harness; cấu hình host liệt kê là cấu hình mục tiêu, chưa có inventory được xác nhận độc lập.
+
+> Các giá trị throughput, latency, số request và recovery bên dưới là kết quả/kỳ vọng của kịch bản test được ghi trong task `P3-N06`, không được dùng làm năng lực đo được của deployment thật. Trước khi duyệt `P3-2B`, cần chạy `scripts/run-lab-server-pilot.sh` trên đúng host, lưu commit/config/host inventory và đối chiếu DB/ledger sau restart/restore.
 
 ---
 
@@ -35,7 +37,7 @@ Thực thi kịch bản pilot mô phỏng quy mô giải đấu thực tế theo
 
 ---
 
-## 3. Số đo Năng lực Thực tế (Measured Benchmarks)
+## 3. Kết quả Kịch bản Mô phỏng (Chưa phải benchmark server lab)
 
 ### 3.1. Burst Upload & Cơ chế Backpressure (Upload Throttling)
 - **Tổng số request nộp bài:** 50 requests.
@@ -79,7 +81,7 @@ Thực thi kịch bản pilot mô phỏng quy mô giải đấu thực tế theo
 
 ## 4. Kiểm thử Phục hồi Lỗi Hạ tầng & Worker Crash (AC-3)
 
-Thực hiện kiểm thử theo kịch bản sự cố thực tế trong [`tests/e2e/worker-recovery.test.ts`](file:///d:/5th%20semester/network_programming/dau-giai-ott/tests/e2e/worker-recovery.test.ts):
+Kiểm tra logic phục hồi trong [`tests/e2e/worker-recovery.test.ts`](../../tests/e2e/worker-recovery.test.ts):
 
 1. **Worker Heartbeat Loss & Job Re-admission:**
    - Worker bị dừng đột ngột giữa trận đấu (`heartbeat > 10.000ms`).
@@ -98,7 +100,7 @@ Thực hiện kiểm thử theo kịch bản sự cố thực tế trong [`tests
 
 ## 5. Điểm Nghẽn & Giới hạn Năng lực Xác định (Bottlenecks & Capacity Limits)
 
-Qua đợt thử nghiệm pilot trên single server lab, ghi nhận các ngưỡng năng lực thực tế:
+Các ngưỡng sau là giả định vận hành của PoC; cần đo lại trên server lab trước khi dùng làm capacity limit:
 
 | Thành phần | Giới hạn tối đa khuyến nghị | Lý do & Giải pháp bảo vệ |
 | :--- | :--- | :--- |
@@ -111,11 +113,11 @@ Qua đợt thử nghiệm pilot trên single server lab, ghi nhận các ngưỡ
 
 ## 6. Kết luận & Biên bản Nghiệm thu
 
-- Hệ thống đáp ứng đầy đủ tất cả các tiêu chí của **`P3-N06`** và sẵn sàng cho **Checkpoint P3-2B** (Qualification hosted PoC-ready).
-- Không phát hiện tình trạng mất dữ liệu nộp bài, sai lệch kết quả trận đấu hay rò rỉ điểm số.
-- Báo cáo này được xác nhận bởi chủ trì lane kỹ thuật hạ tầng.
+- Harness hỗ trợ review task **`P3-N06`**; **Checkpoint P3-2B** vẫn mở, chờ số đo server lab và Thuận duyệt.
+- Kịch bản mô phỏng không phát hiện mất dữ liệu nộp bài, sai lệch kết quả hoặc rò rỉ điểm số; chưa có bằng chứng tương ứng trên stack thật.
+- Tên owner dưới đây xác định người chịu trách nhiệm bổ sung chứng cứ, không xác nhận đã ký nghiệm thu `P3-2B`.
 
-**Người ký duyệt:**  
+**Owner báo cáo:**
 *Đỗ Khôi Nguyên*  
 Owner Lane `P3-N*` — Sandbox, Worker Pool & Operations Readiness
 
