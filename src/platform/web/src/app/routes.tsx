@@ -6,6 +6,7 @@ import { ReplayCatalog } from '../features/replay-admin/ReplayCatalog.tsx';
 import { PrivateReplayPage } from '../pages/PrivateReplayPage.tsx';
 import { RoundAdminPage } from '../features/round-admin/RoundAdminPage.tsx';
 import { OperationsConsole } from '../features/operations/OperationsConsole.tsx';
+import { FinalsPage } from '../features/finals/FinalsPage.tsx';
 import { useAuth } from '../features/auth/AuthProvider.tsx';
 import { HomePage } from '../features/home/HomePage.tsx';
 import { AppShellLayout } from '../ui/AppShellLayout.tsx';
@@ -45,6 +46,8 @@ export function AuthRoutes() {
 
   const role = auth.state.principal.role;
   const path = window.location.pathname;
+  if (path === '/finals') return <FinalsPage />;
+
   return (
     <AppShellLayout role={role} pathname={path} onLogout={auth.logout}>
       {renderAuthenticated(role, path)}
