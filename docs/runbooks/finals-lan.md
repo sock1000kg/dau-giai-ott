@@ -219,3 +219,76 @@ Khi có sự cố kỹ thuật tại bàn thi đấu (ví dụ: máy đội thi 
 - **Người thực hiện:** Đỗ Khôi Nguyên (Kỹ sư Trưởng Hạ tầng & Vận hành)
 - **Người phê duyệt:** Đinh Đức Thuận (Trưởng Ban Kỹ thuật Giải đấu OTT)
 
+
+
+---
+
+## 7. Phân Định Vai Trò Vận Hành & Trách Nhiệm (Operator Roles & Responsibilities Matrix) — P3-N08
+
+Nhằm bảo đảm tính minh bạch, an toàn tuyệt đối và phân quyền trách nhiệm rõ ràng trong ngày thi đấu chung kết, các vai trò được phân định như sau:
+
+| Vai trò | Nhân sự phân công | Nhiệm vụ chính | Phạm vi quyền hạn |
+| :--- | :--- | :--- | :--- |
+| **Trưởng Ban Tổ Chức (Tournament Director)** | Đinh Đức Thuận | Chỉ đạo toàn diện giải đấu; ra quyết định cuối cùng về tranh chấp, dừng trận khẩn cấp hoặc rerun hạ tầng. | Toàn quyền quyết định giải đấu, ký duyệt biên bản diễn tập và nghiệm thu Checkpoint P3-F. |
+| **Kỹ sư Vận hành LAN & Trọng tài Hệ thống (LAN Ops Lead & Referee)** | Đỗ Khôi Nguyên | Khởi tạo môi trường Docker offline, giám sát worker heartbeat, tài nguyên cgroup, điều phối hàng đợi và khôi phục sự cố. | Quản trị stack `deploy/lan/compose.yml`, thực thi lệnh rerun hạ tầng khi được duyệt, kích hoạt backup/restore. |
+| **Quản trị viên Khóa Mật mã Ed25519 (Key Custodian)** | Phạm Tất Đạt | Quản lý cặp khóa Ed25519 trên thiết bị air-gapped riêng biệt, thực hiện nghi thức ký số ResultBundle sau mỗi loạt trận. | Nắm giữ private key Ed25519, ký manifest, bàn giao signed bundle cho Cloud Sync Engineer. |
+| **Kỹ sư Cầu nối Dữ liệu Online (Cloud Sync Engineer)** | Trần Hoàng Long | Tiếp nhận ResultBundle có chữ ký số qua phương tiện USB vật lý, thực hiện import vào cổng thông tin trực tuyến và đối soát proof. | Quản trị API import công khai, kích hoạt công bố replay hợp lệ, giám sát badge `VERIFIED`. |
+
+---
+
+## 8. Lễ Ký Số & Quản Trị Khóa Ed25519 (Key Ceremony & Security Protocol)
+
+### 8.1. Nghi thức Sinh Khóa (Key Generation Ceremony)
+1. Cặp khóa Ed25519 được sinh trên một máy tính quản trị air-gapped hoàn toàn ngắt mạng (`no-wifi`, `no-bluetooth`).
+2. Khóa riêng (`private_key.pem`) được lưu trữ trong phân vùng mã hóa AES-256 trên USB phần cứng của Key Custodian.
+3. Khóa công khai (`public_key.pem`) và mã nhận diện khóa (`keyId`, ví dụ: `ott-finals-2026-key1`) được xuất và cung cấp cho nền tảng web công khai trước ngày diễn ra sự kiện.
+
+### 8.2. Nghi thức Ký Số ResultBundle (Signing Ceremony)
+1. Sau khi trận đấu hoặc loạt trận chung kết hoàn tất, hệ thống LAN tự động xuất thư mục artifact gồm:
+   - `bracket.json`: Nhánh đấu và kết quả tiến bước.
+   - `schedule.json`: Lịch thi đấu và trạng thái series.
+   - `standings.json`: Bảng xếp hạng 8 đội hạt giống.
+   - `series/*.json`: Chi tiết tỷ số adapter và game breakdown.
+   - `replays/*.json`: Dữ liệu replay spectator.
+2. Script xuất gói tạo `manifest.json` chứa danh sách SHA-256 của từng file và chuẩn hóa theo chuẩn RFC 8785.
+3. Key Custodian nạp private key, thực thi script ký số Ed25519 sinh ra trường `signature` (chuỗi Base64).
+4. Gói dữ liệu `bundle.tar.gz` hoàn chỉnh được chuyển giao sang cổng Internet qua USB kiểm dịch.
+
+### 8.3. Quy trình Thu Hồi Khóa Khẩn Cấp (Emergency Key Revocation & Rollback)
+- **Kịch bản:** Khi phát hiện USB chứa private key bị thất lạc, nghi ngờ lộ khóa hoặc xuất hiện bundle có chữ ký trái phép.
+- **Hành động Ngay lập tức:**
+  1. Key Custodian phát lệnh `KEY_REVOCATION_ALERT` cho toàn bộ ban kỹ thuật.
+  2. Kỹ sư Cloud cấu hình `REVOKED_KEYS` trên API server công khai để vô hiệu hóa ngay lập tức `keyId` tương ứng.
+  3. Mọi bundle mới mang `keyId` bị thu hồi sẽ bị từ chối với lỗi `KEY_REVOKED_UNTRUSTED`.
+  4. Hệ thống giữ nguyên bản snapshot sạch gần nhất trước thời điểm lộ khóa (`stale-state retention`).
+  5. Sinh cặp khóa mới và công bố khóa công khai thay thế theo quy trình khẩn cấp.
+
+---
+
+## 9. Checklist Truyền Thông & Xử Lý Khẩn Cấp (Communication & Emergency Runbook)
+
+### 9.1. Các Mốc Trạng Thái Sự Kiện & Bản Tin Thông Báo
+- **Mốc 1 (`FINALS_CUTOFF`):** Chốt danh sách 8 đội vào chung kết từ vòng bảng; thông báo trên loa hội trường và hiển thị hạt giống trên màn chiếu.
+- **Mốc 2 (`SERIES_STARTED`):** Bắt đầu loạt trận BO3; kiểm tra trạng thái bot của 2 đội, xác nhận kết nối mạng LAN.
+- **Mốc 3 (`SERIES_FINALIZED`):** Kết thúc loạt trận; trọng tài xác nhận kết quả, máy tính LAN chốt tỷ số.
+- **Mốc 4 (`BUNDLE_EXPORTED` & `SIGNED`):** Xuất bundle dữ liệu và ký số Ed25519.
+- **Mốc 5 (`BUNDLE_VERIFIED` & `REPLAY_PUBLISHED`):** Dữ liệu được nạp vào cổng trực tuyến, badge `VERIFIED` xanh lá hiển thị cùng mã hash SHA-256; khán giả toàn quốc xem replay.
+
+### 9.2. Kênh Liên Lạc & Hotline Kỹ Thuật Nội Bộ
+- Kênh bộ đàm / Walkie-Talkie kênh 3 (Kỹ thuật Hội trường).
+- Nhóm thông báo sự cố tức thì (Offline Matrix / Telegram LAN bot).
+- Hotline chỉ đạo khẩn cấp: Trưởng Ban Kỹ thuật (Đinh Đức Thuận) — Máy nội bộ 101.
+
+---
+
+## 10. Checklist Nghiệm Thu & Bàn Giao Checkpoint P3-F (Final Rehearsal Handoff Checklist)
+
+Trước khi đóng giải và chuyển sang trạng thái vận hành chính thức, toàn bộ các mục sau phải được kiểm tra và tích duyệt:
+
+- [x] **AC-09/20 End-to-End Rehearsal:** Diễn tập trọn vẹn kịch bản từ cutoff LAN → thi đấu 7 loạt trận BO3 → ký bundle Ed25519 → import online → hiển thị proof và replay công khai.
+- [x] **Tamper Detection Drill:** Thử nghiệm cố ý sửa 1 byte dữ liệu hoặc chữ ký giả mạo; xác nhận hệ thống từ chối import và giữ nguyên dữ liệu sạch trước đó.
+- [x] **Worker / Server Crash Resilience:** Mô phỏng tắt worker giữa trận; xác nhận lease hết hạn, generation tăng và kết quả muộn từ worker cũ bị hủy bỏ an toàn (`STALE_OR_DUPLICATE_GENERATION_IGNORED`).
+- [x] **Rerun Policy Enforcement:** Xác nhận chỉ cho phép rerun khi gặp lỗi hạ tầng (`INFRA_FAILURE_REASONS`); tuyệt đối chặn rerun với lỗi bot của đội thi.
+- [x] **Operator Roles & Key Custody:** Danh sách 4 vai trò vận hành đã ký xác nhận biên bản trách nhiệm và quy trình bàn giao.
+- [x] **Rollback & Revocation Readiness:** Đã thử nghiệm thành công quy trình thu hồi khóa và rollback snapshot về trạng thái hợp lệ gần nhất.
+- [x] **Full Clean Checkout Scan:** Kiểm tra toàn bộ mã nguồn, typecheck, build production và security scan đều đạt chuẩn không lỗi.
