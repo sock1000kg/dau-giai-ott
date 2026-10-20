@@ -1196,7 +1196,7 @@ server-lab/CDN AC-14 evidence; finals uses the prepared public DTO interface.
 **Estimated scope:** M (5 files)
 **Hoàn tất:** 2026-10-20 — Finals bracket, schedule/results và verified replay public UI: Module `src/platform/web/src/features/finals/` (`api.ts`, `GroupStandings.tsx`, `FinalsSchedule.tsx`, `FinalsPage.tsx`, `index.ts`); tích hợp route `/finals` và nav link trong `App.tsx` & `routes.tsx`; đáp ứng nghiêm ngặt 3 AC: (1) render bracket 8 đội và score breakdown hoàn toàn từ server payload, không tự tính toán winner/advancement phía client; (2) hiển thị cryptographic proof metadata (`bundleId`, `bundleVersion`, `keyId`, `manifestSha256`, `importedAt`, badge `VERIFIED`) và stale state rõ ràng khi mạng lỗi hoặc data age > 90s trong khi giữ bản cập nhật cuối; (3) link replay chỉ xuất hiện cho các ván đã verified và `replayPublished: true`, ẩn khi chưa publish. Verification: `finals.test.tsx` 6/6 pass, full web suite 139/139 pass (19 test files), typecheck workspace sạch và build Vite thành công.
 
-### [ ] P3-N08 — Full event rehearsal, tamper/recovery và handoff
+### [x] P3-N08 — Full event rehearsal, tamper/recovery và handoff
 
 **Owner:** Đỗ Khôi Nguyên
 **Mô tả:** Diễn tập toàn sự kiện từ finals cutoff trong LAN đến signed sync/public replay và bàn giao runbook/checklist.
@@ -1205,6 +1205,7 @@ server-lab/CDN AC-14 evidence; finals uses the prepared public DTO interface.
 **Dependencies:** `P3-D09`, `P3-D10`, `P3-N07`.
 **Files likely touched:** `tests/e2e/finals.test.ts`, `tests/e2e/finals.config.ts`, `scripts/run-finals-rehearsal.sh`, `docs/runbooks/finals-lan.md`, `docs/reports/finals-rehearsal.md`.
 **Estimated scope:** M (5 files)
+**Hoàn tất:** 2026-10-20 — Full event rehearsal, tamper/recovery và handoff: Tạo kịch bản diễn tập `tests/e2e/finals.test.ts` (14/14 tests) và config `tests/e2e/finals.config.ts`; điều phối script `scripts/run-finals-rehearsal.sh` tích hợp vào `package.json` (`npm run test:e2e:finals`); cập nhật sổ tay `docs/runbooks/finals-lan.md` bổ sung 4 vai trò vận hành, Ed25519 Key Ceremony, Emergency Rollback và checklist bàn giao; hoàn thiện báo cáo diễn tập `docs/reports/finals-rehearsal.md` với config hashes và form ký duyệt của Thuận. Đáp ứng đủ 3 AC: (1) AC-09/20 pass E2E xuyên suốt từ LAN cutoff 8 đội, 7 series BO3 adapter, bundle Ed25519 canonicalization RFC 8785, import proof và replay publication; (2) tamper detection chặn đứng payload giả mạo/sai chữ ký, worker crash phục hồi theo generation lease chống duplicate results, không publish dữ liệu rác; (3) bàn giao checklist, operator roles và rollback sẵn sàng.
 
 ## [ ] Checkpoint P3-F — Phase 3 hoàn tất
 

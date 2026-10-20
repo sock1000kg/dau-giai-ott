@@ -3,8 +3,19 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "engines": { "node": "^22.12.0" },
-  "workspaces": ["src/game-core", "src/bot-protocol", "src/match-runner", "src/platform/job-contract", "src/platform/api", "src/platform/worker", "src/platform/web", "src/bots/sandbox-corpus"],
+  "engines": {
+    "node": "^22.12.0"
+  },
+  "workspaces": [
+    "src/game-core",
+    "src/bot-protocol",
+    "src/match-runner",
+    "src/platform/job-contract",
+    "src/platform/api",
+    "src/platform/worker",
+    "src/platform/web",
+    "src/bots/sandbox-corpus"
+  ],
   "scripts": {
     "start:api": "npm run start --workspace @ott/platform-api",
     "start:worker": "npm run start --workspace @ott/platform-worker",
@@ -21,7 +32,8 @@
     "demo:round": "bash scripts/demo.sh round",
     "demo:stop": "bash scripts/demo.sh stop",
     "demo:reset": "bash scripts/demo.sh reset",
-    "build": "npm run build --workspaces"
+    "build": "npm run build --workspaces",
+    "test:e2e:finals": "bash scripts/run-finals-rehearsal.sh"
   },
   "devDependencies": {
     "@aws-sdk/client-s3": "3.1149.0",
