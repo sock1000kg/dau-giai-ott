@@ -1185,7 +1185,7 @@ server-lab/CDN AC-14 evidence; finals uses the prepared public DTO interface.
 **Estimated scope:** M (7 files)
 **Hoàn tất:** 2026-10-18 — merged PR #42 (`datpt/feat-p3-d09-result-bundle`): migration `0017_result_bundles.sql`, canonicalization RFC 8785, exporter/importer Ed25519, `GET /api/v1/public/result-bundles/:bundleId`, `tests/result-bundles.integration.test.ts` (10/10 ×3 trên DB mới, Reviewer 2026-10-18). Schema artifact (`bracket/series/matches/replays`) đề xuất ở nhánh D28, chưa merge.
 
-### [ ] P3-D10 — Finals bracket, schedule/results và verified replay public UI
+### [x] P3-D10 — Finals bracket, schedule/results và verified replay public UI
 
 **Owner:** Phạm Tất Đạt
 **Mô tả:** Hiển thị snapshot online sau import cho bracket, schedule/result, proof metadata và replay finals đã publish.
@@ -1194,6 +1194,7 @@ server-lab/CDN AC-14 evidence; finals uses the prepared public DTO interface.
 **Dependencies:** `P3-D09`, `P3-L05`, `P3-L06`.
 **Files likely touched:** `src/platform/web/src/features/finals/api.ts`, `src/platform/web/src/features/finals/GroupStandings.tsx`, `src/platform/web/src/features/finals/FinalsSchedule.tsx`, `src/platform/web/src/features/finals/finals.test.tsx`, `src/platform/web/src/app/routes.tsx`.
 **Estimated scope:** M (5 files)
+**Hoàn tất:** 2026-10-20 — Finals bracket, schedule/results và verified replay public UI: Module `src/platform/web/src/features/finals/` (`api.ts`, `GroupStandings.tsx`, `FinalsSchedule.tsx`, `FinalsPage.tsx`, `index.ts`); tích hợp route `/finals` và nav link trong `App.tsx` & `routes.tsx`; đáp ứng nghiêm ngặt 3 AC: (1) render bracket 8 đội và score breakdown hoàn toàn từ server payload, không tự tính toán winner/advancement phía client; (2) hiển thị cryptographic proof metadata (`bundleId`, `bundleVersion`, `keyId`, `manifestSha256`, `importedAt`, badge `VERIFIED`) và stale state rõ ràng khi mạng lỗi hoặc data age > 90s trong khi giữ bản cập nhật cuối; (3) link replay chỉ xuất hiện cho các ván đã verified và `replayPublished: true`, ẩn khi chưa publish. Verification: `finals.test.tsx` 6/6 pass, full web suite 139/139 pass (19 test files), typecheck workspace sạch và build Vite thành công.
 
 ### [ ] P3-N08 — Full event rehearsal, tamper/recovery và handoff
 
