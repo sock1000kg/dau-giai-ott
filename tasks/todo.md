@@ -825,6 +825,16 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 **Files dự kiến:** `tests/e2e/local-demo.config.ts`, `tests/e2e/local-demo.browser.test.ts`, `scripts/run-local-demo-e2e.sh`, `docs/runbooks/local-demo.md`.
 **Ước lượng:** M (4 file)
 
+### [ ] P2-T40 — Bot OCI mẫu tương thích Protocol v2
+
+**Owner:** Đinh Đức Thuận
+**Mô tả:** Bổ sung OCI fixture có thể qua preflight Protocol v1 hiện tại và tạo nước đi hợp lệ trong trận Protocol v2; dùng cho demo qualification.
+**Acceptance criteria:** (1) Bot phản hồi cùng `protocolVersion`, `matchId`, `turnId` của `STATE_UPDATE` và chỉ chọn action hợp lệ; (2) corpus có chiến lược first-legal/capture-first cùng bốn archive v2 riêng biệt để nộp cho các đội demo; (3) manifest pin archive, OCI manifest/config digest và entrypoint; không thay đổi fixture v1 hiện có.
+**Verification:** test v1/v2 response và capture strategy; typecheck/build corpus; xác nhận bốn archive nộp thay thế có digest khác nhau; `git diff --check` và GitNexus detect-changes trước commit.
+**Dependencies:** `P2-T08`, `P3-T01`.
+**Files dự kiến:** `src/bots/oci-fixtures/v2-action/{Dockerfile,bot.mjs}`, `src/bots/sandbox-corpus/{manifest.json,README.md,tests/v2-action.test.ts}`.
+**Ước lượng:** M (5 file)
+
 ## Checkpoint P2-C — Full-stack local demo runtime
 
 > Rà soát `main` ngày 2026-10-20: đã có entrypoint API/worker/coordinator, Dockerfiles, Compose và `scripts/demo.sh`. Mô tả trạng thái cũ ở `P2-T30`–`P2-T31` về branch chưa merge đã lỗi thời. Giữ tám task chưa tick cho đến khi đối chiếu acceptance riêng, clean-checkout browser demo, restart/teardown và root gates; root `npm test` hiện bị chặn bởi Redis `127.0.0.1:16379`.
