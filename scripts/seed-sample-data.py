@@ -86,8 +86,11 @@ def main():
         accounts = {row["username"]: row for row in csv.DictReader(stream)}
     sample = json.loads(args.sample.read_text())
     teams = sample["teams"]
-    if len(teams) != 2 or sample["stage"] != "QUALIFICATION":
-        raise RuntimeError("Sample must contain exactly two qualification teams")
+    if len(teams) < 2 or sample["stage"] != "QUALIFICATION":
+        raise RuntimeError("Sample must contain at least two qualification teams")
+    replace_existing = sample.get("replaceExistingSubmissions", False)
+    if not isinstance(replace_existing, bool):
+        raise RuntimeError("replaceExistingSubmissions must be a boolean")
     for team in teams:
         if team["username"] not in accounts or not (ROOT / team["botArchive"]).is_file():
             raise RuntimeError(f"Missing account or bot archive for {team['username']}")
@@ -104,11 +107,12 @@ def main():
     if args.append:
         if not rounds:
             raise RuntimeError("--append requires a completed prior round")
-        for team in teams:
-            team_cookie = login(args.base_url, accounts[team["username"]])
-            prior_submissions = data(request(args.base_url, "/api/v1/submissions", cookie=team_cookie)[0])
-            if prior_submissions:
-                raise RuntimeError(f"{team['username']} already has submissions; refusing to duplicate sample data")
+        if not replace_existing:
+            for team in teams:
+                team_cookie = login(args.base_url, accounts[team["username"]])
+                prior_submissions = data(request(args.base_url, "/api/v1/submissions", cookie=team_cookie)[0])
+                if prior_submissions:
+                    raise RuntimeError(f"{team['username']} already has submissions; refusing to duplicate sample data")
         if len(rounds) > 1 and any(row["status"] != "PUBLISHED" for row in rounds[1:]):
             raise RuntimeError("An older qualification round is not published")
         latest = rounds[0]
@@ -133,6 +137,8 @@ def main():
             raise RuntimeError(f"Prior round is {status}; cannot append")
         print(f"Prior round {prior_id} is PUBLISHED", flush=True)
 
+    prior_series = data(request(args.base_url, "/api/v1/results/series?stage=QUALIFICATION", cookie=btc)[0])
+    prior_series_ids = {row["seriesId"] for row in prior_series.get("items", [])}
     catalog = data(request(args.base_url, "/api/v1/admin/rounds/catalog", cookie=btc)[0])
     map_entry = catalog["maps"][0]
     now = time.time()
@@ -189,7 +195,7 @@ def main():
     while time.monotonic() < end:
         series = data(request(args.base_url, "/api/v1/results/series?stage=QUALIFICATION", cookie=btc)[0])
         leaderboard = data(request(args.base_url, "/api/v1/leaderboard?stage=QUALIFICATION")[0])
-        items = series.get("items", [])
+        items = [row for row in series.get("items", []) if row["seriesId"] not in prior_series_ids]
         count = len(leaderboard.get("items", []))
         if items and all(item["status"] == "FINALIZED" for item in items) and count >= 2:
             status = "RUNNING"
@@ -200,7 +206,8 @@ def main():
                 if status == "RATED":
                     break
             if status != "RATED":
-                raise RuntimeError(f"Sample round stopped at {status} before ratings")
+                time.sleep(3)
+                continue
             published = data(request(args.base_url, f"/api/v1/admin/rounds/{round_id}/publish",
                                      "POST", {"reason": "Publish sample results"}, btc)[0])
             if published["status"] != "PUBLISHED":

@@ -1,0 +1,12 @@
+{
+  "stage": "QUALIFICATION",
+  "replaceExistingSubmissions": true,
+  "teams": [
+    { "username": "team01", "botArchive": "src/bots/sandbox-corpus/artifacts/oci-fixtures/v2-team01.oci.tar" },
+    { "username": "team02", "botArchive": "src/bots/sandbox-corpus/artifacts/oci-fixtures/v2-team02.oci.tar" },
+    { "username": "team03", "botArchive": "src/bots/sandbox-corpus/artifacts/oci-fixtures/v2-team03.oci.tar" },
+    { "username": "team04", "botArchive": "src/bots/sandbox-corpus/artifacts/oci-fixtures/v2-team04.oci.tar" }
+  ],
+  "submissionWindowSeconds": 180,
+  "graceSeconds": 5
+}

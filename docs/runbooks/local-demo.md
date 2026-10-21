@@ -35,6 +35,29 @@ after copying the extra two OCI archives. The loader checks that the new teams
 have no prior submissions, reconciles and publishes the completed previous
 round, then creates the new round through the API.
 
+Those original OCI canaries speak Bot Protocol v1. Qualification rules on the
+current demo stack pin Protocol v2, so their ACTION responses are rejected as
+`SCHEMA_VIOLATION`; historical replays from those rounds contain no moves. To
+demonstrate moving bots, build the corpus and append
+`samples/qualification-demo-moving.json` with `team05` and `team06`. Its two
+dedicated v2 images use first-legal and capture-first strategies:
+
+```bash
+python3 scripts/seed-sample-data.py --append --sample samples/qualification-demo-moving.json
+```
+
+Keep the old rounds as historical evidence. Confirm the new replay contains
+`ACTION_APPLIED` entries before presenting it; the player cannot invent actions
+for a match that forfeited without moving.
+
+The scheduler pairs every active submission, including the older v1 bot images.
+After the moving sample round is published, run
+`python3 scripts/seed-sample-data.py --append --sample samples/qualification-demo-all-v2.json`
+to replace the active submissions for `team01`–`team04` with four distinct v2
+archives. `team05` and `team06` already use v2 images. The loader tracks series
+that existed before the new round and waits for this round's results before
+reconciling; it does not treat older finalized series as completion evidence.
+
 ### 1. System Requirements
 - **Docker**: Version ≥ 24.0 with Docker Compose v2 reachable (`docker compose`).
 - **Python**: Python 3 (`python3`) installed on host (required for JSON processing and BTC operator CLI actions in `./scripts/demo.sh round`).
