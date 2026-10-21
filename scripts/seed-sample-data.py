@@ -76,6 +76,7 @@ def main():
     parser.add_argument("--accounts", type=Path, default=ROOT / ".local/demo/accounts.csv")
     parser.add_argument("--env-file", type=Path, default=ROOT / ".local/demo/demo.env")
     parser.add_argument("--sample", type=Path, default=ROOT / "samples/qualification-demo.json")
+    parser.add_argument("--append", action="store_true", help="Publish a completed prior round and add another")
     args = parser.parse_args()
 
     env = dict(line.split("=", 1) for line in args.env_file.read_text().splitlines() if "=" in line)
@@ -97,8 +98,40 @@ def main():
         raise RuntimeError("Demo stack is not ready")
     btc = login(args.base_url, accounts["btc"])
     existing = data(request(args.base_url, "/api/v1/admin/rounds?tournamentStage=QUALIFICATION", cookie=btc)[0])
-    if existing.get("items"):
-        raise RuntimeError("Qualification rounds already exist; sample loader refuses to duplicate or replace them")
+    rounds = existing.get("items", [])
+    if rounds and not args.append:
+        raise RuntimeError("Qualification rounds already exist; use --append with a new sample")
+    if args.append:
+        if not rounds:
+            raise RuntimeError("--append requires a completed prior round")
+        for team in teams:
+            team_cookie = login(args.base_url, accounts[team["username"]])
+            prior_submissions = data(request(args.base_url, "/api/v1/submissions", cookie=team_cookie)[0])
+            if prior_submissions:
+                raise RuntimeError(f"{team['username']} already has submissions; refusing to duplicate sample data")
+        if len(rounds) > 1 and any(row["status"] != "PUBLISHED" for row in rounds[1:]):
+            raise RuntimeError("An older qualification round is not published")
+        latest = rounds[0]
+        prior_id = latest["id"]
+        status = latest["status"]
+        if status in ("RUNNING", "SETTLING"):
+            series = data(request(args.base_url, "/api/v1/results/series?stage=QUALIFICATION", cookie=btc)[0])
+            items = series.get("items", [])
+            if not items or any(item["status"] not in ("FINALIZED", "CANCELLED") for item in items):
+                raise RuntimeError("Prior round still has unfinished series")
+            for _ in range(2):
+                result = data(request(args.base_url, f"/api/v1/admin/rounds/{prior_id}/reconcile",
+                                      "POST", {"reason": "Reconcile completed sample round"}, btc)[0])
+                status = result["status"]
+                if status == "RATED":
+                    break
+        if status == "RATED":
+            result = data(request(args.base_url, f"/api/v1/admin/rounds/{prior_id}/publish",
+                                  "POST", {"reason": "Publish completed sample round"}, btc)[0])
+            status = result["status"]
+        if status != "PUBLISHED":
+            raise RuntimeError(f"Prior round is {status}; cannot append")
+        print(f"Prior round {prior_id} is PUBLISHED", flush=True)
 
     catalog = data(request(args.base_url, "/api/v1/admin/rounds/catalog", cookie=btc)[0])
     map_entry = catalog["maps"][0]
@@ -159,7 +192,20 @@ def main():
         items = series.get("items", [])
         count = len(leaderboard.get("items", []))
         if items and all(item["status"] == "FINALIZED" for item in items) and count >= 2:
-            print(f"Done: {len(items)} finalized series, {count} leaderboard teams", flush=True)
+            status = "RUNNING"
+            for _ in range(2):
+                result = data(request(args.base_url, f"/api/v1/admin/rounds/{round_id}/reconcile",
+                                      "POST", {"reason": "Reconcile sample results"}, btc)[0])
+                status = result["status"]
+                if status == "RATED":
+                    break
+            if status != "RATED":
+                raise RuntimeError(f"Sample round stopped at {status} before ratings")
+            published = data(request(args.base_url, f"/api/v1/admin/rounds/{round_id}/publish",
+                                     "POST", {"reason": "Publish sample results"}, btc)[0])
+            if published["status"] != "PUBLISHED":
+                raise RuntimeError("Sample round did not reach PUBLISHED")
+            print(f"Done: {len(items)} finalized series, {count} leaderboard teams, round PUBLISHED", flush=True)
             return
         time.sleep(3)
     raise RuntimeError("Timed out waiting for final results; inspect demo.sh round status")

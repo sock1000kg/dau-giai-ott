@@ -845,6 +845,7 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 **Files dự kiến:** `samples/qualification-demo.json`, `samples/qualification-demo-extra.json`, `scripts/seed-sample-data.py`, `docs/runbooks/local-demo.md`.
 **Verification tại task branch:** chạy trên `jump-jits`: 2 submission ACTIVE, 1 series FINALIZED, leaderboard 2 đội; PostgreSQL có 10 team, 2 submission, 1 qualification round, 2 match, 2 rating ledger row. Chạy lại bị từ chối trước khi tạo vòng mới. Cần review/merge branch trước khi tick.
 **Mở rộng theo yêu cầu:** sample thứ hai dùng `team03`/`team04`; `--append` chỉ chạy sau khi vòng trước hoàn tất, reconcile/publish qua API và từ chối đội đã có submission. Loader publish vòng mới sau khi series hoàn tất để rating ledger được ghi.
+**Verification bổ sung trên `jump-jits`:** hai vòng đều `PUBLISHED`, 4 submission, 6 match, 6 rating ledger row; leaderboard có 4 đội. Chạy lại `--append` với cùng sample bị từ chối do `team03` đã có submission; stack vẫn ready.
 
 ## Checkpoint P2-C — Full-stack local demo runtime
 

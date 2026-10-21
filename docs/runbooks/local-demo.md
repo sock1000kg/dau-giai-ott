@@ -9,7 +9,7 @@ This runbook covers one-command local demonstration stack management (`scripts/d
 ### Sample qualification data
 
 The demo stack initially seeds accounts and teams only. To add two sample bot
-submissions, a completed qualification round, results, and leaderboard ratings,
+submissions, a published qualification round, results, and leaderboard ratings,
 build the OCI fixture archives and run the loader against an otherwise empty
 demo stack:
 
@@ -29,6 +29,11 @@ matches execute. If interrupted after creating a round, inspect
 
 On `jump-jits`, copy the two generated archives into their declared paths
 under `/opt/ott/`, then run `cd /opt/ott && python3 scripts/seed-sample-data.py`.
+To add a second sample round without removing the first, use
+`python3 scripts/seed-sample-data.py --append --sample samples/qualification-demo-extra.json`
+after copying the extra two OCI archives. The loader checks that the new teams
+have no prior submissions, reconciles and publishes the completed previous
+round, then creates the new round through the API.
 
 ### 1. System Requirements
 - **Docker**: Version ≥ 24.0 with Docker Compose v2 reachable (`docker compose`).
