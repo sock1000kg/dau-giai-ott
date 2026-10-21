@@ -855,7 +855,7 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 **Dependencies:** `P2-T27`, `P3-D21`.
 **Files dự kiến:** `src/platform/web/src/features/spectator/{ReplayPlayer.tsx,replay-player.css,ReplayPlayer.test.tsx}`, `src/platform/web/README.md`.
 
-### [ ] P2-T41 — Đồng bộ giao diện bàn cờ và quân cờ replay với OTTv2 mẫu
+### [x] P2-T41 — Đồng bộ giao diện bàn cờ và quân cờ replay với OTTv2 mẫu
 
 **Owner:** Đinh Đức Thuận
 **Mô tả:** Đổi phần hiển thị bàn cờ replay theo giao diện OTTv2 của `sock1000kg/rock-paper-scissor` tại commit [`2956f16`](https://github.com/sock1000kg/rock-paper-scissor/tree/2956f1601365274eb34d623a9c908900bf43baab): lưới 9×9 nền tối, quân tròn viền đỏ/xanh với biểu tượng Búa/Bao/Kéo, cờ đích và chướng ngại vật. Chỉ thay lớp trình bày; replay tiếp tục đọc frame từ event log đã xác minh. Lấy `src/components/{Board,GamePiece}.tsx` và `src/styles.css` của commit tham chiếu làm chuẩn hình ảnh, vì `DESIGN.md` ở repo mẫu không khớp màu nền đang chạy.
@@ -866,6 +866,7 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 **Ước lượng:** M (5 file)
 **Risk pre-edit:** GitNexus `ReplayPlayer` upstream `HIGH`, 2 caller trực tiếp (`PrivateReplayPage`, `SpectatorReplayPage`), 4 process liên quan; kiểm tra cả hai route khi triển khai. Index có thể báo flow inventory chưa đầy đủ, nên không dùng số 0 để kết luận route khác không bị ảnh hưởng.
 **Plan triển khai:** [P2-T41 — thay giao diện bàn cờ và quân cờ replay](../docs/plans/2026-10-22-replay-board-visual-parity.md).
+**Hoàn tất:** 2026-10-22 — merged PR #57 (`ecdb5d2`) và deploy từ `main` lên `jump-jits`. Image `ott-web:p2-t41-ecdb5d2`/`ott-web:local` có ID `sha256:5f69835534e535ebfb55b351064f1c2c1a004877325ba16bee767b80fad89763`; web container healthy (UID 101), `/`, `/healthz`, `/spectator/replays/<uuid>` và `/api/v1/health/live` trả HTTP 200. Sáu service khác trong Compose vẫn healthy. Docker image smoke test local cũng xác nhận health và ba route web trả 200.
 
 ## Checkpoint P2-C — Full-stack local demo runtime
 
