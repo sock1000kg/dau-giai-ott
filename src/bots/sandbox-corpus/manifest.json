@@ -61,6 +61,102 @@
       ]
     },
     {
+      "id": "v2-first-legal",
+      "language": "node",
+      "expected": "ACTION",
+      "archive": "oci-fixtures/v2-first-legal.oci.tar",
+      "dockerfile": "src/bots/oci-fixtures/v2-action/Dockerfile",
+      "buildArg": "STRATEGY=first",
+      "archiveSha256": "sha256:bf8cc9937ed2444046693a655134e32075655c816a0c50bea7ee94fb487ea2f4",
+      "imageId": "sha256:b2c34f89e260f940023b18d0e0010e9a5acf0cfe9ef95ec7bde4ec23cda75d15",
+      "ociManifestDigest": "sha256:113ba3997c092f1616cbe1a42e68801c1eaee8a081bee717aca243bb0c13dfaa",
+      "ociConfigDigest": "sha256:8c24090b91ab0bfcebfcf2996d7139cf33d432ecc66edd9e07665c27d342781f",
+      "entrypoint": [
+        "node",
+        "/app/bot.mjs"
+      ]
+    },
+    {
+      "id": "v2-capture-first",
+      "language": "node",
+      "expected": "ACTION",
+      "archive": "oci-fixtures/v2-capture-first.oci.tar",
+      "dockerfile": "src/bots/oci-fixtures/v2-action/Dockerfile",
+      "buildArg": "STRATEGY=capture",
+      "archiveSha256": "sha256:e6c6ca3b42604825d2f978bbe70203e09bd9630bd54c4b4a8dfb0cc36402d7e3",
+      "imageId": "sha256:4d4533990592e511ed2b4ef3b9367f69f47b4aebf42aa812c2522095180e7e21",
+      "ociManifestDigest": "sha256:d431fe80885016749e3047a4ac0651f43a1f50d6c4d229dbe279f70f43230899",
+      "ociConfigDigest": "sha256:e40b14625a142fba4071bb6759bb2a7dbeb79cbb0c9e5880154845243bc3d9ea",
+      "entrypoint": [
+        "node",
+        "/app/bot.mjs"
+      ]
+    },
+    {
+      "id": "v2-team01",
+      "language": "node",
+      "expected": "ACTION",
+      "archive": "oci-fixtures/v2-team01.oci.tar",
+      "dockerfile": "src/bots/oci-fixtures/v2-action/Dockerfile",
+      "buildArg": "STRATEGY=first-team01",
+      "archiveSha256": "sha256:d52afced279c2f61a7ad9b5dd44edc0f1b4e768cd9c7d67d6438a3ecab7e80f5",
+      "imageId": "sha256:a05fee30d53a2da5e6aa692a62b6de73b7901b10c1bdd2a51dd3a0f592145ed1",
+      "ociManifestDigest": "sha256:69b958886f7dde38e2227fb791ef0b34b9d4d67855e4ffdfed95607cad85ded3",
+      "ociConfigDigest": "sha256:beec3ecd6630f11902d51d6bfe8e2a7cada019b506a105a1db97ccd26858a60e",
+      "entrypoint": [
+        "node",
+        "/app/bot.mjs"
+      ]
+    },
+    {
+      "id": "v2-team02",
+      "language": "node",
+      "expected": "ACTION",
+      "archive": "oci-fixtures/v2-team02.oci.tar",
+      "dockerfile": "src/bots/oci-fixtures/v2-action/Dockerfile",
+      "buildArg": "STRATEGY=capture-team02",
+      "archiveSha256": "sha256:50fd1f13fd9801dd5fc2ef9d34560c9a0811f23ce6d86f9f7f4e3d59ec90d19a",
+      "imageId": "sha256:e008e3b336913f62edde1e4a51f757b15fca88bfa1cf3069dc42a02d6e881247",
+      "ociManifestDigest": "sha256:79f0923fae2a5788019adb3f11b935c59969ebf1f3b76ca01707b3f92382ccc7",
+      "ociConfigDigest": "sha256:9613a0dbad74567bbe75ce06548ac27f8d68c3eb8686ea5bbdf3f06890010ea9",
+      "entrypoint": [
+        "node",
+        "/app/bot.mjs"
+      ]
+    },
+    {
+      "id": "v2-team03",
+      "language": "node",
+      "expected": "ACTION",
+      "archive": "oci-fixtures/v2-team03.oci.tar",
+      "dockerfile": "src/bots/oci-fixtures/v2-action/Dockerfile",
+      "buildArg": "STRATEGY=first-team03",
+      "archiveSha256": "sha256:318862b085f43987a866122b2523e785b3d16d803e264225756f3e0fe8f826ae",
+      "imageId": "sha256:d8cd05866f135410700fa8ba44e407d80736728400da0669a22938adf3fab388",
+      "ociManifestDigest": "sha256:f858fa09bb43bca4a05612054b5652a533298286f55656f359fdb7e01aadd54f",
+      "ociConfigDigest": "sha256:0e9c96cb864d837cf96cfa982c59cc599f1068cc92280f806db28f2d7a82a2fa",
+      "entrypoint": [
+        "node",
+        "/app/bot.mjs"
+      ]
+    },
+    {
+      "id": "v2-team04",
+      "language": "node",
+      "expected": "ACTION",
+      "archive": "oci-fixtures/v2-team04.oci.tar",
+      "dockerfile": "src/bots/oci-fixtures/v2-action/Dockerfile",
+      "buildArg": "STRATEGY=capture-team04",
+      "archiveSha256": "sha256:4e7760f72bbf42fb35c9b30d5e623b54c560d35890c4952e397572f81d0fcc8e",
+      "imageId": "sha256:b09cac5a847a74a8402328e2e335791a092f5675d4a28bb9825fdf163f845cf1",
+      "ociManifestDigest": "sha256:0a68a9d992ec78c87414d21e9482edea831f2ed83ba097c10dd1a6a2ecb02d3f",
+      "ociConfigDigest": "sha256:89ac1c654470d8353701369b4f46ecbc99897e633ce9edb05db5eabace8309df",
+      "entrypoint": [
+        "node",
+        "/app/bot.mjs"
+      ]
+    },
+    {
       "id": "timeout",
       "expected": "TIMEOUT",
       "archive": "oci-fixtures/timeout.oci.tar",
