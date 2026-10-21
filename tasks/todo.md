@@ -855,6 +855,18 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 **Dependencies:** `P2-T27`, `P3-D21`.
 **Files dự kiến:** `src/platform/web/src/features/spectator/{ReplayPlayer.tsx,replay-player.css,ReplayPlayer.test.tsx}`, `src/platform/web/README.md`.
 
+### [ ] P2-T41 — Đồng bộ giao diện bàn cờ và quân cờ replay với OTTv2 mẫu
+
+**Owner:** Đinh Đức Thuận
+**Mô tả:** Đổi phần hiển thị bàn cờ replay theo giao diện OTTv2 của `sock1000kg/rock-paper-scissor` tại commit [`2956f16`](https://github.com/sock1000kg/rock-paper-scissor/tree/2956f1601365274eb34d623a9c908900bf43baab): lưới 9×9 nền tối, quân tròn viền đỏ/xanh với biểu tượng Búa/Bao/Kéo, cờ đích và chướng ngại vật. Chỉ thay lớp trình bày; replay tiếp tục đọc frame từ event log đã xác minh. Lấy `src/components/{Board,GamePiece}.tsx` và `src/styles.css` của commit tham chiếu làm chuẩn hình ảnh, vì `DESIGN.md` ở repo mẫu không khớp màu nền đang chạy.
+**Acceptance criteria:** (1) trên cùng trình duyệt/hệ điều hành, bàn cờ ở replay thường và fullscreen khớp mẫu về lưới ô sát nhau, nền xen kẽ, viền khung, tọa độ trong ô, đích có cờ/nhãn và chướng ngại vật; vị trí lấy từ map của replay, không hardcode ngoài ví dụ map mặc định `a1` đỏ/`i9` xanh; (2) mọi quân X/O hiển thị token tròn viền đỏ/xanh và ✊ Búa, ✋ Bao, ✌️ Kéo đúng như mẫu, không dùng chữ X/O trên mặt quân; tên ô/quân/đích vẫn đọc được bằng screen reader; (3) play/pause/seek/speed/fullscreen/Escape và highlight nước đi vẫn đúng sau đổi UI, gồm trạng thái đầu, di chuyển, ăn quân và kết thúc ở cả replay công khai lẫn riêng; mobile không cắt hoặc che bàn cờ.
+**Verification:** Chụp và đối chiếu riêng vùng bàn cờ với repo mẫu ở desktop 1440×1100, mobile 390×844 và fullscreen trên cùng Chromium/Linux; ảnh lưu tại `docs/validation/p2-t41/`. Kiểm tra frame đầu, nước đi/ăn quân bằng test, đích/chướng ngại vật và replay không action. Chạy `npm test --workspace @ott/platform-web`, `npm run typecheck --workspace @ott/platform-web`, `npm run build --workspace @ott/platform-web`, `git diff --check`; build image Docker và smoke test container/healthcheck + đường dẫn replay; chạy GitNexus `detect-changes --scope all` trước commit. DOM/ARIA wrapper private/public được kiểm tra trong `replay-pages.ui.test.tsx` và `PrivateReplayPage.test.tsx`. Emoji phụ thuộc font hệ điều hành, nên tiêu chí khớp pixel chỉ áp dụng cùng môi trường render.
+**Dependencies:** `P2-T27`; phối hợp test fullscreen với `P2-T39`, không đổi trạng thái task đó.
+**Files dự kiến:** `src/platform/web/src/features/spectator/{ReplayPlayer.tsx,replay-player.css,ReplayPlayer.test.tsx,replay-player.ui.test.tsx}`, `src/platform/web/README.md`.
+**Ước lượng:** M (5 file)
+**Risk pre-edit:** GitNexus `ReplayPlayer` upstream `HIGH`, 2 caller trực tiếp (`PrivateReplayPage`, `SpectatorReplayPage`), 4 process liên quan; kiểm tra cả hai route khi triển khai. Index có thể báo flow inventory chưa đầy đủ, nên không dùng số 0 để kết luận route khác không bị ảnh hưởng.
+**Plan triển khai:** [P2-T41 — thay giao diện bàn cờ và quân cờ replay](../docs/plans/2026-10-22-replay-board-visual-parity.md).
+
 ## Checkpoint P2-C — Full-stack local demo runtime
 
 > Rà soát `main` ngày 2026-10-20: đã có entrypoint API/worker/coordinator, Dockerfiles, Compose và `scripts/demo.sh`. Mô tả trạng thái cũ ở `P2-T30`–`P2-T31` về branch chưa merge đã lỗi thời. Giữ tám task chưa tick cho đến khi đối chiếu acceptance riêng, clean-checkout browser demo, restart/teardown và root gates; root `npm test` hiện bị chặn bởi Redis `127.0.0.1:16379`.

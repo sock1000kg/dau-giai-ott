@@ -17,8 +17,12 @@ function reasonLabel(reason: string | null): string {
   return reason.replaceAll('_', ' ').toLocaleLowerCase('vi-VN');
 }
 function pieceLabel(piece: Piece): string {
-  const type = piece.type === 'ROCK' ? 'Đá' : piece.type === 'PAPER' ? 'Giấy' : 'Kéo';
-  return `${piece.owner === 'X' ? 'Đội X' : 'Đội O'} - ${type}`;
+  const type = piece.type === 'ROCK' ? 'Búa' : piece.type === 'PAPER' ? 'Bao' : 'Kéo';
+  return `${piece.owner === 'X' ? 'Đội Đỏ (X)' : 'Đội Xanh (O)'} — ${type}`;
+}
+
+function pieceSymbol(piece: Piece): string {
+  return piece.type === 'ROCK' ? '✊' : piece.type === 'PAPER' ? '✋' : '✌️';
 }
 
 export function ReplayPlayer({ replay }: { readonly replay: SpectatorReplay }) {
@@ -109,32 +113,43 @@ export function ReplayPlayer({ replay }: { readonly replay: SpectatorReplay }) {
       <div className="rp-stage">
         <Card className="rp-board-card">
           <div className="rp-board-scroll">
-            <table className="rp-board" aria-label="Bàn cờ replay">
-              <caption>Bàn cờ — lượt {state.turnId}, phía {state.activeSide} {state.finished ? '(đã kết thúc)' : 'đang đi'}</caption>
-              <thead><tr><th scope="col" aria-label="Hàng / cột" />{columns.map((column) => <th scope="col" key={column}>{column}</th>)}</tr></thead>
-              <tbody>
-                {Array.from({ length: 9 }, (_, rowIndex) => 8 - rowIndex).map((row) => (
-                  <tr key={row}><th scope="row">{row + 1}</th>{columns.map((column, col) => {
-                    const position = { col, row };
-                    const key = positionKey(position);
-                    const piece = piecesByPosition.get(key);
-                    const goalSide = key === positionKey(goals.X) ? 'X' : key === positionKey(goals.O) ? 'O' : null;
-                    const isObstacle = obstacles.has(key);
-                    const cellLabel = `${column}${row + 1}${piece ? `, ${pieceLabel(piece)}` : ''}${goalSide ? `, đích Đội ${goalSide}` : ''}${isObstacle ? ', chướng ngại vật' : ''}`;
-                    const classes = [
-                      piece ? `rp-cell--${piece.owner.toLowerCase()}` : '',
-                      goalSide ? `rp-cell--goal-${goalSide.toLowerCase()}` : '',
-                      isObstacle ? 'rp-cell--obstacle' : '',
-                      key === toKey ? 'rp-cell--to' : '',
-                      key === fromCell ? 'rp-cell--from' : '',
-                    ].filter(Boolean).join(' ');
-                    return <td key={column} className={classes} aria-label={cellLabel}>
-                      <span aria-hidden="true">{piece ? `${piece.owner}·${piece.type === 'ROCK' ? 'Đ' : piece.type === 'PAPER' ? 'G' : 'K'}` : goalSide ? '◆' : isObstacle ? '■' : '·'}</span>
-                    </td>;
-                  })}</tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="rp-board-frame">
+              <table className="rp-board" aria-label="Bàn cờ replay">
+                <caption>Bàn cờ — lượt {state.turnId}, phía {state.activeSide} {state.finished ? '(đã kết thúc)' : 'đang đi'}</caption>
+                <thead><tr><th scope="col" aria-label="Hàng / cột" />{columns.map((column) => <th scope="col" key={column}>{column.toLowerCase()}</th>)}</tr></thead>
+                <tbody>
+                  {Array.from({ length: 9 }, (_, rowIndex) => 8 - rowIndex).map((row) => (
+                    <tr key={row}><th scope="row" aria-label={`Hàng ${row + 1}`}>{row + 1}</th>{columns.map((column, col) => {
+                      const position = { col, row };
+                      const key = positionKey(position);
+                      const piece = piecesByPosition.get(key);
+                      const goalSide = key === positionKey(goals.X) ? 'X' : key === positionKey(goals.O) ? 'O' : null;
+                      const isObstacle = obstacles.has(key);
+                      const cellLabel = `${column.toLowerCase()}${row + 1}${piece ? `, ${pieceLabel(piece)}` : ''}${goalSide ? `, đích Đội ${goalSide}` : ''}${isObstacle ? ', chướng ngại vật' : ''}`;
+                      const classes = [
+                        'rp-board-cell',
+                        (row + col) % 2 === 0 ? 'rp-cell--light' : 'rp-cell--dark',
+                        piece ? `rp-cell--${piece.owner.toLowerCase()}` : '',
+                        goalSide ? `rp-cell--goal-${goalSide.toLowerCase()}` : '',
+                        goalSide ? `rp-cell--goal-${goalSide === 'O' ? 'red' : 'blue'}` : '',
+                        isObstacle ? 'rp-cell--obstacle' : '',
+                        key === toKey ? 'rp-cell--to' : '',
+                        key === fromCell ? 'rp-cell--from' : '',
+                      ].filter(Boolean).join(' ');
+                      return <td key={column} className={classes} aria-label={cellLabel} data-square={`${column.toLowerCase()}${row + 1}`}>
+                        <span className="rp-cell-inner">
+                          {(col === 0 || col === 8) && <span className={`rp-row-label${col === 8 ? ' rp-row-label--right' : ''}`} aria-hidden="true">{row + 1}</span>}
+                          {row === 0 && <span className="rp-column-label" aria-hidden="true">{column.toLowerCase()}</span>}
+                          {piece && <span className={`rp-piece rp-piece--${piece.owner.toLowerCase()}`} role="img" aria-label={pieceLabel(piece)}>{pieceSymbol(piece)}</span>}
+                          {!piece && goalSide && <span className="rp-goal-flag" aria-hidden="true">⚑<small>{goalSide === 'O' ? 'ĐỎ' : 'XANH'}</small></span>}
+                          {!piece && isObstacle && <span className="rp-obstacle-marker" aria-hidden="true">▦</span>}
+                        </span>
+                      </td>;
+                    })}</tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
           <p className="rp-presentation-caption" aria-live="polite">
             {currentEvent?.event.type === 'ACTION_APPLIED' && currentEvent.event.action

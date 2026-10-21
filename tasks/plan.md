@@ -282,6 +282,10 @@ P2-T34 + P2-T35 ──► P2-T36 demo commands ──► P2-T37 clean-checkout b
 
 Các entrypoint, Dockerfiles, Compose và `scripts/demo.sh` đã có trên `main`; trạng thái tám task vẫn `[ ]` trong `tasks/todo.md` vì chưa có đối chiếu acceptance theo từng card và clean-checkout browser/restart gate. Root `npm test` ngày 2026-10-20 bị chặn ở worker BullMQ integration do Redis `127.0.0.1:16379` không chạy.
 
+### Giao diện bàn cờ replay OTTv2
+
+`P2-T27` tạo replay player; `P2-T39` kiểm tra trình chiếu fullscreen, còn `P2-T41` đồng bộ riêng bàn cờ/quân cờ với giao diện [OTTv2 mẫu tại commit `2956f16`](https://github.com/sock1000kg/rock-paper-scissor/tree/2956f1601365274eb34d623a9c908900bf43baab). `P2-T41` dùng frame/map replay đã xác minh, không phụ thuộc dữ liệu mẫu `P2-T38` hoặc cổng runtime `P2-C`. Thứ tự và điểm review được viết trong [plan triển khai P2-T41](../docs/plans/2026-10-22-replay-board-visual-parity.md). Task ID, dependency và trạng thái ở [`tasks/todo.md`](todo.md); phạm vi đợt này là bàn cờ/quân cờ.
+
 ## 10. Rủi ro
 
 | Rủi ro | Mức độ | Giảm thiểu |
