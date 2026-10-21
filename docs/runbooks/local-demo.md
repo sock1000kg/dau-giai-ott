@@ -6,6 +6,30 @@ This runbook covers one-command local demonstration stack management (`scripts/d
 
 ## Quick Start
 
+### Sample qualification data
+
+The demo stack initially seeds accounts and teams only. To add two sample bot
+submissions, a completed qualification round, results, and leaderboard ratings,
+build the OCI fixture archives and run the loader against an otherwise empty
+demo stack:
+
+```bash
+npm --workspace @ott/sandbox-corpus run build:corpus
+python3 scripts/seed-sample-data.py
+```
+
+The sample definition is in `samples/qualification-demo.json`. The loader reads
+the private `.local/demo/accounts.csv` and `demo.env`, authenticates through the
+loopback gateway, and uses the same API path as real submissions. It refuses to
+run outside `OTT_DEMO_MODE=true` / `OTT_DEPLOYMENT_MODE=dev`, when the required
+archives are missing, or when a qualification round already exists. It does not
+reset any data. The first run can take several minutes while preflight and
+matches execute. If interrupted after creating a round, inspect
+`./scripts/demo.sh round status` before taking further action.
+
+On `jump-jits`, copy the two generated archives into their declared paths
+under `/opt/ott/`, then run `cd /opt/ott && python3 scripts/seed-sample-data.py`.
+
 ### 1. System Requirements
 - **Docker**: Version ≥ 24.0 with Docker Compose v2 reachable (`docker compose`).
 - **Python**: Python 3 (`python3`) installed on host (required for JSON processing and BTC operator CLI actions in `./scripts/demo.sh round`).

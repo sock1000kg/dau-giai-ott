@@ -28,7 +28,7 @@ Nếu hai nguồn sự thật khác loại mâu thuẫn nhau, AI phải dừng t
 | --- | --- | --- |
 | Phase 1 | 26/26 task | `P1-A`, `P1-B`, `P1-C` đã đóng |
 | Phase 2 local | `P2-T01`–`P2-T29` đã hoàn tất | `P2-B` đã đóng |
-| Phase 2 demo runtime extension | `P2-T30`–`P2-T37` còn mở; entrypoint, Compose, Dockerfiles và demo script đã có trên `main` | `P2-C` chờ clean-checkout/browser/restart verification |
+| Phase 2 demo runtime extension | `P2-T30`–`P2-T37` còn mở; entrypoint, Compose, Dockerfiles và demo script đã có trên `main`; `P2-T38` sample data đang ở task branch | `P2-C` chờ clean-checkout/browser/restart verification |
 | Phase 3 | 25/25 task đã tick | 0/8 checkpoint được Thuận duyệt |
 
 `npm run typecheck`, `npm run build` và rehearsal finals 14/14 pass ngày 20/10. Root `npm test` chưa pass vì BullMQ worker integration không kết nối được Redis `127.0.0.1:16379`; API 447 pass/145 skip, worker 162 pass/22 skip và 1 suite lỗi, web 391 pass. Rehearsal là test mô phỏng, chưa xác nhận toàn tuyến LAN/server lab hoặc phê duyệt `P3-F`. Chi tiết và trạng thái task/checkpoint phải đọc tại [checklist](../tasks/todo.md).
