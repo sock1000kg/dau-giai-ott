@@ -846,6 +846,14 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 **Verification tại task branch:** chạy trên `jump-jits`: 2 submission ACTIVE, 1 series FINALIZED, leaderboard 2 đội; PostgreSQL có 10 team, 2 submission, 1 qualification round, 2 match, 2 rating ledger row. Chạy lại bị từ chối trước khi tạo vòng mới. Cần review/merge branch trước khi tick.
 **Mở rộng theo yêu cầu:** sample thứ hai dùng `team03`/`team04`; `--append` chỉ chạy sau khi vòng trước hoàn tất, reconcile/publish qua API và từ chối đội đã có submission. Loader publish vòng mới sau khi series hoàn tất để rating ledger được ghi.
 **Verification bổ sung trên `jump-jits`:** hai vòng đều `PUBLISHED`, 4 submission, 6 match, 6 rating ledger row; leaderboard có 4 đội. Chạy lại `--append` với cùng sample bị từ chối do `team03` đã có submission; stack vẫn ready.
+### [ ] P2-T39 — Trình chiếu replay toàn màn hình
+
+**Owner:** Đinh Đức Thuận
+**Mô tả:** Cho BTC/đội/khán giả xem replay đã xác minh trên bàn cờ lớn và phát ngay khi vào toàn màn hình.
+**Acceptance criteria:** (1) nút vào/thoát fullscreen, Escape đồng bộ trạng thái; (2) vào fullscreen phát từ vị trí hiện tại hoặc phát lại sau khi hết; (3) replay không có ACTION_APPLIED nêu rõ vì sao quân cờ không di chuyển; (4) giữ nguyên xác minh replay và phân quyền.
+**Verification:** test ReplayPlayer, typecheck/build web, kiểm tra trình duyệt ở kích thước desktop/mobile và cả replay có/không có nước đi.
+**Dependencies:** `P2-T27`, `P3-D21`.
+**Files dự kiến:** `src/platform/web/src/features/spectator/{ReplayPlayer.tsx,replay-player.css,ReplayPlayer.test.tsx}`, `src/platform/web/README.md`.
 
 ## Checkpoint P2-C — Full-stack local demo runtime
 

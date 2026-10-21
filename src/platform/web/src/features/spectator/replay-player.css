@@ -69,3 +69,21 @@
 .rp-move-no { min-width: 4ch; text-align: right; color: var(--ui-text-muted); font-variant-numeric: tabular-nums; }
 .rp-move-text { overflow-wrap: anywhere; }
 .rp-events .rp-scroll { max-height: 280px; }
+
+.rp-presentation-caption { display: none; }
+.rp-player:fullscreen { box-sizing: border-box; width: 100vw; height: 100dvh; padding: clamp(12px, 2vw, 28px); overflow: hidden; background: var(--ui-bg, #101d29); grid-template-rows: minmax(0, 1fr) auto; }
+.rp-player:fullscreen .rp-heading, .rp-player:fullscreen .rp-events, .rp-player:fullscreen .rp-side, .rp-player:fullscreen .rp-scoreboard { display: none; }
+.rp-player:fullscreen .rp-stage { display: flex; align-items: safe center; justify-content: center; min-height: 0; overflow: auto; }
+.rp-player:fullscreen .rp-board-card { width: min(100%, 760px); }
+.rp-player:fullscreen .rp-board { width: min(62dvh, 88vw, 640px); }
+.rp-player:fullscreen .rp-board td { font-size: clamp(14px, 2.8vh, 24px); }
+.rp-player:fullscreen .rp-presentation-caption { display: block; margin: var(--ui-space-3) 0 0; text-align: center; font-size: clamp(16px, 2.4vw, 24px); font-weight: 700; }
+.rp-player:fullscreen .rp-controls { align-self: end; grid-template-columns: minmax(0, 1fr) auto; padding: var(--ui-space-3); }
+.rp-player:fullscreen .rp-button-row, .rp-player:fullscreen .rp-status { grid-column: 1 / -1; }
+.rp-player:fullscreen .rp-speed { width: 130px; }
+@media (max-height: 640px) { .rp-player:fullscreen .rp-board { width: min(50dvh, 85vw); } }
+@media (max-width: 600px) {
+  .rp-player:fullscreen .rp-board-card { padding: var(--ui-space-2); }
+  .rp-player:fullscreen .rp-board { width: 100%; min-width: 0; }
+  .rp-player:fullscreen .rp-board td { min-width: 0; font-size: 10px; }
+}

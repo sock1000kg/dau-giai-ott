@@ -9,6 +9,8 @@ import { verifyReplayResponse } from './verify-replay.ts';
 import type { SpectatorReplay, SpectatorReplayV1, SpectatorReplayV2 } from './replay-schema.ts';
 
 const matchId = '00000000-0000-4000-8000-000000000001';
+const fullscreenElementDescriptor = Object.getOwnPropertyDescriptor(document, 'fullscreenElement');
+const exitFullscreenDescriptor = Object.getOwnPropertyDescriptor(document, 'exitFullscreen');
 
 function replayBody(): string {
   const config = { gameId: matchId, engineVersion: '1.0.0', map: DEFAULT_MAP, maxTurns: 2 };
@@ -101,6 +103,10 @@ async function verifiedReplay(): Promise<SpectatorReplayV1> {
 afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllGlobals();
+  if (fullscreenElementDescriptor) Object.defineProperty(document, 'fullscreenElement', fullscreenElementDescriptor);
+  else Reflect.deleteProperty(document, 'fullscreenElement');
+  if (exitFullscreenDescriptor) Object.defineProperty(document, 'exitFullscreen', exitFullscreenDescriptor);
+  else Reflect.deleteProperty(document, 'exitFullscreen');
   window.history.replaceState({}, '', '/');
 });
 
@@ -140,6 +146,64 @@ describe('spectator replay player', () => {
     expect(first.frames).toHaveLength(first.events.length + 1);
     expect(first.frames).toEqual(second.frames);
     expect(first.frames.at(-1)?.finished).toBe(true);
+  });
+
+  it('opens presentation mode and starts playback from the fullscreen button', async () => {
+    render(<ReplayPlayer replay={await verifiedReplay()} />);
+    const player = screen.getByRole('region', { name: 'Trình phát replay' });
+    const requestFullscreen = vi.fn(async () => undefined);
+    Object.defineProperty(player, 'requestFullscreen', { configurable: true, value: requestFullscreen });
+    fireEvent.click(screen.getByRole('button', { name: /sự kiện tiếp theo/i }));
+    expect(screen.getByText(/sự kiện 1 \/ 3/i)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Trình chiếu toàn màn hình' }));
+    expect(requestFullscreen).toHaveBeenCalledOnce();
+    expect(await screen.findByText('Đang phát · 1x')).toBeTruthy();
+    expect(screen.getByText(/sự kiện 1 \/ 3/i)).toBeTruthy();
+    expect(screen.getByText(/trận này không có nước đi hợp lệ/i)).toBeTruthy();
+  });
+
+  it('restarts a finished replay when entering presentation mode', async () => {
+    render(<ReplayPlayer replay={await verifiedReplay()} />);
+    const player = screen.getByRole('region', { name: 'Trình phát replay' });
+    const requestFullscreen = vi.fn(async () => undefined);
+    Object.defineProperty(player, 'requestFullscreen', { configurable: true, value: requestFullscreen });
+    fireEvent.change(screen.getByRole('slider', { name: /chọn sự kiện/i }), { target: { value: '3' } });
+    expect(screen.getByText(/đã hết replay/i)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Trình chiếu toàn màn hình' }));
+    expect(requestFullscreen).toHaveBeenCalledOnce();
+    expect(await screen.findByText('Đang phát · 1x')).toBeTruthy();
+    expect(screen.getByRole('slider', { name: /chọn sự kiện/i })).toHaveProperty('value', '0');
+  });
+
+  it('syncs the fullscreen button when the browser exits through Escape', async () => {
+    render(<ReplayPlayer replay={await verifiedReplay()} />);
+    const player = screen.getByRole('region', { name: 'Trình phát replay' });
+    let fullscreenElement: Element | null = null;
+    Object.defineProperty(document, 'fullscreenElement', { configurable: true, get: () => fullscreenElement });
+    const requestFullscreen = vi.fn(async () => {
+      fullscreenElement = player;
+      document.dispatchEvent(new Event('fullscreenchange'));
+    });
+    const exitFullscreen = vi.fn(async () => {
+      fullscreenElement = null;
+      document.dispatchEvent(new Event('fullscreenchange'));
+    });
+    Object.defineProperty(player, 'requestFullscreen', { configurable: true, value: requestFullscreen });
+    Object.defineProperty(document, 'exitFullscreen', { configurable: true, value: exitFullscreen });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Trình chiếu toàn màn hình' }));
+    expect(await screen.findByRole('button', { name: 'Thoát toàn màn hình' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Thoát toàn màn hình' }));
+    expect(exitFullscreen).toHaveBeenCalledOnce();
+    expect(screen.getByRole('button', { name: 'Trình chiếu toàn màn hình' })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Trình chiếu toàn màn hình' }));
+    expect(await screen.findByRole('button', { name: 'Thoát toàn màn hình' })).toBeTruthy();
+    act(() => {
+      fullscreenElement = null;
+      document.dispatchEvent(new Event('fullscreenchange'));
+    });
+    expect(screen.getByRole('button', { name: 'Trình chiếu toàn màn hình' })).toBeTruthy();
   });
 
   it('plays, pauses, seeks events, changes speed, and stops deterministically at replay end', async () => {

@@ -161,6 +161,12 @@ playback. At the last event playback stops deterministically. The UI does not
 open a live socket, issue game commands, or infer team names not present in the
 public replay contract; participants are shown as sides X and O.
 
+The replay control bar also offers **Trình chiếu toàn màn hình**. Entering this
+mode starts playback (or restarts it if the replay ended); browser Escape or the
+exit button returns to the page. A replay with no `ACTION_APPLIED` event shows a
+notice explaining why the pieces do not move. Fullscreen only enlarges recorded
+events; it never starts bots or changes match data.
+
 The event projection checks that each entry's first event matches its recorded
 input and that the terminal event agrees with the public result. It is a
 presentation projection, not a second authoritative game engine; the API's

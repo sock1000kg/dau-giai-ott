@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useReducer } from 'react';
+import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import type { Piece, Position } from '@ott/game-core';
 import type { ReplaySpeed } from './replay-state.ts';
 import { createReplayMoves, createReplayTimeline, initialPlaybackState, playbackReducer } from './replay-state.ts';
@@ -25,6 +25,9 @@ export function ReplayPlayer({ replay }: { readonly replay: SpectatorReplay }) {
   const timeline = useMemo(() => createReplayTimeline(replay), [replay]);
   const moves = useMemo(() => createReplayMoves(replay), [replay]);
   const [playback, dispatch] = useReducer(playbackReducer, undefined, initialPlaybackState);
+  const playerRef = useRef<HTMLElement>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [fullscreenError, setFullscreenError] = useState(false);
   const eventCount = timeline.events.length;
   const currentEvent = playback.eventIndex === 0 ? null : timeline.events[playback.eventIndex - 1] ?? null;
   const state = timeline.frames[playback.eventIndex] ?? timeline.frames[0]!;
@@ -35,6 +38,28 @@ export function ReplayPlayer({ replay }: { readonly replay: SpectatorReplay }) {
     const timer = window.setInterval(() => dispatch({ type: 'ADVANCE', eventCount }), 500 / playback.speed);
     return () => window.clearInterval(timer);
   }, [eventCount, playback.isPlaying, playback.speed]);
+
+  useEffect(() => {
+    const onFullscreenChange = () => setIsFullscreen(document.fullscreenElement === playerRef.current);
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
+  }, []);
+
+  async function toggleFullscreen() {
+    setFullscreenError(false);
+    try {
+      if (document.fullscreenElement === playerRef.current) {
+        await document.exitFullscreen();
+        return;
+      }
+      if (!playerRef.current?.requestFullscreen) throw new Error('Fullscreen unavailable');
+      await playerRef.current.requestFullscreen();
+      if (isAtEnd) dispatch({ type: 'RESTART' });
+      dispatch({ type: 'PLAY', eventCount });
+    } catch {
+      setFullscreenError(true);
+    }
+  }
 
   const piecesByPosition = new Map(state.pieces.map((piece) => [positionKey(piece.position), piece]));
   const obstacles = new Set(replay.header.game.map.obstacles.map(positionKey));
@@ -51,7 +76,7 @@ export function ReplayPlayer({ replay }: { readonly replay: SpectatorReplay }) {
     ? replay.timing.find((item) => item.turnId === currentEvent.event.turnId && item.side === currentEvent.event.side)
     : undefined;
   return (
-    <section className="rp-player" aria-label="Trình phát replay">
+    <section ref={playerRef} className="rp-player" aria-label="Trình phát replay">
       <Card className="rp-heading">
         <div>
           <p className="rp-eyebrow">REPLAY ĐÃ XÁC MINH</p>
@@ -111,6 +136,15 @@ export function ReplayPlayer({ replay }: { readonly replay: SpectatorReplay }) {
               </tbody>
             </table>
           </div>
+          <p className="rp-presentation-caption" aria-live="polite">
+            {currentEvent?.event.type === 'ACTION_APPLIED' && currentEvent.event.action
+              ? `Đội ${currentEvent.event.side} di chuyển đến ${columns[currentEvent.event.action.to.col]}${currentEvent.event.action.to.row + 1}`
+              : currentEvent?.event.type === 'TURN_SKIPPED'
+                ? `Đội ${currentEvent.event.side} bỏ lượt · ${reasonLabel(currentEvent.event.reason)}`
+                : currentEvent?.event.type === 'MATCH_FINISHED'
+                  ? 'Trận đấu kết thúc'
+                  : 'Sẵn sàng trình chiếu'}
+          </p>
         </Card>
 
         <aside className="rp-side">
@@ -137,6 +171,7 @@ export function ReplayPlayer({ replay }: { readonly replay: SpectatorReplay }) {
 
       <section className="ui-card rp-controls" aria-label="Điều khiển replay">
         <div className="rp-button-row">
+          <Button variant="secondary" onClick={() => void toggleFullscreen()}>{isFullscreen ? 'Thoát toàn màn hình' : 'Trình chiếu toàn màn hình'}</Button>
           <Button variant="ghost" onClick={() => dispatch({ type: 'RESTART' })}>Bắt đầu lại</Button>
           <Button variant="secondary" aria-label="Sự kiện trước" disabled={playback.eventIndex === 0} onClick={() => dispatch({ type: 'SEEK', eventIndex: playback.eventIndex - 1, eventCount })}>← Sự kiện trước</Button>
           <Button aria-label={playback.isPlaying ? 'Tạm dừng' : playback.eventIndex > 0 ? 'Tiếp tục' : 'Phát'} disabled={isAtEnd && !playback.isPlaying} onClick={() => dispatch(playback.isPlaying ? { type: 'PAUSE' } : { type: 'PLAY', eventCount })}>{playback.isPlaying ? 'Tạm dừng' : playback.eventIndex > 0 ? 'Tiếp tục' : 'Phát'}</Button>
@@ -153,6 +188,8 @@ export function ReplayPlayer({ replay }: { readonly replay: SpectatorReplay }) {
           </Select>
         </div>
         <p className="rp-status" role="status">{isAtEnd ? 'Đã hết replay' : playback.isPlaying ? `Đang phát · ${playback.speed}x` : 'Đang tạm dừng'}</p>
+        {fullscreenError && <p className="rp-status" role="alert">Trình duyệt không thể mở toàn màn hình. Bạn vẫn có thể phát replay tại đây.</p>}
+        {!timeline.events.some(({ event }) => event.type === 'ACTION_APPLIED') && <p className="rp-status" role="note">Trận này không có nước đi hợp lệ; replay chỉ ghi lại lượt bỏ và kết quả.</p>}
       </section>
 
       <nav className="ui-card rp-events" aria-label="Dòng sự kiện">
