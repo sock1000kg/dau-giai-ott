@@ -1,0 +1,15 @@
+{
+  "stage": "QUALIFICATION",
+  "teams": [
+    {
+      "username": "team05",
+      "botArchive": "src/bots/sandbox-corpus/artifacts/oci-fixtures/v2-first-legal.oci.tar"
+    },
+    {
+      "username": "team06",
+      "botArchive": "src/bots/sandbox-corpus/artifacts/oci-fixtures/v2-capture-first.oci.tar"
+    }
+  ],
+  "submissionWindowSeconds": 120,
+  "graceSeconds": 5
+}

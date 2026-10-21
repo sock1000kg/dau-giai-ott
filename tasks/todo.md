@@ -1,6 +1,6 @@
 # Task Checklist: Phase 1–3
 
-**Trạng thái tại `main` ngày 2026-10-20:** Phase 1 đã đóng; Phase 2 local `P2-T01`–`P2-T29` đã đóng nhưng extension `P2-T30`–`P2-T37` và Checkpoint `P2-C` còn mở. Phase 3 có 25/25 task được tick; cả 8 checkpoint vẫn chờ Thuận nghiệm thu.
+**Trạng thái tại `main` ngày 2026-10-20:** Phase 1 đã đóng; Phase 2 local `P2-T01`–`P2-T29` đã đóng nhưng extension `P2-T30`–`P2-T37` và Checkpoint `P2-C` còn mở. `P2-T38` là yêu cầu dữ liệu mẫu mới, đang ở task branch. Phase 3 có 25/25 task được tick; cả 8 checkpoint vẫn chờ Thuận nghiệm thu.
 **Mức khuyến nghị Phase 3:** Cần Đinh Đức Thuận duyệt thủ công
 **Plan:** `tasks/plan.md`
 **Nguồn:** `docs/team-assignment.md`
@@ -834,6 +834,18 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 **Dependencies:** `P2-T08`, `P3-T01`.
 **Files dự kiến:** `src/bots/oci-fixtures/v2-action/{Dockerfile,bot.mjs}`, `src/bots/sandbox-corpus/{manifest.json,README.md,tests/v2-action.test.ts}`.
 **Ước lượng:** M (5 file)
+
+### [ ] P2-T38 — Dữ liệu mẫu vòng loại cho demo stack
+
+**Owner:** Đinh Đức Thuận
+**Mô tả:** Nạp một vòng loại mẫu có hai bot khác nhau qua API của demo stack để tạo bài nộp, trận, kết quả và bảng xếp hạng thật.
+**Acceptance criteria:** (1) file mẫu khai báo đội, bot và thời gian; (2) loader chỉ chạy qua loopback trên demo dev, không reset dữ liệu, mặc định từ chối khi đã có vòng loại; `--append` chỉ nhận sample mới sau khi vòng trước `PUBLISHED`; (3) preflight, trận và bảng xếp hạng hoàn tất trên stack thật; không ghi credential vào source/log.
+**Verification:** kiểm tra cú pháp và guard, chạy trên demo stack, đối chiếu số lượng round/submission/match/leaderboard sau khi chạy; GitNexus detect-changes trước commit.
+**Dependencies:** `P2-T35`, `P2-T36`, `P2-T40`.
+**Files dự kiến:** `samples/qualification-demo.json`, `samples/qualification-demo-extra.json`, `scripts/seed-sample-data.py`, `docs/runbooks/local-demo.md`.
+**Verification tại task branch:** chạy trên `jump-jits`: 2 submission ACTIVE, 1 series FINALIZED, leaderboard 2 đội; PostgreSQL có 10 team, 2 submission, 1 qualification round, 2 match, 2 rating ledger row. Chạy lại bị từ chối trước khi tạo vòng mới. Cần review/merge branch trước khi tick.
+**Mở rộng theo yêu cầu:** sample thứ hai dùng `team03`/`team04`; `--append` chỉ chạy sau khi vòng trước hoàn tất, reconcile/publish qua API và từ chối đội đã có submission. Loader publish vòng mới sau khi series hoàn tất để rating ledger được ghi.
+**Verification bổ sung trên `jump-jits`:** hai vòng đều `PUBLISHED`, 4 submission, 6 match, 6 rating ledger row; leaderboard có 4 đội. Chạy lại `--append` với cùng sample bị từ chối do `team03` đã có submission; stack vẫn ready.
 
 ## Checkpoint P2-C — Full-stack local demo runtime
 

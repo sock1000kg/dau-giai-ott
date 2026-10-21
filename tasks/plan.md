@@ -1,7 +1,7 @@
 # Implementation Plan: Phase 1–3 theo phân công nhóm Dev
 
 **Trạng thái 2026-10-20:** Phase 1 và Phase 2 local `P2-T01`–`P2-T29` hoàn tất; extension `P2-T30`–`P2-T37`/`P2-C` còn mở. Phase 3 có 25/25 task tick nhưng 0/8 checkpoint được duyệt; xem `tasks/todo.md` để biết giới hạn verification.
-`P2-T40` bổ sung OCI bot fixtures tương thích preflight v1 và match v2; task card, dependency và acceptance nằm tại `tasks/todo.md`.
+`P2-T40` bổ sung OCI bot fixtures tương thích preflight v1 và match v2; `P2-T38` dùng chúng để nạp dữ liệu mẫu sau `P2-T35`/`P2-T36`, không thay gate `P2-C`.
 **Phê duyệt Phase 3:** D-14–D-30, ADR-0008–0010 và contract baseline được duyệt ngày 14/10/2026
 **Người duyệt Gate P3-0:** Đinh Đức Thuận
 **Nguồn:** `docs/team-assignment.md`, `docs/tai-lieu-yeu-cau.md`
