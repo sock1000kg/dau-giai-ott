@@ -167,6 +167,12 @@ exit button returns to the page. A replay with no `ACTION_APPLIED` event shows a
 notice explaining why the pieces do not move. Fullscreen only enlarges recorded
 events; it never starts bots or changes match data.
 
+The replay board uses a dark, gapless 9×9 surface with coordinates inside the
+edge cells, flag markers for map goals, terrain markers for obstacles, and
+circular red/X and blue/O hand tokens. Token type remains available in each
+piece's accessible name; the square label continues to announce coordinates,
+goal ownership, and obstacles while playback preserves recorded positions.
+
 The event projection checks that each entry's first event matches its recorded
 input and that the terminal event agrees with the public result. It is a
 presentation projection, not a second authoritative game engine; the API's
