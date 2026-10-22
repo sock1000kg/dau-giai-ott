@@ -1019,6 +1019,17 @@ Task `P2-T42`–`P2-T53` là đợt giao diện riêng, không tự đóng `P2-C
 **Files dự kiến:** `docs/validation/frontend-redesign/`, `src/platform/web/README.md`, `tasks/todo.md`.
 **Ước lượng:** M (validation/docs; lỗi phát hiện xử lý ở task riêng).
 
+### [ ] P2-T54 — Bàn cờ replay theo theme sáng/tối
+
+**Owner:** Đinh Đức Thuận
+**Mô tả:** Làm bề mặt bàn cờ replay sáng ở light theme và tối ở dark theme; giữ màu đỏ/xanh của hai đội và trạng thái bàn cờ.
+**Acceptance criteria:** (1) light theme dùng ô sáng xen kẽ, tọa độ/đích/chướng ngại vật/nước đi có tương phản; (2) dark theme giữ bảng màu tối hiện tại; (3) quân, vị trí, bàn 9×9 và replay playback không đổi ở route công khai/riêng.
+**Verification:** Chromium screenshots ở 1440×1100 và 390×844 cho cả hai theme trên spectator/private replay; kiểm computed styles, contrast và console; web tests/typecheck/build. Evidence ở `docs/validation/p2-t54/`.
+**Dependencies:** `P2-T48`.
+**Files dự kiến:** `src/platform/web/src/features/spectator/replay-player.css`, `src/platform/web/README.md`, ảnh validation.
+**GitNexus pre-edit:** `ReplayPlayer` upstream risk HIGH, hai callers (`PrivateReplayPage`, `SpectatorReplayPage`) và bốn process. Implementation giữ nguyên TS/API; xác minh cả hai route sau sửa CSS.
+**Implementation đã xác minh:** 2026-10-22 — Bàn cờ theo palette riêng của light/dark; giữ nguyên engine/frame/ARIA/API. Chromium xác minh public và private replay tại 1440×1100, 390×844; fullscreen bật/tắt, computed styles và console pass. Evidence tại `docs/validation/p2-t54/`. Web tests 404/404, typecheck, build và `git diff --check` pass. Tick task sau khi merge.
+
 ## Phase 3 — Gate P3-0: decision và contract approval
 
 > `P3-T01` đã duyệt requirement/ADR/contract ngày 14/10/2026. Task implementation chỉ hoàn tất sau acceptance/verification riêng; Wave 1 có thể bắt đầu trên branch task từ `main`.

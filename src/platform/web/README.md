@@ -21,6 +21,10 @@ that choice is stored as `ott-theme` and synchronized between open tabs. Shared
 UI tokens live in `src/ui/ui.css`; feature pages can migrate their fixed colors
 to these semantic tokens in their owning redesign tasks.
 
+Replay board surfaces follow the selected theme: warm light squares and board
+frame in light mode, dark squares in dark mode. Red/blue team rings, map goals,
+obstacles, coordinates, and move highlights retain their semantic colors.
+
 From the repository root:
 
 ```bash
