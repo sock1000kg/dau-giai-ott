@@ -30,7 +30,7 @@ Initial palette direction (values are candidates and must be contrast-checked af
 | text | `#172033` | `#F1F5F9` |
 | text-muted | `#536176` | `#A9B8CC` |
 | border | `#CBD5E1` | `#33445C` |
-| accent | `#087F8C` | `#42D6C5` |
+| accent | `#06717D` | `#42D6C5` |
 | danger | `#B42318` | `#FF7B72` |
 | warning | `#8A4B08` | `#F6C76B` |
 | success | `#176B45` | `#55D69E` |

@@ -12,4 +12,4 @@
 ## Mockup previews
 
 - Light and dark mockup screenshots: `mockup-preview-light.png`, `mockup-preview-dark.png`.
-- Captured with Chrome DevTools MCP, 1440×1000 viewport, isolated profile. Both were checked for image load and accessible image name.
+- Captured with Chrome DevTools MCP, 1440×1500 viewport, isolated profile. Both were checked for image load and accessible image name.
