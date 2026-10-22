@@ -55,7 +55,7 @@ export function MatchResultsPage({ isAdmin }: Readonly<{ isAdmin: boolean }>) {
 
   return (
     <Page title="Kết quả thi đấu" description="Kết quả đã chốt được cung cấp từ hệ thống giải đấu; trang này chỉ đọc và không can thiệp trận.">
-      <Card><div className="results-filters" role="group" aria-label="Bộ lọc kết quả">
+      <Card className="results-filter-card"><div className="results-filters" role="group" aria-label="Bộ lọc kết quả">
         <Field label="Loại kết quả" help="Xem từng trận hoặc cả loạt trận.">
           <Select value={kind} onChange={(event) => { setKind(event.target.value as 'matches' | 'series'); setPage(1); }}><option value="matches">Từng trận</option><option value="series">Loạt trận</option></Select>
         </Field>
