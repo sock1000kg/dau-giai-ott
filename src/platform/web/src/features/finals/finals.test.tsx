@@ -220,7 +220,8 @@ describe('Finals UI — AC-3: Replay Publication Privacy & Accessibility', () =>
     expect(navLink.getAttribute('href')).toBe('/finals');
 
     // Finals page rendered
-    await screen.findByRole('heading', { name: 'Vòng Chung kết (Finals)' });
+    await screen.findByRole('heading', { level: 1, name: 'Vòng Chung kết' });
+    expect(screen.getByRole('heading', { level: 2, name: 'Nhánh đấu chính thức' })).toBeTruthy();
     expect(screen.getByRole('region', { name: 'Bảng xếp hạng và Nhánh đấu Chung kết' })).toBeTruthy();
     expect(screen.getByRole('region', { name: 'Lịch thi đấu và Kết quả chi tiết Vòng Chung kết' })).toBeTruthy();
   });
