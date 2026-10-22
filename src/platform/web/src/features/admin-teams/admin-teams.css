@@ -22,3 +22,20 @@
 .teams-table td { vertical-align: middle; }
 .teams-table .ui-button { min-height: 44px; }
 .teams-col-email { overflow-wrap: anywhere; }
+.teams-create,
+.teams-directory { border-block-start: 3px solid var(--ui-accent); }
+.teams-bulk { border-block-start: 3px solid var(--ui-border-strong); }
+.teams-import-description { max-width: 68ch; }
+.teams-toolbar { padding-block-end: var(--ui-space-3); border-block-end: 1px solid var(--ui-border); }
+.teams-toolbar .ui-row { flex-wrap: wrap; }
+.teams-table { min-width: 760px; }
+.teams-table caption { padding: var(--ui-space-3); color: var(--ui-text-muted); text-align: start; }
+.teams-table td:last-child { min-width: 260px; }
+.teams-table td:last-child .ui-button { white-space: normal; }
+
+@media (max-width: 600px) {
+  .teams-toolbar { align-items: stretch; }
+  .teams-toolbar .ui-row { width: 100%; }
+  .teams-toolbar .ui-row .ui-button { flex: 1 1 12rem; }
+  .teams-table { min-width: 700px; }
+}

@@ -118,7 +118,7 @@ export function ReplayCatalog() {
       {!loading && !error && items.length === 0 && <Card className="ra-empty"><p>Chưa có replay đủ điều kiện phát hành.</p></Card>}
 
       {!loading && items.length > 0 && (
-        <Card className="ra-catalog">
+        <Card className="ra-catalog" title="Trận đã hoàn tất">
           <Table caption="Danh sách trận đã kết thúc" columns={columns} rows={items} rowKey={(item) => item.matchId} emptyMessage="Chưa có replay đủ điều kiện phát hành." />
         </Card>
       )}

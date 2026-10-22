@@ -112,9 +112,9 @@ export function BulkProvision({ onImportSuccess }: BulkProvisionProps) {
   }
 
   return (
-    <Card title="Cấp tài khoản hàng loạt (CSV)">
+    <Card className="teams-bulk" title="Cấp tài khoản hàng loạt (CSV)">
       <div className="teams-import">
-        <p>
+        <p className="teams-import-description">
           Tải lên danh sách đội thi định dạng CSV. File mật khẩu sẽ chỉ tải được đúng một lần sau khi nhập.
         </p>
 
