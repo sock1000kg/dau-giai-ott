@@ -10,7 +10,7 @@
 - Accessibility tree was captured for each route with MCP. The initial public page made an aborted first request (404) while Vite started, then received the fixture pointer (304) and immutable snapshot (200); login requested `/api/v1/auth/session` (200/304). Final login capture had no console messages. The replay route showed its unsupported-replay error state. No persistent network log export was retained.
 - Full-page captures can exceed viewport height. `390x844` names describe the browser viewport, while PNG dimensions reflect full-page output. Public page expands to 788px because of horizontal overflow and is marked for the redesign to fix.
 
-A first HTML visual direction mockup is available at [`../mockup-preview.html`](../mockup-preview.html). It demonstrates only the public hero/status/card hierarchy in two candidate palettes; it is not approval for implementation. Team, BTC, login and replay mockups remain to be reviewed/added.
+A first HTML visual direction mockup is available at [`../mockup-preview.html`](../mockup-preview.html). It demonstrates the public hero/status/card hierarchy in two candidate palettes and uses the demo Go photo documented in [`../ASSETS.md`](../ASSETS.md); it is not approval for implementation. Team, BTC, login and replay mockups remain to be reviewed/added.
 
 ## Captures
 
