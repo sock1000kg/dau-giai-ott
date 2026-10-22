@@ -13,6 +13,8 @@ role-specific area is rendered; a `401` returns to the login form, while a
 session-check network/server error keeps private content hidden and offers a
 retry.
 
+The local SVG favicon is served from `/favicon.svg` for development and container builds.
+
 Theme initialization runs before React renders. The browser follows
 `prefers-color-scheme` until the visitor explicitly selects light or dark;
 that choice is stored as `ott-theme` and synchronized between open tabs. Shared
