@@ -192,12 +192,16 @@
 .ui-appnav-links a[aria-current="page"] { background: var(--ui-active-nav); color: var(--ui-accent); }
 .ui-appnav-menu-toggle { display: none; }
 .ui-appnav-actions { display: flex; align-items: center; gap: var(--ui-space-3); }
+.ui-theme-toggle { min-width: 88px; justify-content: center; gap: var(--ui-space-2); white-space: nowrap; }
+.ui-theme-toggle > span:first-child { font-size: 16px; line-height: 1; }
 
 @media (max-width: 719px) {
   .ui-appnav-menu-toggle { display: inline-flex; }
   .ui-appnav-links { display: none; width: 100%; flex-direction: column; order: 3; }
   .ui-appnav[data-open="true"] .ui-appnav-links { display: flex; }
   .ui-appnav-actions { margin-left: auto; }
+  .ui-appnav-actions { flex-wrap: wrap; justify-content: flex-end; gap: var(--ui-space-2); }
+  .ui-theme-toggle { min-width: 72px; }
 }
 
 /* Role home */

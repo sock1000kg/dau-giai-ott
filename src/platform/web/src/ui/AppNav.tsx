@@ -2,6 +2,7 @@ import { useState, type KeyboardEvent } from 'react';
 import { Alert, Badge } from './Alert.tsx';
 import { Button } from './Button.tsx';
 import { LOGOUT_FAILED_MESSAGE, useLogout } from './useLogout.ts';
+import { ThemeToggle } from './ThemeToggle.tsx';
 
 export type NavRole = 'BTC_ADMIN' | 'TEAM_ACCOUNT';
 
@@ -71,6 +72,7 @@ export function AppNav({ role, pathname, onLogout }: Readonly<AppNavProps>) {
           ))}
         </ul>
         <div className="ui-appnav-actions">
+          <ThemeToggle />
           <Badge accent>{role === 'BTC_ADMIN' ? 'BTC' : 'Đội thi'}</Badge>
           <Button variant="ghost" loading={loggingOut} onClick={() => void logout()}>
             {loggingOut ? 'Đang đăng xuất…' : 'Đăng xuất'}

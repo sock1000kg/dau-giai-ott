@@ -902,7 +902,7 @@ Task `P2-T42`–`P2-T53` là đợt giao diện riêng, không tự đóng `P2-C
 
 **Hoàn tất:** 2026-10-22 — `theme.ts` khởi tạo từ localStorage hoặc OS trước React, đồng bộ cross-tab, theo OS đến khi có lựa chọn thủ công; bootstrap inline tránh nháy theme. Token semantic light/dark áp dụng cho shell, controls, states và bảng. Evidence: `docs/validation/frontend-redesign/after-t43/`; contrast chính >=4.5:1. Chrome DevTools MCP xác nhận mode khởi tạo/OS change ở `/public`, ảnh 1440/390. `npm test --workspace @ott/platform-web -- --maxWorkers=4` 401/401, typecheck và build pass.
 
-### [ ] P2-T44 — Công tắc Sáng/Tối trên mọi route
+### [x] P2-T44 — Công tắc Sáng/Tối trên mọi route
 
 **Mô tả:** Đặt control hai mode trong header chung, có trạng thái và tên truy cập rõ; click cập nhật theme ngay và giữ qua reload/điều hướng/login.
 **Acceptance criteria:** (1) Khách/đội/BTC đều thấy một control thống nhất; (2) bàn phím và screen reader nhận biết lựa chọn; (3) không tạo mode thứ ba hoặc lưu session/token.
@@ -910,6 +910,8 @@ Task `P2-T42`–`P2-T53` là đợt giao diện riêng, không tự đóng `P2-C
 **Dependencies:** `P2-T43`.
 **Files dự kiến:** `src/platform/web/src/ui/ThemeToggle.tsx`, `src/platform/web/src/app/{App.tsx,styles.css}`, `src/platform/web/src/app/App.test.tsx`.
 **Ước lượng:** M (4 file chính, README cùng PR).
+
+**Hoàn tất:** 2026-10-22 — `ThemeToggle` hiện ở header public và navigation authenticated dùng chung cho BTC/đội; button có `aria-label`, `aria-pressed`, đổi mode tức thời và lưu `ott-theme` qua `selectTheme`. Kiểm thử component và AppNav bao gồm state/sync; full evidence ghi ở `docs/validation/frontend-redesign/after-t44/`.
 
 ### [ ] P2-T45 — Shell, điều hướng, login và trang tổng quan
 

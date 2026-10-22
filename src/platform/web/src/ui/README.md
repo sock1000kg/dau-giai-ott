@@ -8,6 +8,7 @@ Shared design tokens and components for the web app. Semantic color tokens suppo
 - Import from `src/ui/index.ts` (it loads `ui.css`). Tokens are CSS custom properties on `:root` (`--ui-*`) with light and dark values selected by `data-theme`.
 - `theme.ts` applies the mode before React mounts, follows OS changes when no preference is saved, and syncs saved preference changes from other tabs. Only `light` or `dark` is stored.
 - Logout lives in `AppNav`; authenticated pages are wrapped by `AppShellLayout` (in `app/routes.tsx`) which renders the nav and the `#main` skip-link target. Pages must not render their own logout button.
+- `ThemeToggle` is shared by public and authenticated headers. It is a two-state pressed button and persists only the selected `light`/`dark` value through `theme.ts`.
 
 ## Components
 

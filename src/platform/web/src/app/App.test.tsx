@@ -16,5 +16,6 @@ describe('App shell', () => {
     expect(await screen.findByRole('heading', { name: /đăng nhập/i })).toBeTruthy();
     expect(screen.getByRole('main')).toBeTruthy();
     expect(screen.getByRole('link', { name: /giải đấu ott - trang chủ/i }).getAttribute('href')).toBe('/');
+    expect(screen.getByRole('button', { name: 'Chuyển sang giao diện sáng' }).getAttribute('aria-pressed')).toBe('true');
   });
 });
