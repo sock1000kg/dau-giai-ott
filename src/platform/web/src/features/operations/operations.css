@@ -1,5 +1,12 @@
-.ops-panel-head { display: grid; gap: var(--ui-space-2); }
+.ops-panel-head { display: grid; gap: var(--ui-space-2); padding-block-start: var(--ui-space-2); border-block-start: 3px solid var(--ui-border-strong); }
 .ops-panel-head h2 { margin: 0; }
+.ui-card > section[aria-labelledby="ops-privileged-title"] > .ops-panel-head { border-block-start-color: var(--ui-accent); }
+.ui-card > section[aria-labelledby="ops-overrides-title"] > .ops-panel-head,
+.ui-card > section[aria-labelledby="ops-flagged-submissions-title"] > .ops-panel-head { border-block-start-color: var(--ui-warning); }
+.ui-card section[aria-labelledby^="ops-"] .ui-table { min-width: 680px; }
+.ui-card section[aria-labelledby^="ops-"] .ui-table caption { text-align: start; }
+.ops-confirm { border-inline-start-width: 4px; }
+.ops-confirm > .ui-row { flex-wrap: wrap; }
 .ops-muted { color: var(--ui-text-muted); font-size: 13px; line-height: 1.5; }
 .ops-form-grid { display: grid; gap: var(--ui-space-4); grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
 .ops-picker { display: grid; gap: var(--ui-space-4); }
@@ -17,3 +24,9 @@
 .ops-checkbox input { width: 24px; height: 24px; flex: none; margin: 0; accent-color: var(--ui-accent); }
 .ops-checkbox input:focus-visible { outline: var(--ui-focus-ring); outline-offset: 2px; }
 .ops-code { overflow-wrap: anywhere; font-family: ui-monospace, monospace; font-size: 12px; }
+
+@media (max-width: 520px) {
+  .ui-card section[aria-labelledby^="ops-"] .ui-row > .ui-button { flex: 1 1 10rem; }
+  .ui-card section[aria-labelledby^="ops-"] .ui-table-scroll { max-width: 100%; }
+  .ops-confirm { padding: var(--ui-space-3); }
+}
