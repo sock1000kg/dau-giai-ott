@@ -945,7 +945,7 @@ Task `P2-T42`–`P2-T53` là đợt giao diện riêng, không tự đóng `P2-C
 **Files dự kiến:** `src/platform/web/src/features/finals/{FinalsPage.tsx,finals.css,finals.test.tsx}`.
 **Ước lượng:** M (3 file chính, README cùng PR).
 
-### [ ] P2-T48 — Khung replay công khai và riêng
+### [x] P2-T48 — Khung replay công khai và riêng
 
 **Mô tả:** Làm lại hierarchy metadata/player/controls theo theme, giữ bàn cờ P2-T41 tối và giữ chức năng phát/fullscreen.
 **Acceptance criteria:** (1) board 9×9, quân, cờ và highlight không thay nghĩa; (2) controls đọc được trong cả hai mode và fullscreen 390/1440 px; (3) replay không action giải thích rõ và không gọi live bot API.
@@ -953,6 +953,8 @@ Task `P2-T42`–`P2-T53` là đợt giao diện riêng, không tự đóng `P2-C
 **Dependencies:** `CP-UI-A`, `P2-T41`.
 **Files dự kiến:** `src/platform/web/src/features/spectator/{ReplayPlayer.tsx,replay-player.css,replay-player.ui.test.tsx}`.
 **Ước lượng:** M (3 file chính, README cùng PR).
+
+**Hoàn tất:** 2026-10-22 — Replay player surrounding surfaces consume semantic tokens in light/dark; X/O badges and outcome text follow status tokens, fullscreen controls use themed raised surface, forced-colors receives explicit borders. Existing 19 player/page tests cover controls, fullscreen lifecycle, playback and unsupported schemas. Browser evidence `docs/validation/frontend-redesign/after-t48/`: public unsupported state at 390px light/1440px dark; document width fits viewport; no JS console errors. Player behavior and 9×9 board rendering are unchanged.
 
 ### [ ] Checkpoint CP-UI-B — Public và replay
 
