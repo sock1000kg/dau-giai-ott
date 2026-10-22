@@ -56,6 +56,14 @@ describe('AppNav', () => {
     expect(screen.getByRole('link', { name: 'Bỏ qua điều hướng' }).getAttribute('href')).toBe('#main');
   });
 
+  it('shows the shared theme toggle with the selected state for each role', () => {
+    for (const role of ['BTC_ADMIN', 'TEAM_ACCOUNT'] as const) {
+      const { unmount } = render(<AppNav role={role} pathname="/" onLogout={noop} />);
+      expect(screen.getByRole('button', { name: /chuyển sang giao diện/i }).getAttribute('aria-pressed')).toBe('true');
+      unmount();
+    }
+  });
+
   it('toggles the mobile menu with a button and closes on Escape', async () => {
     render(<AppNav role="BTC_ADMIN" pathname="/" onLogout={noop} />);
     const toggle = screen.getByRole('button', { name: 'Menu' });

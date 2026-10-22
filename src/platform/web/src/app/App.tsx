@@ -5,6 +5,7 @@ import { AuthRoutes } from './routes.tsx';
 import { LeaderboardPage } from '../features/leaderboard/LeaderboardPage.tsx';
 import { SpectatorReplayPage } from '../pages/SpectatorReplayPage.tsx';
 import { FinalsPage } from '../features/finals/FinalsPage.tsx';
+import { ThemeToggle } from '../ui/ThemeToggle.tsx';
 
 export function App() {
   const isFinalsPage = window.location.pathname === '/finals';
@@ -23,6 +24,7 @@ export function App() {
         <a className="public-nav-link" href="/public" aria-current={window.location.pathname === '/public' ? 'page' : undefined}>Thông tin giải đấu</a>
         <a className="public-nav-link" href="/leaderboard" aria-current={isPublicLeaderboard ? 'page' : undefined}>Bảng xếp hạng</a>
         <a className="public-nav-link" href="/finals" aria-current={isFinalsPage ? 'page' : undefined}>Vòng chung kết</a>
+        <ThemeToggle />
       </header>
 
       {window.location.pathname === '/public' ? <PublicTournamentPage /> : isFinalsPage ? <FinalsPage /> : isPublicLeaderboard ? <LeaderboardPage />
