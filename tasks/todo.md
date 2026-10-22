@@ -877,6 +877,133 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 - [ ] Browser flow BTC/team/submission/result/replay pass với hai OCI canary; account CSV chỉ tồn tại local, mode `0600`, gitignored.
 - [ ] Root gates, Docker image/Compose checks, restart/idempotency và teardown pass; không deploy cloud và không dùng production/shared data.
 
+## Đợt làm lại frontend — hai mode sáng/tối
+
+Task `P2-T42`–`P2-T53` là đợt giao diện riêng, không tự đóng `P2-C` hoặc các checkpoint Phase 3. [Plan và ma trận test Chrome DevTools MCP](../docs/plans/2026-10-22-frontend-redesign-dual-theme.md) quy định route, dữ liệu, viewport, evidence và release gate. Owner các task là Đinh Đức Thuận; mỗi task code có branch riêng từ `main`.
+
+### [ ] P2-T42 — Baseline trình duyệt và design contract hai mode
+
+**Mô tả:** Chụp giao diện đang chạy, kiểm tra các vấn đề về bố cục/màu/chữ ở route đại diện, dựng và duyệt mockup sáng/tối cho khách, đội, BTC.
+**Acceptance criteria:** (1) Có ảnh baseline desktop 1440×900, mobile 390×844 cho login/public/team/BTC/replay; (2) design contract mô tả hierarchy, type/spacing, token, states và điểm khác nhau giữa hai mode; (3) mockup được owner duyệt trước khi đổi code.
+**Verification:** Chrome DevTools MCP chạy với profile cô lập; ghi screenshot, computed style, accessibility tree, console và viewport vào manifest; chưa tick nếu MCP chưa hoạt động.
+**Dependencies:** `P2-T41`; không phụ thuộc `P2-C`.
+**Files dự kiến:** `docs/plans/2026-10-22-frontend-redesign-dual-theme.md`, `docs/validation/frontend-redesign/`.
+**Ước lượng:** M (docs/ảnh; không code).
+
+### [ ] P2-T43 — Theme foundation và token ngữ nghĩa
+
+**Mô tả:** Thêm bộ token light/dark, bootstrap theme trước React, mặc định theo OS khi chưa có lựa chọn, lưu duy nhất `light`/`dark` khi người dùng chọn.
+**Acceptance criteria:** (1) `data-theme` và `color-scheme` khớp trên mọi route, không nháy sai mode khi tải; (2) token đủ cho text/surface/border/accent/status/focus và form native; (3) đổi OS chỉ cập nhật giao diện khi chưa chọn thủ công.
+**Verification:** Test theme khởi tạo/ưu tiên/persist/cross-tab/OS change và kiểm cặp màu chính theo WCAG; `npm test --workspace @ott/platform-web`, typecheck, build; browser TH-01/TH-03.
+**Dependencies:** `P2-T42`.
+**Files dự kiến:** `src/platform/web/index.html`, `src/platform/web/src/ui/{theme.ts,theme.test.ts,ui.css}`, `src/platform/web/src/app/styles.css`.
+**Ước lượng:** M (5 file chính, README cùng PR).
+
+### [ ] P2-T44 — Công tắc Sáng/Tối trên mọi route
+
+**Mô tả:** Đặt control hai mode trong header chung, có trạng thái và tên truy cập rõ; click cập nhật theme ngay và giữ qua reload/điều hướng/login.
+**Acceptance criteria:** (1) Khách/đội/BTC đều thấy một control thống nhất; (2) bàn phím và screen reader nhận biết lựa chọn; (3) không tạo mode thứ ba hoặc lưu session/token.
+**Verification:** UI test toggle/ARIA và browser TH-02, NAV-01 trên desktop/mobile; web test/typecheck/build.
+**Dependencies:** `P2-T43`.
+**Files dự kiến:** `src/platform/web/src/ui/ThemeToggle.tsx`, `src/platform/web/src/app/{App.tsx,styles.css}`, `src/platform/web/src/app/App.test.tsx`.
+**Ước lượng:** M (4 file chính, README cùng PR).
+
+### [ ] P2-T45 — Shell, điều hướng, login và trang tổng quan
+
+**Mô tả:** Sắp lại header/menu/mobile, login và home theo thứ bậc hành động của từng role, dùng token của hai mode.
+**Acceptance criteria:** (1) BTC/đội có điều hướng rõ, trạng thái active/focus và menu Escape đúng; (2) login/home có hành động chính nổi bật, không còn card đồng dạng thiếu ưu tiên; (3) không tràn ngang 320/390 px.
+**Verification:** App route/auth/nav tests; browser NAV-01, TH-02 và ảnh login/home ở hai mode, 320/390/768/1440; web test/typecheck/build.
+**Dependencies:** `P2-T44`.
+**Files dự kiến:** `src/platform/web/src/ui/{AppNav.tsx,AppShellLayout.tsx,ui.css}`, `src/platform/web/src/features/home/HomePage.tsx`, `src/platform/web/src/features/auth/auth.css`.
+**Ước lượng:** M (5 file chính; test/docs cùng PR).
+
+### [ ] Checkpoint CP-UI-A — Theme và shell
+
+- [ ] T43–T45 merge vào `main`, unit/route tests, typecheck và build đạt.
+- [ ] Chrome DevTools MCP chứng minh TH-01–03/NAV-01, không có console error/warning mới; ảnh login/home hai mode tại 390 và 1440 px được owner review.
+
+### [ ] P2-T46 — Trang công khai và bảng xếp hạng
+
+**Mô tả:** Sắp lại trạng thái round, lịch, kết quả và xếp hạng để người xem quét thông tin nhanh trong cả hai mode.
+**Acceptance criteria:** (1) status, lịch, kết quả và bảng có thứ bậc rõ; (2) loading/empty/error/stale và dữ liệu dài không làm vỡ layout; (3) bảng mobile cuộn trong vùng riêng, không cuộn ngang toàn trang.
+**Verification:** Public/leaderboard tests; browser PUB-01, A11Y-01 ở 320/390/768/1440, cả hai mode; web test/typecheck/build.
+**Dependencies:** `CP-UI-A`.
+**Files dự kiến:** `src/platform/web/src/features/public/{PublicTournamentPage.tsx,public.css}`, `src/platform/web/src/features/leaderboard/{LeaderboardPage.tsx,leaderboard.css}`.
+**Ước lượng:** M (4 file chính; test/docs cùng PR).
+
+### [ ] P2-T47 — Trang finals
+
+**Mô tả:** Thay màu inline và chỉnh hierarchy bracket/lịch/kết quả finals cho light/dark và mobile.
+**Acceptance criteria:** (1) finals không còn màu cố định sai mode; (2) bracket và trạng thái stale/error đọc được ở 390 px; (3) đường dẫn replay vẫn đúng.
+**Verification:** Finals tests; browser PUB-01, A11Y-01 trên `/finals` ở 390/768/1440, hai mode; web test/typecheck/build.
+**Dependencies:** `P2-T46`.
+**Files dự kiến:** `src/platform/web/src/features/finals/{FinalsPage.tsx,finals.css,finals.test.tsx}`.
+**Ước lượng:** M (3 file chính, README cùng PR).
+
+### [ ] P2-T48 — Khung replay công khai và riêng
+
+**Mô tả:** Làm lại hierarchy metadata/player/controls theo theme, giữ bàn cờ P2-T41 tối và giữ chức năng phát/fullscreen.
+**Acceptance criteria:** (1) board 9×9, quân, cờ và highlight không thay nghĩa; (2) controls đọc được trong cả hai mode và fullscreen 390/1440 px; (3) replay không action giải thích rõ và không gọi live bot API.
+**Verification:** ReplayPlayer/route tests; browser REP-01, A11Y-01; so ảnh board cùng Chromium/Linux; web test/typecheck/build.
+**Dependencies:** `CP-UI-A`, `P2-T41`.
+**Files dự kiến:** `src/platform/web/src/features/spectator/{ReplayPlayer.tsx,replay-player.css,replay-player.ui.test.tsx}`.
+**Ước lượng:** M (3 file chính, README cùng PR).
+
+### [ ] Checkpoint CP-UI-B — Public và replay
+
+- [ ] T46–T48 merge vào `main`; public/finals/replay đạt browser PUB-01/REP-01, không hồi quy replay P2-T41.
+- [ ] Ảnh hai mode, 390 và 1440 px cùng console/network/a11y evidence được owner review.
+
+### [ ] P2-T49 — Cổng đội: nộp bot và kết quả
+
+**Mô tả:** Làm rõ upload, tiến độ, lịch sử và kết quả theo hai mode, giữ nguyên dữ liệu/authorization từ API.
+**Acceptance criteria:** (1) validation/loading/error/success của upload rõ ràng; (2) bảng kết quả ở 390 px không cắt thông tin hoặc lộ field riêng; (3) các thao tác và request giữ nguyên.
+**Verification:** Submissions/results tests; browser TEAM-01, A11Y-01 và network path/status ở hai mode; web test/typecheck/build.
+**Dependencies:** `CP-UI-A`.
+**Files dự kiến:** `src/platform/web/src/features/submissions/{SubmissionForm.tsx,submissions.css}`, `src/platform/web/src/features/results/{MatchResultsPage.tsx,results.css}`.
+**Ước lượng:** M (4 file chính; test/docs cùng PR).
+
+### [ ] P2-T50 — BTC: quản lý đội và catalog replay
+
+**Mô tả:** Làm lại bảng đội, import/reset, trạng thái replay và dialog trên cùng hệ giao diện hai mode.
+**Acceptance criteria:** (1) action quan trọng/danger có thứ bậc rõ, không đổi xác nhận reset/publish; (2) bảng/dialog dùng được ở 390 px; (3) credential một lần không đi vào ảnh hoặc log.
+**Verification:** Admin teams/replay-admin tests; browser BTC-01, A11Y-01 ở hai mode; web test/typecheck/build.
+**Dependencies:** `CP-UI-A`.
+**Files dự kiến:** `src/platform/web/src/features/admin-teams/{TeamProvisionPage.tsx,admin-teams.css}`, `src/platform/web/src/features/replay-admin/{ReplayCatalog.tsx,replay-admin.css}`.
+**Ước lượng:** M (4 file chính; test/docs cùng PR).
+
+### [ ] P2-T51 — BTC: cấu hình và vận hành round
+
+**Mô tả:** Chia rõ form cấu hình, rule hiện hành, ước tính, thao tác round và xác nhận nguy hiểm ở hai mode.
+**Acceptance criteria:** (1) không mất hướng khi form dài/scroll; (2) error/readonly/confirm rõ trên desktop/mobile; (3) giữ nguyên idempotency và allowed actions từ API.
+**Verification:** RoundAdmin tests; browser BTC-01, A11Y-01 ở 320/390/768/1440 và hai mode; web test/typecheck/build.
+**Dependencies:** `CP-UI-A`.
+**Files dự kiến:** `src/platform/web/src/features/round-admin/{RoundAdminPage.tsx,round-admin.css}`, `src/platform/web/src/app/styles.css`.
+**Ước lượng:** M (3 file chính; test/docs cùng PR).
+
+### [ ] P2-T52 — BTC: operations và kết quả
+
+**Mô tả:** Sắp lại filter, status, bảng và action của operations/results; dùng kết quả theme hóa từ T49.
+**Acceptance criteria:** (1) kết quả BTC/team thống nhất token nhưng hierarchy theo role; (2) bảng/filter mobile không tràn, trạng thái lỗi rõ; (3) API/role và thao tác đặc quyền không đổi.
+**Verification:** Operations/results tests; browser BTC-01, A11Y-01 và network path/status ở hai mode; web test/typecheck/build.
+**Dependencies:** `CP-UI-A`, `P2-T49`.
+**Files dự kiến:** `src/platform/web/src/features/operations/{OperationsConsole.tsx,operations.css}`, `src/platform/web/src/features/results/{MatchResultsPage.tsx,results.css}`.
+**Ước lượng:** M (4 file chính; test/docs cùng PR).
+
+### [ ] Checkpoint CP-UI-C — Cổng đội và BTC
+
+- [ ] T49–T52 merge vào `main`; TEAM-01/BTC-01 đạt trên demo riêng, không thay quyền hay API payload.
+- [ ] Owner review ảnh hai mode của mọi route đội/BTC và các trạng thái loading/empty/error/dialog.
+
+### [ ] P2-T53 — Browser acceptance, accessibility và container smoke
+
+**Mô tả:** Chạy toàn bộ ma trận browser trên clean worktree sau merge, kiểm contrast, accessibility, performance, console/network và smoke image Docker.
+**Acceptance criteria:** (1) tất cả TH/NAV/PUB/REP/TEAM/BTC/A11Y/PERF case trong plan có evidence và đạt; (2) web test/typecheck/build và container health/routes đạt từ `main`; (3) còn lỗi thì sửa ở task branch liên quan rồi chạy lại, owner duyệt ảnh trước khi tick.
+**Verification:** Chrome DevTools MCP profile cô lập; screenshot + manifest `docs/validation/frontend-redesign/`, computed contrast và trace; `npm test --workspace @ott/platform-web`, `npm run typecheck --workspace @ott/platform-web`, `npm run build --workspace @ott/platform-web`, `git diff --check`, GitNexus detect-changes trước commit.
+**Dependencies:** `CP-UI-B`, `CP-UI-C`.
+**Files dự kiến:** `docs/validation/frontend-redesign/`, `src/platform/web/README.md`, `tasks/todo.md`.
+**Ước lượng:** M (validation/docs; lỗi phát hiện xử lý ở task riêng).
+
 ## Phase 3 — Gate P3-0: decision và contract approval
 
 > `P3-T01` đã duyệt requirement/ADR/contract ngày 14/10/2026. Task implementation chỉ hoàn tất sau acceptance/verification riêng; Wave 1 có thể bắt đầu trên branch task từ `main`.

@@ -286,6 +286,23 @@ Các entrypoint, Dockerfiles, Compose và `scripts/demo.sh` đã có trên `main
 
 `P2-T27` tạo replay player; `P2-T39` kiểm tra trình chiếu fullscreen, còn `P2-T41` đồng bộ riêng bàn cờ/quân cờ với giao diện [OTTv2 mẫu tại commit `2956f16`](https://github.com/sock1000kg/rock-paper-scissor/tree/2956f1601365274eb34d623a9c908900bf43baab). `P2-T41` dùng frame/map replay đã xác minh, không phụ thuộc dữ liệu mẫu `P2-T38` hoặc cổng runtime `P2-C`. Thứ tự và điểm review được viết trong [plan triển khai P2-T41](../docs/plans/2026-10-22-replay-board-visual-parity.md). Task ID, dependency và trạng thái ở [`tasks/todo.md`](todo.md); phạm vi đợt này là bàn cờ/quân cờ.
 
+### Làm lại frontend và hai mode sáng/tối
+
+Theo yêu cầu mới, `P2-T42`–`P2-T53` làm lại giao diện React/Vite cho khách, đội và BTC. Bắt đầu bằng baseline/mockup, tiếp theo là token/theme và shell dùng chung, sau đó triển khai theo từng nhóm route. Replay giữ bàn cờ theo `P2-T41`. Kế hoạch kỹ thuật, ma trận Chrome DevTools MCP và checkpoint ở [plan frontend dual theme](../docs/plans/2026-10-22-frontend-redesign-dual-theme.md); trạng thái task duy nhất ở [`tasks/todo.md`](todo.md). Không đổi API, quyền hay dữ liệu trong đợt giao diện này.
+
+```text
+P2-T42 baseline/thiết kế → P2-T43 theme core → P2-T44 toggle → P2-T45 shell/login/home → CP-UI-A
+                                                                  ├→ P2-T46 public/leaderboard → P2-T47 finals
+                                                                  ├→ P2-T48 replay → CP-UI-B
+                                                                  ├→ P2-T49 team ─────────────────────────────┐
+                                                                  ├→ P2-T50 BTC teams/replays                  ├→ P2-T53 browser gate
+                                                                  ├→ P2-T51 BTC rounds                        │
+                                                                  └→ P2-T52 BTC operations/results ◄─────────┘
+                                                                                   CP-UI-C trước T53
+```
+
+Chrome DevTools MCP chưa có trong phiên lập plan; T42 kiểm tra/cấu hình trước khi chụp baseline, T53 chỉ đạt khi ma trận browser thực chạy được. Các task đang mở khác và checkpoint cũ giữ nguyên trạng thái. Mỗi task code dùng branch riêng từ `main`; `P2-T49` và `P2-T52` sửa `results.css` tuần tự.
+
 ## 10. Rủi ro
 
 | Rủi ro | Mức độ | Giảm thiểu |
