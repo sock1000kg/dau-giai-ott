@@ -81,6 +81,11 @@ The page is built from the shared `ui/*` primitives (`Page`, `Card`, `Field`, `B
 `features/admin-teams/admin-teams.css`: a "Tạo đội mới" card, a CSV import card, and a "Danh sách đội" card with a bordered
 table (select-all header checkbox, `Đã chọn n/N` count, per-row reset). Behaviour, texts and the one-time credential rules are unchanged.
 
+The BTC layout distinguishes single-team creation, CSV provisioning and the team directory with semantic accent rails.
+At narrow viewports, the team table stays within its own horizontal scroll region; selection and bulk actions remain grouped
+above it. No credential is included in the T50 screenshots or browser evidence. Browser capture details are recorded in
+[`docs/validation/frontend-redesign/after-t50/`](../../../docs/validation/frontend-redesign/after-t50/).
+
 
 ## Team submission portal (`P2-T20`)
 
@@ -139,6 +144,11 @@ the client sends a stable `Idempotency-Key` for a retry, locks the action while
 in flight, then reconciles the row from the server catalog. UI role checks only
 control navigation; API authorization remains authoritative. The console is
 strictly post-match and has no live match controls.
+
+The catalog summary and completed-match table have separate visual hierarchy. The table keeps a fixed minimum content width
+inside the shared scroll region on mobile, preserving readable columns without widening the document. Publication states,
+confirmation flow and API requests are unchanged. See the T50 browser captures and fixture manifest in
+[`docs/validation/frontend-redesign/after-t50/`](../../../docs/validation/frontend-redesign/after-t50/).
 
 Verification: `npm test --workspace @ott/platform-web -- replay-admin`,
 `npm run typecheck --workspace @ott/platform-web`, and

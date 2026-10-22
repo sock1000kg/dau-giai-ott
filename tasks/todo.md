@@ -972,7 +972,7 @@ Task `P2-T42`–`P2-T53` là đợt giao diện riêng, không tự đóng `P2-C
 
 **Hoàn tất:** 2026-10-22 — Luồng upload/history giữ nguyên validation và request; card upload có hierarchy/step sequence semantic; bộ lọc kết quả được làm rõ bằng accent rail. Team submissions/results UI states được kiểm tra qua response fixtures ở Chromium, 390px document width khớp viewport. `SubmissionForm`/results suites 28/28, typecheck pass; screenshots/evidence trong `docs/validation/frontend-redesign/after-t49/`.
 
-### [ ] P2-T50 — BTC: quản lý đội và catalog replay
+### [x] P2-T50 — BTC: quản lý đội và catalog replay
 
 **Mô tả:** Làm lại bảng đội, import/reset, trạng thái replay và dialog trên cùng hệ giao diện hai mode.
 **Acceptance criteria:** (1) action quan trọng/danger có thứ bậc rõ, không đổi xác nhận reset/publish; (2) bảng/dialog dùng được ở 390 px; (3) credential một lần không đi vào ảnh hoặc log.
@@ -980,6 +980,8 @@ Task `P2-T42`–`P2-T53` là đợt giao diện riêng, không tự đóng `P2-C
 **Dependencies:** `CP-UI-A`.
 **Files dự kiến:** `src/platform/web/src/features/admin-teams/{TeamProvisionPage.tsx,admin-teams.css}`, `src/platform/web/src/features/replay-admin/{ReplayCatalog.tsx,replay-admin.css}`.
 **Ước lượng:** M (4 file chính; test/docs cùng PR).
+
+**Hoàn tất:** 2026-10-22 — Làm rõ thứ bậc phần tạo/import/danh sách đội và tóm tắt/catalog replay; vùng bảng rộng cuộn riêng trên mobile. Luồng xác nhận reset/publish, request, quyền và credential một lần giữ nguyên. Browser fixture BTC ở hai mode, 390/1440: trang không tràn ngang; danh sách 2 đội và replay 1 trận hiển thị; credential không có trong DOM/ảnh. Evidence tại `docs/validation/frontend-redesign/after-t50/`; console không có JS error, chỉ có request `/favicon.ico` trả 404 từ dev server. `admin-teams` và `replay-admin` tests 41/41, typecheck/build pass.
 
 ### [ ] P2-T51 — BTC: cấu hình và vận hành round
 

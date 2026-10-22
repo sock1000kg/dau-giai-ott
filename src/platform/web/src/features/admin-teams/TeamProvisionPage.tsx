@@ -156,7 +156,7 @@ export function TeamProvisionPage() {
       )}
 
       {oneTimeCredential === null && (
-        <Card title="Tạo đội mới">
+        <Card className="teams-create" title="Tạo đội mới">
           <p className="teams-card-desc">Chỉ cần tên đội; hệ thống tự sinh tài khoản và mật khẩu.</p>
           <form className="teams-form" aria-label="Tạo đội" onSubmit={(event) => void handleCreate(event)}>
             <Field
@@ -182,10 +182,10 @@ export function TeamProvisionPage() {
 
       <BulkProvision onImportSuccess={loadTeams} />
 
-      <Card title="Danh sách đội">
+      <Card className="teams-directory" title="Danh sách đội">
         <div className="ui-stack">
           <div className="teams-toolbar">
-            <p className="teams-count">Đã chọn {selectedIds.size}/{teams.length}</p>
+            <p className="teams-count" aria-live="polite">Đã chọn {selectedIds.size}/{teams.length}</p>
             <div className="ui-row">
               <Button
                 variant="secondary"

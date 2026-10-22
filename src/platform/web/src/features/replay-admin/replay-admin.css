@@ -17,6 +17,12 @@
 .ra-catalog code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; overflow-wrap: anywhere; }
 .ra-catalog .ui-table td { vertical-align: middle; }
 .ra-catalog .ui-table time { white-space: nowrap; }
+.ra-summary { border-block-start: 3px solid var(--ui-accent); }
+.ra-catalog { border-block-start: 3px solid var(--ui-border-strong); }
+.ra-catalog .ui-table { min-width: 920px; }
+.ra-catalog .ui-table th:last-child,
+.ra-catalog .ui-table td:last-child { min-width: 240px; }
+.ra-summary .ra-legend { max-width: 76ch; }
 
 .ra-controls { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ui-space-2); }
 .ra-controls .ui-button { min-height: var(--ui-control-height); }
@@ -30,3 +36,10 @@
 .ra-dialog-note { margin: 0; color: var(--ui-text-muted); font-size: 14px; }
 .ra-counter { margin: 0; color: var(--ui-text-muted); font-size: 13px; text-align: right; }
 .ra-dialog-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--ui-space-3); }
+
+@media (max-width: 600px) {
+  .ra-catalog { padding: var(--ui-space-2); }
+  .ra-pagination { gap: var(--ui-space-2); }
+  .ra-pagination .ui-button { flex: 1 1 9rem; }
+  .ra-dialog-actions .ui-button { flex: 1 1 8rem; }
+}
