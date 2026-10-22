@@ -21,10 +21,12 @@ export function App() {
           <span>OTT Arena</span>
         </a>
         <span className="header-label">NỀN TẢNG GIẢI ĐẤU</span>
-        <a className="public-nav-link" href="/public" aria-current={window.location.pathname === '/public' ? 'page' : undefined}>Thông tin giải đấu</a>
-        <a className="public-nav-link" href="/leaderboard" aria-current={isPublicLeaderboard ? 'page' : undefined}>Bảng xếp hạng</a>
-        <a className="public-nav-link" href="/finals" aria-current={isFinalsPage ? 'page' : undefined}>Vòng chung kết</a>
-        <ThemeToggle />
+        <nav className="public-header-nav" aria-label="Điều hướng công khai">
+          <a className="public-nav-link" href="/public" aria-current={window.location.pathname === '/public' ? 'page' : undefined}>Thông tin giải đấu</a>
+          <a className="public-nav-link" href="/leaderboard" aria-current={isPublicLeaderboard ? 'page' : undefined}>Bảng xếp hạng</a>
+          <a className="public-nav-link" href="/finals" aria-current={isFinalsPage ? 'page' : undefined}>Vòng chung kết</a>
+          <ThemeToggle />
+        </nav>
       </header>
 
       {window.location.pathname === '/public' ? <PublicTournamentPage /> : isFinalsPage ? <FinalsPage /> : isPublicLeaderboard ? <LeaderboardPage />

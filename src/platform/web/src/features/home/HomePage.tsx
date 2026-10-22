@@ -30,16 +30,27 @@ export function HomePage({ role }: Readonly<{ role: HomeRole }>) {
   const isAdmin = role === 'BTC_ADMIN';
   return (
     <Page
-      title={isAdmin ? 'Khu vực BTC' : 'Cổng đội thi'}
-      description={isAdmin ? 'Tài khoản Ban tổ chức.' : 'Tài khoản đội thi.'}
+      title={isAdmin ? 'Trung tâm điều hành giải' : 'Không gian đội thi'}
+      description={isAdmin ? 'Theo dõi và điều phối các hoạt động chính của giải đấu.' : 'Nộp bot, theo dõi trạng thái và xem thành tích của đội.'}
     >
+      <section className={`home-hero ${isAdmin ? 'home-hero--admin' : 'home-hero--team'}`} aria-labelledby="home-hero-title">
+        <div>
+          <p className="home-eyebrow">OTT ARENA · {isAdmin ? 'BAN TỔ CHỨC' : 'CỔNG ĐỘI THI'}</p>
+          <h2 id="home-hero-title">{isAdmin ? 'Điều hành giải đấu' : 'Sẵn sàng ra sân'}</h2>
+          <p>{isAdmin ? 'Mở nhanh khu vực vận hành và theo dõi các đầu việc của giải.' : 'Quản lý phiên bản bot và chuẩn bị cho lượt thi tiếp theo.'}</p>
+        </div>
+        <LinkButton href={isAdmin ? '/admin/rounds' : '/team/submissions'} aria-label={isAdmin ? 'Mở vận hành round' : 'Mở nộp bot'}>
+          {isAdmin ? 'Vận hành round' : 'Nộp bot'}
+        </LinkButton>
+      </section>
       <ul className="ui-card-grid">
         {destinationsFor(role).map((destination) => (
           <li key={destination.href}>
-            <Card as="div">
+            <Card as="article" className={destination.href === (isAdmin ? '/admin/rounds' : '/team/submissions') ? 'home-card home-card--primary' : 'home-card'}>
+              <span className="home-card-kicker">{destination.href === (isAdmin ? '/admin/rounds' : '/team/submissions') ? 'ƯU TIÊN' : isAdmin ? 'ĐIỀU HÀNH' : 'ĐỘI THI'}</span>
               <h2>{destination.title}</h2>
               <p>{destination.description}</p>
-              <LinkButton href={destination.href} aria-label={`Mở ${destination.title}`}>Mở</LinkButton>
+              <LinkButton variant={destination.href === (isAdmin ? '/admin/rounds' : '/team/submissions') ? 'primary' : 'secondary'} href={destination.href} aria-label={`Mở ${destination.title}`}>Mở khu vực</LinkButton>
             </Card>
           </li>
         ))}
