@@ -1,0 +1,27 @@
+{
+  "sourceCommit": "15f062ed8e6c7d39eb5b5948a6aa362e8f570c6d",
+  "browser": "isolated Chromium via Chrome DevTools MCP runner",
+  "routes": [
+    "/spectator/replays/:id",
+    "/team/replays/:id"
+  ],
+  "themes": [
+    "light",
+    "dark"
+  ],
+  "viewports": [
+    "1440x1100",
+    "390x844"
+  ],
+  "screenshots": [
+    "private-team-dark-1440x1100.png",
+    "private-team-dark-390x844.png",
+    "private-team-light-1440x1100.png",
+    "private-team-light-390x844.png",
+    "public-dark-1440x1100.png",
+    "public-dark-390x844.png",
+    "public-light-1440x1100.png",
+    "public-light-390x844.png",
+    "public-light-fullscreen.png"
+  ]
+}

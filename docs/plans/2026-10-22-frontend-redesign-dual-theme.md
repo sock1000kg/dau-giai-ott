@@ -2,7 +2,7 @@
 
 ## Phạm vi và quyết định thiết kế
 
-Làm lại giao diện React/Vite cho khách, đội thi và BTC. Giữ nguyên API, quyền truy cập, dữ liệu, hành vi nộp bot và xác minh replay. Bàn cờ replay theo P2-T41 giữ nhận diện tối ở cả hai mode; khung trang, thông tin và controls xung quanh theo theme. Không dùng `localStorage` cho session/token; chỉ lưu lựa chọn giao diện `light` hoặc `dark`.
+Làm lại giao diện React/Vite cho khách, đội thi và BTC. Giữ nguyên API, quyền truy cập, dữ liệu, hành vi nộp bot và xác minh replay. Bản đầu của P2-T41 giữ bàn cờ tối ở cả hai mode; theo yêu cầu tiếp theo, P2-T54 đổi bề mặt bàn cờ sang palette sáng trong light theme và giữ palette tối trong dark theme. Khung trang, thông tin và controls theo theme. Không dùng `localStorage` cho session/token; chỉ lưu lựa chọn giao diện `light` hoặc `dark`.
 
 Hiện trạng cần đo trước khi sửa: `ui/ui.css` chỉ có token tối và ép `color-scheme: dark` ở select; `app/styles.css` và `FinalsPage.tsx` có nhiều màu cố định; trang chủ dùng các card cùng cấp. Chụp baseline thực tế trước khi khóa mockup. Định hướng mặc định: giao diện giải đấu gọn, rõ thứ tự thông tin, hạn chế gradient và card đồng dạng; ưu tiên trạng thái round, lịch, kết quả và hành động chính. Owner duyệt mockup light/dark cho trang công khai, trang đội và BTC trước task code T43.
 

@@ -288,7 +288,7 @@ Các entrypoint, Dockerfiles, Compose và `scripts/demo.sh` đã có trên `main
 
 ### Làm lại frontend và hai mode sáng/tối
 
-Theo yêu cầu mới, `P2-T42`–`P2-T53` làm lại giao diện React/Vite cho khách, đội và BTC. Bắt đầu bằng baseline/mockup, tiếp theo là token/theme và shell dùng chung, sau đó triển khai theo từng nhóm route. Replay giữ bàn cờ theo `P2-T41`. Kế hoạch kỹ thuật, ma trận Chrome DevTools MCP và checkpoint ở [plan frontend dual theme](../docs/plans/2026-10-22-frontend-redesign-dual-theme.md); trạng thái task duy nhất ở [`tasks/todo.md`](todo.md). Không đổi API, quyền hay dữ liệu trong đợt giao diện này.
+Theo yêu cầu mới, `P2-T42`–`P2-T53` làm lại giao diện React/Vite cho khách, đội và BTC. `P2-T54` tiếp tục tinh chỉnh bàn cờ replay để màu nền đi theo theme. Kế hoạch kỹ thuật, ma trận Chrome DevTools MCP và checkpoint ở [plan frontend dual theme](../docs/plans/2026-10-22-frontend-redesign-dual-theme.md); trạng thái task duy nhất ở [`tasks/todo.md`](todo.md). Không đổi API, quyền hay dữ liệu trong đợt giao diện này.
 
 ```text
 P2-T42 baseline/thiết kế → P2-T43 theme core → P2-T44 toggle → P2-T45 shell/login/home → CP-UI-A
