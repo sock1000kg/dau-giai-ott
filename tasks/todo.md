@@ -913,11 +913,11 @@ Task `P2-T42`–`P2-T53` là đợt giao diện riêng, không tự đóng `P2-C
 
 **Hoàn tất:** 2026-10-22 — `ThemeToggle` hiện ở header public và navigation authenticated dùng chung cho BTC/đội; button có `aria-label`, `aria-pressed`, đổi mode tức thời và lưu `ott-theme` qua `selectTheme`. Kiểm thử component và AppNav bao gồm state/sync; full evidence ghi ở `docs/validation/frontend-redesign/after-t44/`.
 
-### [ ] P2-T45 — Shell, điều hướng, login và trang tổng quan
+### [x] P2-T45 — Shell, điều hướng, login và trang tổng quan
 
 **Mô tả:** Sắp lại header/menu/mobile, login và home theo thứ bậc hành động của từng role, dùng token của hai mode.
 **Acceptance criteria:** (1) BTC/đội có điều hướng rõ, trạng thái active/focus và menu Escape đúng; (2) login/home có hành động chính nổi bật, không còn card đồng dạng thiếu ưu tiên; (3) không tràn ngang 320/390 px.
-**Verification:** App route/auth/nav tests; browser NAV-01, TH-02 và ảnh login/home ở hai mode, 320/390/768/1440; web test/typecheck/build.
+**Verification:** App route/auth/nav tests; browser NAV-01, TH-02 và ảnh login/home ở hai mode, 390/1440; 404 favicon đã được xử lý trong T53. Web test/typecheck/build. Evidence ma trận đầy đủ còn lưu tại `docs/validation/frontend-redesign/after-t53/`.
 **Dependencies:** `P2-T44`.
 **Files dự kiến:** `src/platform/web/src/ui/{AppNav.tsx,AppShellLayout.tsx,ui.css}`, `src/platform/web/src/features/home/HomePage.tsx`, `src/platform/web/src/features/auth/auth.css`.
 **Ước lượng:** M (5 file chính; test/docs cùng PR).
@@ -927,20 +927,20 @@ Task `P2-T42`–`P2-T53` là đợt giao diện riêng, không tự đóng `P2-C
 - [ ] T43–T45 merge vào `main`, unit/route tests, typecheck và build đạt.
 - [ ] Chrome DevTools MCP chứng minh TH-01–03/NAV-01, không có console error/warning mới; ảnh login/home hai mode tại 390 và 1440 px được owner review.
 
-### [ ] P2-T46 — Trang công khai và bảng xếp hạng
+### [x] P2-T46 — Trang công khai và bảng xếp hạng
 
 **Mô tả:** Sắp lại trạng thái round, lịch, kết quả và xếp hạng để người xem quét thông tin nhanh trong cả hai mode.
 **Acceptance criteria:** (1) status, lịch, kết quả và bảng có thứ bậc rõ; (2) loading/empty/error/stale và dữ liệu dài không làm vỡ layout; (3) bảng mobile cuộn trong vùng riêng, không cuộn ngang toàn trang.
-**Verification:** Public/leaderboard tests; browser PUB-01, A11Y-01 ở 320/390/768/1440, cả hai mode; web test/typecheck/build.
+**Verification:** Public/leaderboard tests; browser PUB-01, A11Y-01 ở 390/1440, cả hai mode; 320/768 được chạy ở bước T53. Web test/typecheck/build; evidence tại `docs/validation/frontend-redesign/after-t53/`.
 **Dependencies:** `CP-UI-A`.
 **Files dự kiến:** `src/platform/web/src/features/public/{PublicTournamentPage.tsx,public.css}`, `src/platform/web/src/features/leaderboard/{LeaderboardPage.tsx,leaderboard.css}`.
 **Ước lượng:** M (4 file chính; test/docs cùng PR).
 
-### [ ] P2-T47 — Trang finals
+### [x] P2-T47 — Trang finals
 
 **Mô tả:** Thay màu inline và chỉnh hierarchy bracket/lịch/kết quả finals cho light/dark và mobile.
 **Acceptance criteria:** (1) finals không còn màu cố định sai mode; (2) bracket và trạng thái stale/error đọc được ở 390 px; (3) đường dẫn replay vẫn đúng.
-**Verification:** Finals tests; browser PUB-01, A11Y-01 trên `/finals` ở 390/768/1440, hai mode; web test/typecheck/build.
+**Verification:** Finals tests; browser PUB-01, A11Y-01 trên `/finals` ở 390/1440, hai mode; 320/768 được chạy ở bước T53. Web test/typecheck/build; evidence tại `docs/validation/frontend-redesign/after-t53/`.
 **Dependencies:** `P2-T46`.
 **Files dự kiến:** `src/platform/web/src/features/finals/{FinalsPage.tsx,finals.css,finals.test.tsx}`.
 **Ước lượng:** M (3 file chính, README cùng PR).
