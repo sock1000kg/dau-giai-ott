@@ -983,7 +983,7 @@ Task `P2-T42`–`P2-T53` là đợt giao diện riêng, không tự đóng `P2-C
 
 **Hoàn tất:** 2026-10-22 — Làm rõ thứ bậc phần tạo/import/danh sách đội và tóm tắt/catalog replay; vùng bảng rộng cuộn riêng trên mobile. Luồng xác nhận reset/publish, request, quyền và credential một lần giữ nguyên. Browser fixture BTC ở hai mode, 390/1440: trang không tràn ngang; danh sách 2 đội và replay 1 trận hiển thị; credential không có trong DOM/ảnh. Evidence tại `docs/validation/frontend-redesign/after-t50/`; console không có JS error, chỉ có request `/favicon.ico` trả 404 từ dev server. `admin-teams` và `replay-admin` tests 41/41, typecheck/build pass.
 
-### [ ] P2-T51 — BTC: cấu hình và vận hành round
+### [x] P2-T51 — BTC: cấu hình và vận hành round
 
 **Mô tả:** Chia rõ form cấu hình, rule hiện hành, ước tính, thao tác round và xác nhận nguy hiểm ở hai mode.
 **Acceptance criteria:** (1) không mất hướng khi form dài/scroll; (2) error/readonly/confirm rõ trên desktop/mobile; (3) giữ nguyên idempotency và allowed actions từ API.
@@ -991,6 +991,8 @@ Task `P2-T42`–`P2-T53` là đợt giao diện riêng, không tự đóng `P2-C
 **Dependencies:** `CP-UI-A`.
 **Files dự kiến:** `src/platform/web/src/features/round-admin/{RoundAdminPage.tsx,round-admin.css}`, `src/platform/web/src/app/styles.css`.
 **Ước lượng:** M (3 file chính; test/docs cùng PR).
+
+**Hoàn tất:** 2026-10-22 — Các rule set hiện hành, editor, archive và operations có phân tầng theme rõ; màu form/error/archive dùng semantic tokens; thao tác xác nhận và API giữ nguyên. Chrome fixture trên 320/390/768/1440 ở cả hai mode: document width luôn khớp viewport, hai form và round action render đầy đủ. Evidence ở `docs/validation/frontend-redesign/after-t51/`; không có console error/warning trên lượt browser cuối. RoundAdmin suites 62/62, typecheck/build pass.
 
 ### [ ] P2-T52 — BTC: operations và kết quả
 

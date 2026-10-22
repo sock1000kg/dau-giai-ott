@@ -257,7 +257,12 @@ exists only once `P3-D25` is merged; the form state shape and the saved rules JS
 - Every form control has a one-line help (`field-help.ts`, `FIELD_HELP`) wired with
   `aria-describedby="{id}-help {id}-error"`. Ranges come from the API validator (`rounds/types.ts`).
 - The reconcile button is labelled "Kiểm tra và chốt kết quả round" with an explanatory help line.
-- Layout, spacing and responsiveness are CSS-only and were not verified in a browser.
+- Current rules and the new-version editor use separate semantic-surface panels, with accent rails for the editable
+  version and round operations. Narrow screens keep the panels and confirmation actions within the viewport; the form
+  submit action spans the available width at 520px and below. Round styles use semantic theme tokens for fields,
+  errors, archives and operation states. API, allowed actions, idempotency and confirmation behavior are unchanged.
+- Browser evidence for the T51 theme/layout pass is recorded in
+  [`docs/validation/frontend-redesign/after-t51/`](../../../docs/validation/frontend-redesign/after-t51/).
 
 ## Privileged operations console (`P3-D07`)
 
