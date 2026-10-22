@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { fetchFinalsSnapshot, type FinalsSnapshotPayload } from './api.ts';
 import { GroupStandings } from './GroupStandings.tsx';
 import { FinalsSchedule } from './FinalsSchedule.tsx';
+import { Page } from '../../ui/index.ts';
+import './finals.css';
 
 export interface FinalsPageProps {
   readonly initialSnapshot?: FinalsSnapshotPayload | null;
@@ -53,21 +55,19 @@ export function FinalsPage({ initialSnapshot = null }: FinalsPageProps) {
 
   if (loading && !snapshot) {
     return (
-      <main className="leaderboard-page" aria-busy="true">
-        <h1>Vòng Chung kết (Finals) · OTT Tournament</h1>
-        <p role="status">Đang tải dữ liệu snapshot vòng chung kết…</p>
-      </main>
+      <Page title="Vòng Chung kết" description="Bảng đấu, lịch thi đấu và kết quả đã xác minh.">
+        <p className="finals-state" role="status" aria-busy="true">Đang tải dữ liệu snapshot vòng chung kết…</p>
+      </Page>
     );
   }
 
   if (failed && !snapshot) {
     return (
-      <main className="leaderboard-page">
-        <h1>Vòng Chung kết (Finals) · OTT Tournament</h1>
-        <p role="alert" style={{ color: '#ffb6ad' }}>
+      <Page title="Vòng Chung kết" description="Bảng đấu, lịch thi đấu và kết quả đã xác minh.">
+        <p className="finals-state finals-state--error" role="alert">
           {errorMessage ?? 'Không thể tải snapshot vòng chung kết. Trang sẽ tự động thử lại.'}
         </p>
-      </main>
+      </Page>
     );
   }
 
@@ -76,25 +76,27 @@ export function FinalsPage({ initialSnapshot = null }: FinalsPageProps) {
   const isStale = failed || now - Date.parse(snapshot.updatedAt) > 90_000;
 
   return (
-    <main className="leaderboard-page finals-page" aria-label="Trang thông tin Vòng Chung kết">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
-        <div>
-          <span className="eyebrow" style={{ color: '#ffd59a' }}>VÒNG CHUNG KẾT · 8 ĐỘI TRANH TÀI</span>
-          <h1 style={{ margin: '6px 0 2px' }}>Vòng Chung kết (Finals)</h1>
+    <Page title="Vòng Chung kết" description="Bảng đấu, lịch thi đấu và kết quả đã xác minh.">
+      <main className="finals-page" aria-label="Trang thông tin Vòng Chung kết">
+      <section className="finals-overview" aria-label="Tổng quan vòng chung kết">
+        <div className="finals-overview-copy">
+          <span className="eyebrow">VÒNG CHUNG KẾT · 8 ĐỘI TRANH TÀI</span>
+          <h2>Nhánh đấu chính thức</h2>
+          <p>Đối chiếu lịch, kết quả và bằng chứng phát hành của vòng chung kết.</p>
           <p style={{ color: '#a8b8c8', margin: 0, fontSize: '13px' }}>
             Giải đấu: <code>{snapshot.tournamentId}</code> · Bộ luật: <code>{snapshot.finalsRuleSetId}</code>
           </p>
         </div>
 
-        <div style={{ textAlign: 'right', fontSize: '12px', color: '#8ea4b7' }}>
-          <div>Cập nhật: <time dateTime={snapshot.updatedAt}>{snapshot.updatedAt}</time></div>
+        <div className="finals-overview-meta">
+          <div>Cập nhật lần cuối</div><time dateTime={snapshot.updatedAt}>{snapshot.updatedAt}</time>
           {isStale && (
-            <span role="alert" style={{ color: '#ffd59a', fontWeight: 'bold' }}>
+            <span role="alert" className="finals-stale-badge">
               [Dữ liệu cũ - Đang giữ bản cập nhật cuối]
             </span>
           )}
         </div>
-      </div>
+      </section>
 
       {/* Standings & Bracket */}
       <GroupStandings
@@ -106,7 +108,8 @@ export function FinalsPage({ initialSnapshot = null }: FinalsPageProps) {
 
       {/* Detailed Schedule & Results with Replay Links */}
       <FinalsSchedule bracket={snapshot.bracket} />
-    </main>
+      </main>
+    </Page>
   );
 }
 

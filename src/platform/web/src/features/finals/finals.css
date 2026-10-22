@@ -1,0 +1,30 @@
+.finals-page { display: grid; min-width: 0; gap: var(--ui-space-5); }
+.finals-overview { display: flex; min-width: 0; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--ui-space-5); padding: clamp(20px, 4vw, 36px); border: 1px solid var(--ui-border); border-radius: var(--ui-radius-lg); background: linear-gradient(115deg, var(--ui-active-nav), var(--ui-surface) 70%); }
+.finals-overview-copy { display: grid; min-width: 0; gap: var(--ui-space-2); }
+.finals-overview-copy .eyebrow { color: var(--ui-warning); }
+.finals-overview-copy h2 { margin: 0; color: var(--ui-text); font-size: clamp(24px, 4vw, 34px); }
+.finals-overview-copy p { margin: 0; color: var(--ui-text-muted); line-height: 1.6; overflow-wrap: anywhere; }
+.finals-overview-meta { display: grid; gap: var(--ui-space-1); color: var(--ui-text-muted); font-size: 12px; overflow-wrap: anywhere; }
+.finals-stale-badge { color: var(--ui-warning); font-weight: 700; }
+.finals-state { padding: var(--ui-space-5); border: 1px dashed var(--ui-border-strong); border-radius: var(--ui-radius-md); color: var(--ui-text-muted); }
+.finals-state--error { color: var(--ui-danger); }
+.finals-standings-section { display: grid; min-width: 0; gap: var(--ui-space-5); }
+.finals-proof-card, .finals-page .credential-card { min-width: 0; padding: var(--ui-space-5); border: 1px solid var(--ui-border); border-radius: var(--ui-radius-md); background: var(--ui-surface); color: var(--ui-text); }
+.finals-page h2, .finals-page h3 { color: var(--ui-text); }
+.finals-page dt { color: var(--ui-text-muted); font-size: 12px; font-weight: 700; }
+.finals-page dd { margin: 2px 0 0; color: var(--ui-text); overflow-wrap: anywhere; }
+.finals-page code { overflow-wrap: anywhere; color: var(--ui-accent); }
+.finals-page .leaderboard-table-scroll { max-width: 100%; min-width: 0; overflow-x: auto; border: 1px solid var(--ui-border); border-radius: var(--ui-radius-md); }
+.finals-page .leaderboard-table { width: 100%; min-width: 680px; border-collapse: collapse; color: var(--ui-text); }
+.finals-page .leaderboard-table th, .finals-page .leaderboard-table td { padding: var(--ui-space-3); border-bottom: 1px solid var(--ui-border); text-align: left; }
+.finals-page .leaderboard-table thead th { background: var(--ui-surface-raised); }
+.finals-page .leaderboard-table tbody tr:nth-child(even) { background: var(--ui-table-stripe); }
+.finals-page .result-card { min-width: 0; padding: var(--ui-space-4); border: 1px solid var(--ui-border); border-radius: var(--ui-radius-md); background: var(--ui-surface); color: var(--ui-text); }
+.finals-page .submission-status { border-color: var(--ui-success); color: var(--ui-success); }
+.finals-page .result-status { color: var(--ui-text-muted); }
+.finals-schedule-section { display: grid; min-width: 0; gap: var(--ui-space-3); }
+.finals-schedule-section > p { color: var(--ui-text-muted) !important; }
+@media (max-width: 520px) {
+  .finals-proof-card { padding: var(--ui-space-3); }
+  .finals-page .leaderboard-table-scroll { width: 100%; }
+}
