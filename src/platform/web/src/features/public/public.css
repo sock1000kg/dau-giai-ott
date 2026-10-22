@@ -1,4 +1,7 @@
 .pub-strip { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ui-space-3); }
+.pub-overview { display: grid; gap: var(--ui-space-2); padding: clamp(18px, 3vw, 28px); border: 1px solid var(--ui-border); border-radius: var(--ui-radius-lg); background: linear-gradient(115deg, var(--ui-active-nav), var(--ui-surface) 70%); }
+.pub-overview-title { margin: 0; color: var(--ui-text); font-size: clamp(24px, 4vw, 34px); line-height: 1.15; }
+.pub-overview-summary { margin: 0; color: var(--ui-text-muted); line-height: 1.6; }
 .pub-updated { color: var(--ui-text-muted); font-size: 14px; }
 .pub-state { margin: 0; padding: var(--ui-space-5); border: 1px dashed var(--ui-border-strong); border-radius: var(--ui-radius-md); color: var(--ui-text-muted); text-align: center; }
 
@@ -35,7 +38,7 @@
 
 .app-header .public-nav-link { display: inline-flex; min-height: 44px; align-items: center; padding-inline: 8px; border-radius: var(--ui-radius-sm); }
 .app-header .public-nav-link:focus-visible { outline: var(--ui-focus-ring); outline-offset: 2px; }
-.app-header .public-nav-link[aria-current] { background: rgba(128, 228, 208, 0.14); color: var(--ui-accent); }
+.app-header .public-nav-link[aria-current] { background: var(--ui-active-nav); color: var(--ui-accent); }
 @media (prefers-reduced-motion: reduce) { .pub-list li, .pub-entry { transition: none; } }
 
 .pub-kv, .pub-kv-list { display: grid; gap: var(--ui-space-2); margin: 0; padding: 0; list-style: none; }
@@ -56,3 +59,10 @@
 .pub-scroll::-webkit-scrollbar-thumb { border-radius: 999px; background: var(--ui-border-strong); }
 .pub-scroll::-webkit-scrollbar-thumb:hover { background: var(--ui-text-muted); }
 .pub-list-actions { display: flex; flex-wrap: wrap; gap: var(--ui-space-2); margin-top: var(--ui-space-3); }
+
+.ui-table-scroll { min-width: 0; }
+.ui-page > section, .ui-page > .pub-grid, .pub-grid > section { min-width: 0; }
+.pub-table-scroll { width: 100%; min-width: 0; }
+.pub-table-scroll { max-width: 100%; overflow-x: auto; overscroll-behavior-inline: contain; }
+.pub-table { min-width: 520px; }
+.pub-row-top { background: var(--ui-row-hover); }

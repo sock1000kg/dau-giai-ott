@@ -34,7 +34,7 @@ describe('public-site static snapshots', () => {
   it('renders public data without session, database, worker or control requests', async () => {
     const { fetcher } = setup(); window.history.replaceState({}, '', '/public');
     render(<App />);
-    await screen.findByRole('heading', { name: /Week 1/ });
+    await screen.findByRole('heading', { level: 1, name: /Week 1/ });
     for (const name of ['Hàng đợi', 'Kết quả', 'Bảng xếp hạng', 'Luật hiện tại', 'Lịch', 'Thông báo', 'FAQ', 'Trạng thái']) {
       expect(screen.getByRole('region', { name })).toBeTruthy();
     }
@@ -55,7 +55,7 @@ describe('public-site static snapshots', () => {
     const snapshot = fixture(); snapshot.stage = 'FINALS';
     snapshot.updatedAt = '2020-01-01T00:00:00.000Z'; snapshot.results[0]!.syncVerified = false;
     setup(snapshot); window.history.replaceState({}, '', '/public'); render(<App />);
-    await screen.findByRole('heading', { name: /Week 1/ });
+    await screen.findByRole('heading', { level: 1, name: /Week 1/ });
     expect(screen.queryByRole('link', { name: 'Replay' })).toBeNull();
     expect(screen.getByRole('alert').textContent).toMatch(/đã cũ/);
     expect(screen.getByRole('link', { name: 'Bảng xếp hạng' }).getAttribute('href')).toBe('/leaderboard');
@@ -63,12 +63,12 @@ describe('public-site static snapshots', () => {
   it('retains the last good snapshot and incident ETA when polling fails', async () => {
     vi.useFakeTimers(); const { fetcher } = setup(); window.history.replaceState({}, '', '/public');
     render(<App />); await act(async () => { await vi.advanceTimersByTimeAsync(0); });
-    expect(screen.getByRole('heading', { name: /Week 1/ })).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 1, name: /Week 1/ })).toBeTruthy();
     fetcher.mockRejectedValue(new Error('offline'));
     await act(async () => { await vi.advanceTimersByTimeAsync(30_000); });
     expect(screen.getByRole('alert').textContent).toMatch(/bản cập nhật cuối/);
     expect(screen.getByText('Dự kiến khắc phục: 10 phút')).toBeTruthy();
-    expect(screen.getByRole('heading', { name: /Week 1/ })).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 1, name: /Week 1/ })).toBeTruthy();
   });
   it('rejects checksum mutation, unsafe pointer paths and old snapshots', async () => {
     const { data, fetcher } = setup();
