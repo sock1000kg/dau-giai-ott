@@ -13,6 +13,12 @@ role-specific area is rendered; a `401` returns to the login form, while a
 session-check network/server error keeps private content hidden and offers a
 retry.
 
+Theme initialization runs before React renders. The browser follows
+`prefers-color-scheme` until the visitor explicitly selects light or dark;
+that choice is stored as `ott-theme` and synchronized between open tabs. Shared
+UI tokens live in `src/ui/ui.css`; feature pages can migrate their fixed colors
+to these semantic tokens in their owning redesign tasks.
+
 From the repository root:
 
 ```bash

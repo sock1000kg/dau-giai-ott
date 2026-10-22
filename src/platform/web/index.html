@@ -5,6 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#f5f7fa" />
     <title>Giải đấu OTT</title>
+    <script>
+      (() => {
+        let selected = null;
+        try {
+          const stored = localStorage.getItem('ott-theme');
+          if (stored === 'light' || stored === 'dark') selected = stored;
+        } catch {}
+        const prefersDark = typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: dark)').matches;
+        const theme = selected ?? (prefersDark ? 'dark' : 'light');
+        document.documentElement.dataset.theme = theme;
+        document.documentElement.style.colorScheme = theme;
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

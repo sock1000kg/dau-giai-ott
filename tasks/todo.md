@@ -881,7 +881,7 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 
 Task `P2-T42`–`P2-T53` là đợt giao diện riêng, không tự đóng `P2-C` hoặc các checkpoint Phase 3. [Plan và ma trận test Chrome DevTools MCP](../docs/plans/2026-10-22-frontend-redesign-dual-theme.md) quy định route, dữ liệu, viewport, evidence và release gate. Owner các task là Đinh Đức Thuận; mỗi task code có branch riêng từ `main`.
 
-### [ ] P2-T42 — Baseline trình duyệt và design contract hai mode
+### [x] P2-T42 — Baseline trình duyệt và design contract hai mode
 
 **Mô tả:** Chụp giao diện đang chạy, kiểm tra các vấn đề về bố cục/màu/chữ ở route đại diện, dựng và duyệt mockup sáng/tối cho khách, đội, BTC.
 **Acceptance criteria:** (1) Có ảnh baseline desktop 1440×900, mobile 390×844 cho login/public/team/BTC/replay; (2) design contract mô tả hierarchy, type/spacing, token, states và điểm khác nhau giữa hai mode; (3) mockup được owner duyệt trước khi đổi code.
@@ -889,8 +889,9 @@ Task `P2-T42`–`P2-T53` là đợt giao diện riêng, không tự đóng `P2-C
 **Dependencies:** `P2-T41`; không phụ thuộc `P2-C`.
 **Files dự kiến:** `docs/plans/2026-10-22-frontend-redesign-dual-theme.md`, `docs/validation/frontend-redesign/`.
 **Ước lượng:** M (docs/ảnh; không code).
+**Hoàn tất:** 2026-10-22 — PR #60 baseline/mockup merged tại `053ec96`; T43 bổ sung authenticated demo captures desktop/mobile cho team/BTC và mở rộng mockup theo role. Owner duyệt hướng visual qua chat trước khi bắt đầu implementation. Chrome DevTools MCP 1.11.0 chạy isolated/headless; manifest ghi source, viewport, accessibility route snapshots và network state. Public snapshot fixture cục bộ dùng cho screenshots; replay route hiện thể hiện unsupported/empty error. Không lưu credential vào ảnh hoặc tracked file.
 
-### [ ] P2-T43 — Theme foundation và token ngữ nghĩa
+### [x] P2-T43 — Theme foundation và token ngữ nghĩa
 
 **Mô tả:** Thêm bộ token light/dark, bootstrap theme trước React, mặc định theo OS khi chưa có lựa chọn, lưu duy nhất `light`/`dark` khi người dùng chọn.
 **Acceptance criteria:** (1) `data-theme` và `color-scheme` khớp trên mọi route, không nháy sai mode khi tải; (2) token đủ cho text/surface/border/accent/status/focus và form native; (3) đổi OS chỉ cập nhật giao diện khi chưa chọn thủ công.
@@ -898,6 +899,8 @@ Task `P2-T42`–`P2-T53` là đợt giao diện riêng, không tự đóng `P2-C
 **Dependencies:** `P2-T42`.
 **Files dự kiến:** `src/platform/web/index.html`, `src/platform/web/src/ui/{theme.ts,theme.test.ts,ui.css}`, `src/platform/web/src/app/styles.css`.
 **Ước lượng:** M (5 file chính, README cùng PR).
+
+**Hoàn tất:** 2026-10-22 — `theme.ts` khởi tạo từ localStorage hoặc OS trước React, đồng bộ cross-tab, theo OS đến khi có lựa chọn thủ công; bootstrap inline tránh nháy theme. Token semantic light/dark áp dụng cho shell, controls, states và bảng. Evidence: `docs/validation/frontend-redesign/after-t43/`; contrast chính >=4.5:1. Chrome DevTools MCP xác nhận mode khởi tạo/OS change ở `/public`, ảnh 1440/390. `npm test --workspace @ott/platform-web -- --maxWorkers=4` 401/401, typecheck và build pass.
 
 ### [ ] P2-T44 — Công tắc Sáng/Tối trên mọi route
 

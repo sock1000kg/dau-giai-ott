@@ -1,11 +1,12 @@
 # UI primitives (`src/ui`)
 
-Shared design tokens and components for the web app. Dark theme only.
+Shared design tokens and components for the web app. Semantic color tokens support light and dark modes. The initial mode follows the operating system until the visitor makes an explicit choice; that choice is saved under `ott-theme`.
 
 ## Contract for page tasks
 
 - No page-level rules in `app/styles.css`. Use `ui-*` classes/components plus a per-feature stylesheet imported by that feature.
-- Import from `src/ui/index.ts` (it loads `ui.css`). Tokens are CSS custom properties on `:root` (`--ui-*`).
+- Import from `src/ui/index.ts` (it loads `ui.css`). Tokens are CSS custom properties on `:root` (`--ui-*`) with light and dark values selected by `data-theme`.
+- `theme.ts` applies the mode before React mounts, follows OS changes when no preference is saved, and syncs saved preference changes from other tabs. Only `light` or `dark` is stored.
 - Logout lives in `AppNav`; authenticated pages are wrapped by `AppShellLayout` (in `app/routes.tsx`) which renders the nav and the `#main` skip-link target. Pages must not render their own logout button.
 
 ## Components
