@@ -961,7 +961,7 @@ Task `P2-T42`–`P2-T53` là đợt giao diện riêng, không tự đóng `P2-C
 - [ ] T46–T48 merge vào `main`; public/finals/replay đạt browser PUB-01/REP-01, không hồi quy replay P2-T41.
 - [ ] Ảnh hai mode, 390 và 1440 px cùng console/network/a11y evidence được owner review.
 
-### [ ] P2-T49 — Cổng đội: nộp bot và kết quả
+### [x] P2-T49 — Cổng đội: nộp bot và kết quả
 
 **Mô tả:** Làm rõ upload, tiến độ, lịch sử và kết quả theo hai mode, giữ nguyên dữ liệu/authorization từ API.
 **Acceptance criteria:** (1) validation/loading/error/success của upload rõ ràng; (2) bảng kết quả ở 390 px không cắt thông tin hoặc lộ field riêng; (3) các thao tác và request giữ nguyên.
@@ -969,6 +969,8 @@ Task `P2-T42`–`P2-T53` là đợt giao diện riêng, không tự đóng `P2-C
 **Dependencies:** `CP-UI-A`.
 **Files dự kiến:** `src/platform/web/src/features/submissions/{SubmissionForm.tsx,submissions.css}`, `src/platform/web/src/features/results/{MatchResultsPage.tsx,results.css}`.
 **Ước lượng:** M (4 file chính; test/docs cùng PR).
+
+**Hoàn tất:** 2026-10-22 — Luồng upload/history giữ nguyên validation và request; card upload có hierarchy/step sequence semantic; bộ lọc kết quả được làm rõ bằng accent rail. Team submissions/results UI states được kiểm tra qua response fixtures ở Chromium, 390px document width khớp viewport. `SubmissionForm`/results suites 28/28, typecheck pass; screenshots/evidence trong `docs/validation/frontend-redesign/after-t49/`.
 
 ### [ ] P2-T50 — BTC: quản lý đội và catalog replay
 
