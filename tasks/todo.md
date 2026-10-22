@@ -994,7 +994,7 @@ Task `P2-T42`–`P2-T53` là đợt giao diện riêng, không tự đóng `P2-C
 
 **Hoàn tất:** 2026-10-22 — Các rule set hiện hành, editor, archive và operations có phân tầng theme rõ; màu form/error/archive dùng semantic tokens; thao tác xác nhận và API giữ nguyên. Chrome fixture trên 320/390/768/1440 ở cả hai mode: document width luôn khớp viewport, hai form và round action render đầy đủ. Evidence ở `docs/validation/frontend-redesign/after-t51/`; không có console error/warning trên lượt browser cuối. RoundAdmin suites 62/62, typecheck/build pass.
 
-### [ ] P2-T52 — BTC: operations và kết quả
+### [x] P2-T52 — BTC: operations và kết quả
 
 **Mô tả:** Sắp lại filter, status, bảng và action của operations/results; dùng kết quả theme hóa từ T49.
 **Acceptance criteria:** (1) kết quả BTC/team thống nhất token nhưng hierarchy theo role; (2) bảng/filter mobile không tràn, trạng thái lỗi rõ; (3) API/role và thao tác đặc quyền không đổi.
@@ -1002,6 +1002,8 @@ Task `P2-T42`–`P2-T53` là đợt giao diện riêng, không tự đóng `P2-C
 **Dependencies:** `CP-UI-A`, `P2-T49`.
 **Files dự kiến:** `src/platform/web/src/features/operations/{OperationsConsole.tsx,operations.css}`, `src/platform/web/src/features/results/{MatchResultsPage.tsx,results.css}`.
 **Ước lượng:** M (4 file chính; test/docs cùng PR).
+
+**Hoàn tất:** 2026-10-22 — Tách hierarchy panel thao tác đặc quyền/audit/cảnh báo; confirmation và bảng giữ vùng rõ. Kết quả có phân cấp filter/count/table/pagination; sửa `min-width` khiến bảng dữ liệu trước đó làm tràn document ở 390px. Browser fixture hai mode, 390/1440; mobile document width khớp viewport, bảng cuộn riêng. Production preview ghi đúng GET paths/status 200, mỗi request một lần; accessibility tree có named regions/headings/controls. Evidence tại `docs/validation/frontend-redesign/after-t52/`. Operations/results suites 60/60, typecheck/build pass. Dev preview có một 404 `/favicon.ico`; không ảnh hưởng route/API.
 
 ### [ ] Checkpoint CP-UI-C — Cổng đội và BTC
 

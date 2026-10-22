@@ -5,9 +5,16 @@
 .results-filters .ui-button { width: 100%; }
 /* The refresh button sits in the grid next to Fields that each end with a help line; lift it by that line (13px * 1.5 + gap) so it lines up with the controls, not the help text. */
 .results-refresh { align-self: end; min-height: var(--ui-control-height); margin-bottom: calc(13px * 1.5 + var(--ui-space-2)); }
-.results-summary { margin: 0; color: var(--ui-text-muted); font-size: 14px; }
+.results-summary { margin: 0; padding: var(--ui-space-2) var(--ui-space-3); border-inline-start: 3px solid var(--ui-accent); color: var(--ui-text-muted); font-size: 14px; }
+.results-table { min-width: 0; }
 .results-table .ui-table { min-width: 720px; }
+.results-table .ui-table-scroll { max-width: 100%; }
 .results-cell { display: grid; gap: var(--ui-space-2); }
 .results-muted { color: var(--ui-text-muted); font-size: 13px; }
 .results-faults { display: flex; flex-wrap: wrap; gap: var(--ui-space-2) var(--ui-space-3); color: var(--ui-text-muted); font-size: 13px; }
-.results-pagination { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--ui-space-4); color: var(--ui-text-muted); }
+.results-pagination { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--ui-space-4); padding-block-start: var(--ui-space-3); border-block-start: 1px solid var(--ui-border); color: var(--ui-text-muted); }
+
+@media (max-width: 520px) {
+  .results-refresh { margin-bottom: 0; }
+  .results-pagination .ui-button { flex: 1 1 9rem; }
+}

@@ -286,6 +286,11 @@ The confirm step shows the target name + short id, moves focus to its heading an
 "Xem lại thao tác" on cancel. Tests: `operations.test.tsx`, `operations.pickers.test.tsx`,
 `operations.layout.test.tsx` (shared mocks in `operations.testkit.tsx`).
 
+The T52 layout assigns a visible top rule to privileged actions and separate status rails to audit/queue review
+panels; wide tables scroll inside their own region on mobile. Confirmation stays grouped and visibly marked as a
+dangerous step. Operation semantics and API calls are unchanged. Browser screenshots and fixtures are recorded in
+[`docs/validation/frontend-redesign/after-t52/`](../../../docs/validation/frontend-redesign/after-t52/).
+
 The public tournament page (`/public`) shows "Hàng đợi" and "Kết quả" as equal panels: one `--pub-panel-height` cap
 (`clamp(420px, 70vh, 640px)`) at ≥ 1024px, both columns stretch to the same bottom edge and each list scrolls inside its
 card (`ExpandableList` `fill`); below 1024px each list region is capped at 360px. Wait times read "Dự kiến chờ ~N phút/giờ"
@@ -298,7 +303,7 @@ text is never displayed. Verification: `npm test --workspace @ott/platform-web -
 
 `/admin/results` and `/team/results` (`features/results`) use the `ui/*` primitives with styles in `features/results/results.css`.
 Filters are `Select`s: kind, team (BTC only) and **Vòng/stage**, a dropdown with "Tất cả vòng", `QUALIFICATION`, `FINALS` (`stages.ts`) plus any other stage seen in loaded results, so a free-form stage is never un-selectable. Changing a filter resets to page 1; "Tất cả vòng" sends no `stage` query parameter.
-Matches and series render as bordered tables (horizontal scroll inside the table container on narrow screens). Status, reason and cancellation codes get Vietnamese labels in `labels.ts` (unknown codes show the raw code); dates are shown in `Asia/Ho_Chi_Minh`. Replay links stay FINALIZED-only.
+Matches and series render as bordered tables (horizontal scroll inside the table container on narrow screens). The result table wrapper can shrink within the page grid so long rows do not widen the whole document; the count and pagination have distinct separators. Status, reason and cancellation codes get Vietnamese labels in `labels.ts` (unknown codes show the raw code); dates are shown in `Asia/Ho_Chi_Minh`. Replay links stay FINALIZED-only. T52 screenshots and synthetic fixture details are recorded in [`docs/validation/frontend-redesign/after-t52/`](../../../docs/validation/frontend-redesign/after-t52/).
 
 ## Login and MFA screens (`P3-D15`)
 
