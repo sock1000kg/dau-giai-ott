@@ -64,7 +64,7 @@ describe('authentication routes', () => {
     fireEvent.change(screen.getByLabelText(/mật khẩu/i), { target: { value: 'correct-password' } });
     fireEvent.submit(screen.getByRole('form', { name: 'Đăng nhập' }));
 
-    expect(await screen.findByRole('heading', { name: /cổng đội thi/i })).toBeTruthy();
+    expect(await screen.findByRole('heading', { level: 1, name: /không gian đội thi/i })).toBeTruthy();
     expect(screen.queryByText('private-team-id')).toBeNull();
     expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({ credentials: 'include', method: 'POST' });
   });
@@ -142,7 +142,7 @@ describe('authentication routes', () => {
 
     render(<App />);
 
-    expect(await screen.findByRole('heading', { name: /khu vực btc/i })).toBeTruthy();
+    expect(await screen.findByRole('heading', { level: 1, name: /trung tâm điều hành giải/i })).toBeTruthy();
   });
 
   it('logs out through the API and returns to login', async () => {
@@ -167,7 +167,7 @@ describe('authentication routes', () => {
     fireEvent.click(await screen.findByRole('button', { name: /đăng xuất/i }));
 
     expect(await screen.findByRole('alert')).toBeTruthy();
-    expect(screen.getByRole('heading', { name: /khu vực btc/i })).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 1, name: /trung tâm điều hành giải/i })).toBeTruthy();
   });
 
   it('prompts for 6-digit TOTP code when login requires MFA and submits to login/mfa', async () => {
@@ -194,7 +194,7 @@ describe('authentication routes', () => {
     fireEvent.change(mfaInput, { target: { value: '123456' } });
     fireEvent.submit(screen.getByRole('form', { name: 'Xác thực 2 bước' }));
 
-    expect(await screen.findByRole('heading', { name: /khu vực btc/i })).toBeTruthy();
+    expect(await screen.findByRole('heading', { level: 1, name: /trung tâm điều hành giải/i })).toBeTruthy();
     expect(fetchMock.mock.calls[2]?.[0]).toBe('/api/v1/auth/login/mfa');
     expect(JSON.parse(fetchMock.mock.calls[2]?.[1]?.body as string)).toEqual({ code: '123456' });
   });

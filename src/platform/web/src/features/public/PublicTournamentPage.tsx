@@ -40,11 +40,15 @@ export function PublicTournamentPage() {
   const newestFirst = [...snapshot.results].reverse();
   const topRows = snapshot.leaderboard.slice(0, LEADERBOARD_LIMIT);
   return <Page title={`Giải đấu OTT · ${snapshot.round.name}`}>
-    <div className="pub-strip">
+      <section className="pub-overview" aria-label="Tổng quan giải đấu">
+      <div className="pub-strip">
       <Badge accent>{snapshot.stage}</Badge>
       <Badge>{snapshot.round.status}</Badge>
       <span className="pub-updated">Cập nhật lúc <time dateTime={snapshot.updatedAt}>{formatVnDateTime(snapshot.updatedAt)}</time></span>
     </div>
+      <h2 className="pub-overview-title">{snapshot.round.name}</h2>
+      <p className="pub-overview-summary">{snapshot.status.message}</p>
+      </section>
     {stale && <Alert tone="warning">Dữ liệu có thể đã cũ. Đang giữ bản cập nhật cuối cùng.</Alert>}
     <div className="pub-grid pub-grid--panels">
       <div className="pub-stack"><section aria-label="Trạng thái"><Card as="div" title="Trạng thái"><p>{snapshot.status.message}</p>
@@ -61,7 +65,7 @@ export function PublicTournamentPage() {
     </div>
     <section id="leaderboard" aria-label="Bảng xếp hạng"><Card as="div" title="Bảng xếp hạng">
       <div className="pub-section-action"><LinkButton variant="secondary" href="/leaderboard">Xem bảng xếp hạng đầy đủ →</LinkButton></div>
-      <div className="ui-table-scroll pub-table-scroll"><table className="ui-table pub-table">
+      <div className="ui-table-scroll pub-table-scroll" role="region" aria-label="Bảng xếp hạng tóm tắt" tabIndex={0}><table className="ui-table pub-table">
         <caption>Thứ hạng công khai theo bản cập nhật mới nhất</caption>
         <thead><tr><th scope="col">Hạng</th><th scope="col">Đội</th><th scope="col" className="pub-num">Elo</th><th scope="col">Điều kiện finals</th></tr></thead>
         <tbody>{topRows.map((row, i) => <tr key={i} className={row.rank <= 3 ? 'pub-row-top' : undefined}>
