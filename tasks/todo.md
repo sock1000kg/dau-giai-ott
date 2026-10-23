@@ -1091,6 +1091,7 @@ Task `P2-T42`–`P2-T53` là đợt giao diện riêng, không tự đóng `P2-C
 **Dependencies:** `P2-T58`, `P2-T35`.
 **Files:** `scripts/demo.sh`, `infra/local/compose.yaml`, `scripts/tests/demo.test.sh`, `docs/runbooks/local-demo.md`, `docs/runbooks/public-demo-hosting.md`.
 **Ước lượng:** M (5 file).
+**Implementation/test:** 2026-10-23 — Compose profile riêng `demo-password-reset` không được chọn bởi normal/public launch; cron/timezone override, default 03:00 Asia/Ho_Chi_Minh, Redis singleton lease. Scheduler cycle chạy trên disposable PostgreSQL/Redis, CSV mode 0600/default verified; scheduler/command tests 12/12, Compose config/API typecheck/build pass. Acceptance status vẫn mở cho tới khi dependency `P2-T35` được tick.
 
 ### [x] P2-T60 — Điều hướng theo role sau đăng nhập
 

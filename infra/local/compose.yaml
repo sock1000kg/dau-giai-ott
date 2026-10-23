@@ -106,6 +106,41 @@ services:
       - "${OTT_DEMO_ACCOUNTS_DIR:-../../.local/demo}:/demo"
     user: "${DEMO_UID:-1000}:${DEMO_GID:-1000}"
 
+  demo-password-reset-scheduler:
+    image: ott-api:local
+    pull_policy: never
+    profiles:
+      - demo-password-reset
+    restart: unless-stopped
+    command:
+      - npm
+      - run
+      - demo:reset-scheduler
+      - --workspace
+      - "@ott/platform-api"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:?set POSTGRES_USER in .env}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:?set POSTGRES_DB in .env}
+      REDIS_URL: redis://:${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}@redis:6379
+      OTT_DEMO_MODE: ${OTT_DEMO_MODE:-false}
+      OTT_DEPLOYMENT_MODE: ${OTT_DEPLOYMENT_MODE:-dev}
+      OTT_DEMO_PUBLIC: ${DEMO_PUBLIC:-false}
+      OTT_DEMO_PASSWORD_RESET_ENABLED: ${OTT_DEMO_PASSWORD_RESET_ENABLED:-false}
+      OTT_DEMO_PASSWORD_RESET_TEAM_USERNAMES: ${OTT_DEMO_PASSWORD_RESET_TEAM_USERNAMES:-}
+      OTT_DEMO_TEAM_PASSWORD: ${OTT_DEMO_TEAM_PASSWORD:-ABC123}
+      OTT_DEMO_PASSWORD_RESET_CRON: ${OTT_DEMO_PASSWORD_RESET_CRON:-0 3 * * *}
+      OTT_DEMO_PASSWORD_RESET_TIMEZONE: ${OTT_DEMO_PASSWORD_RESET_TIMEZONE:-Asia/Ho_Chi_Minh}
+      OTT_DEMO_ACCOUNTS_CSV: /demo/${OTT_DEMO_ACCOUNTS_BASENAME:-accounts.csv}
+    volumes:
+      - "${OTT_DEMO_ACCOUNTS_DIR:-../../.local/demo}:/demo"
+    user: "${DEMO_UID:-1000}:${DEMO_GID:-1000}"
+
   api:
     image: ott-api:local
     build:
@@ -135,6 +170,7 @@ services:
       OTT_RUN_MIGRATIONS: "false"
       OTT_MATCH_QUEUE: ${OTT_MATCH_QUEUE:-ott.match.v1}
       OTT_DEPLOYMENT_MODE: ${OTT_DEPLOYMENT_MODE:-dev}
+      OTT_DEMO_PUBLIC: ${DEMO_PUBLIC:-false}
       OTT_SECURE_COOKIES: ${OTT_SECURE_COOKIES:-false}
       OTT_ADMIN_TOTP_REQUIRED: ${OTT_ADMIN_TOTP_REQUIRED:-false}
       OTT_ADMIN_ALLOWLIST: ${OTT_ADMIN_ALLOWLIST:-}

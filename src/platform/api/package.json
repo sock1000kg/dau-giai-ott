@@ -14,7 +14,8 @@
     "build": "tsc -p tsconfig.build.json",
     "db:migrate": "tsx src/db/migrate.ts",
     "demo:seed": "tsx src/demo/seed-accounts.ts",
-    "demo:reset-passwords": "tsx src/demo/reset-team-passwords.ts"
+    "demo:reset-passwords": "tsx src/demo/reset-team-passwords.ts",
+    "demo:reset-scheduler": "tsx src/demo/reset-password-scheduler.ts"
   },
   "dependencies": {
     "@ott/bot-protocol": "*",

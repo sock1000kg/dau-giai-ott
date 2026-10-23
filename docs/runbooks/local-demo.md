@@ -331,3 +331,29 @@ event without secret material, and updates the local `0600` credential CSV
 atomically so testers can retrieve the current demo password. It must not print
 the password. `scripts/demo.sh up --public` must never enable or start this job;
 public tester accounts keep their generated shared password and BTC-only reset.
+
+To opt in on a local stack, set these keys in `.local/demo/demo.env` (keep the
+file mode `0600`) and start the separate profile. The allowlist is a comma
+separated list of existing demo team usernames; use a dedicated isolated test
+stack when exercising the one-shot command.
+
+```sh
+OTT_DEMO_PASSWORD_RESET_ENABLED=true
+OTT_DEMO_PASSWORD_RESET_TEAM_USERNAMES=team01,team02
+OTT_DEMO_TEAM_PASSWORD=ABC123
+# Optional; defaults to 03:00 Asia/Ho_Chi_Minh
+OTT_DEMO_PASSWORD_RESET_CRON=0 3 * * *
+OTT_DEMO_PASSWORD_RESET_TIMEZONE=Asia/Ho_Chi_Minh
+```
+
+```sh
+docker compose -p ott-demo -f infra/local/compose.yaml \
+  --env-file .local/demo/demo.env --profile demo-password-reset \
+  up -d demo-password-reset-scheduler
+```
+
+The scheduler profile is not part of normal `up` and is not selected by the
+public launcher. It rechecks the opt-in and public/hosted/finals guards at
+startup, uses a Redis lease to prevent concurrent scheduled runs, and logs
+only the number of reset accounts. Stop it with `docker compose ... stop
+demo-password-reset-scheduler` when testing is done.

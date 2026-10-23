@@ -377,6 +377,9 @@ Local/test credential tooling is separate from the official auth API:
 `npm run demo:reset-passwords --workspace @ott/platform-api` resets only the
 explicit `OTT_DEMO_PASSWORD_RESET_TEAM_USERNAMES` allowlist when all local/test
 guards pass. Scheduler setup is documented in `docs/runbooks/local-demo.md`.
+To run the opt-in local scheduler, use
+`npm run demo:reset-scheduler --workspace @ott/platform-api` with the reset
+guards and cron/timezone environment described there.
 
 ### Operator steps
 
