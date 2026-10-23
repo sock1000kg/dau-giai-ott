@@ -303,6 +303,10 @@ P2-T42 baseline/thiết kế → P2-T43 theme core → P2-T44 toggle → P2-T45 
 
 Chrome DevTools MCP chưa có trong phiên lập plan; T42 kiểm tra/cấu hình trước khi chụp baseline, T53 chỉ đạt khi ma trận browser thực chạy được. Các task đang mở khác và checkpoint cũ giữ nguyên trạng thái. Mỗi task code dùng branch riêng từ `main`; `P2-T49` và `P2-T52` sửa `results.css` tuần tự.
 
+### Đổi mật khẩu đội, reset account demo và login routing
+
+`P2-T55` cập nhật auth requirement/ADR/contracts cho đổi password đã xác thực và chốt chính sách reset demo. `P2-T56`–`P2-T57` triển khai API/UI đổi password; `P2-T58`–`P2-T59` tạo lệnh và lịch reset account demo, sau dependency `P2-T35`; `P2-T60` sửa route sau login theo principal. Job chỉ local/test, opt-in, username allowlist tường minh, mặc định 03:00 `Asia/Ho_Chi_Minh`, public mode bị từ chối. `P2-T55`–`P2-T60` có checkpoint auth và browser/E2E cuối trong checklist. Đây là thay đổi auth độc lập, không thuộc redesign UI `P2-T42`–`P2-T54`.
+
 ## 10. Rủi ro
 
 | Rủi ro | Mức độ | Giảm thiểu |

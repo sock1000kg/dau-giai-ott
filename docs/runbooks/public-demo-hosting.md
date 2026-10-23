@@ -19,6 +19,7 @@ Public demo mode provisions **10 team accounts** (`team01`..`team10`) plus the t
 ### Demo Authentication Model
 - **Tournament Administrator (`btc`)**: Seeded with a private 32-character random password. This password is meant strictly for the tournament operator and must never be shared with testers.
 - **Tester Teams (`team01` through `team10`)**: Seeded with **one shared 12-character tester password** (`OTT_DEMO_TEAM_PASSWORD`) generated using base62 characters excluding ambiguous glyphs (`0O1lI`). All ten teams share this single password.
+- The scheduled reset-to-default job is not part of `--public` mode and must remain disabled there. Public tester credentials stay random; only BTC may use the official reset workflow. Never set `OTT_DEMO_PASSWORD_RESET_ENABLED=true` on a public demo host.
 
 ---
 

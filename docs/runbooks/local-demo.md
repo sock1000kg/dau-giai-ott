@@ -306,3 +306,28 @@ DATABASE_URL="postgres://ott_local:CHANGE_ME_POSTGRES_PASSWORD@127.0.0.1:5432/ot
   - If `btc`, `team01`, or `team02` already exists with a different role or team binding, the seeder throws an error rather than proceeding in an inconsistent state.
 - **Production Isolation**:
   - The demo seeder does not touch the production bulk provisioning (`teams/bulk.ts`) or reset flows.
+
+## 6. Team password change and scheduled demo reset policy
+
+An authenticated team may change the shared team password by providing its
+current password. This revokes all sessions, so every team member must sign in
+again. If the team forgets its password, BTC continues to use the official
+one-time credential reset workflow.
+
+The separate automatic reset is reserved for local/test accounts and is not a
+public API. Its implementation must remain disabled unless explicitly enabled
+with `OTT_DEMO_PASSWORD_RESET_ENABLED=true`, `OTT_DEMO_MODE=true`, and
+`OTT_DEPLOYMENT_MODE=dev` or `test`. It must also refuse `OTT_DEMO_PUBLIC=true`,
+hosted PoC, finals, and production environments. An explicit
+`OTT_DEMO_PASSWORD_RESET_TEAM_USERNAMES` allowlist is required; targets must
+resolve to `TEAM_ACCOUNT` records in the demo database. The password comes from
+`OTT_DEMO_TEAM_PASSWORD` (the local stack default is `ABC123`).
+
+When enabled, the schedule defaults to `0 3 * * *` in
+`OTT_DEMO_PASSWORD_RESET_TIMEZONE` (default `Asia/Ho_Chi_Minh`). Operators may
+override it with `OTT_DEMO_PASSWORD_RESET_CRON`. Each successful reset stores
+only the Argon2id hash in PostgreSQL, revokes account sessions, writes an audit
+event without secret material, and updates the local `0600` credential CSV
+atomically so testers can retrieve the current demo password. It must not print
+the password. `scripts/demo.sh up --public` must never enable or start this job;
+public tester accounts keep their generated shared password and BTC-only reset.

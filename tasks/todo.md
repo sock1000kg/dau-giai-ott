@@ -1030,6 +1030,82 @@ Task `P2-T42`–`P2-T53` là đợt giao diện riêng, không tự đóng `P2-C
 **GitNexus pre-edit:** `ReplayPlayer` upstream risk HIGH, hai callers (`PrivateReplayPage`, `SpectatorReplayPage`) và bốn process. Implementation giữ nguyên TS/API; xác minh cả hai route sau sửa CSS.
 **Implementation đã xác minh:** 2026-10-22 — Bàn cờ theo palette riêng của light/dark; giữ nguyên engine/frame/ARIA/API. Chromium xác minh public và private replay tại 1440×1100, 390×844; fullscreen bật/tắt, computed styles và console pass. Evidence tại `docs/validation/p2-t54/`. Web tests 404/404, typecheck, build và `git diff --check` pass. Tick task sau khi merge.
 
+## Phase 2 — Mở rộng auth đội, job demo và điều hướng
+
+> Các task dưới đây thuộc yêu cầu auth riêng, không nằm trong redesign `P2-T42`–`P2-T54`. Mỗi task dùng branch riêng từ `main`, một PR/task. Trước khi sửa function/class, chạy GitNexus impact; xác nhận `UNKNOWN`/zero bằng source. Chỉ deploy demo local sau API, browser và checkpoint `P2-E` pass.
+
+### [x] P2-T55 — Chốt contract đổi mật khẩu đội và chính sách job demo
+
+**Owner:** Đinh Đức Thuận
+**Mô tả:** Mở rộng requirement, ADR-0004 và Platform Auth v1/v2 cho `TEAM_ACCOUNT` đã đăng nhập đổi mật khẩu; quy định riêng reset-to-default job cho demo local/test, ngoài API chính thức.
+**Acceptance criteria:** (1) Contract có endpoint/payload/error, password policy, session revocation và audit cho authenticated change; không có self-register hoặc unauthenticated self-reset; (2) reset job mặc định tắt, yêu cầu opt-in, `OTT_DEMO_MODE=true`, deployment mode `dev/test` và username allowlist trỏ đúng `TEAM_ACCOUNT`; cấm public demo/hosted/finals/production; (3) chốt lịch 03:00 `Asia/Ho_Chi_Minh`, timezone/cron override, `OTT_DEMO_TEAM_PASSWORD` làm default, không lộ secret và yêu cầu cập nhật CSV demo atomically.
+**Verification:** Đối chiếu yêu cầu §4.1, ADR-0004, Platform Auth v1/v2, local-demo và public-demo runbooks; xác nhận câu chữ không còn mâu thuẫn về authenticated change, forgot-password và BTC reset. `git diff --check` pass; không chạy tests vì task chỉ sửa tài liệu.
+**Dependencies:** `P2-T04`, `P2-T05`, `P2-T06` (đã hoàn tất trên `main`). `P2-T35` là dependency của job implementation, không chặn decision/contract.
+**Files:** `docs/tai-lieu-yeu-cau.md`, `docs/decisions/0004-phase-2-team-account-authentication.md`, `docs/contracts/platform-auth-v1.md`, `docs/contracts/platform-auth-v2.md`, `docs/runbooks/local-demo.md`, `docs/runbooks/public-demo-hosting.md`, `tasks/plan.md`, `tasks/todo.md`.
+**Ước lượng:** M (docs-only; 8 logical paths including this card and plan index).
+**Hoàn tất:** 2026-10-23 — Requirement/ADR/auth contracts đồng bộ: đội đổi mật khẩu khi đã đăng nhập và biết mật khẩu hiện tại; quên mật khẩu vẫn do BTC reset. Demo reset job chỉ local/test, opt-in, allowlist, mặc định 03:00 `Asia/Ho_Chi_Minh`, từ chối public mode; xác định CSV update atomically và audit không secret. `git diff --check` pass; chưa chạy test suite vì không thay đổi code.
+
+### [ ] P2-T56 — API cho đội tự đổi mật khẩu
+
+**Owner:** Đinh Đức Thuận
+**Mô tả:** Thêm route authenticated chỉ cho `TEAM_ACCOUNT`, xác minh mật khẩu hiện tại, lưu Argon2id hash và thu hồi session account sau đổi thành công.
+**Acceptance criteria:** (1) Thực hiện contract `POST /api/v1/auth/password/change`; password mới 12–128 ký tự, lỗi không echo password/hash; (2) success giữ username/team binding, password cũ không login được, password mới login được, mọi session cũ bị revoke; (3) giới hạn 5 lần verify sai/account+IP/15 phút, serialize với BTC reset.
+**Verification:** API route và PostgreSQL+Redis integration cho success/failure, hai session, role denial, rate limit và cạnh tranh reset; API tests/typecheck/build pass.
+**Dependencies:** `P2-T55`.
+**Files:** `src/platform/api/src/modules/auth/plugin.ts`, `src/platform/api/tests/auth.integration.test.ts`, `src/platform/api/tests/auth-hardening.routes.test.ts`, `src/platform/api/README.md`.
+**Ước lượng:** M (4 file).
+
+### [ ] P2-T57 — Giao diện đổi mật khẩu cho đội
+
+**Owner:** Đinh Đức Thuận
+**Mô tả:** Thêm trang/mục đổi mật khẩu team portal gọi API `P2-T56`, sau đó yêu cầu đội đăng nhập lại.
+**Acceptance criteria:** (1) Chỉ team thấy chức năng, server tiếp tục chặn role khác; (2) form có current/new password, báo lỗi và không giữ password sau submit/unmount; (3) success đưa về login, đăng nhập lại bằng password mới vào đúng trang đội.
+**Verification:** Web component/route tests và browser flow change→logout→login; web suite/typecheck/build pass.
+**Dependencies:** `P2-T56`.
+**Files:** `src/platform/web/src/features/auth/api.ts`, `src/platform/web/src/features/auth/ChangePasswordPage.tsx`, `src/platform/web/src/features/auth/auth.ui.test.tsx`, `src/platform/web/src/app/routes.tsx`, `src/platform/web/README.md`.
+**Ước lượng:** M (5 file).
+
+## Checkpoint P2-D — Đội đổi mật khẩu
+
+- [ ] `P2-T55`–`P2-T57` merge vào `main` sau review contract, integration và web tests.
+- [ ] Browser/API chứng minh session revocation, role denial, không lộ secret và team đăng nhập lại thành công.
+
+### [ ] P2-T58 — Lệnh reset mật khẩu account demo
+
+**Owner:** Đinh Đức Thuận
+**Mô tả:** Tạo lệnh ngoài API chính thức để reset mật khẩu default cho allowlist demo đã cấu hình.
+**Acceptance criteria:** (1) Refuse trừ khi `OTT_DEMO_PASSWORD_RESET_ENABLED=true`, `OTT_DEMO_MODE=true`, deployment `dev/test`, `OTT_DEMO_PUBLIC` không true, allowlist tường minh và password config hợp lệ; (2) chỉ update allowlisted `TEAM_ACCOUNT` có demo binding, transaction + audit + revoke session, Argon2id hash và CSV `0600` atomic; (3) rerun an toàn, không đổi username, không target BTC/account khác và không log password/hash.
+**Verification:** Integration tests trên DB demo cách ly cho guards, allowlist, hash/login, session revocation, audit, CSV permission/atomicity và idempotent retry; command/CLI docs pass.
+**Dependencies:** `P2-T55`, `P2-T35`.
+**Files:** `src/platform/api/src/demo/reset-team-passwords.ts`, `src/platform/api/tests/demo-password-reset.integration.test.ts`, `src/platform/api/package.json`, `docs/runbooks/local-demo.md`.
+**Ước lượng:** M (4 file).
+
+### [ ] P2-T59 — Lập lịch job reset mật khẩu demo
+
+**Owner:** Đinh Đức Thuận
+**Mô tả:** Gắn command `P2-T58` vào scheduler local demo; public demo không bật scheduler.
+**Acceptance criteria:** (1) Default schedule `0 3 * * *`, timezone `Asia/Ho_Chi_Minh`, cho phép cron/timezone override; job disabled mặc định; (2) Compose/script local có singleton lock và public launcher đặt `OTT_DEMO_PUBLIC=true`, scheduler refuse public; (3) restart/duplicate triggers không chạy song song hoặc lộ secret, sau scheduled run allowlist login bằng default và session cũ bị thu hồi.
+**Verification:** Shell/Compose config tests, một chu kỳ scheduled run trên isolated demo stack, restart và lock test; runbook chỉ dẫn enable/disable; `git diff --check`.
+**Dependencies:** `P2-T58`, `P2-T35`.
+**Files:** `scripts/demo.sh`, `infra/local/compose.yaml`, `scripts/tests/demo.test.sh`, `docs/runbooks/local-demo.md`, `docs/runbooks/public-demo-hosting.md`.
+**Ước lượng:** M (5 file).
+
+### [ ] P2-T60 — Điều hướng theo role sau đăng nhập
+
+**Owner:** Đinh Đức Thuận
+**Mô tả:** Sau login thường/MFA, thay route bằng `/admin` hoặc `/team` theo principal server trả về; session restore hợp lệ vẫn giữ deep link.
+**Acceptance criteria:** (1) BTC login từ team route về `/admin`, team login từ admin route về `/team`; (2) direct link/refresh khi session có sẵn mở đúng route và cross-role vẫn bị chặn; (3) logout/login đổi role không giữ route/data role trước.
+**Verification:** Route tests cho login/MFA/restore/cross-role và browser smoke hai role; web suite/typecheck/build pass.
+**Dependencies:** `P2-T55`, `P2-T45` (frontend auth shell/login đã hoàn tất); độc lập `P2-T56`–`P2-T59` sau contract gate.
+**Files:** `src/platform/web/src/features/auth/AuthProvider.tsx`, `src/platform/web/src/features/auth/LoginPage.tsx`, `src/platform/web/src/app/routes.tsx`, `src/platform/web/src/app/app-routes.test.tsx`, `src/platform/web/README.md`.
+**Ước lượng:** M (5 file).
+
+## Checkpoint P2-E — Auth, demo reset và browser flow
+
+- [ ] `P2-T56`–`P2-T60` hoàn tất trên task branch riêng; `P2-T35` demo account gate đã qua trước job.
+- [ ] Browser test chứng minh password change, role redirect và demo reset allowlist/session revocation; Chrome DevTools MCP hoặc documented browser fallback có console/network/DOM evidence.
+- [ ] Root typecheck/build/test và local demo restart pass trên PostgreSQL/Redis/Docker; dependency failures ghi rõ. Checkpoint được Thuận nghiệm thu trước demo deployment.
+
 ## Phase 3 — Gate P3-0: decision và contract approval
 
 > `P3-T01` đã duyệt requirement/ADR/contract ngày 14/10/2026. Task implementation chỉ hoàn tất sau acceptance/verification riêng; Wave 1 có thể bắt đầu trên branch task từ `main`.

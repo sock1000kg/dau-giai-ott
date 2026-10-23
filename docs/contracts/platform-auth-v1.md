@@ -3,7 +3,8 @@
 > **Status:** Locked for `P2-T05`.
 >
 > **Scope:** Internal username/password authentication for the Phase 2 API. This
-> contract intentionally has no public registration or self-service password reset.
+> contract has no public registration or unauthenticated self-service password reset. An authenticated
+> `TEAM_ACCOUNT` may change its password after proving the current password.
 
 ## Roles and principal
 
@@ -98,6 +99,38 @@ Revokes the presented server-side session when it exists, clears the cookie and
 returns `204`. It is intentionally idempotent: a missing or already-revoked
 cookie also returns `204`.
 
+### `POST /auth/password/change`
+
+Requires an authenticated `TEAM_ACCOUNT`; `BTC_ADMIN` receives `403 FORBIDDEN`.
+The account is shared by its team, so this changes the credential for all team
+members using it. Request body:
+
+```ts
+type ChangePasswordRequest = {
+  currentPassword: string;
+  newPassword: string; // 12–128 characters; not trimmed or normalized
+};
+```
+
+The server verifies `currentPassword`, stores only an Argon2id hash of
+`newPassword`, and updates the account atomically. A password must be 12–128
+characters and contain no control characters. Success returns `204`, revokes
+all sessions for the account (including the presented session), and clears the
+`ott_session` cookie. The team must sign in again with the new password.
+
+An incorrect `currentPassword` returns `401 INVALID_CREDENTIALS` with a generic
+authentication error. Invalid input returns `400 INVALID_INPUT`; an anonymous
+request returns `401 UNAUTHENTICATED`; wrong-role requests return `403
+FORBIDDEN`; password-change attempts are limited to five failed attempts per
+account and client address in 15 minutes and return `429
+PASSWORD_CHANGE_RATE_LIMITED`. Authentication, validation and rate-limit
+responses never echo either password.
+
+The server appends `TEAM_PASSWORD_CHANGED` audit data for the acting account and
+team. Audit data must not contain either password or its hash. A BTC reset or
+demo reset racing with a password change must serialize its account update; the
+last committed operation wins and all prior sessions are revoked.
+
 ## Authorization failures
 
 A valid principal that is not allowed to use a server-protected resource
@@ -118,7 +151,7 @@ compare a path resource's owner to the session `teamId`.
 
 ## Deliberately absent APIs
 
-There is no `POST /auth/register`, `POST /auth/reset-password`, OAuth callback,
+There is no `POST /auth/register`, unauthenticated `POST /auth/reset-password`, OAuth callback,
 email login, or user-facing credential creation endpoint. `BTC_ADMIN` team
 provisioning/reset is introduced by `P2-T06`; its one-time plaintext credential
 response is the sole future exception and must not be logged, audited or stored.

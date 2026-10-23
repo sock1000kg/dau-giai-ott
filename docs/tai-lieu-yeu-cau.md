@@ -148,11 +148,26 @@ Yêu cầu phân quyền:
   khi tạo hoặc reset. BTC tự gửi credential qua kênh chat ngoài hệ thống.
 - Chỉ `BTC_ADMIN` tạo hoặc reset `TEAM_ACCOUNT`; reset phải vô hiệu session cũ. Audit chỉ ghi actor,
   team/account, thời điểm và loại thao tác, tuyệt đối không ghi password.
+- Đội đã đăng nhập được tự đổi mật khẩu của account dùng chung bằng cách xác minh mật khẩu hiện tại.
+  Đổi mật khẩu thu hồi toàn bộ session của account; audit ghi account/team và loại thao tác, không ghi password.
+  Không có luồng tự reset khi quên mật khẩu; trường hợp đó BTC vẫn reset credential.
 - `BTC_ADMIN` đầu tiên được bootstrap bằng biến môi trường local không commit; sau đó đăng nhập như bình
-  thường. Team portal chỉ có màn hình đăng nhập và không có đường dẫn/API đăng ký hoặc tự reset password.
+  thường. Team portal không có đăng ký hoặc endpoint đặt lại mật khẩu khi chưa đăng nhập.
 - Session là opaque server-side session trong Redis, phát cho browser bằng cookie `HttpOnly`, `SameSite=Lax`
   và `Secure` ở môi trường HTTPS. Password hash dùng Argon2id; rate limit login và error response không được
   tiết lộ username có tồn tại hay không.
+
+#### Công cụ reset mật khẩu demo
+
+- Job reset về mật khẩu demo là công cụ vận hành local/test ngoài API chính thức. Mặc định tắt; chỉ chạy
+  khi `OTT_DEMO_PASSWORD_RESET_ENABLED=true`, `OTT_DEMO_MODE=true`, `OTT_DEPLOYMENT_MODE=dev` hoặc `test`,
+  và target username nằm trong `OTT_DEMO_PASSWORD_RESET_TEAM_USERNAMES`.
+- Job chỉ được đặt lại `TEAM_ACCOUNT` thử nghiệm đã chỉ định, dùng `OTT_DEMO_TEAM_PASSWORD` làm mật khẩu
+  mặc định. Lịch mặc định là 03:00 mỗi ngày theo `OTT_DEMO_PASSWORD_RESET_TIMEZONE` (mặc định
+  `Asia/Ho_Chi_Minh`); có thể đổi bằng `OTT_DEMO_PASSWORD_RESET_CRON`. Mỗi lần chạy thu hồi session và
+  audit thao tác mà không ghi secret.
+- Public demo, hosted PoC, finals và production không bật hoặc chạy job này. Public demo tiếp tục dùng
+  credential ngẫu nhiên và BTC reset credential theo luồng chính thức.
 
 ## 5. Vòng đời giải đấu
 

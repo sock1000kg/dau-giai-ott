@@ -2,7 +2,8 @@
 
 > **Status:** APPROVED policy contract for Phase 3; endpoint schemas/tests are delivered by `P3-D04` and `P3-D06`.
 >
-> **Compatibility:** extends v1 sessions/RBAC; no self-registration or self-service reset is added.
+> **Compatibility:** extends v1 sessions/RBAC; no self-registration or unauthenticated password reset is added.
+> Authenticated `TEAM_ACCOUNT` password change follows the v1 contract and revokes all sessions for that account.
 
 ## Bulk team provisioning
 
@@ -19,7 +20,8 @@
 - `BTC_ADMIN` authentication is password plus TOTP, with one-time recovery codes stored hashed/encrypted as
   appropriate. Used recovery codes cannot be replayed.
 - TOTP secret/recovery material never appears in client bundle, log, metric, trace or audit.
-- `TEAM_ACCOUNT` keeps the v1 password/session flow unless a later approved contract changes it.
+- `TEAM_ACCOUNT` keeps the v1 login/session flow. Its authenticated password-change operation is defined in
+  Platform Auth v1; it does not add a forgot-password or unauthenticated reset flow.
 
 ## Admin network boundary and startup guard
 
@@ -32,6 +34,8 @@
 ## Audit and failure behavior
 
 - Audit records actor, operation, target/count, reason, correlation ID and timestamp, never secrets.
+- Team password changes audit `TEAM_PASSWORD_CHANGED`; current/new passwords and password hashes are never
+  written to audit, logs, metrics, traces or responses.
 - Authentication errors do not disclose whether a username, TOTP enrollment or recovery code exists.
 - Authorization remains server-side; UI visibility is never an access-control boundary.
 

@@ -16,8 +16,8 @@ provider bên ngoài; bot source và dữ liệu submission phải luôn bị gi
 
 ## Decision
 
-- Dùng username/password nội bộ. Không có sign-up, OAuth/email login, API tự đăng ký hay self-service
-  password reset trong Phase 2.
+- Dùng username/password nội bộ. Không có sign-up, OAuth/email login, API tự đăng ký hay unauthenticated
+  password reset trong Phase 2. `TEAM_ACCOUNT` đã đăng nhập có thể đổi mật khẩu sau khi xác minh mật khẩu hiện tại.
 - Mỗi team có đúng một `TEAM_ACCOUNT` dùng chung. Khi `BTC_ADMIN` tạo team, server tạo username duy nhất
   và password ngẫu nhiên; plaintext credential chỉ nằm trong response create/reset một lần.
 - Password được hash bằng Argon2id. Session là opaque server-side record ở Redis; browser nhận cookie
@@ -25,6 +25,12 @@ provider bên ngoài; bot source và dữ liệu submission phải luôn bị gi
   username có tồn tại.
 - BTC đầu tiên được bootstrap từ biến môi trường local, không commit vào repository. BTC có thể reset
   credential team; reset thu hồi toàn bộ session của account đó. Audit không bao giờ chứa password.
+- Đổi mật khẩu của đội giữ nguyên username/team binding, dùng Argon2id và thu hồi toàn bộ session account.
+  Audit ghi loại thao tác và team target, không lưu secret. Đội quên mật khẩu liên hệ BTC để reset.
+- Công cụ tự động đưa mật khẩu về mặc định chỉ dành cho account demo local/test, mặc định tắt và ngoài
+  API chính thức. Nó yêu cầu opt-in, demo/deployment mode hợp lệ, allowlist username tường minh, và từ chối
+  public demo/hosted/finals/production. Mặc định chạy 03:00 `Asia/Ho_Chi_Minh`; password lấy từ
+  `OTT_DEMO_TEAM_PASSWORD`. Public demo không bật job này.
 - Server kiểm tra `TEAM_ACCOUNT.teamId` cho mọi thao tác submission/read riêng tư; UI chỉ là consumer,
   không phải ranh giới authorization.
 
@@ -46,6 +52,7 @@ Có thể bổ sung sau bằng ADR mới mà không thay đổi authorization th
 ## Consequences
 
 - `P2-T04` cung cấp login/session/RBAC; `P2-T06` provision/reset team credential server-side.
-- Portal của đội chỉ có đăng nhập và submission; BTC console hiển thị credential một lần để gửi ngoài hệ thống.
+- Portal của đội có đăng nhập, đổi mật khẩu đã xác thực và submission; không có đăng ký hoặc tự reset khi
+  quên mật khẩu. BTC console hiển thị credential một lần để gửi ngoài hệ thống.
 - Cần integration tests cho brute-force/rate-limit, generic login failure, one-time secret response,
   session revocation và cross-team authorization.
