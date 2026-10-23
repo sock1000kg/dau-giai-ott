@@ -1111,6 +1111,57 @@ Task `P2-T42`–`P2-T53` là đợt giao diện riêng, không tự đóng `P2-C
 - [ ] Browser test chứng minh password change, role redirect và demo reset allowlist/session revocation; Chrome DevTools MCP hoặc documented browser fallback có console/network/DOM evidence.
 - [ ] Root typecheck/build/test và local demo restart pass trên PostgreSQL/Redis/Docker; dependency failures ghi rõ. Checkpoint được Thuận nghiệm thu trước demo deployment.
 
+## Phase 2 — Demo snapshot và OS crontab khôi phục mỗi giờ
+
+> Đây là extension của demo reset. Mỗi giờ hệ thống quay về một baseline có lịch sử trận, replay/artifact và public snapshots, sau đó đặt mật khẩu `team01`–`team04` về default. Baseline không chứa credential plaintext; BTC giữ credential riêng. Profile scheduler container tại `P2-T59` phải disabled khi OS cron được bật.
+
+### [ ] P2-T61 — Tạo và kiểm định baseline snapshot demo
+
+**Owner:** Đinh Đức Thuận
+**Mô tả:** Tạo command xuất bundle baseline bất biến từ demo stack gồm PostgreSQL, SeaweedFS và public snapshots, kèm manifest để dùng làm nguồn khôi phục định kỳ.
+**Acceptance criteria:** (1) command chỉ chạy cho Compose project `ott-demo*`, yêu cầu đường dẫn đích tuyệt đối ngoài Git và fail nếu thiếu `pg_dump`, container/volume hoặc payload; không tạo placeholder; (2) bundle gồm DB dump, SeaweedFS data, public snapshots, version/commit, row counts, object counts và SHA-256; không gồm Redis, `.env`, CSV credential, plaintext password/token; file/dir lần lượt mode `0600`/`0700`; (3) baseline có đúng account `btc`, `team01`–`team04` trong allowlist demo, có dữ liệu mẫu lịch sử match/result/replay và replay object tham chiếu từ DB tồn tại trong storage.
+**Verification:** Shell tests cho guard/fail-fast/permission/checksum/redaction; tạo bundle từ stack cách ly rồi verify manifest, DB counts và DB→object reference; `bash -n`, `git diff --check` và GitNexus change review pass.
+**Dependencies:** `P2-T35`, `P2-T38`, `P2-T58`.
+**Files:** `scripts/demo-snapshot.sh`, `scripts/tests/demo-snapshot.test.sh`, `docs/runbooks/local-demo.md`, `docs/runbooks/demo-snapshot-reset.md`.
+**Ước lượng:** M (4 file).
+
+### [ ] P2-T62 — Khôi phục baseline qua demo.sh
+
+**Owner:** Đinh Đức Thuận
+**Mô tả:** Thêm lệnh `demo.sh restore-demo` để thay toàn bộ state biến đổi bằng baseline đã kiểm định, rồi reset mật khẩu đội và đưa stack trở lại trạng thái ready.
+**Acceptance criteria:** (1) yêu cầu opt-in demo dev/test, project/path tuyệt đối và confirmation hoặc `--yes`; lấy exclusive lock, verify manifest/checksum trước khi dừng writer, từ chối public/hosted/finals/production; (2) dừng API/worker/coordinator/scheduler, restore sạch PostgreSQL + SeaweedFS + public snapshots, flush Redis session/queue, chạy migrate tương thích rồi gọi `P2-T58` đúng allowlist `team01`–`team04`; không đổi credential BTC; (3) post-restore kiểm row/object/reference counts, health/readiness, account set và idempotency; lỗi giữ log rõ, không lộ secret, không báo thành công hoặc mở writer nếu invariant chưa đạt.
+**Verification:** Shell tests với fixture bundle hợp lệ/tampered/missing, duplicate lock và injected failure; hai lần restore liên tiếp trên disposable Compose stack cho cùng checksum/count; API login default của bốn đội pass, session cũ fail; `bash -n`, Compose config, focused API tests và `git diff --check` pass.
+**Dependencies:** `P2-T61`, `P2-T58`.
+**Files:** `scripts/demo.sh`, `scripts/lib/demo_snapshot.sh`, `scripts/tests/demo-snapshot-restore.test.sh`, `docs/runbooks/demo-snapshot-reset.md`, `package.json`.
+**Ước lượng:** M (5 file).
+
+### [ ] P2-T63 — Cài OS crontab khôi phục demo mỗi giờ
+
+**Owner:** Đinh Đức Thuận
+**Mô tả:** Cung cấp installer idempotent cho OS crontab gọi `demo.sh restore-demo` mỗi giờ bằng cấu hình root-only; không dùng scheduler container cho full restore.
+**Acceptance criteria:** (1) installer có `install`, `status`, `run-now`, `uninstall`, quản lý đúng một marker block và mặc định lịch `0 * * * *` theo `Asia/Ho_Chi_Minh`; path repo/release, env, bundle và log đều tuyệt đối, được validate trước khi ghi crontab; (2) cron dùng `flock`, timeout dài hữu hạn, `umask 077`, PATH rõ và log rotation; concurrent/manual trigger không chồng nhau, exit code phản ánh kết quả và output không chứa credential; (3) install refuse khi bundle chưa verify, stack không phải demo dev/test, `OTT_DEMO_PUBLIC=true`, scheduler profile `P2-T59` đang bật hoặc target accounts khác `team01`–`team04`.
+**Verification:** Shell tests trên crontab spool giả cho install/reinstall/status/uninstall, injection/path guards, timezone, lock và redaction; manual `run-now` trên disposable stack; `bash -n`, `shellcheck` nếu có và `git diff --check` pass.
+**Dependencies:** `P2-T62`; `P2-T59` implementation có thể tồn tại nhưng profile phải disabled.
+**Files:** `scripts/install-demo-reset-cron.sh`, `scripts/tests/demo-reset-cron.test.sh`, `config/demo-reset-cron.example.env`, `docs/runbooks/demo-snapshot-reset.md`.
+**Ước lượng:** M (4 file).
+
+### [ ] P2-T64 — Deploy baseline và nghiệm thu hai chu kỳ restore
+
+**Owner:** Đinh Đức Thuận
+**Mô tả:** Tạo recovery backup, phát hành code từ `main`, chụp baseline demo đã duyệt trên `jump-jits`, bật OS cron và chứng minh dữ liệu/lịch sử/replay/account quay lại đúng sau thay đổi.
+**Acceptance criteria:** (1) trước deploy có recovery backup độc lập và restore command; baseline root-only được verify, ghi commit/checksum/count nhưng không ghi secret vào evidence; crontab chỉ bật sau manual restore drill pass; (2) chủ động tạo dữ liệu thay đổi và đổi mật khẩu đội, chạy restore thủ công rồi quan sát thêm hai lần cron: DB, SeaweedFS, public snapshots, match history/replay và bốn password trở về baseline; BTC login vẫn dùng credential riêng, session cũ bị revoke; (3) gateway/readiness healthy sau mỗi lần, browser xác minh BTC/team/public leaderboard/history/replay, console/network không có lỗi nghiêm trọng; rollback/uninstall cron được diễn tập.
+**Verification:** Server commands ghi release SHA, cron entry/status, lock/log rotation, checksum và counts trước/sau; Chrome DevTools MCP chạy desktop/mobile cho `btc`, `team01` và anonymous replay/leaderboard; root typecheck/build/test, Compose health và GitNexus compare review pass trước merge/deploy.
+**Dependencies:** `P2-T38`, `P2-T58`, `P2-T62`, `P2-T63`, merge `main` và owner yêu cầu deploy.
+**Files:** `docs/validation/p2-t64/manifest.md`, `docs/runbooks/demo-snapshot-reset.md`, `tasks/todo.md`.
+**Ước lượng:** S (evidence/runbook/status; artifact backup nằm ngoài Git).
+
+## Checkpoint P2-F — Demo snapshot reset hourly
+
+- [ ] `P2-T61`–`P2-T64` merge vào `main`; baseline bundle PostgreSQL + SeaweedFS + public snapshots có checksum và recovery backup độc lập.
+- [ ] Manual restore và hai cron cycle liên tiếp cùng đưa DB/object/snapshot về baseline; lock, failure, rollback và scheduler-conflict guards pass.
+- [ ] `btc`, `team01`–`team04` và anonymous browser flow pass; bốn team dùng default password, BTC credential không bị đổi hoặc lộ.
+- [ ] Thuận duyệt evidence server/browser trước khi coi cron demo là hoạt động; mọi checkpoint Phase 2/3 khác giữ trạng thái riêng.
+
 ## Phase 3 — Gate P3-0: decision và contract approval
 
 > `P3-T01` đã duyệt requirement/ADR/contract ngày 14/10/2026. Task implementation chỉ hoàn tất sau acceptance/verification riêng; Wave 1 có thể bắt đầu trên branch task từ `main`.
