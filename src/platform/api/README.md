@@ -359,6 +359,7 @@ Fastify `trustProxy` is not enabled. Client IP is resolved in `onRequest` via `e
 |---|---|---|---|
 | `/api/v1/auth/login` | POST | Public | Authenticates credentials. If BTC admin and `totpRequired=true`, responds `{ data: { mfaRequired: true } }` and sets `ott_mfa` challenge cookie. |
 | `/api/v1/auth/login/mfa` | POST | Public (with challenge) | Verifies `{ code }` (6 digits) or `{ recoveryCode }` (base32), checks replay, marks recovery code used, sets `ott_session` cookie with `mfa: true`. |
+| `/api/v1/auth/password/change` | POST | `TEAM_ACCOUNT` session | Requires `{ currentPassword, newPassword }`; new password is 12–128 characters. Success returns 204, revokes all account sessions and clears `ott_session`. Wrong current password is 401; five failures per account+IP in 15 minutes yield `429 PASSWORD_CHANGE_RATE_LIMITED`. |
 | `/api/v1/auth/mfa/enroll` | POST | `BTC_ADMIN` (allowlist applies) | Generates new random Base32 secret + `otpauth://` URI (returned once, `Cache-Control: no-store`). |
 | `/api/v1/auth/mfa/confirm` | POST | `BTC_ADMIN` (allowlist applies) | Confirms pending enrollment with `{ code }`, encrypts and stores in `admin_mfa`, generates 10 single-use recovery codes. |
 | `/api/v1/auth/mfa/recovery-codes` | POST | `BTC_ADMIN` (allowlist applies) | Invalidates unused recovery codes and generates 10 new recovery codes. |
@@ -367,6 +368,7 @@ Stable error codes:
 - `INVALID_CREDENTIALS` (401): Returned uniformly for unknown username, wrong password, wrong TOTP code, replay, expired challenge, un-enrolled account, or missing challenge. Never reveals account or enrollment existence.
 - `ADMIN_NETWORK_FORBIDDEN` (403): Returned when an admin route is accessed from an IP not in `adminAllowlist`.
 - `LOGIN_RATE_LIMITED` (429): Returned when failed login attempts exceed the threshold per username + IP.
+- `PASSWORD_CHANGE_RATE_LIMITED` (429): Returned after five failed current-password checks per account + IP in 15 minutes; includes `Retry-After: 900`.
 - `RATE_LIMITED` (429): Returned with `Retry-After: 60` header when general write rate limits are exceeded.
 - `FORBIDDEN` (403): Insufficient role or non-MFA session attempting MFA administration.
 

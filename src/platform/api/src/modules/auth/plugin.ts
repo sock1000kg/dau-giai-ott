@@ -60,6 +60,11 @@ interface LoginMfaRequest {
   readonly recoveryCode?: unknown;
 }
 
+interface ChangePasswordRequest {
+  readonly currentPassword?: unknown;
+  readonly newPassword?: unknown;
+}
+
 interface MfaChallengeRecord {
   readonly accountId: string;
   readonly username: string;
@@ -68,6 +73,8 @@ interface MfaChallengeRecord {
 
 const sessionCookieName = 'ott_session';
 const mfaChallengeCookieName = 'ott_mfa';
+const passwordChangeFailureLimit = 5;
+const passwordChangeWindowSeconds = 15 * 60;
 
 function digest(value: string): string {
   return createHash('sha256').update(value).digest('base64url');
@@ -79,6 +86,21 @@ function sendError(reply: FastifyReply, statusCode: number, code: string, messag
 
 function invalidCredentials(reply: FastifyReply) {
   return sendError(reply, 401, 'INVALID_CREDENTIALS', 'Invalid username or password');
+}
+
+function changePasswordValues(body: ChangePasswordRequest | undefined): { readonly currentPassword: string; readonly newPassword: string } | null {
+  if (typeof body !== 'object' || body === null || Array.isArray(body)) return null;
+  const keys = Object.keys(body);
+  if (keys.length !== 2 || !keys.includes('currentPassword') || !keys.includes('newPassword')) return null;
+  if (typeof body.currentPassword !== 'string' || body.currentPassword.length === 0 || body.currentPassword.length > 1024) return null;
+  if (typeof body.newPassword !== 'string') return null;
+  const length = Array.from(body.newPassword).length;
+  if (length < 12 || length > 128 || /[\u0000-\u001f\u007f]/u.test(body.newPassword)) return null;
+  return { currentPassword: body.currentPassword, newPassword: body.newPassword };
+}
+
+function passwordChangeRateKey(accountId: string, clientIp: string): string {
+  return `auth:password-change:${digest(`${accountId}\u0000${clientIp}`)}`;
 }
 
 function loginValues(body: LoginRequest | undefined): { readonly username: string; readonly password: string } | null {
@@ -396,6 +418,63 @@ export function registerAuthPlugin(application: FastifyInstance, options: AuthPl
     await appendAuditEvent(options.database, principal.accountId, 'MFA_RECOVERY_CODES_REGENERATED', 'ACCOUNT', principal.accountId);
     reply.header('Cache-Control', 'no-store');
     return reply.send({ data: { recoveryCodes: formatted } });
+  });
+
+  application.post<{ Body: ChangePasswordRequest }>('/api/v1/auth/password/change', async (request, reply) => {
+    const principal = requireRole(requireAuthenticated(request.principal), 'TEAM_ACCOUNT');
+    const values = changePasswordValues(request.body);
+    if (values === null) {
+      return sendError(reply, 400, 'INVALID_INPUT', 'Invalid password change input');
+    }
+    if (!options.redis) {
+      throw new Error('Redis is required for password change rate limiting');
+    }
+
+    const clientIp = request.clientIp ?? request.ip;
+    const rateKey = passwordChangeRateKey(principal.accountId, clientIp);
+    const failures = await options.redis.get(rateKey);
+    if (failures !== null && Number(failures) >= passwordChangeFailureLimit) {
+      reply.header('Retry-After', String(passwordChangeWindowSeconds));
+      return sendError(reply, 429, 'PASSWORD_CHANGE_RATE_LIMITED', 'Too many password change attempts. Try again later.');
+    }
+
+    const result = await options.database.transaction(async (db) => {
+      const accountResult = await db.query<AccountRecord>(
+        "SELECT id, username, password_hash, role, team_id FROM accounts WHERE id = $1 AND role = 'TEAM_ACCOUNT' AND team_id = $2 AND status = 'ACTIVE' FOR UPDATE",
+        [principal.accountId, principal.teamId],
+      );
+      const account = accountResult.rows[0];
+      if (account === undefined) return { kind: 'inactive' as const };
+
+      if (!(await options.passwordHasher.verify(account.password_hash, values.currentPassword))) {
+        return { kind: 'invalid-current-password' as const };
+      }
+
+      const passwordHash = await options.passwordHasher.hash(values.newPassword);
+      await db.query('UPDATE accounts SET password_hash = $1, updated_at = now() WHERE id = $2', [passwordHash, account.id]);
+      await appendAuditEvent(db, principal.accountId, 'TEAM_PASSWORD_CHANGED', 'TEAM', principal.teamId);
+      return { kind: 'changed' as const };
+    });
+
+    if (result.kind === 'inactive') {
+      return sendError(reply, 401, 'UNAUTHENTICATED', 'Authentication is required');
+    }
+    if (result.kind === 'invalid-current-password') {
+      const count = await options.redis.incr(rateKey);
+      if (count === 1) await options.redis.expire(rateKey, passwordChangeWindowSeconds);
+      return sendError(reply, 401, 'INVALID_CREDENTIALS', 'Current password is incorrect');
+    }
+
+    await options.sessionStore.revokeAccount(principal.accountId);
+    await options.redis.del(rateKey);
+    reply.header('Cache-Control', 'no-store');
+    reply.clearCookie(sessionCookieName, {
+      httpOnly: true,
+      path: '/',
+      sameSite: 'lax',
+      secure: options.secureCookies,
+    });
+    return reply.status(204).send();
   });
 
   application.post('/api/v1/auth/logout', async (request, reply) => {
