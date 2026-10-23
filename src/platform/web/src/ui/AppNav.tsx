@@ -26,6 +26,7 @@ const TEAM_ITEMS: readonly NavItem[] = [
   { label: 'Tổng quan', href: '/' },
   { label: 'Nộp bot', href: '/team/submissions' },
   { label: 'Kết quả', href: '/team/results', alsoActiveFor: ['/team/replays'] },
+  { label: 'Đổi mật khẩu', href: '/team/password' },
 ];
 
 const HOME_PATHS = ['/', '/login', '/admin', '/team'];

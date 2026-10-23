@@ -7,6 +7,11 @@ The client keeps the resolved principal in memory only; it never stores the
 session token, accepts a client-selected role/team, or offers registration or
 self-service password reset.
 
+Team accounts can change their password at `/team/password` after re-entering
+their current password. A successful change revokes every account session and
+returns the browser to login; the team must authenticate again with the new
+password. BTC accounts do not see this route or navigation item.
+
 UI route checks are for navigation and user feedback only. API authorization
 remains authoritative. Session restoration gates the page before any
 role-specific area is rendered; a `401` returns to the login form, while a
@@ -65,6 +70,7 @@ client bundle.
 | `/spectator/replays/:id` | anyone | `pages/SpectatorReplayPage.tsx` | `features/spectator/replay-player.css` | `P3-D21` |
 | `/team/submissions` | team | `features/submissions/SubmissionForm.tsx` | `submissions.css` | `P2-T20` |
 | `/team/results` | team | `features/results/MatchResultsPage.tsx` | `results.css` | `P3-D13` |
+| `/team/password` | team | `features/auth/ChangePasswordPage.tsx` | `auth.css` | `P2-T57` |
 
 The operations console (`/admin/operations`) no longer shows cases ("Hồ sơ vụ việc"); the case API routes, tables and audit actions are still in the backend pending a product decision.
 

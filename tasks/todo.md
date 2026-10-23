@@ -1045,7 +1045,7 @@ Task `P2-T42`–`P2-T53` là đợt giao diện riêng, không tự đóng `P2-C
 **Ước lượng:** M (docs-only; 8 logical paths including this card and plan index).
 **Hoàn tất:** 2026-10-23 — Requirement/ADR/auth contracts đồng bộ: đội đổi mật khẩu khi đã đăng nhập và biết mật khẩu hiện tại; quên mật khẩu vẫn do BTC reset. Demo reset job chỉ local/test, opt-in, allowlist, mặc định 03:00 `Asia/Ho_Chi_Minh`, từ chối public mode; xác định CSV update atomically và audit không secret. `git diff --check` pass; chưa chạy test suite vì không thay đổi code.
 
-### [ ] P2-T56 — API cho đội tự đổi mật khẩu
+### [x] P2-T56 — API cho đội tự đổi mật khẩu
 
 **Owner:** Đinh Đức Thuận
 **Mô tả:** Thêm route authenticated chỉ cho `TEAM_ACCOUNT`, xác minh mật khẩu hiện tại, lưu Argon2id hash và thu hồi session account sau đổi thành công.
@@ -1055,7 +1055,7 @@ Task `P2-T42`–`P2-T53` là đợt giao diện riêng, không tự đóng `P2-C
 **Files:** `src/platform/api/src/modules/auth/plugin.ts`, `src/platform/api/tests/auth.integration.test.ts`, `src/platform/api/tests/auth-hardening.routes.test.ts`, `src/platform/api/README.md`.
 **Ước lượng:** M (4 file).
 
-### [ ] P2-T57 — Giao diện đổi mật khẩu cho đội
+### [x] P2-T57 — Giao diện đổi mật khẩu cho đội
 
 **Owner:** Đinh Đức Thuận
 **Mô tả:** Thêm trang/mục đổi mật khẩu team portal gọi API `P2-T56`, sau đó yêu cầu đội đăng nhập lại.
@@ -1064,6 +1064,7 @@ Task `P2-T42`–`P2-T53` là đợt giao diện riêng, không tự đóng `P2-C
 **Dependencies:** `P2-T56`.
 **Files:** `src/platform/web/src/features/auth/api.ts`, `src/platform/web/src/features/auth/ChangePasswordPage.tsx`, `src/platform/web/src/features/auth/auth.ui.test.tsx`, `src/platform/web/src/app/routes.tsx`, `src/platform/web/README.md`.
 **Ước lượng:** M (5 file).
+**Hoàn tất:** 2026-10-23 — Thêm team-only route `/team/password`, API client, confirm/input/error handling và đưa session client về login sau 204 (API đã revoke toàn bộ session). Thêm route/nav matrix và flow test đổi password; web auth+route focused tests 34/34, typecheck/build và `git diff --check` pass. Browser DevTools còn chờ deploy P2-E.
 
 ## Checkpoint P2-D — Đội đổi mật khẩu
 

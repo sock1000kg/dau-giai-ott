@@ -94,3 +94,10 @@ export async function loginMfa(payload: { code?: string; recoveryCode?: string }
 export async function logout(): Promise<void> {
   await request('logout', { method: 'POST' });
 }
+
+export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
+  await request('password/change', {
+    method: 'POST',
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
+}

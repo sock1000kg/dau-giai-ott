@@ -1,6 +1,7 @@
 import { TeamProvisionPage } from '../features/admin-teams/TeamProvisionPage.tsx';
 import { SubmissionForm } from '../features/submissions/SubmissionForm.tsx';
 import { LoginPage } from '../features/auth/LoginPage.tsx';
+import { ChangePasswordPage } from '../features/auth/ChangePasswordPage.tsx';
 import { MatchResultsPage } from '../features/results/MatchResultsPage.tsx';
 import { ReplayCatalog } from '../features/replay-admin/ReplayCatalog.tsx';
 import { PrivateReplayPage } from '../pages/PrivateReplayPage.tsx';
@@ -59,13 +60,15 @@ function renderAuthenticated(role: 'BTC_ADMIN' | 'TEAM_ACCOUNT', path: string) {
   const expectedPath = role === 'BTC_ADMIN' ? '/admin' : '/team';
   const isTeamAdminPage = role === 'BTC_ADMIN' && path === '/admin/teams';
   const isTeamSubmissionPage = role === 'TEAM_ACCOUNT' && path === '/team/submissions';
+  const isTeamPasswordPage = role === 'TEAM_ACCOUNT' && path === '/team/password';
   const isReplayAdminPage = role === 'BTC_ADMIN' && path === '/admin/replays';
   const isRoundAdminPage = role === 'BTC_ADMIN' && path === '/admin/rounds';
   const isOperationsPage = role === 'BTC_ADMIN' && path === '/admin/operations';
   const isResultsPage = (role === 'BTC_ADMIN' && path === '/admin/results') || (role === 'TEAM_ACCOUNT' && path === '/team/results');
   const isTeamReplayPage = role === 'TEAM_ACCOUNT' && path.startsWith('/team/replays/');
   const isAdminReplayViewPage = role === 'BTC_ADMIN' && path.startsWith('/admin/replays/') && path.endsWith('/view');
-  if (path !== '/' && path !== '/login' && path !== expectedPath && !isTeamAdminPage && !isTeamSubmissionPage && !isReplayAdminPage && !isRoundAdminPage && !isOperationsPage && !isResultsPage && !isTeamReplayPage && !isAdminReplayViewPage) return <AccessDenied />;
+  if (path !== '/' && path !== '/login' && path !== expectedPath && !isTeamAdminPage && !isTeamSubmissionPage && !isTeamPasswordPage && !isReplayAdminPage && !isRoundAdminPage && !isOperationsPage && !isResultsPage && !isTeamReplayPage && !isAdminReplayViewPage) return <AccessDenied />;
+  if (isTeamPasswordPage) return <ChangePasswordPage />;
   if (isTeamAdminPage) return <TeamProvisionPage />;
   if (isTeamSubmissionPage) return <SubmissionForm />;
   if (isReplayAdminPage) return <ReplayCatalog />;

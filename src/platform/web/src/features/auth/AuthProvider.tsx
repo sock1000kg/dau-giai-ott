@@ -19,6 +19,7 @@ interface AuthContextValue {
   readonly login: (username: string, password: string) => Promise<LoginResult>;
   readonly loginMfa: (payload: { code?: string; recoveryCode?: string }) => Promise<AuthPrincipal>;
   readonly logout: () => Promise<void>;
+  readonly passwordChanged: () => void;
   readonly restoreSession: () => Promise<void>;
 }
 
@@ -60,9 +61,11 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
     setState({ status: 'anonymous' });
   }, []);
 
+  const passwordChanged = useCallback(() => setState({ status: 'anonymous' }), []);
+
   const value = useMemo(
-    () => ({ state, login, loginMfa, logout, restoreSession }),
-    [state, login, loginMfa, logout, restoreSession],
+    () => ({ state, login, loginMfa, logout, passwordChanged, restoreSession }),
+    [state, login, loginMfa, logout, passwordChanged, restoreSession],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

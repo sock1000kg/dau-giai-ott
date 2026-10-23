@@ -115,6 +115,8 @@ export function installRouteFetch(role: TestRole): RouteApi {
       if (pathname === '/snapshots/latest.json') return json(200, snapshotPointer);
       if (pathname === `/snapshots/${snapshotPointer.file}`) return new Response(snapshotBody);
     }
+    if (method === 'POST' && pathname === '/api/v1/auth/password/change') return json(204, {});
+    if (method === 'POST' && pathname === '/api/v1/auth/logout') return json(204, {});
     return null;
   }
 

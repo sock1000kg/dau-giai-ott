@@ -158,6 +158,24 @@ describe('authentication routes', () => {
     expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({ credentials: 'include', method: 'POST' });
   });
 
+  it('changes a team password, clears form values and requires a fresh login', async () => {
+    const fetchMock = mockFetch(
+      response(200, { data: { role: 'TEAM_ACCOUNT', teamId: 'team-1' } }),
+      response(204),
+    );
+    window.history.replaceState({}, '', '/team/password');
+    render(<App />);
+    fireEvent.change(await screen.findByLabelText('Mật khẩu hiện tại'), { target: { value: 'old-password' } });
+    fireEvent.change(screen.getByLabelText('Mật khẩu mới'), { target: { value: 'new-password-123' } });
+    fireEvent.change(screen.getByLabelText('Nhập lại mật khẩu mới'), { target: { value: 'new-password-123' } });
+    fireEvent.submit(screen.getByRole('form', { name: 'Đổi mật khẩu' }));
+
+    expect(await screen.findByRole('heading', { name: /đăng nhập/i })).toBeTruthy();
+    expect(window.location.pathname).toBe('/login');
+    expect(fetchMock.mock.calls[1]?.[0]).toBe('/api/v1/auth/password/change');
+    expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toEqual({ currentPassword: 'old-password', newPassword: 'new-password-123' });
+  });
+
   it('keeps the current screen and reports a retryable logout failure', async () => {
     mockFetch(
       response(200, { data: { role: 'BTC_ADMIN' } }),
