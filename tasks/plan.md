@@ -51,7 +51,7 @@ Quy tắc:
 | --- | --- | --- |
 | `T` | Đinh Đức Thuận | Toàn bộ Phase 2 local; decision/ADR/contract gate và checkpoint Phase 3 |
 | `L` | Long Trần | Core/Bot Protocol Phase 1; protocol, deterministic domain và public read models Phase 3 |
-| `N` | Đỗ Khôi Nguyên | Bot Python Phase 1; sandbox, worker pool và operations readiness Phase 3 |
+| `N` | Đỗ Khôi Nguyên | Bot Python Phase 1; sandbox, worker pool, operations readiness và test-run portal API Phase 3 |
 | `D` | Phạm Tất Đạt | MatchRunner Phase 1; control plane, privileged workflows và finals sync Phase 3 |
 
 ### 2.2.1 Đổi task ID ngày 2026-10-09
@@ -361,7 +361,7 @@ Phase 3 được chia thành hai release gate:
 | Owner | Lane Phase 3 | Số task implementation |
 | --- | --- | ---: |
 | Long Trần (`P3-L*`) | Protocol/runtime timing, rating eligibility, replay/public site và finals domain | 6 |
-| Đỗ Khôi Nguyên (`P3-N*`) | Sandbox/worker, test run, OCI lifecycle, observability/load và LAN rehearsal | 8 |
+| Đỗ Khôi Nguyên (`P3-N*`) | Sandbox/worker, test run, OCI lifecycle, observability/load, LAN rehearsal và portal API | 9 |
 | Phạm Tất Đạt (`P3-D*`) | Control plane/API/admin/auth, privileged operations, upload, result bundle và finals UI | 10 |
 
 ## 15. Gate P3-0 — đã duyệt
@@ -384,6 +384,7 @@ P3-T01 Decision/contract gate
 
 P3-D01 + P3-N02 ──► P3-D03 upload reservation ──► P3-N04 OCI lifecycle
 P3-D01 + P3-N02 + P3-L02 ──► P3-N03 test run
+P3-N03 + P3-N02 + P3-L02 ──► P3-N09 test-run portal API contract/atomic quota/replay integrity
 P3-T01 ──► P3-D04 bulk accounts
 
 P3-D01 ──► P3-L03 eligibility/Elo
@@ -400,6 +401,7 @@ P3-D08 + P3-N05 ──► P3-N07 LAN deployment/recovery
 P3-D08 + P3-N07 ──► P3-D09 signed ResultBundle
 P3-D09 + P3-L05 + P3-L06 ──► P3-D10 finals public UI
 P3-D09 + P3-D10 + P3-N07 ──► P3-N08 event rehearsal ──► Checkpoint P3-F
+P3-N09 test-run API contract ──► P3-D11 team test-run portal and replay
 ```
 
 ## 17. Phase 3 task index và checkpoint
@@ -433,6 +435,7 @@ P3-D09 + P3-D10 + P3-N07 ──► P3-N08 event rehearsal ──► Checkpoint P
 - [x] `P3-D03` — Hash reservation, upload throttling và preflight queue visibility — Phạm Tất Đạt.
 - [x] `P3-D04` — CSV team provisioning và credential file tải một lần — Phạm Tất Đạt.
 - [x] `P3-N03` — Test-run quota, opponent policy và private artifacts — Đỗ Khôi Nguyên.
+- [ ] `P3-N09` — Team portal test-run policy, admission atomicity và verified replay — Đỗ Khôi Nguyên.
 
 ### Checkpoint P3-C — Participant workflows
 

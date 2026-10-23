@@ -27,6 +27,7 @@ export const migrationFiles = [
   { id: '0017_result_bundles', source: new URL('../../migrations/0017_result_bundles.sql', import.meta.url) },
   { id: '0018_drop_operations_cases', source: new URL('../../migrations/0018_drop_operations_cases.sql', import.meta.url) },
   { id: '0019_match_protocol_v2', source: new URL('../../migrations/0019_match_protocol_v2.sql', import.meta.url) },
+  { id: '0020_test_run_frontend_contract', source: new URL('../../migrations/0020_test_run_frontend_contract.sql', import.meta.url) },
 ] as const;
 
 export async function loadMigrations(): Promise<readonly Migration[]> {

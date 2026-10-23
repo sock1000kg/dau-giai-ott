@@ -20,7 +20,7 @@ describe('AppNav', () => {
   it('renders exactly the team link set', () => {
     render(<AppNav role="TEAM_ACCOUNT" pathname="/" onLogout={noop} />);
     expect(links().map((link) => [link.textContent, link.getAttribute('href')])).toEqual([
-      ['Tổng quan', '/'], ['Nộp bot', '/team/submissions'], ['Kết quả', '/team/results'], ['Đổi mật khẩu', '/team/password'],
+      ['Tổng quan', '/'], ['Nộp bot', '/team/submissions'], ['Chạy thử bot', '/team/test-runs'], ['Kết quả', '/team/results'], ['Đổi mật khẩu', '/team/password'],
     ]);
   });
 
@@ -39,6 +39,8 @@ describe('AppNav', () => {
     expect(current('BTC_ADMIN', '/admin/replays/m1/view')).toEqual(['Replay']);
     expect(current('TEAM_ACCOUNT', '/team/replays/m1')).toEqual(['Kết quả']);
     expect(current('TEAM_ACCOUNT', '/team/submissions')).toEqual(['Nộp bot']);
+    expect(current('TEAM_ACCOUNT', '/team/test-runs')).toEqual(['Chạy thử bot']);
+    expect(current('TEAM_ACCOUNT', '/team/test-runs/33333333-3333-4333-8333-333333333333/replay')).toEqual(['Chạy thử bot']);
     expect(current('TEAM_ACCOUNT', '/team/unknown')).toEqual([]);
   });
 

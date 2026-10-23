@@ -1258,6 +1258,16 @@ Parent `P3-L02` chỉ hoàn tất khi mọi phần được verify; không dùng
 **Estimated scope:** M (5 files)
 **Hoàn tất:** 2026-10-18 — Test-run flow theo AC-21 và D-18: Migration `0015_test_runs.sql` (bảng `test_runs`, enums `test_run_status`, `test_run_opponent_type`, index quota và team isolation); module `test-runs` trong `platform-api` (`createTestRun`, `getTestRunById`, `listTestRuns`, `refundTestRunQuota`, `completeTestRun`, `failTestRun`, `getDailyConsumedQuota`, `getRoundTestRunQuota`); routes `POST /api/v1/test-runs`, `GET /api/v1/test-runs`, `GET /api/v1/test-runs/:id`, `GET /api/v1/test-runs/:id/replay`; worker `runTestJob` với queue priority thấp (`QUEUE_PRIORITY.TEST_RUN = 3`), sandbox execution, replay private `replays/test-runs/<id>.json`, stderr truncated 4 KiB, tự động hoàn quota khi gặp lỗi hạ tầng; bảo vệ RBAC nghiêm ngặt (chỉ owner team hoặc BTC_ADMIN được truy cập); ratings ledger hoàn toàn không bị ảnh hưởng. Test `test-run.integration.test.ts` 8/8 pass, `migrations-registry.test.ts` 1/1 pass, Python tests 27/27 pass, worker & api typecheck và build sạch 0 lỗi.
 
+### [ ] P3-N09 — Team portal test-run policy, admission atomicity và verified replay
+
+**Owner:** Đỗ Khôi Nguyên
+**Mô tả:** Hoàn tất backend contract cho đội thi để xem policy/quota, tạo và theo dõi test run, chọn bot BTC đã cấu hình, và lấy replay private đã xác minh.
+**Acceptance criteria:** (1) policy trả quota default 2, consumed/reserved/remaining, reset UTC, submissions hợp lệ, bot tham chiếu được cấu hình và trạng thái pause từ MatchQueue/round; (2) create yêu cầu Idempotency-Key, chỉ nhận run khi round còn `SUBMISSION_OPEN` và chưa pause, quota reservation atomic theo team, worker claim consume quota một lần và infra failure hoàn quota; (3) BTC reference resolve fail-closed, không self-play khi thiếu catalog entry; (4) list phân trang và RBAC giữ team isolation; (5) worker lưu EventLog chuẩn cùng checksum/final-state hash, API chỉ trả raw versioned SpectatorReplay sau integrity verification; (6) run và payload transactional outbox được ghi cùng transaction, queue publish retry idempotent.
+**Verification:** API `test-runs.routes.test.ts test-runs.outbox.integration.test.ts demo-reference-bot.test.ts migrations-registry.test.ts`; worker `test-run.integration.test.ts`; `scripts/tests/demo.test.sh`; API/worker typecheck/build; replay integrity mutation checks; GitNexus detect-changes trước commit.
+**Dependencies:** `P3-N03`, `P3-N02`, `P3-L02`.
+**Files likely touched:** `src/platform/api/migrations/0020_test_run_frontend_contract.sql`, `src/platform/api/src/db/schema.ts`, `src/platform/api/src/modules/test-runs/service.ts`, `src/platform/api/src/modules/test-runs/routes.ts`, `src/platform/api/src/modules/replays/service.ts`, `src/platform/api/src/index.ts`, `src/platform/api/src/demo/seed-accounts.ts`, `src/platform/api/src/demo/seed-reference-bot.ts`, `src/platform/worker/src/run-test-job.ts`, `src/platform/worker/src/runtime/server.ts`, `src/platform/api/tests/test-runs.routes.test.ts`, `src/platform/api/tests/test-runs.outbox.integration.test.ts`, `src/platform/api/tests/demo-reference-bot.test.ts`, `src/platform/worker/tests/test-run.integration.test.ts`, `infra/local/compose.yaml`, `scripts/demo.sh`, `scripts/tests/demo.test.sh`, `docs/contracts/test-run-v1.md`.
+**Estimated scope:** M (18 files)
+
 
 ## [ ] Checkpoint P3-C — Participant workflows
 
@@ -1476,6 +1486,16 @@ server-lab/CDN AC-14 evidence; finals uses the prepared public DTO interface.
 **Files likely touched:** `src/platform/web/src/features/finals/api.ts`, `src/platform/web/src/features/finals/GroupStandings.tsx`, `src/platform/web/src/features/finals/FinalsSchedule.tsx`, `src/platform/web/src/features/finals/finals.test.tsx`, `src/platform/web/src/app/routes.tsx`.
 **Estimated scope:** M (5 files)
 **Hoàn tất:** 2026-10-20 — Finals bracket, schedule/results và verified replay public UI: Module `src/platform/web/src/features/finals/` (`api.ts`, `GroupStandings.tsx`, `FinalsSchedule.tsx`, `FinalsPage.tsx`, `index.ts`); tích hợp route `/finals` và nav link trong `App.tsx` & `routes.tsx`; đáp ứng nghiêm ngặt 3 AC: (1) render bracket 8 đội và score breakdown hoàn toàn từ server payload, không tự tính toán winner/advancement phía client; (2) hiển thị cryptographic proof metadata (`bundleId`, `bundleVersion`, `keyId`, `manifestSha256`, `importedAt`, badge `VERIFIED`) và stale state rõ ràng khi mạng lỗi hoặc data age > 90s trong khi giữ bản cập nhật cuối; (3) link replay chỉ xuất hiện cho các ván đã verified và `replayPublished: true`, ẩn khi chưa publish. Verification: `finals.test.tsx` 6/6 pass, full web suite 139/139 pass (19 test files), typecheck workspace sạch và build Vite thành công.
+
+### [ ] P3-D11 — Team test-run portal và verified private replay
+
+**Owner:** Phạm Tất Đạt
+**Mô tả:** Thêm mục **Chạy thử bot** riêng cho đội thi: chọn submission hợp lệ và opponent theo policy server, tạo lượt thử có idempotency, hiển thị quota/trạng thái/kết quả, tự cập nhật trạng thái và mở replay riêng sau khi checksum/version được xác minh.
+**Acceptance criteria:** (1) Chỉ `TEAM_ACCOUNT` mở được `/team/test-runs` và replay thuộc đội; (2) form chỉ cho chọn submission `VALID`/`ACTIVE`, BTC reference bot hoặc submission khác của đội theo policy; quota/pause/error lấy từ server; (3) POST gửi `Idempotency-Key`, double submit bị ngăn, status/results/failure/log bounded hiển thị đúng; (4) chỉ phát replay sau kiểm tra media type/schema/checksum; (5) menu, trang và replay keyboard-accessible, responsive.
+**Verification:** focused route/nav/client/UI tests, web typecheck/build/full suite; manual browser smoke trên stack tích hợp và RBAC/replay ownership cases trong `demo/manually-check`.
+**Dependencies:** `P3-N09`.
+**Files likely touched:** `src/platform/web/src/features/test-runs/`, `src/platform/web/src/app/routes.tsx`, `src/platform/web/src/ui/AppNav.tsx`, route fixtures/tests, `demo/manually-check/`.
+**Estimated scope:** M (10 files)
 
 ### [x] P3-N08 — Full event rehearsal, tamper/recovery và handoff
 

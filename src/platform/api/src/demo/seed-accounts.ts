@@ -3,10 +3,13 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
+import { S3Client } from '@aws-sdk/client-s3';
 
 import { createDatabase, type Database } from '../db/client.ts';
 import { createPasswordHasher } from '../modules/auth/passwords.ts';
 import type { PasswordHasher } from '../modules/auth/types.ts';
+import { createS3Storage } from '../storage/s3.ts';
+import { seedDemoReferenceBot } from './seed-reference-bot.ts';
 
 export const PUBLIC_DEMO_PASSWORD = 'ABC123';
 
@@ -274,6 +277,36 @@ export async function main(): Promise<void> {
     });
     process.stdout.write(`Seeded demo accounts to CSV: ${csvPath}\n`);
     process.stdout.write(`Accounts: ${summary.map((s) => s.username).join(', ')}\n`);
+    const referenceArchivePath = env.OTT_DEMO_REFERENCE_BOT_ARCHIVE;
+    if (referenceArchivePath) {
+      const resolvedArchivePath = path.resolve(referenceArchivePath);
+      if (resolvedArchivePath !== '/reference-bot' && !resolvedArchivePath.startsWith('/reference-bot/')) {
+        throw new Error('OTT_DEMO_REFERENCE_BOT_ARCHIVE must point inside the read-only /reference-bot mount');
+      }
+      const { S3_ENDPOINT, S3_BUCKET, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY, S3_REGION } = env;
+      if (!S3_ENDPOINT || !S3_BUCKET || !S3_ACCESS_KEY_ID || !S3_SECRET_ACCESS_KEY) {
+        throw new Error('S3 configuration is required to seed the configured BTC reference bot');
+      }
+      const s3Client = new S3Client({
+        endpoint: S3_ENDPOINT,
+        region: S3_REGION ?? 'us-east-1',
+        forcePathStyle: true,
+        credentials: { accessKeyId: S3_ACCESS_KEY_ID, secretAccessKey: S3_SECRET_ACCESS_KEY },
+      });
+      try {
+        const seeded = await seedDemoReferenceBot({
+          database,
+          storage: createS3Storage({ client: s3Client, bucket: S3_BUCKET }),
+          archive: await fs.promises.readFile(resolvedArchivePath),
+          environment: env,
+        });
+        process.stdout.write(`Seeded BTC reference bot ${seeded.id} (${seeded.checksum})\n`);
+      } finally {
+        s3Client.destroy();
+      }
+    } else {
+      process.stdout.write('BTC reference bot not seeded; configure OTT_DEMO_REFERENCE_BOT_ARCHIVE and matching digest metadata to enable it.\n');
+    }
   } finally {
     await database.close();
   }

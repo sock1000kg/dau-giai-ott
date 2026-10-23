@@ -25,6 +25,7 @@ const BTC_ITEMS: readonly NavItem[] = [
 const TEAM_ITEMS: readonly NavItem[] = [
   { label: 'Tổng quan', href: '/' },
   { label: 'Nộp bot', href: '/team/submissions' },
+  { label: 'Chạy thử bot', href: '/team/test-runs' },
   { label: 'Kết quả', href: '/team/results', alsoActiveFor: ['/team/replays'] },
   { label: 'Đổi mật khẩu', href: '/team/password' },
 ];

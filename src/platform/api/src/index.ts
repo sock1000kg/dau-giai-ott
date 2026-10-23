@@ -86,12 +86,13 @@ export { collectQualificationSnapshot, publishQualificationSnapshot, NoValidAnno
 export {
   createTestRun,
   getTestRunById,
-  listTestRuns,
   refundTestRunQuota,
   completeTestRun,
   failTestRun,
   getDailyConsumedQuota,
   getRoundTestRunQuota,
+  getTestRunPolicy,
+  listTestRunsPage,
   TestRunError,
   type TestRunRecord,
   type TestRunStatus,
@@ -100,8 +101,11 @@ export {
   type CompleteTestRunInput,
   type FailTestRunInput,
   type TestRunEnqueuer,
+  type TestRunPolicy,
+  type TestRunPage,
 } from './modules/test-runs/service.ts';
 export { registerTestRunRoutes, type TestRunRoutesOptions } from './modules/test-runs/routes.ts';
+export { getTestRunReplayArtifact, type PublicReplayArtifact } from './modules/replays/service.ts';
 export {
   loadRuntimeConfig,
   RuntimeConfigError,

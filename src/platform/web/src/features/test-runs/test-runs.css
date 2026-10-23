@@ -1,0 +1,26 @@
+.test-runs-overview { margin-block-end: var(--ui-space-4); }
+.test-runs-quota { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--ui-space-3); border-inline-start: 3px solid var(--ui-accent); }
+.test-runs-quota strong { display: block; margin-block: var(--ui-space-1); font-size: clamp(1.4rem, 3vw, 2rem); }
+.test-runs-quota p { margin: 0; color: var(--ui-text-muted); }
+.test-runs-eyebrow { margin: 0; color: var(--ui-accent); font-size: 12px; font-weight: 700; letter-spacing: .06em; }
+.test-runs-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--ui-space-4); align-items: start; }
+.test-runs-layout > * { min-width: 0; }
+@media (min-width: 900px) { .test-runs-layout { grid-template-columns: minmax(18rem, .8fr) minmax(0, 1.2fr); } }
+.test-runs-form { display: grid; gap: var(--ui-space-4); }
+.test-runs-form > .ui-button { justify-self: start; min-width: 10rem; }
+.test-runs-note, .test-runs-empty { color: var(--ui-text-muted); font-size: 14px; }
+.test-runs-alert { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--ui-space-3); }
+.test-runs-alert p { margin: 0; }
+.test-runs-list { display: grid; gap: var(--ui-space-2); margin: 0; padding: 0; list-style: none; }
+.test-runs-item { display: grid; gap: var(--ui-space-2); min-width: 0; padding: var(--ui-space-3); border: 1px solid var(--ui-border); border-radius: var(--ui-radius-md); }
+.test-runs-item-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--ui-space-2); }
+.test-runs-item-heading > div { display: grid; min-width: 0; gap: var(--ui-space-1); }
+.test-runs-item-heading strong { overflow-wrap: anywhere; }
+.test-runs-item time { color: var(--ui-text-muted); font-size: 13px; }
+.test-runs-result { margin: 0; font-weight: 600; }
+.test-runs-failure { margin: 0; color: var(--ui-danger); overflow-wrap: anywhere; }
+.test-runs-replay-link { width: fit-content; font-weight: 600; }
+.test-runs-stderr summary { cursor: pointer; color: var(--ui-text-muted); }
+.test-runs-stderr pre { max-width: 100%; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
+.test-runs-history-actions { display: flex; justify-content: flex-end; margin-block-start: var(--ui-space-3); }
+@media (max-width: 520px) { .test-runs-form > .ui-button, .test-runs-history-actions .ui-button { width: 100%; } }

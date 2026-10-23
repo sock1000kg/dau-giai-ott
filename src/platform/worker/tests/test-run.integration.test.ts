@@ -4,16 +4,17 @@ import type { Database, ObjectStorage } from '@ott/platform-api';
 import {
   createTestRun,
   getTestRunById,
-  listTestRuns,
   refundTestRunQuota,
   completeTestRun,
   failTestRun,
   getDailyConsumedQuota,
+  getRoundTestRunQuota,
   TestRunError,
   type TestRunEnqueuer,
 } from '@ott/platform-api';
 import { QUEUE_PRIORITY, type MatchJobV1 } from '@ott/job-contract';
 import { ScriptedBot } from '@ott/match-runner';
+import { parseAnyEventLog } from '@ott/match-runner';
 import { runTestJob } from '../src/run-test-job.ts';
 
 describe('P3-N03: Test-Run Quota, Opponent Policy & Private Artifacts', () => {
@@ -37,6 +38,14 @@ describe('P3-N03: Test-Run Quota, Opponent Policy & Private Artifacts', () => {
   });
 
   describe('Quota Calculation & Infrastructure Failure Refund', () => {
+    it('uses the documented default quota of two runs when no round policy is attached', async () => {
+      const mockDb = {
+        query: vi.fn(),
+      } as unknown as Database;
+
+      await expect(getRoundTestRunQuota(mockDb)).resolves.toBe(2);
+    });
+
     it('enforces daily quota limit per team', async () => {
       const teamId = randomUUID();
       const subId = randomUUID();
@@ -44,6 +53,7 @@ describe('P3-N03: Test-Run Quota, Opponent Policy & Private Artifacts', () => {
       let consumedCount = 0;
       const mockDb = {
         query: vi.fn().mockImplementation(async (sql: string) => {
+          if (sql.includes('FROM qualification_rounds') && sql.includes('FOR SHARE')) return { rows: [{ id: 'round-1', status: 'SUBMISSION_OPEN', paused_at: null }] };
           if (sql.includes('SELECT rrs.rules')) {
             // maxQuota = 3
             return { rows: [{ rules: { testRun: { quotaPerTeamPerDay: 3 } } }] };
@@ -51,9 +61,11 @@ describe('P3-N03: Test-Run Quota, Opponent Policy & Private Artifacts', () => {
           if (sql.includes('SELECT COUNT(*) as count')) {
             return { rows: [{ count: consumedCount }] };
           }
+          if (sql.includes('COUNT(*) FILTER')) return { rows: [{ consumed: consumedCount, reserved: 0 }] };
           if (sql.includes('SELECT id, team_id, status FROM submissions')) {
             return { rows: [{ id: subId, team_id: teamId, status: 'VALID' }] };
           }
+          if (sql.includes('FROM test_run_reference_bots')) return { rows: [{ id: 'FIRST_LEGAL' }] };
           if (sql.includes('INSERT INTO test_runs')) {
             consumedCount += 1;
             return {
@@ -72,17 +84,17 @@ describe('P3-N03: Test-Run Quota, Opponent Policy & Private Artifacts', () => {
       } as unknown as Database;
 
       // Runs 1, 2, 3 succeed
-      await createTestRun(mockDb, undefined, { teamId, submissionId: subId, opponentType: 'BTC_REFERENCE', roundId: 'round-1' });
-      await createTestRun(mockDb, undefined, { teamId, submissionId: subId, opponentType: 'BTC_REFERENCE', roundId: 'round-1' });
-      await createTestRun(mockDb, undefined, { teamId, submissionId: subId, opponentType: 'BTC_REFERENCE', roundId: 'round-1' });
+      await createTestRun(mockDb, undefined, { teamId, submissionId: subId, opponentType: 'BTC_REFERENCE', roundId: 'round-1', idempotencyKey: randomUUID() });
+      await createTestRun(mockDb, undefined, { teamId, submissionId: subId, opponentType: 'BTC_REFERENCE', roundId: 'round-1', idempotencyKey: randomUUID() });
+      await createTestRun(mockDb, undefined, { teamId, submissionId: subId, opponentType: 'BTC_REFERENCE', roundId: 'round-1', idempotencyKey: randomUUID() });
 
       // Run 4 exceeds quota of 3
       await expect(
-        createTestRun(mockDb, undefined, { teamId, submissionId: subId, opponentType: 'BTC_REFERENCE', roundId: 'round-1' }),
+        createTestRun(mockDb, undefined, { teamId, submissionId: subId, opponentType: 'BTC_REFERENCE', roundId: 'round-1', idempotencyKey: randomUUID() }),
       ).rejects.toThrowError(TestRunError);
 
       try {
-        await createTestRun(mockDb, undefined, { teamId, submissionId: subId, opponentType: 'BTC_REFERENCE', roundId: 'round-1' });
+        await createTestRun(mockDb, undefined, { teamId, submissionId: subId, opponentType: 'BTC_REFERENCE', roundId: 'round-1', idempotencyKey: randomUUID() });
       } catch (err: unknown) {
         expect(err).toBeInstanceOf(TestRunError);
         expect((err as TestRunError).status).toBe(429);
@@ -125,9 +137,11 @@ describe('P3-N03: Test-Run Quota, Opponent Policy & Private Artifacts', () => {
         query: vi.fn().mockImplementation(async (sql: string) => {
           if (sql.includes('SELECT rrs.rules')) return { rows: [{ rules: { testRun: { quotaPerTeamPerDay: 5 } } }] };
           if (sql.includes('SELECT COUNT(*) as count')) return { rows: [{ count: 0 }] };
+          if (sql.includes('COUNT(*) FILTER')) return { rows: [{ consumed: 0, reserved: 0 }] };
           if (sql.includes('SELECT id, team_id, status FROM submissions')) {
             return { rows: [{ id: subId, team_id: teamId, status: 'ACTIVE' }] };
           }
+          if (sql.includes('FROM test_run_reference_bots')) return { rows: [{ id: 'FIRST_LEGAL' }] };
           if (sql.includes('INSERT INTO test_runs')) {
             return {
               rows: [{
@@ -149,6 +163,7 @@ describe('P3-N03: Test-Run Quota, Opponent Policy & Private Artifacts', () => {
         submissionId: subId,
         opponentType: 'BTC_REFERENCE',
         opponentReferenceBot: 'FIRST_LEGAL',
+        idempotencyKey: randomUUID(),
       });
 
       expect(run.opponentType).toBe('BTC_REFERENCE');
@@ -189,10 +204,40 @@ describe('P3-N03: Test-Run Quota, Opponent Policy & Private Artifacts', () => {
         submissionId: sub1,
         opponentType: 'OWN_SUBMISSION',
         opponentSubmissionId: sub2,
+        idempotencyKey: randomUUID(),
       });
 
       expect(run.opponentType).toBe('OWN_SUBMISSION');
       expect(run.opponentSubmissionId).toBe(sub2);
+    });
+
+    it('rejects a non-eligible primary submission even when it is not INVALID', async () => {
+      const teamId = randomUUID();
+      const subId = randomUUID();
+      const mockDb = {
+        query: vi.fn().mockImplementation(async (sql: string) => {
+          if (sql.includes('SELECT id, team_id, status FROM submissions WHERE id = $1')) return { rows: [{ id: subId, team_id: teamId, status: 'REVOKED' }] };
+          return { rows: [] };
+        }),
+      } as unknown as Database;
+      await expect(createTestRun(mockDb, undefined, { teamId, submissionId: subId, opponentType: 'BTC_REFERENCE', idempotencyKey: randomUUID() }))
+        .rejects.toMatchObject({ code: 'SUBMISSION_NOT_ELIGIBLE' });
+    });
+
+    it('rejects a non-eligible own opponent even when it is not INVALID', async () => {
+      const teamId = randomUUID();
+      const primaryId = randomUUID();
+      const opponentId = randomUUID();
+      const mockDb = {
+        query: vi.fn().mockImplementation(async (sql: string, params?: readonly unknown[]) => {
+          if (sql.includes('SELECT id, team_id, status FROM submissions WHERE id = $1')) {
+            return { rows: [{ id: params?.[0], team_id: teamId, status: params?.[0] === primaryId ? 'VALID' : 'REPLACED' }] };
+          }
+          return { rows: [] };
+        }),
+      } as unknown as Database;
+      await expect(createTestRun(mockDb, undefined, { teamId, submissionId: primaryId, opponentType: 'OWN_SUBMISSION', opponentSubmissionId: opponentId, idempotencyKey: randomUUID() }))
+        .rejects.toMatchObject({ code: 'OPPONENT_SUBMISSION_NOT_ELIGIBLE' });
     });
 
     it('rejects test run if opponent submission belongs to a different team', async () => {
@@ -225,12 +270,66 @@ describe('P3-N03: Test-Run Quota, Opponent Policy & Private Artifacts', () => {
           submissionId: sub1,
           opponentType: 'OWN_SUBMISSION',
           opponentSubmissionId: subOtherTeam,
+          idempotencyKey: randomUUID(),
         }),
-      ).rejects.toThrowError('Test run cannot face submissions belonging to other teams');
+      ).rejects.toMatchObject({ code: 'OPPONENT_SUBMISSION_NOT_OWNED' });
     });
   });
 
   describe('Priority Queue (AC-21)', () => {
+    it('retries queue enqueue after a DB commit without duplicating the run', async () => {
+      const teamId = randomUUID();
+      const submissionId = randomUUID();
+      const runId = randomUUID();
+      let storedRun: Record<string, unknown> | null = null;
+      let insertCount = 0;
+      const db = {
+        async query(sql: string, values?: readonly unknown[]) {
+          if (sql.includes('SELECT * FROM test_runs WHERE team_id')) return { rows: storedRun ? [storedRun] : [] };
+          if (sql.includes('SELECT id, payload FROM test_run_outbox')) return { rows: storedRun ? [{ id: 'outbox-1', payload: {
+            schemaVersion: 'ott.match-job.v1', matchId: runId, idempotencyKey: runId, policyVersion: 'P2_BASELINE_V1',
+            x: { submissionId, archiveSha256: `sha256:${'a'.repeat(64)}`, manifestDigest: `sha256:${'a'.repeat(64)}`, configDigest: `sha256:${'a'.repeat(64)}`, policyVersion: 'P2_BASELINE_V1' },
+            o: { submissionId, archiveSha256: `sha256:${'b'.repeat(64)}`, manifestDigest: `sha256:${'b'.repeat(64)}`, configDigest: `sha256:${'b'.repeat(64)}`, policyVersion: 'P2_BASELINE_V1' },
+          } }] : [] };
+          if (sql.includes('INSERT INTO test_run_outbox')) return { rows: [] };
+          if (sql.includes('COUNT(*) FILTER')) return { rows: [{ consumed: 0, reserved: 0 }] };
+          if (sql.includes('SELECT id, team_id, status FROM submissions')) return { rows: [{ id: submissionId, team_id: teamId, status: 'ACTIVE' }] };
+          if (sql.includes('FROM test_run_reference_bots')) return { rows: [{ id: 'btc-v1' }] };
+          if (sql.includes('INSERT INTO test_runs')) {
+            insertCount++;
+            storedRun = {
+              id: runId, team_id: values?.[1], round_id: values?.[2], submission_id: values?.[3],
+              opponent_type: values?.[4], opponent_submission_id: values?.[5], opponent_reference_bot: values?.[6],
+              map_checksum: values?.[7], seed: values?.[8], created_at: values?.[9], idempotency_key: values?.[10],
+              request_hash: values?.[11], status: 'QUEUED', quota_consumed: false,
+            };
+            return { rows: [storedRun] };
+          }
+          if (sql.includes('UPDATE test_run_outbox')) return { rows: [] };
+          return { rows: [] };
+        },
+        async transaction<T>(work: (tx: Database) => Promise<T>) { return work(this as unknown as Database); },
+        async close() {},
+      } as unknown as Database;
+      let enqueueAttempts = 0;
+      const enqueuer: TestRunEnqueuer = {
+        async enqueue(job) {
+          enqueueAttempts++;
+          if (enqueueAttempts === 1) throw new Error('temporary redis outage');
+          return { jobId: job.matchId };
+        },
+      };
+      const input = { teamId, submissionId, opponentType: 'BTC_REFERENCE' as const, opponentReferenceBot: 'btc-v1', idempotencyKey: 'retryable-run-key-01' };
+      await expect(createTestRun(db, enqueuer, input)).rejects.toThrow('temporary redis outage');
+      const retry = await createTestRun(db, enqueuer, input);
+      expect(retry.id).toBe(runId);
+      expect(insertCount).toBe(1);
+      expect(enqueueAttempts).toBe(2);
+      await expect(createTestRun(db, enqueuer, { ...input, submissionId: randomUUID() }))
+        .rejects.toMatchObject({ code: 'IDEMPOTENCY_KEY_REUSED' });
+      expect(insertCount).toBe(1);
+    });
+
     it('enqueues test-run with QUEUE_PRIORITY.TEST_RUN (priority 3)', async () => {
       const teamId = randomUUID();
       const subId = randomUUID();
@@ -249,9 +348,18 @@ describe('P3-N03: Test-Run Quota, Opponent Policy & Private Artifacts', () => {
         query: vi.fn().mockImplementation(async (sql: string) => {
           if (sql.includes('SELECT rrs.rules')) return { rows: [{ rules: { testRun: { quotaPerTeamPerDay: 5 } } }] };
           if (sql.includes('SELECT COUNT(*) as count')) return { rows: [{ count: 0 }] };
+          if (sql.includes('COUNT(*) FILTER')) return { rows: [{ consumed: 0, reserved: 0 }] };
           if (sql.includes('SELECT id, team_id, status FROM submissions')) {
             return { rows: [{ id: subId, team_id: teamId, status: 'ACTIVE' }] };
           }
+          if (sql.includes('FROM test_run_reference_bots')) return { rows: [{ id: 'FIRST_LEGAL' }] };
+          if (sql.includes('INSERT INTO test_run_outbox')) return { rows: [] };
+          if (sql.includes('SELECT id, payload FROM test_run_outbox')) return { rows: [{ id: 'outbox-1', payload: {
+            schemaVersion: 'ott.match-job.v1', matchId: 'test-job-1', idempotencyKey: 'test-job-1', policyVersion: 'P2_BASELINE_V1',
+            x: { submissionId: subId, archiveSha256: `sha256:${'a'.repeat(64)}`, manifestDigest: `sha256:${'a'.repeat(64)}`, configDigest: `sha256:${'a'.repeat(64)}`, policyVersion: 'P2_BASELINE_V1' },
+            o: { submissionId: subId, archiveSha256: `sha256:${'b'.repeat(64)}`, manifestDigest: `sha256:${'b'.repeat(64)}`, configDigest: `sha256:${'b'.repeat(64)}`, policyVersion: 'P2_BASELINE_V1' },
+          } }] };
+          if (sql.includes('UPDATE test_run_outbox')) return { rows: [] };
           if (sql.includes('INSERT INTO test_runs')) {
             return {
               rows: [{
@@ -271,6 +379,7 @@ describe('P3-N03: Test-Run Quota, Opponent Policy & Private Artifacts', () => {
         teamId,
         submissionId: subId,
         opponentType: 'BTC_REFERENCE',
+        idempotencyKey: randomUUID(),
       });
 
       expect(enqueuedCategory).toBe('test-run');
@@ -347,6 +456,9 @@ describe('P3-N03: Test-Run Quota, Opponent Policy & Private Artifacts', () => {
               }],
             };
           }
+          if (sql.includes("status = 'RUNNING'")) {
+            return { rows: [{ id: testRunId }] };
+          }
           if (sql.includes('UPDATE test_runs SET status = $1')) {
             return { rows: [] };
           }
@@ -366,6 +478,11 @@ describe('P3-N03: Test-Run Quota, Opponent Policy & Private Artifacts', () => {
         testRunId,
         database: mockDb,
         storage: mockStorage,
+        getReferenceBot: async () => ({
+          archive: dummyArchive,
+          entrypoint: ['/bot'],
+          reference: { submissionId: 'reference:FIRST_LEGAL', archiveSha256: dummySha, manifestDigest: 'sha256:' + '3'.repeat(64), configDigest: 'sha256:' + '4'.repeat(64), policyVersion: 'P2_BASELINE_V1' },
+        }),
         createBotPort: async () =>
           new ScriptedBot({
             replies: [{ kind: 'error', code: 'BOT_TIMEOUT' }],
@@ -377,6 +494,93 @@ describe('P3-N03: Test-Run Quota, Opponent Policy & Private Artifacts', () => {
       expect(completedReplayKey).toBe(`replays/test-runs/${testRunId}.json`);
       expect(completedResult).not.toBeNull();
       expect(storedObjects.has(`replays/test-runs/${testRunId}.json`)).toBe(true);
+      const storedReplay = parseAnyEventLog(
+        new TextDecoder().decode(storedObjects.get(`replays/test-runs/${testRunId}.json`)),
+      );
+      expect(storedReplay.header.matchId).toBe(testRunId);
+      expect(storedReplay.footer.result.finalStateHash).toBeDefined();
+    });
+
+    it('fails closed and refunds the reservation when a BTC reference bot is not configured', async () => {
+      const testRunId = randomUUID();
+      const teamId = randomUUID();
+      const subId = randomUUID();
+      const ownArchive = new TextEncoder().encode('team-bot');
+      const ownSha = 'sha256:' + createHash('sha256').update(ownArchive).digest('hex');
+      storedObjects.set('submissions/team-bot.tar', ownArchive);
+      let failedWith: string | null = null;
+      let quotaConsumed = true;
+
+      const mockDb = {
+        query: vi.fn().mockImplementation(async (sql: string, params?: readonly unknown[]) => {
+          if (sql.includes('FROM test_runs tr')) {
+            return { rows: [{
+              id: testRunId,
+              team_id: teamId,
+              status: 'QUEUED',
+              submission_id: subId,
+              opponent_type: 'BTC_REFERENCE',
+              opponent_submission_id: null,
+              opponent_reference_bot: 'FIRST_LEGAL',
+              seed: 'seed123',
+              sub_object_key: 'submissions/team-bot.tar',
+              sub_archive_sha256: ownSha,
+              sub_manifest_digest: 'sha256:' + '1'.repeat(64),
+              sub_config_digest: 'sha256:' + '2'.repeat(64),
+              sub_entrypoint: JSON.stringify(['/bot']),
+              sub_policy_version: 'P2_BASELINE_V1',
+            }] };
+          }
+          if (sql.includes("status = 'RUNNING'")) return { rows: [{ id: testRunId }] };
+          if (sql.includes('UPDATE test_runs SET status = $1')) return { rows: [] };
+          if (sql.includes("status = 'FAILED'")) {
+            failedWith = String(params?.[0]);
+            quotaConsumed = params?.[1] === false;
+            return { rows: [] };
+          }
+          return { rows: [] };
+        }),
+      } as unknown as Database;
+
+      const result = await runTestJob({ testRunId, database: mockDb, storage: mockStorage });
+
+      expect(result.isInfraFailure).toBe(true);
+      expect(failedWith).toBe('REFERENCE_BOT_UNAVAILABLE');
+      expect(quotaConsumed).toBe(false);
+      expect(storedObjects.has(`replays/test-runs/${testRunId}.json`)).toBe(false);
+    });
+
+    it('rejects a BTC reference archive whose bytes do not match its catalog digest', async () => {
+      const testRunId = randomUUID();
+      const teamId = randomUUID();
+      const subId = randomUUID();
+      const ownArchive = new TextEncoder().encode('team-bot');
+      const ownSha = 'sha256:' + createHash('sha256').update(ownArchive).digest('hex');
+      storedObjects.set('submissions/team-bot.tar', ownArchive);
+      let failedWith: string | null = null;
+      const mockDb = {
+        query: vi.fn().mockImplementation(async (sql: string, params?: readonly unknown[]) => {
+          if (sql.includes('FROM test_runs tr')) return { rows: [{
+            id: testRunId, team_id: teamId, status: 'QUEUED', submission_id: subId,
+            opponent_type: 'BTC_REFERENCE', opponent_submission_id: null, opponent_reference_bot: 'btc-v1', seed: 'seed',
+            sub_object_key: 'submissions/team-bot.tar', sub_archive_sha256: ownSha,
+            sub_manifest_digest: 'sha256:' + '1'.repeat(64), sub_config_digest: 'sha256:' + '2'.repeat(64),
+            sub_entrypoint: JSON.stringify(['/bot']), sub_policy_version: 'P2_BASELINE_V1',
+          }] };
+          if (sql.includes("status = 'RUNNING'")) return { rows: [{ id: testRunId }] };
+          if (sql.includes("status = 'FAILED'")) { failedWith = String(params?.[0]); return { rows: [] }; }
+          return { rows: [] };
+        }),
+      } as unknown as Database;
+      const badArchive = new TextEncoder().encode('tampered reference archive');
+      const result = await runTestJob({ testRunId, database: mockDb, storage: mockStorage, getReferenceBot: async () => ({
+        archive: badArchive,
+        entrypoint: ['/bot'],
+        reference: { submissionId: 'reference:btc-v1', archiveSha256: `sha256:${'0'.repeat(64)}`, manifestDigest: `sha256:${'3'.repeat(64)}`, configDigest: `sha256:${'4'.repeat(64)}`, policyVersion: 'P2_BASELINE_V1' },
+      }) });
+      expect(result.isInfraFailure).toBe(true);
+      expect(failedWith).toBe('OPPONENT_ARCHIVE_CHECKSUM_MISMATCH');
+      expect(storedObjects.has(`replays/test-runs/${testRunId}.json`)).toBe(false);
     });
   });
 });

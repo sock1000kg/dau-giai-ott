@@ -41,6 +41,13 @@ const replayEntry = {
 };
 
 const submission = { id: ids.submission, status: 'VALID', archiveSha256: SHA, createdAt: '2026-10-18T00:00:00.000Z' };
+const sampleTestRun = {
+  id: ids.match, submissionId: ids.submission, opponentType: 'BTC_REFERENCE', opponentSubmissionId: null,
+  opponentReferenceBot: 'FIRST_LEGAL', status: 'COMPLETED', quotaConsumed: true,
+  result: { winnerSide: 'X', reason: 'REACHED_GOAL' }, stderrX: null, stderrO: null,
+  failureReason: null, isInfraFailure: false, createdAt: '2026-10-18T10:00:00.000Z',
+  startedAt: '2026-10-18T10:00:01.000Z', finishedAt: '2026-10-18T10:00:05.000Z',
+};
 
 function replayBody(): string {
   const t = skipTurn(createGame({ gameId: ids.match, engineVersion: '1.0.0', map: DEFAULT_MAP, maxTurns: 1 }), 'X', 'NO_LEGAL_ACTION');
@@ -82,18 +89,22 @@ export interface RouteApi {
   /** `METHOD path` (query string included) of every request that no route handled. */
   readonly unhandled: string[];
   readonly requests: string[];
+  setNoReferenceBot(value: boolean): void;
 }
 
 /** One shared fetch router covering every endpoint the routed pages call. Unknown requests are recorded and answered 404. */
 export function installRouteFetch(role: TestRole): RouteApi {
   const unhandled: string[] = [];
   const requests: string[] = [];
+  const testRuns: Record<string, unknown>[] = [];
   const snapshotBody = JSON.stringify(publicSnapshot());
   const snapshotSha = createHash('sha256').update(snapshotBody).digest('hex');
   const snapshotPointer = { schemaVersion: 1, file: `snapshot-${snapshotSha}.json`, sha256: snapshotSha, updatedAt: JSON.parse(snapshotBody).updatedAt };
-  vi.stubGlobal('crypto', { subtle: { digest: async (_algorithm: string, bytes: ArrayBuffer) => Uint8Array.from(createHash('sha256').update(new Uint8Array(bytes)).digest()).buffer } });
+  let uuidCounter = 0;
+  let noReferenceBot = false;
+  vi.stubGlobal('crypto', { randomUUID: () => `44444444-4444-4444-8444-${String(++uuidCounter).padStart(12, '0')}`, subtle: { digest: async (_algorithm: string, bytes: ArrayBuffer) => Uint8Array.from(createHash('sha256').update(new Uint8Array(bytes)).digest()).buffer } });
 
-  function route(method: string, path: string): Response | null {
+  function route(method: string, path: string, init?: RequestInit): Response | null {
     const [pathname = ''] = path.split('?');
     if (method === 'GET') {
       if (pathname === '/api/v1/auth/session') {
@@ -107,13 +118,31 @@ export function installRouteFetch(role: TestRole): RouteApi {
       if (pathname === '/api/v1/results/matches') return json(200, { data: { items: [matchResult], pagination: page([matchResult]) } });
       if (pathname === '/api/v1/results/series') return json(200, { data: { items: [seriesResult], pagination: page([seriesResult]) } });
       if (pathname === '/api/v1/admin/operations/audit') return json(200, { data: { items: [] }, pagination: page([]) });
+      if (pathname === '/api/v1/admin/submissions/flagged') return json(200, { data: { items: [] }, pagination: page([]) });
       if (pathname === '/api/v1/public/queue-overrides') return json(200, { data: { items: [] } });
-      if (pathname === '/api/v1/submissions') return json(200, { data: [submission], pagination: { page: 1, pageSize: 20, totalItems: 1, totalPages: 1 }, preflightQueueLength: 0 });
+      if (pathname === '/api/v1/submissions') return json(200, { data: noReferenceBot ? [submission, { ...submission, id: '77777777-7777-4777-8777-777777777777' }] : [submission], pagination: { page: 1, pageSize: 20, totalItems: noReferenceBot ? 2 : 1, totalPages: 1 }, preflightQueueLength: 0 });
+      if (pathname === '/api/v1/test-run-policy') {
+        return json(200, { data: {
+        roundId: 'round-current', quota: { limit: 2, consumed: 0, reserved: 0, remaining: 2, resetsAt: '2026-10-19T00:00:00.000Z' },
+        admissionPaused: false, opponents: { referenceBots: noReferenceBot ? [] : [{ id: 'FIRST_LEGAL', displayName: 'Bot tham chiếu — đi hợp lệ đầu tiên' }], ownSubmissionAllowed: true },
+      } });
+      }
+      if (pathname === '/api/v1/test-runs') return json(200, { data: testRuns, pagination: { page: 1, pageSize: 20, totalItems: testRuns.length, totalPages: testRuns.length === 0 ? 0 : 1 } });
+      const testRunReplayMatch = pathname.match(/^\/api\/v1\/test-runs\/([^/]+)\/replay$/);
+      if (testRunReplayMatch) return replayResponse();
+      const testRunMatch = pathname.match(/^\/api\/v1\/test-runs\/([^/]+)$/);
+      if (testRunMatch) return json(200, { data: testRuns.find((run) => run.id === testRunMatch[1]) ?? sampleTestRun });
       if (pathname === '/api/v1/admin/replays/catalog') return json(200, { data: { items: [replayEntry], pagination: page([replayEntry]) } });
       if (pathname === '/api/v1/leaderboard') return json(200, { data: { items: [leaderboardEntry], pagination: page([leaderboardEntry]) } });
       if (pathname === `/api/v1/replays/${ids.match}` || pathname === `/api/v1/public/replays/${ids.match}`) return replayResponse();
       if (pathname === '/snapshots/latest.json') return json(200, snapshotPointer);
       if (pathname === `/snapshots/${snapshotPointer.file}`) return new Response(snapshotBody);
+    }
+    if (method === 'POST' && pathname === '/api/v1/test-runs') {
+      const input = typeof init?.body === 'string' ? JSON.parse(init.body) as Record<string, unknown> : {};
+      const created = { ...sampleTestRun, ...input, id: `66666666-6666-4666-8666-${String(testRuns.length + 1).padStart(12, '0')}`, status: 'QUEUED', result: null, quotaConsumed: false, createdAt: new Date().toISOString(), startedAt: null, finishedAt: null };
+      testRuns.unshift(created);
+      return json(201, { data: created });
     }
     if (method === 'POST' && pathname === '/api/v1/auth/password/change') return json(204, {});
     if (method === 'POST' && pathname === '/api/v1/auth/logout') return json(204, {});
@@ -124,10 +153,10 @@ export function installRouteFetch(role: TestRole): RouteApi {
     const path = String(input);
     const method = (init?.method ?? 'GET').toUpperCase();
     requests.push(`${method} ${path}`);
-    const handled = route(method, path);
+    const handled = route(method, path, init);
     if (handled !== null) return handled;
     unhandled.push(`${method} ${path}`);
     return json(404, { error: { code: 'UNMOCKED' } });
   }));
-  return { unhandled, requests };
+  return { unhandled, requests, setNoReferenceBot(value: boolean) { noReferenceBot = value; } };
 }

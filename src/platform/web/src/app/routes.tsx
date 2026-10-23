@@ -8,6 +8,8 @@ import { PrivateReplayPage } from '../pages/PrivateReplayPage.tsx';
 import { RoundAdminPage } from '../features/round-admin/RoundAdminPage.tsx';
 import { OperationsConsole } from '../features/operations/OperationsConsole.tsx';
 import { FinalsPage } from '../features/finals/FinalsPage.tsx';
+import { TestRunsPage } from '../features/test-runs/TestRunsPage.tsx';
+import { TestRunReplayPage } from '../features/test-runs/TestRunReplayPage.tsx';
 import { useAuth } from '../features/auth/AuthProvider.tsx';
 import { HomePage } from '../features/home/HomePage.tsx';
 import { AppShellLayout } from '../ui/AppShellLayout.tsx';
@@ -60,6 +62,8 @@ function renderAuthenticated(role: 'BTC_ADMIN' | 'TEAM_ACCOUNT', path: string) {
   const expectedPath = role === 'BTC_ADMIN' ? '/admin' : '/team';
   const isTeamAdminPage = role === 'BTC_ADMIN' && path === '/admin/teams';
   const isTeamSubmissionPage = role === 'TEAM_ACCOUNT' && path === '/team/submissions';
+  const isTeamTestRunsPage = role === 'TEAM_ACCOUNT' && path === '/team/test-runs';
+  const isTeamTestRunReplayPage = role === 'TEAM_ACCOUNT' && path.startsWith('/team/test-runs/') && path.endsWith('/replay');
   const isTeamPasswordPage = role === 'TEAM_ACCOUNT' && path === '/team/password';
   const isReplayAdminPage = role === 'BTC_ADMIN' && path === '/admin/replays';
   const isRoundAdminPage = role === 'BTC_ADMIN' && path === '/admin/rounds';
@@ -67,10 +71,15 @@ function renderAuthenticated(role: 'BTC_ADMIN' | 'TEAM_ACCOUNT', path: string) {
   const isResultsPage = (role === 'BTC_ADMIN' && path === '/admin/results') || (role === 'TEAM_ACCOUNT' && path === '/team/results');
   const isTeamReplayPage = role === 'TEAM_ACCOUNT' && path.startsWith('/team/replays/');
   const isAdminReplayViewPage = role === 'BTC_ADMIN' && path.startsWith('/admin/replays/') && path.endsWith('/view');
-  if (path !== '/' && path !== '/login' && path !== expectedPath && !isTeamAdminPage && !isTeamSubmissionPage && !isTeamPasswordPage && !isReplayAdminPage && !isRoundAdminPage && !isOperationsPage && !isResultsPage && !isTeamReplayPage && !isAdminReplayViewPage) return <AccessDenied />;
+  if (path !== '/' && path !== '/login' && path !== expectedPath && !isTeamAdminPage && !isTeamSubmissionPage && !isTeamTestRunsPage && !isTeamTestRunReplayPage && !isTeamPasswordPage && !isReplayAdminPage && !isRoundAdminPage && !isOperationsPage && !isResultsPage && !isTeamReplayPage && !isAdminReplayViewPage) return <AccessDenied />;
   if (isTeamPasswordPage) return <ChangePasswordPage />;
   if (isTeamAdminPage) return <TeamProvisionPage />;
   if (isTeamSubmissionPage) return <SubmissionForm />;
+  if (isTeamTestRunsPage) return <TestRunsPage />;
+  if (isTeamTestRunReplayPage) {
+    const testRunId = path.slice('/team/test-runs/'.length, -'/replay'.length);
+    return testRunId ? <TestRunReplayPage testRunId={testRunId} /> : <AccessDenied />;
+  }
   if (isReplayAdminPage) return <ReplayCatalog />;
   if (isRoundAdminPage) return <RoundAdminPage />;
   if (isOperationsPage) return <OperationsConsole />;

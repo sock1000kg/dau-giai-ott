@@ -3,7 +3,7 @@ import { DEFAULT_LIMITS } from '@ott/bot-protocol';
 import { DEFAULT_MAP } from '@ott/game-core';
 import type { OciArtifactReference } from '@ott/job-contract';
 import type { BotPort } from '@ott/match-runner';
-import { CoreGameAdapter, runMatch } from '@ott/match-runner';
+import { CoreGameAdapter, runMatch, serializeEventLog, verifyReplay } from '@ott/match-runner';
 import type { Database, ObjectStorage } from '@ott/platform-api';
 import { completeTestRun, failTestRun, type TestRunRecord } from '@ott/platform-api';
 import { SANDBOX_POLICY_V1, resolveSandboxPolicy, type SandboxPolicy } from './sandbox/policy.ts';
@@ -99,11 +99,18 @@ export async function runTestJob(options: RunTestJobOptions): Promise<RunTestJob
     return { alreadyFinished: true };
   }
 
-  // 2. Mark RUNNING
-  await database.query(
-    `UPDATE test_runs SET status = 'RUNNING', started_at = now() WHERE id = $1`,
-    [testRunId],
-  );
+  // Claim exactly once and consume quota when execution starts.
+  const claim = async (tx: Database) => {
+    const claimed = await tx.query<{ id: string }>(
+      `UPDATE test_runs SET status = 'RUNNING', started_at = now(), quota_consumed = TRUE
+       WHERE id = $1 AND status = 'QUEUED' RETURNING id`, [testRunId],
+    );
+    return claimed.rows.length > 0;
+  };
+  const didClaim = typeof database.transaction === 'function'
+    ? await database.transaction(claim)
+    : await claim(database);
+  if (!didClaim) return { alreadyFinished: true };
 
   const effectivePolicy = options.policy ?? resolveSandboxPolicy(testRun.sub_policy_version);
   const factory = options.createBotPort ?? defaultBotPort;
@@ -135,13 +142,13 @@ export async function runTestJob(options: RunTestJobOptions): Promise<RunTestJob
 
     if (testRun.opponent_type === 'BTC_REFERENCE') {
       if (!options.getReferenceBot) {
-        // Fallback: self-play against primary submission if no external reference bot provider
-        archiveO = archiveX;
-        entrypointO = entrypointX;
-        refO = refX;
+        throw new Error('REFERENCE_BOT_UNAVAILABLE');
       } else {
         const refBot = await options.getReferenceBot(testRun.opponent_reference_bot ?? 'FIRST_LEGAL');
         archiveO = refBot.archive;
+        if (archiveChecksum(archiveO) !== refBot.reference.archiveSha256) {
+          throw new Error('OPPONENT_ARCHIVE_CHECKSUM_MISMATCH');
+        }
         entrypointO = refBot.entrypoint;
         refO = refBot.reference;
       }
@@ -210,7 +217,10 @@ export async function runTestJob(options: RunTestJobOptions): Promise<RunTestJob
 
     // 7. Save replay event log to storage
     const replayKey = `replays/test-runs/${testRun.id}.json`;
-    const replayBytes = new TextEncoder().encode(JSON.stringify(report.events));
+    const replayVerdict = verifyReplay(report.log, new CoreGameAdapter());
+    if (!replayVerdict.ok) throw new Error('REPLAY_INTEGRITY_FAILED');
+    const replayBytes = new TextEncoder().encode(serializeEventLog(report.log));
+    const replaySha256 = `sha256:${createHash('sha256').update(replayBytes).digest('hex')}`;
     await storage.put(replayKey, replayBytes);
 
     // 8. Complete test run in database
@@ -218,6 +228,8 @@ export async function runTestJob(options: RunTestJobOptions): Promise<RunTestJob
       testRunId: testRun.id,
       result: report.result as unknown as Record<string, unknown>,
       replayKey,
+      replaySha256,
+      finalStateHash: report.log.footer.result.finalStateHash,
     });
 
     metrics.recordAttempt({
@@ -265,6 +277,8 @@ function isInfrastructureFailure(message: string): boolean {
     'DATABASE_TIMEOUT',
     'WORKER_CRASH',
     'OBJECT_NOT_FOUND',
+    'REFERENCE_BOT_UNAVAILABLE',
+    'REPLAY_INTEGRITY_FAILED',
   ];
   return infraErrors.some((code) => message.includes(code));
 }

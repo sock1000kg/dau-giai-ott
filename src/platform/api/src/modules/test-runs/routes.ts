@@ -1,15 +1,17 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { Database } from '../../db/client.ts';
 import type { ObjectStorage } from '../../storage/s3.ts';
-import { requireAuthenticated } from '../auth/authorize.ts';
+import { AuthorizationError, requireAuthenticated } from '../auth/authorize.ts';
 import {
   createTestRun,
+  getTestRunPolicy,
   getTestRunById,
-  listTestRuns,
+  listTestRunsPage,
   TestRunError,
   type TestRunEnqueuer,
   type TestRunOpponentType,
 } from './service.ts';
+import { ReplayApiError, getTestRunReplayArtifact } from '../replays/service.ts';
 
 export interface TestRunRoutesOptions {
   readonly database: Database;
@@ -26,6 +28,36 @@ interface CreateTestRunBody {
   readonly teamId?: string; // BTC_ADMIN override
 }
 
+function requireTestRunRole(request: FastifyRequest): ReturnType<typeof requireAuthenticated> {
+  const principal = requireAuthenticated(request.principal);
+  const role: string = principal.role;
+  if (role !== 'TEAM_ACCOUNT' && role !== 'BTC_ADMIN') {
+    throw new AuthorizationError('FORBIDDEN', 403, 'You are not allowed to access this resource');
+  }
+  return principal;
+}
+
+function publicTestRun(run: Awaited<ReturnType<typeof getTestRunById>>) {
+  return {
+    id: run.id,
+    roundId: run.roundId,
+    submissionId: run.submissionId,
+    opponentType: run.opponentType,
+    opponentSubmissionId: run.opponentSubmissionId,
+    opponentReferenceBot: run.opponentReferenceBot,
+    status: run.status,
+    quotaConsumed: run.quotaConsumed,
+    result: run.result,
+    stderrX: run.stderrX,
+    stderrO: run.stderrO,
+    failureReason: run.failureReason,
+    isInfraFailure: run.isInfraFailure,
+    createdAt: run.createdAt,
+    startedAt: run.startedAt,
+    finishedAt: run.finishedAt,
+  };
+}
+
 export function registerTestRunRoutes(
   app: FastifyInstance,
   options: TestRunRoutesOptions,
@@ -34,7 +66,7 @@ export function registerTestRunRoutes(
   app.post(
     '/api/v1/test-runs',
     async (request: FastifyRequest<{ Body: CreateTestRunBody }>, reply: FastifyReply) => {
-      const principal = requireAuthenticated(request.principal);
+      const principal = requireTestRunRole(request);
 
       let targetTeamId: string;
       if (principal.role === 'TEAM_ACCOUNT') {
@@ -52,11 +84,18 @@ export function registerTestRunRoutes(
       }
 
       const { submissionId, opponentType, opponentSubmissionId, opponentReferenceBot, roundId } = request.body ?? {};
+      const idempotencyKey = request.headers['idempotency-key'];
+      if (principal.role === 'BTC_ADMIN' && !request.body?.teamId) {
+        return reply.status(400).send({ error: { code: 'BAD_REQUEST', message: 'teamId is required for BTC_ADMIN' } });
+      }
 
       if (!submissionId || !opponentType) {
         return reply.status(400).send({
           error: { code: 'BAD_REQUEST', message: 'submissionId and opponentType are required' },
         });
+      }
+      if (typeof idempotencyKey !== 'string' || idempotencyKey.trim().length < 8 || idempotencyKey.length > 200) {
+        return reply.status(400).send({ error: { code: 'IDEMPOTENCY_KEY_REQUIRED', message: 'Idempotency-Key header (8-200 characters) is required' } });
       }
 
       try {
@@ -67,9 +106,10 @@ export function registerTestRunRoutes(
           opponentSubmissionId: opponentSubmissionId ?? undefined,
           opponentReferenceBot: opponentReferenceBot ?? undefined,
           roundId: roundId ?? undefined,
+          idempotencyKey,
         });
 
-        return reply.status(201).send({ data: testRun });
+        return reply.status(testRun.status === 'QUEUED' ? 201 : 200).send({ data: publicTestRun(testRun) });
       } catch (error) {
         if (error instanceof TestRunError) {
           if (error.status === 429) {
@@ -85,21 +125,35 @@ export function registerTestRunRoutes(
   );
 
   // 2. GET /api/v1/test-runs
-  app.get('/api/v1/test-runs', async (request: FastifyRequest, reply: FastifyReply) => {
-    const principal = requireAuthenticated(request.principal);
+  app.get('/api/v1/test-runs', async (request: FastifyRequest<{ Querystring: { page?: string; pageSize?: string } }>, reply: FastifyReply) => {
+    const principal = requireTestRunRole(request);
     const callerTeamId = principal.teamId !== null ? principal.teamId : undefined;
-    const runs = await listTestRuns(options.database, {
+    const page = Number(request.query.page ?? 1);
+    const pageSize = Number(request.query.pageSize ?? 20);
+    if (!Number.isSafeInteger(page) || page < 1 || !Number.isSafeInteger(pageSize) || pageSize < 1 || pageSize > 100) {
+      return reply.status(400).send({ error: { code: 'BAD_PAGINATION', message: 'page must be >= 1 and pageSize must be 1..100' } });
+    }
+    const runs = await listTestRunsPage(options.database, {
       role: principal.role,
       teamId: callerTeamId,
-    });
-    return reply.status(200).send({ data: runs });
+    }, page, pageSize);
+    return reply.status(200).send({ data: runs.data.map(publicTestRun), pagination: { page, pageSize, totalItems: runs.totalItems, totalPages: Math.ceil(runs.totalItems / pageSize) } });
+  });
+
+  app.get('/api/v1/test-run-policy', async (request: FastifyRequest<{ Querystring: { roundId?: string; teamId?: string } }>, reply: FastifyReply) => {
+    const principal = requireTestRunRole(request);
+    const teamId = principal.role === 'BTC_ADMIN' ? request.query.teamId : principal.teamId ?? undefined;
+    if (!teamId) return reply.status(400).send({ error: { code: 'TEAM_ID_REQUIRED', message: 'A team context is required' } });
+    if (principal.role !== 'TEAM_ACCOUNT' && principal.role !== 'BTC_ADMIN') return reply.status(403).send({ error: { code: 'FORBIDDEN', message: 'Unauthorized role' } });
+    const policy = await getTestRunPolicy(options.database, teamId, options.enqueuer, request.query.roundId);
+    return reply.status(200).send({ data: policy });
   });
 
   // 3. GET /api/v1/test-runs/:id
   app.get(
     '/api/v1/test-runs/:id',
     async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-      const principal = requireAuthenticated(request.principal);
+      const principal = requireTestRunRole(request);
       const testRunId = request.params.id;
       const callerTeamId = principal.teamId !== null ? principal.teamId : undefined;
 
@@ -108,7 +162,7 @@ export function registerTestRunRoutes(
           role: principal.role,
           teamId: callerTeamId,
         });
-        return reply.status(200).send({ data: testRun });
+        return reply.status(200).send({ data: publicTestRun(testRun) });
       } catch (error) {
         if (error instanceof TestRunError) {
           return reply.status(error.status).send({
@@ -124,7 +178,7 @@ export function registerTestRunRoutes(
   app.get(
     '/api/v1/test-runs/:id/replay',
     async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-      const principal = requireAuthenticated(request.principal);
+      const principal = requireTestRunRole(request);
       const testRunId = request.params.id;
       const callerTeamId = principal.teamId !== null ? principal.teamId : undefined;
 
@@ -147,11 +201,15 @@ export function registerTestRunRoutes(
         }
 
         const replayBytes = await options.storage.get(testRun.replayKey);
-        const replayJson = JSON.parse(new TextDecoder().decode(replayBytes));
-
+        if (!testRun.replaySha256 || !testRun.finalStateHash) throw new ReplayApiError(409, 'REPLAY_INTEGRITY_FAILED', 'Replay integrity metadata unavailable');
+        const artifact = getTestRunReplayArtifact(replayBytes, testRun.id, testRun.replaySha256, testRun.finalStateHash);
         reply.header('Cache-Control', 'private, no-store');
-        return reply.status(200).send({ data: replayJson });
+        reply.header('X-Content-Type-Options', 'nosniff');
+        reply.header('X-Replay-Sha256', artifact.checksum);
+        reply.header('Content-Type', `application/vnd.ott.spectator-replay+json;version=${artifact.version}`);
+        return reply.status(200).send(artifact.body);
       } catch (error) {
+        if (error instanceof ReplayApiError) return reply.status(error.statusCode).send({ error: { code: error.code, message: error.message } });
         if (error instanceof TestRunError) {
           return reply.status(error.status).send({
             error: { code: error.code, message: error.message },

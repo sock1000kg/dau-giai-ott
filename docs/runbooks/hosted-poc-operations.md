@@ -25,7 +25,7 @@ Trước khi mở hệ thống tiếp nhận bài nộp hoặc bắt đầu thi 
    npm run db:migrate --workspace @ott/platform-api
    npm test --workspace @ott/platform-api -- migrations-registry
    ```
-   Đối chiếu registry hiện tại trong `src/platform/api/src/db/schema.ts`; tại `main` ngày 2026-10-20 có 19 migrations (`0001_initial` đến `0019_match_protocol_v2`).
+   Đối chiếu registry hiện tại trong `src/platform/api/src/db/schema.ts`; migration `0020_test_run_frontend_contract` bổ sung catalog bot tham chiếu và transactional outbox cho test-run.
 
 ---
 

@@ -33,10 +33,13 @@ const MATRIX: readonly Case[] = [
   { role: 'ANONYMOUS', path: `/spectator/replays/${ids.match}`, h1: 'Xem lại trận', ready: /REPLAY ĐÃ XÁC MINH/ },
   { role: 'TEAM_ACCOUNT', path: '/', h1: 'Không gian đội thi', nav: 'Tổng quan' },
   { role: 'TEAM_ACCOUNT', path: '/team/submissions', h1: /nộp bot/i, nav: 'Nộp bot' },
+  { role: 'TEAM_ACCOUNT', path: '/team/test-runs', h1: /chạy thử bot/i, nav: 'Chạy thử bot', ready: /Còn\s*2\s* lượt chạy hôm nay/ },
+  { role: 'TEAM_ACCOUNT', path: `/team/test-runs/${ids.match}/replay`, h1: 'Replay lượt chạy thử', nav: 'Chạy thử bot', ready: /REPLAY ĐÃ XÁC MINH/ },
   { role: 'TEAM_ACCOUNT', path: '/team/password', h1: 'Đổi mật khẩu', nav: 'Đổi mật khẩu' },
   { role: 'TEAM_ACCOUNT', path: '/team/results', h1: /kết quả/i, nav: 'Kết quả', ready: 'Đã chốt' },
   { role: 'TEAM_ACCOUNT', path: '/admin/rounds', h1: 'Không có quyền truy cập', denied: true },
   { role: 'BTC_ADMIN', path: '/team/submissions', h1: 'Không có quyền truy cập', denied: true },
+  { role: 'BTC_ADMIN', path: '/team/test-runs', h1: 'Không có quyền truy cập', denied: true },
 ];
 
 let errors: ReturnType<typeof vi.spyOn>[] = [];

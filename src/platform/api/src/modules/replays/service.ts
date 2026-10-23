@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { TextDecoder } from 'node:util';
-import { parseAnyEventLog, type AnyEventLog, type EventLogV1, type EventLogV2, type TimingDecision, type TimingExhaustion } from '@ott/match-runner';
+import { CoreGameAdapter, parseAnyEventLog, verifyReplay, type AnyEventLog, type EventLogV1, type EventLogV2, type TimingDecision, type TimingExhaustion } from '@ott/match-runner';
 import type { TimeControlV2, PerTurnPolicyV2 } from '@ott/bot-protocol';
 
 import type { Database } from '../../db/client.ts';
@@ -21,6 +21,33 @@ export interface PublicReplayArtifact {
   readonly body: string;
   readonly checksum: string;
   readonly version: 1 | 2;
+}
+
+/** Verifies and projects an independently stored private test-run event log. */
+export function getTestRunReplayArtifact(
+  bytes: Uint8Array,
+  matchId: string,
+  expectedSha256: string,
+  finalStateHash: string,
+): PublicReplayArtifact {
+  if (!replayChecksum.test(expectedSha256) || bytes.byteLength === 0 || bytes.byteLength > maxArtifactBytes) failIntegrity();
+  const checksum = `sha256:${createHash('sha256').update(bytes).digest('hex')}`;
+  if (checksum !== expectedSha256) failIntegrity();
+  let log: AnyEventLog;
+  try {
+    log = parseAnyEventLog(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
+  } catch {
+    return failIntegrity();
+  }
+  if (log.header.matchId !== matchId || log.footer.result.finalStateHash !== finalStateHash) failIntegrity();
+  if (!verifyReplay(log, new CoreGameAdapter()).ok) failIntegrity();
+  const safeReplay = publicEventLog(log, matchId, finalStateHash);
+  const body = `${JSON.stringify(safeReplay, null, 2)}\n`;
+  return {
+    body,
+    checksum: `sha256:${createHash('sha256').update(body, 'utf8').digest('hex')}`,
+    version: safeReplay.schemaVersion,
+  };
 }
 
 

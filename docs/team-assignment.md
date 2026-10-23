@@ -793,7 +793,7 @@ Long không tự đổi quyết định timing/Elo/finals, không sửa auth/adm
 
 ### Đỗ Khôi Nguyên — Sandbox, single-host worker và operations readiness (`P3-N*`)
 
-- Resource enforcement/metrics, queue priority, worker heartbeat/capacity và test-run execution.
+- Resource enforcement/metrics, queue priority, worker heartbeat/capacity, test-run backend và team portal API contract (`P3-N09`).
 - OCI layer lifecycle/base images, backup/restore, observability và server-lab smoke/load/recovery evidence.
 - LAN deployment/recovery và full event rehearsal.
 
@@ -804,6 +804,7 @@ Nguyên không sửa luật game/rating/finals và không tự mở public endpo
 - `RoundRuleSet`/round lifecycle API, admin console, upload reservation và bulk account provisioning.
 - Replay authorization, authentication hardening, privileged operations và hosted startup guard.
 - Finals persistence/API, LAN cutoff, signed `ResultBundle` và finals public UI.
+- Team test-run portal: menu, quota/policy, tạo và theo dõi lượt chạy, replay riêng đã xác minh (`P3-D11`).
 
 Đạt không đổi protocol/timing/rating/finals rules nếu contract của Long và decision của Thuận chưa merge.
 
@@ -818,8 +819,8 @@ Nguyên không sửa luật game/rating/finals và không tự mở public endpo
 | Owner | Tasks | Deliverable chính |
 | --- | --- | --- |
 | Long Trần | `P3-L01`–`P3-L06` | Protocol v2, timing, rating eligibility, replay/public snapshot UI, finals domain |
-| Đỗ Khôi Nguyên | `P3-N01`–`P3-N08` | Sandbox/metrics, single-host admission/test run, OCI lifecycle, ops/load, LAN/rehearsal |
-| Phạm Tất Đạt | `P3-D01`–`P3-D10` | Round/admin/submission/auth/operations APIs and UI, finals control/result sync/presentation |
+| Đỗ Khôi Nguyên | `P3-N01`–`P3-N09` | Sandbox/metrics, single-host admission/test run, OCI lifecycle, ops/load, LAN/rehearsal, test-run portal API |
+| Phạm Tất Đạt | `P3-D01`–`P3-D11` | Round/admin/submission/auth/operations APIs and UI, finals control/result sync/presentation, team test-run portal |
 | Đinh Đức Thuận | `P3-T01`; `P3-A`, `P3-B`, `P3-C`, `P3-D`, `P3-E`, `P3-2B`, `P3-F1`, `P3-F` | Decision gate, review và acceptance |
 
 Chi tiết acceptance criteria, verification, dependency và file dự kiến nằm duy nhất tại
