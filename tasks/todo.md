@@ -1162,6 +1162,16 @@ Task `P2-T42`–`P2-T53` là đợt giao diện riêng, không tự đóng `P2-C
 - [ ] `btc`, `team01`–`team04` và anonymous browser flow pass; bốn team dùng default password, BTC credential không bị đổi hoặc lộ.
 - [ ] Thuận duyệt evidence server/browser trước khi coi cron demo là hoạt động; mọi checkpoint Phase 2/3 khác giữ trạng thái riêng.
 
+### [ ] P2-T65 — Tải bộ tài nguyên bot từ trang công khai
+
+**Owner:** Đinh Đức Thuận
+**Mô tả:** Công bố một gói ZIP có version từ trang public để đội tải protocol, schema, fixture và bot mẫu trước khi nộp bài.
+**Acceptance criteria:** (1) Link tải luôn hiển thị cả khi snapshot chưa tải được; không yêu cầu session hoặc API snapshot; (2) ZIP chứa Bot Protocol v1/v2, schema và fixture hợp lệ, hướng dẫn OCI, bot mẫu Python/Node/Go và starter-kit FAQ; không chứa credential hoặc giới hạn round dễ cũ; (3) link có tên tải rõ, mô tả truy cập được và layout responsive.
+**Verification:** Public-page tests kiểm tra card khi loading/error/snapshot; web suite, typecheck/build và `unzip -t` pass; human browser smoke xác nhận link tải đúng file và nội dung ZIP trên desktop/mobile.
+**Dependencies:** `P2-T46`, `P3-N04`.
+**Files:** `src/platform/web/public/downloads/`, `src/platform/web/src/features/public/PublicTournamentPage.tsx`, `src/platform/web/src/features/public/public-site.test.tsx`, `src/platform/web/src/features/public/public.css`, `demo/`.
+**Implementation/test:** 2026-10-23 — Gói ZIP version `v1`, public download card, bot samples và manual E2E overview đã có trên `main`; public-site 6/6, full web 432/432, typecheck/build và ZIP integrity pass. Task còn mở chờ human browser smoke.
+
 ## Phase 3 — Gate P3-0: decision và contract approval
 
 > `P3-T01` đã duyệt requirement/ADR/contract ngày 14/10/2026. Task implementation chỉ hoàn tất sau acceptance/verification riêng; Wave 1 có thể bắt đầu trên branch task từ `main`.

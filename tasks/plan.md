@@ -327,6 +327,10 @@ Restore dừng các process ghi dữ liệu, kiểm checksum trước khi thay �
 
 Mỗi task dùng branch riêng từ `main`. Bundle baseline và credential là artifact root-only trên server, không commit. `P2-T64` lưu evidence không nhạy cảm gồm checksum ID, row/object counts, health, login và browser flow trước/sau hai chu kỳ; không lưu dump, token, password hoặc nội dung replay private trong repo.
 
+### Gói tài nguyên bot tải công khai
+
+`P2-T65` bổ sung static ZIP có version vào trang public, lấy nội dung từ protocol/schema/fixture và bot mẫu đã khóa; giới hạn theo round tiếp tục đọc từ bộ luật hiện hành. Gói được kiểm tra độc lập, không phụ thuộc public snapshot hoặc session. Manual browser smoke và trạng thái task nằm tại [`tasks/todo.md`](todo.md).
+
 ## 10. Rủi ro
 
 | Rủi ro | Mức độ | Giảm thiểu |
