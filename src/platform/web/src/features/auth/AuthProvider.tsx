@@ -20,6 +20,7 @@ interface AuthContextValue {
   readonly loginMfa: (payload: { code?: string; recoveryCode?: string }) => Promise<AuthPrincipal>;
   readonly logout: () => Promise<void>;
   readonly passwordChanged: () => void;
+  readonly completeLogin: (principal: AuthPrincipal) => void;
   readonly restoreSession: () => Promise<void>;
 }
 
@@ -42,19 +43,24 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
     void restoreSession();
   }, [restoreSession]);
 
+  const completeLogin = useCallback((principal: AuthPrincipal) => {
+    window.history.replaceState({}, '', principal.role === 'BTC_ADMIN' ? '/admin' : '/team');
+    setState({ status: 'authenticated', principal });
+  }, []);
+
   const login = useCallback(async (username: string, password: string): Promise<LoginResult> => {
     const result = await submitLogin(username, password);
     if (!result.mfaRequired) {
-      setState({ status: 'authenticated', principal: result.principal });
+      completeLogin(result.principal);
     }
     return result;
-  }, []);
+  }, [completeLogin]);
 
   const loginMfa = useCallback(async (payload: { code?: string; recoveryCode?: string }): Promise<AuthPrincipal> => {
     const principal = await submitLoginMfa(payload);
-    setState({ status: 'authenticated', principal });
+    completeLogin(principal);
     return principal;
-  }, []);
+  }, [completeLogin]);
 
   const logout = useCallback(async () => {
     await submitLogout();
@@ -64,8 +70,8 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
   const passwordChanged = useCallback(() => setState({ status: 'anonymous' }), []);
 
   const value = useMemo(
-    () => ({ state, login, loginMfa, logout, passwordChanged, restoreSession }),
-    [state, login, loginMfa, logout, passwordChanged, restoreSession],
+    () => ({ state, login, loginMfa, logout, passwordChanged, completeLogin, restoreSession }),
+    [state, login, loginMfa, logout, passwordChanged, completeLogin, restoreSession],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

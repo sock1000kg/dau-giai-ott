@@ -1091,7 +1091,7 @@ Task `P2-T42`–`P2-T53` là đợt giao diện riêng, không tự đóng `P2-C
 **Files:** `scripts/demo.sh`, `infra/local/compose.yaml`, `scripts/tests/demo.test.sh`, `docs/runbooks/local-demo.md`, `docs/runbooks/public-demo-hosting.md`.
 **Ước lượng:** M (5 file).
 
-### [ ] P2-T60 — Điều hướng theo role sau đăng nhập
+### [x] P2-T60 — Điều hướng theo role sau đăng nhập
 
 **Owner:** Đinh Đức Thuận
 **Mô tả:** Sau login thường/MFA, thay route bằng `/admin` hoặc `/team` theo principal server trả về; session restore hợp lệ vẫn giữ deep link.
@@ -1100,6 +1100,7 @@ Task `P2-T42`–`P2-T53` là đợt giao diện riêng, không tự đóng `P2-C
 **Dependencies:** `P2-T55`, `P2-T45` (frontend auth shell/login đã hoàn tất); độc lập `P2-T56`–`P2-T59` sau contract gate.
 **Files:** `src/platform/web/src/features/auth/AuthProvider.tsx`, `src/platform/web/src/features/auth/LoginPage.tsx`, `src/platform/web/src/app/routes.tsx`, `src/platform/web/src/app/app-routes.test.tsx`, `src/platform/web/README.md`.
 **Ước lượng:** M (5 file).
+**Hoàn tất:** 2026-10-23 — Login thường và MFA dùng role từ server để đổi route sang `/admin` hoặc `/team`; session restore giữ nguyên deep link hợp lệ và cross-role vẫn bị chặn. Route/auth tests 37/37, web typecheck/build, `git diff --check` pass.
 
 ## Checkpoint P2-E — Auth, demo reset và browser flow
 

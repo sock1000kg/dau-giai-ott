@@ -54,7 +54,7 @@ describe('authentication routes', () => {
     expect(screen.getByRole('alert').textContent).not.toContain('team-user');
   });
 
-  it('accepts Enter submission and routes a successful login by server role', async () => {
+  it('accepts Enter submission, routes a team login to /team, and drops the previous admin route', async () => {
     const fetchMock = mockFetch(
       response(401, { error: { code: 'UNAUTHENTICATED' } }),
       response(200, { data: { role: 'TEAM_ACCOUNT', teamId: 'private-team-id' } }),
@@ -65,6 +65,7 @@ describe('authentication routes', () => {
     fireEvent.submit(screen.getByRole('form', { name: 'Đăng nhập' }));
 
     expect(await screen.findByRole('heading', { level: 1, name: /không gian đội thi/i })).toBeTruthy();
+    expect(window.location.pathname).toBe('/team');
     expect(screen.queryByText('private-team-id')).toBeNull();
     expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({ credentials: 'include', method: 'POST' });
   });
@@ -100,6 +101,14 @@ describe('authentication routes', () => {
 
     expect(await screen.findByRole('heading', { name: /không có quyền truy cập/i })).toBeTruthy();
     expect(screen.queryByText('team-1')).toBeNull();
+  });
+
+  it('preserves a valid team deep link during session restoration', async () => {
+    mockFetch(response(200, { data: { role: 'TEAM_ACCOUNT', teamId: 'team-1' } }));
+    window.history.replaceState({}, '', '/team/password');
+    render(<App />);
+    expect(await screen.findByRole('heading', { name: 'Đổi mật khẩu' })).toBeTruthy();
+    expect(window.location.pathname).toBe('/team/password');
   });
 
   it('allows a team session to open its session-scoped submission portal', async () => {
@@ -145,6 +154,20 @@ describe('authentication routes', () => {
     expect(await screen.findByRole('heading', { level: 1, name: /trung tâm điều hành giải/i })).toBeTruthy();
   });
 
+  it('routes a regular BTC login to /admin even when login starts on a team path', async () => {
+    mockFetch(
+      response(401, { error: { code: 'UNAUTHENTICATED' } }),
+      response(200, { data: { role: 'BTC_ADMIN' } }),
+    );
+    window.history.replaceState({}, '', '/team/results');
+    render(<App />);
+    fireEvent.change(await screen.findByLabelText(/tên đăng nhập/i), { target: { value: 'btc-admin' } });
+    fireEvent.change(screen.getByLabelText(/mật khẩu/i), { target: { value: 'correct-password' } });
+    fireEvent.submit(screen.getByRole('form', { name: 'Đăng nhập' }));
+    expect(await screen.findByRole('heading', { name: /trung tâm điều hành giải/i })).toBeTruthy();
+    expect(window.location.pathname).toBe('/admin');
+  });
+
   it('logs out through the API and returns to login', async () => {
     const fetchMock = mockFetch(
       response(200, { data: { role: 'BTC_ADMIN' } }),
@@ -156,6 +179,23 @@ describe('authentication routes', () => {
     expect(await screen.findByRole('heading', { name: /đăng nhập/i })).toBeTruthy();
     expect(fetchMock.mock.calls[1]?.[0]).toBe('/api/v1/auth/logout');
     expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({ credentials: 'include', method: 'POST' });
+  });
+
+  it('routes MFA completion by the server returned role', async () => {
+    mockFetch(
+      response(401, { error: { code: 'UNAUTHENTICATED' } }),
+      response(200, { data: { mfaRequired: true } }),
+      response(200, { data: { role: 'BTC_ADMIN' } }),
+    );
+    window.history.replaceState({}, '', '/team/results');
+    render(<App />);
+    fireEvent.change(await screen.findByLabelText(/tên đăng nhập/i), { target: { value: 'btc-admin' } });
+    fireEvent.change(screen.getByLabelText(/mật khẩu/i), { target: { value: 'correct-password' } });
+    fireEvent.submit(screen.getByRole('form', { name: 'Đăng nhập' }));
+    fireEvent.change(await screen.findByLabelText(/mã xác thực 2 bước/i), { target: { value: '123456' } });
+    fireEvent.submit(screen.getByRole('form', { name: 'Xác thực 2 bước' }));
+    expect(await screen.findByRole('heading', { name: /trung tâm điều hành giải/i })).toBeTruthy();
+    expect(window.location.pathname).toBe('/admin');
   });
 
   it('changes a team password, clears form values and requires a fresh login', async () => {
