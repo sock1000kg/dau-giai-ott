@@ -29,7 +29,7 @@ export function PublicTournamentPage() {
         const next = await loadPublicSnapshot(previous, controller.signal);
         if (!stopped) { previous = next; setSnapshot(next); setFailed(false); }
       } catch { if (!stopped) setFailed(true); }
-      if (!stopped) { setNow(Date.now()); timer = setTimeout(() => void refresh(), 30_000); }
+      if (!stopped) { setNow(Date.now()); timer = setTimeout(() => void refresh(), 10_000); }
     }
     void refresh();
     return () => { stopped = true; controller.abort(); clearTimeout(timer); };

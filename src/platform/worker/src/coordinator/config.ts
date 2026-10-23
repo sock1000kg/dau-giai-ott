@@ -304,8 +304,8 @@ export function loadCoordinatorConfig(
     }
   }
 
-  // OTT_COORD_SNAPSHOT_INTERVAL_MS (default: 30000, 0 disables or >= 100)
-  let snapshotIntervalMs = 30000;
+  // OTT_COORD_SNAPSHOT_INTERVAL_MS (default: 5000, 0 disables or >= 100)
+  let snapshotIntervalMs = 5000;
   if (env.OTT_COORD_SNAPSHOT_INTERVAL_MS !== undefined && env.OTT_COORD_SNAPSHOT_INTERVAL_MS.trim() !== '') {
     const parsed = Number(env.OTT_COORD_SNAPSHOT_INTERVAL_MS.trim());
     if (!Number.isInteger(parsed) || (parsed !== 0 && parsed < 100)) {

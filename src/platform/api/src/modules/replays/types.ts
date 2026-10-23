@@ -58,6 +58,8 @@ export interface SpectatorReplayV2 {
     game: Readonly<{ engineVersion: string; maxTurns: number; map: import('@ott/game-core').MapDefinition }>;
     limits: Readonly<{ timeControl: import('@ott/bot-protocol').TimeControlV2 }>;
   }>;
+  /** Display names only; present on v2 artifacts when the match's teams could be resolved. */
+  readonly teams?: Readonly<Record<'X' | 'O', Readonly<{ name: string }>>>;
   readonly entries: readonly import('@ott/match-runner').EventLogEntry[];
   readonly timing: readonly import('@ott/match-runner').TimingDecision[];
   readonly result: import('@ott/game-core').GameResult;

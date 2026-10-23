@@ -71,7 +71,7 @@ describe('public tournament page restyle', () => {
     expect(screen.queryByRole('alert')).toBeNull();
     const fetcher = vi.mocked(fetch);
     fetcher.mockRejectedValue(new Error('offline'));
-    await act(async () => { await vi.advanceTimersByTimeAsync(30_000); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(10_000); });
     expect(screen.getByRole('alert').textContent).toMatch(/đã cũ/);
     cleanup();
     const old = fixture(); old.updatedAt = '2020-01-01T00:00:00.000Z';

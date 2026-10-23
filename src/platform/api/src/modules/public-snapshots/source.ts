@@ -12,6 +12,23 @@ export interface PublicEditorial {
   minimumSeries: number;
 }
 
+export type NoValidRulesReason = 'NO_ROUND' | 'RULES_INVALID' | 'RULES_HASH_MISMATCH';
+
+/** Same message as before so existing callers keep matching; `reason`/`paths` say which check failed (never the rules). */
+export class NoValidAnnouncedRulesError extends Error {
+  public readonly reason: NoValidRulesReason;
+  public readonly paths: readonly string[];
+  public readonly roundNumber: number | null;
+
+  public constructor(reason: NoValidRulesReason, paths: readonly string[] = [], roundNumber: number | null = null) {
+    super('No valid announced qualification rules');
+    this.name = 'NoValidAnnouncedRulesError';
+    this.reason = reason;
+    this.paths = paths;
+    this.roundNumber = roundNumber;
+  }
+}
+
 /** Trusted background producer: never runs as part of a spectator request. */
 export async function collectQualificationSnapshot(database: Database, editorial: PublicEditorial,
   queueMatchIds: readonly string[], now = new Date()): Promise<PublicSnapshot> {
@@ -25,8 +42,14 @@ export async function collectQualificationSnapshot(database: Database, editorial
       WHERE q.tournament_stage = 'QUALIFICATION' AND q.status <> 'DRAFT_RULES'
       ORDER BY q.round_number DESC LIMIT 1`);
     const round = selected.rows[0];
-    if (!round || validateRoundRuleSetRules(round.rules).errors.length
-      || computeRulesSha256(round.rules) !== round.rules_sha256) throw new Error('No valid announced qualification rules');
+    if (!round) throw new NoValidAnnouncedRulesError('NO_ROUND');
+    const { errors } = validateRoundRuleSetRules(round.rules);
+    if (errors.length) {
+      throw new NoValidAnnouncedRulesError('RULES_INVALID', errors.slice(0, 10).map((e) => `${e.path}:${e.code}`), round.round_number);
+    }
+    if (computeRulesSha256(round.rules) !== round.rules_sha256) {
+      throw new NoValidAnnouncedRulesError('RULES_HASH_MISMATCH', [], round.round_number);
+    }
     const matches = await tx.query<{ id: string; teams: string; status: string; winner_side: string | null; map_definition: unknown }>(`
       SELECT m.id, x.name || ' / ' || o.name AS teams, m.status, result.winner_side, m.map_definition
       FROM matches m JOIN series s ON s.id = m.series_id

@@ -168,6 +168,10 @@ SETTLING` only when every linked series is terminal, then applies
 Routes are BTC-admin only (`requireRole(requireAuthenticated(...),
 'BTC_ADMIN')`) and registered in `createAuthApp` with no storage
 dependency. Stable error codes: `ROUND_TRANSITION_INVALID` (409),
+`close` returns three distinct 409 codes instead: `ROUND_NOT_OPEN`
+(`details.status`), `ROUND_RULE_SET_MISSING`, and `ROUND_GRACE_NOT_ENDED`
+(`details.graceEndsAt` ISO, `details.retryAfterSeconds`; close is only allowed
+once `schedule.graceEndsAt` has passed),
 `RULE_SET_NOT_FOUND` (404), `RULE_SET_STAGE_MISMATCH` (409),
 `ROUND_ALREADY_EXISTS_IN_STAGE` (409), `IDEMPOTENCY_KEY_INVALID` (400),
 `IDEMPOTENCY_KEY_REUSED` (409), `INVALID_REASON`/`RULE_SET_INVALID`/

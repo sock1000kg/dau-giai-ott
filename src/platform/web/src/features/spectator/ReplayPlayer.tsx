@@ -16,9 +16,16 @@ function reasonLabel(reason: string | null): string {
   if (reason === null) return 'Không có';
   return reason.replaceAll('_', ' ').toLocaleLowerCase('vi-VN');
 }
-function pieceLabel(piece: Piece): string {
+function pieceLabel(piece: Piece, names: ReplayTeamNames | null): string {
   const type = piece.type === 'ROCK' ? 'Búa' : piece.type === 'PAPER' ? 'Bao' : 'Kéo';
-  return `${piece.owner === 'X' ? 'Đội Đỏ (X)' : 'Đội Xanh (O)'} — ${type}`;
+  const owner = names !== null ? `${names[piece.owner]} (${piece.owner})` : piece.owner === 'X' ? 'Đội Đỏ (X)' : 'Đội Xanh (O)';
+  return `${owner} — ${type}`;
+}
+
+type ReplayTeamNames = Readonly<Record<'X' | 'O', string>>;
+
+function replayTeamNames(replay: SpectatorReplay): ReplayTeamNames | null {
+  return replay.schemaVersion === 2 && replay.teams !== undefined ? { X: replay.teams.X.name, O: replay.teams.O.name } : null;
 }
 
 function pieceSymbol(piece: Piece): string {
@@ -26,6 +33,8 @@ function pieceSymbol(piece: Piece): string {
 }
 
 export function ReplayPlayer({ replay }: { readonly replay: SpectatorReplay }) {
+  const names = useMemo(() => replayTeamNames(replay), [replay]);
+  const sideLabel = (side: 'X' | 'O'): string => names !== null ? `${names[side]} (${side})` : `Đội ${side}`;
   const timeline = useMemo(() => createReplayTimeline(replay), [replay]);
   const moves = useMemo(() => createReplayMoves(replay), [replay]);
   const [playback, dispatch] = useReducer(playbackReducer, undefined, initialPlaybackState);
@@ -99,13 +108,13 @@ export function ReplayPlayer({ replay }: { readonly replay: SpectatorReplay }) {
         {(['X', 'O'] as const).map((side) => (
           <Card as="article" className={winner === side ? 'rp-team rp-team--winner' : 'rp-team'} key={side}>
             <p className="rp-eyebrow">PHÍA {side}</p>
-            <div className="rp-team-head"><span className={`rp-chip rp-chip--${side.toLowerCase()}`} aria-hidden="true">{side}</span><h2>Đội {side}</h2></div>
+            <div className="rp-team-head"><span className={`rp-chip rp-chip--${side.toLowerCase()}`} aria-hidden="true">{side}</span><h2>{sideLabel(side)}</h2></div>
             <p>{winner === side ? 'Người thắng' : winner === null ? 'Hòa' : 'Đối thủ'}</p>
           </Card>
         ))}
         <article className="ui-card rp-outcome" aria-label="Kết quả trận đấu">
           <p className="rp-eyebrow">KẾT QUẢ</p>
-          <strong>{winner === null ? 'Hòa' : `Đội ${winner} thắng`}</strong>
+          <strong>{winner === null ? 'Hòa' : `${sideLabel(winner)} thắng`}</strong>
           <span>{reasonLabel(replay.result.reason)} · {replay.result.turnCount} lượt</span>
         </article>
       </div>
@@ -125,7 +134,7 @@ export function ReplayPlayer({ replay }: { readonly replay: SpectatorReplay }) {
                       const piece = piecesByPosition.get(key);
                       const goalSide = key === positionKey(goals.X) ? 'X' : key === positionKey(goals.O) ? 'O' : null;
                       const isObstacle = obstacles.has(key);
-                      const cellLabel = `${column.toLowerCase()}${row + 1}${piece ? `, ${pieceLabel(piece)}` : ''}${goalSide ? `, đích Đội ${goalSide}` : ''}${isObstacle ? ', chướng ngại vật' : ''}`;
+                      const cellLabel = `${column.toLowerCase()}${row + 1}${piece ? `, ${pieceLabel(piece, names)}` : ''}${goalSide ? `, đích ${sideLabel(goalSide)}` : ''}${isObstacle ? ', chướng ngại vật' : ''}`;
                       const classes = [
                         'rp-board-cell',
                         (row + col) % 2 === 0 ? 'rp-cell--light' : 'rp-cell--dark',
@@ -140,7 +149,7 @@ export function ReplayPlayer({ replay }: { readonly replay: SpectatorReplay }) {
                         <span className="rp-cell-inner">
                           {(col === 0 || col === 8) && <span className={`rp-row-label${col === 8 ? ' rp-row-label--right' : ''}`} aria-hidden="true">{row + 1}</span>}
                           {row === 0 && <span className="rp-column-label" aria-hidden="true">{column.toLowerCase()}</span>}
-                          {piece && <span className={`rp-piece rp-piece--${piece.owner.toLowerCase()}`} role="img" aria-label={pieceLabel(piece)}>{pieceSymbol(piece)}</span>}
+                          {piece && <span className={`rp-piece rp-piece--${piece.owner.toLowerCase()}`} role="img" aria-label={pieceLabel(piece, names)}>{pieceSymbol(piece)}</span>}
                           {!piece && goalSide && <span className="rp-goal-flag" aria-hidden="true">⚑<small>{goalSide === 'O' ? 'ĐỎ' : 'XANH'}</small></span>}
                           {!piece && isObstacle && <span className="rp-obstacle-marker" aria-hidden="true">▦</span>}
                         </span>
@@ -153,9 +162,9 @@ export function ReplayPlayer({ replay }: { readonly replay: SpectatorReplay }) {
           </div>
           <p className="rp-presentation-caption" aria-live="polite">
             {currentEvent?.event.type === 'ACTION_APPLIED' && currentEvent.event.action
-              ? `Đội ${currentEvent.event.side} di chuyển đến ${columns[currentEvent.event.action.to.col]}${currentEvent.event.action.to.row + 1}`
+              ? `${sideLabel(currentEvent.event.side)} di chuyển đến ${columns[currentEvent.event.action.to.col]}${currentEvent.event.action.to.row + 1}`
               : currentEvent?.event.type === 'TURN_SKIPPED'
-                ? `Đội ${currentEvent.event.side} bỏ lượt · ${reasonLabel(currentEvent.event.reason)}`
+                ? `${sideLabel(currentEvent.event.side)} bỏ lượt · ${reasonLabel(currentEvent.event.reason)}`
                 : currentEvent?.event.type === 'MATCH_FINISHED'
                   ? 'Trận đấu kết thúc'
                   : 'Sẵn sàng trình chiếu'}
@@ -167,7 +176,7 @@ export function ReplayPlayer({ replay }: { readonly replay: SpectatorReplay }) {
             <p className="rp-eyebrow">{eventRange ? `SỰ KIỆN ${eventRange}` : 'TRẠNG THÁI BAN ĐẦU'}</p>
             {currentEvent ? <>
               <h2>{currentEvent.event.type === 'ACTION_APPLIED' ? 'Di chuyển quân' : currentEvent.event.type === 'TURN_SKIPPED' ? 'Bỏ lượt' : 'Kết thúc trận'}</h2>
-              <p>{currentEvent.event.side === 'X' ? 'Đội X' : 'Đội O'} · lượt {currentEvent.event.turnId}</p>
+              <p>{sideLabel(currentEvent.event.side)} · lượt {currentEvent.event.turnId}</p>
               {currentEvent.event.action && <p>{currentEvent.event.action.pieceId}: {columns[currentEvent.event.action.to.col]}{currentEvent.event.action.to.row + 1}</p>}
               {currentEvent.event.reason && <p>Lý do: {reasonLabel(currentEvent.event.reason)}</p>}
               {currentTiming && <p>Thời gian: {currentTiming.elapsedMs}ms · Còn: {currentTiming.remainingAfterMs}ms</p>}
@@ -176,10 +185,10 @@ export function ReplayPlayer({ replay }: { readonly replay: SpectatorReplay }) {
 
           <section className="ui-card" aria-label="Tóm tắt fault">
             <p className="rp-eyebrow">TÓM TẮT FAULT</p>
-            {(['X', 'O'] as const).map((side) => <p className="rp-fault-row" key={side}><strong>Đội {side}</strong><span>{replay.faults[side].recoverableTotal} lần · liên tiếp {replay.faults[side].recoverableConsecutive} · gần nhất {replay.faults[side].lastErrorCode ?? 'không có'}</span></p>)}
+            {(['X', 'O'] as const).map((side) => <p className="rp-fault-row" key={side}><strong>{sideLabel(side)}</strong><span>{replay.faults[side].recoverableTotal} lần · liên tiếp {replay.faults[side].recoverableConsecutive} · gần nhất {replay.faults[side].lastErrorCode ?? 'không có'}</span></p>)}
           </section>
 
-          <MoveList moves={moves} currentEntry={currentEvent?.entryIndex}
+          <MoveList sideLabel={sideLabel} moves={moves} currentEntry={currentEvent?.entryIndex}
             onSeek={(eventIndex) => dispatch({ type: 'SEEK', eventIndex, eventCount })} />
         </aside>
       </div>
@@ -211,7 +220,7 @@ export function ReplayPlayer({ replay }: { readonly replay: SpectatorReplay }) {
         <h2>Dòng sự kiện</h2>
         <ol className="rp-scroll">{timeline.events.map(({ event }, index) => <li key={`${event.sequence}-${index}`}>
           <button type="button" className="rp-move" aria-current={playback.eventIndex === index + 1 ? 'step' : undefined} onClick={() => dispatch({ type: 'SEEK', eventIndex: index + 1, eventCount })}>
-            <span className="rp-move-no rp-mono">{event.sequence}</span> Đội {event.side} · {event.type === 'ACTION_APPLIED' ? 'di chuyển' : event.type === 'TURN_SKIPPED' ? 'bỏ lượt' : 'kết thúc'}{event.reason ? ` (${reasonLabel(event.reason)})` : ''}
+            <span className="rp-move-no rp-mono">{event.sequence}</span> {sideLabel(event.side)} · {event.type === 'ACTION_APPLIED' ? 'di chuyển' : event.type === 'TURN_SKIPPED' ? 'bỏ lượt' : 'kết thúc'}{event.reason ? ` (${reasonLabel(event.reason)})` : ''}
           </button>
         </li>)}</ol>
         {eventCount === 0 && <p>Replay không có sự kiện.</p>}

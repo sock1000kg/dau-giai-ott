@@ -96,6 +96,15 @@ function publicResponse(body: string): Response {
   });
 }
 
+function v2Response(body: string): Response {
+  return new Response(body, {
+    headers: {
+      'content-type': 'application/vnd.ott.spectator-replay+json;version=2',
+      'x-replay-sha256': `sha256:${createHash('sha256').update(body).digest('hex')}`,
+    },
+  });
+}
+
 async function verifiedReplay(): Promise<SpectatorReplayV1> {
   return verifyReplayResponse(publicResponse(replayBody())) as Promise<SpectatorReplayV1>;
 }
@@ -290,5 +299,42 @@ describe('spectator replay player', () => {
     render(<ReplayPlayer replay={replayV1} />);
     fireEvent.click(screen.getByRole('button', { name: /sự kiện tiếp theo/i }));
     expect(screen.queryByText(/Thời gian:/i)).toBeNull();
+  });
+
+  it('shows team names with their side when a v2 replay carries them', () => {
+    const replay: SpectatorReplayV2 = { ...replayV2Fixture(), teams: { X: { name: 'Sấm Sét' }, O: { name: '<img src=x onerror=alert(1)>' } } };
+    const { container } = render(<ReplayPlayer replay={replay} />);
+    expect(screen.getByRole('heading', { name: 'Sấm Sét (X)' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: '<img src=x onerror=alert(1)> (O)' })).toBeTruthy();
+    expect(container.querySelector('img')).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Đội X' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /sự kiện tiếp theo/i }));
+    expect(screen.getByRole('region', { name: 'Sự kiện đang phát' }).textContent).toContain('Sấm Sét (X) · lượt 1');
+    const moves = screen.getByRole('region', { name: /danh sách nước đi/i });
+    expect(moves.textContent).toContain('Sấm Sét (X) · lượt 1');
+  });
+
+  it('keeps the Đội X / Đội O labels when the replay has no team names', () => {
+    render(<ReplayPlayer replay={replayV2Fixture()} />);
+    expect(screen.getByRole('heading', { name: 'Đội X' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Đội O' })).toBeTruthy();
+  });
+
+  it('parses optional teams on v2 and rejects malformed teams', async () => {
+    const withTeams = { ...replayV2Fixture(), teams: { X: { name: 'A' }, O: { name: 'B' } } };
+    const parsed = await verifyReplayResponse(v2Response(JSON.stringify(withTeams))) as SpectatorReplayV2;
+    expect(parsed.teams).toEqual({ X: { name: 'A' }, O: { name: 'B' } });
+    const bad: unknown[] = [
+      { X: { name: 'A' } },
+      { X: { name: '' }, O: { name: 'B' } },
+      { X: { name: 'A', id: 'team-1' }, O: { name: 'B' } },
+      { X: 'A', O: 'B' },
+      { X: { name: 'A' }, O: { name: 'B' }, Z: { name: 'C' } },
+      { X: { name: 'A'.repeat(400) }, O: { name: 'B' } },
+      'A vs B',
+    ];
+    for (const teams of bad) {
+      await expect(verifyReplayResponse(v2Response(JSON.stringify({ ...replayV2Fixture(), teams })))).rejects.toMatchObject({ code: 'INVALID_REPLAY' });
+    }
   });
 });

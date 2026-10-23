@@ -1,6 +1,7 @@
 import * as fs from 'node:fs/promises';
 import {
   dispatchScheduledMatches,
+  NoValidAnnouncedRulesError,
   publishQualificationSnapshot,
   runRetentionPrune,
   settleSeries,
@@ -213,7 +214,13 @@ export async function runSnapshotIteration(deps: SnapshotLoopDeps): Promise<void
     const msg = err instanceof Error ? err.message : '';
     if (msg === 'No valid announced qualification rules') {
       // Treat as "nothing to publish yet" (debug count only, not an error)
-      deps.logger?.info('qualification snapshot skipped: no valid announced rules');
+      if (err instanceof NoValidAnnouncedRulesError) {
+        deps.logger?.info('qualification snapshot skipped: no valid announced rules', {
+          reason: err.reason, roundNumber: err.roundNumber, paths: err.paths,
+        });
+      } else {
+        deps.logger?.info('qualification snapshot skipped: no valid announced rules');
+      }
       return;
     }
     deps.logger?.error('qualification snapshot publish failed');

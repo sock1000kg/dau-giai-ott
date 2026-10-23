@@ -2,6 +2,7 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
+import { NoValidAnnouncedRulesError } from '@ott/platform-api';
 import {
   pruneSnapshotDirectory,
   runSnapshotIteration,
@@ -184,6 +185,24 @@ describe('Coordinator Snapshot & Pruning (P2-T32)', () => {
     // Should not throw!
     await expect(runSnapshotIteration(deps)).resolves.toBeUndefined();
     expect(logger.info).toHaveBeenCalledWith('qualification snapshot skipped: no valid announced rules');
+    expect(logger.error).not.toHaveBeenCalled();
+  });
+
+  it('logs which check failed when the newest round has no valid announced rules', async () => {
+    const publishFn = vi.fn().mockRejectedValue(new NoValidAnnouncedRulesError('RULES_INVALID', ['schedule:ORDER_VIOLATION'], 4));
+    const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+    const deps: SnapshotLoopDeps = {
+      database: { query: vi.fn().mockResolvedValue({ rows: [] }) } as any,
+      snapshotDir: '/tmp/nonexistent-snapshot-dir',
+      snapshotKeep: 5,
+      editorialFile: null,
+      fallbackEditorial: { announcements: [], faq: [], status: { message: 'Status', incidentEta: null }, changelog: '', minimumSeries: 5 },
+      publishFn,
+      logger,
+    };
+    await expect(runSnapshotIteration(deps)).resolves.toBeUndefined();
+    expect(logger.info).toHaveBeenCalledWith('qualification snapshot skipped: no valid announced rules',
+      { reason: 'RULES_INVALID', roundNumber: 4, paths: ['schedule:ORDER_VIOLATION'] });
     expect(logger.error).not.toHaveBeenCalled();
   });
 });

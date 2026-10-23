@@ -28,6 +28,7 @@ export function mapServerPathToField(path: string): string | null {
   if (perTurn) return perTurn[1] as string;
   const resources = /^resources\.(memoryMiB|milliCpu|pids|tmpfsMiB|archiveMiB|unpackedMiB|maxLayers)$/.exec(path);
   if (resources) return resources[1] as string;
+  if (path === 'schedule') return 'submissionOpensAt';
   const schedule = /^schedule\.(submissionOpensAt|submissionDeadlineAt|graceEndsAt|runStartsAt|runMaxHours|appealEndsAt)$/.exec(path);
   if (schedule) return schedule[1] as string;
   const mapField = /^mapSet\[(\d+)\]\.(mapId|checksum)$/.exec(path);
@@ -41,6 +42,8 @@ export function mapServerPathToField(path: string): string | null {
  * 3000 ms per turn) come from `DEFAULT_LIMITS` in `api/src/modules/rounds/catalog.ts`.
  */
 const SERVER_CODE_MESSAGES: Readonly<Record<string, string>> = {
+  ORDER_VIOLATION: 'Thứ tự thời gian phải là: mở nộp < hạn nộp < hết ân hạn ≤ bắt đầu chạy < hết khiếu nại.',
+  INVALID_ISO8601: 'Thời gian không hợp lệ (cần định dạng ISO 8601).',
   UNKNOWN_ENGINE_VERSION: 'Engine không có trong danh mục.',
   UNKNOWN_MAP: 'Bản đồ hoặc checksum không có trong danh mục.',
   UNKNOWN_FAULT_POLICY: 'Fault policy không có trong danh mục.',

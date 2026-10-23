@@ -162,6 +162,7 @@ describe('Clean-checkout local demo qualification E2E (P2-T37 API-level)', () =>
   let fixture01Sha256 = '';
   let fixture02Sha256 = '';
   let firstMatchId = '';
+  let firstMatchTeamNames: { x: string; o: string } | null = null;
 
   // Inter-step dependency tracking
   let t1Active = false;
@@ -706,6 +707,7 @@ describe('Clean-checkout local demo qualification E2E (P2-T37 API-level)', () =>
       const t1Items = t1MatchesJson.data?.items ?? [];
       expect(t1Items.length, 'Team 01 matches count must be > 0').toBeGreaterThan(0);
       firstMatchId = t1Items[0]!.matchId;
+      firstMatchTeamNames = { x: t1Items[0]!.teams.x.name, o: t1Items[0]!.teams.o.name };
       expect(firstMatchId, 'First match ID must be present').toBeTruthy();
 
       // 3. Team 02 sees its own matches
@@ -826,6 +828,7 @@ describe('Clean-checkout local demo qualification E2E (P2-T37 API-level)', () =>
           header?: { formatVersion?: number; protocolVersion?: number; limits?: { timeControl?: unknown } };
           entries?: unknown[];
           timing?: unknown[];
+          teams?: { X?: { name?: string }; O?: { name?: string } };
         };
         expect(body.matchId, `${actor} replay body match ID must match`).toBe(firstMatchId);
         expect(body.schemaVersion, `${actor} replay schemaVersion must be 2`).toBe(2);
@@ -836,6 +839,11 @@ describe('Clean-checkout local demo qualification E2E (P2-T37 API-level)', () =>
         expect(body.entries?.length, `${actor} replay entries array must not be empty`).toBeGreaterThan(0);
         expect(Array.isArray(body.timing), `${actor} replay timing must be an array`).toBe(true);
         expect(body.timing?.length, `${actor} replay timing array must not be empty`).toBeGreaterThan(0);
+        expect(firstMatchTeamNames, 'Team names of the match must be known from step f').not.toBeNull();
+        expect(body.teams?.X?.name, `${actor} replay teams.X.name must equal the match X team name`).toBe(firstMatchTeamNames!.x);
+        expect(body.teams?.O?.name, `${actor} replay teams.O.name must equal the match O team name`).toBe(firstMatchTeamNames!.o);
+        expect([body.teams?.X?.name, body.teams?.O?.name].sort(), `${actor} replay teams must be the two demo teams`).toEqual(['Team 01', 'Team 02']);
+        expect(Object.keys(body.teams?.X ?? {}), `${actor} replay teams.X must carry the name only`).toEqual(['name']);
       };
 
       await verifyAuthorizedReplayAccess(team01Jar, 'Team 01');

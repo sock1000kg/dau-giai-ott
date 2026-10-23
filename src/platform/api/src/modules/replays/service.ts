@@ -224,7 +224,38 @@ function publicTimeControl(value: unknown): TimeControlV2 {
   };
 }
 
-export function publicEventLog(log: AnyEventLog, matchId: string, finalStateHash: string): SpectatorReplay {
+const TEAM_NAME_MAX_CODE_POINTS = 128;
+
+/** Text-only, bounded team name; `null` when nothing displayable is left (the player then keeps its X/O labels). */
+function publicTeamName(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  // eslint-disable-next-line no-control-regex
+  const cleaned = value.replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029]/g, ' ').replace(/\s+/g, ' ').trim();
+  const bounded = Array.from(cleaned).slice(0, TEAM_NAME_MAX_CODE_POINTS).join('').trim();
+  return bounded.length > 0 ? bounded : null;
+}
+
+export interface ReplayTeamNames {
+  readonly X: string;
+  readonly O: string;
+}
+
+/** Display names of the two teams of a match; names only (no ids), already public in results and leaderboard. */
+async function loadReplayTeamNames(database: Database, matchId: string): Promise<ReplayTeamNames | null> {
+  const result = await database.query<{ readonly x_team_name: string; readonly o_team_name: string }>(`
+    SELECT team_x.name AS x_team_name, team_o.name AS o_team_name
+    FROM matches m
+    JOIN submissions sub_x ON sub_x.id = m.x_submission_id
+    JOIN teams team_x ON team_x.id = sub_x.team_id
+    JOIN submissions sub_o ON sub_o.id = m.o_submission_id
+    JOIN teams team_o ON team_o.id = sub_o.team_id
+    WHERE m.id = $1`, [matchId]);
+  const row = result.rows[0];
+  if (row === undefined) return null;
+  return { X: row.x_team_name, O: row.o_team_name };
+}
+
+export function publicEventLog(log: AnyEventLog, matchId: string, finalStateHash: string, teamNames: ReplayTeamNames | null = null): SpectatorReplay {
   if (log.header.matchId !== matchId || log.footer.result.finalStateHash !== finalStateHash
     || log.footer.entryCount !== log.entries.length || !/^[0-9a-f]{64}$/.test(finalStateHash)) {
     failIntegrity(`publicEventLog mismatch: header matchId ${log.header.matchId} vs ${matchId}, footer hash ${log.footer.result.finalStateHash} vs ${finalStateHash}, entries ${log.footer.entryCount} vs ${log.entries.length}`);
@@ -293,6 +324,9 @@ export function publicEventLog(log: AnyEventLog, matchId: string, finalStateHash
     const limits = record(v2Log.header.limits);
     const timeControl = publicTimeControl(limits['timeControl']);
     const timing = v2Log.timing.map(publicTimingDecision);
+    const nameX = teamNames === null ? null : publicTeamName(teamNames.X);
+    const nameO = teamNames === null ? null : publicTeamName(teamNames.O);
+    const teams = nameX !== null && nameO !== null ? { X: { name: nameX }, O: { name: nameO } } : null;
     return {
       schema: 'ott.spectator-replay',
       schemaVersion: 2,
@@ -306,6 +340,7 @@ export function publicEventLog(log: AnyEventLog, matchId: string, finalStateHash
         game: { engineVersion: text(game['engineVersion']), maxTurns: integer(game['maxTurns']), map: gameMap },
         limits: { timeControl },
       },
+      ...(teams === null ? {} : { teams }),
       entries,
       timing,
       result: safeResult,
@@ -403,7 +438,8 @@ export async function getPublicReplay(
   }
   await storedReplay(database, matchId, true);
   const verified = await loadVerifiedReplay(database, storage, matchId);
-  const safeReplay = publicEventLog(verified.log, matchId, verified.finalStateHash);
+  const teamNames = verified.log.header.formatVersion === 2 ? await loadReplayTeamNames(database, matchId) : null;
+  const safeReplay = publicEventLog(verified.log, matchId, verified.finalStateHash, teamNames);
   const body = `${JSON.stringify(safeReplay, null, 2)}\n`;
   return {
     body,
@@ -426,7 +462,8 @@ export async function getPrivateReplay(
 ): Promise<PrivateReplayArtifact> {
   await assertPrivateReplayAccess(database, matchId, principal);
   const verified = await loadVerifiedReplay(database, storage, matchId);
-  const safeReplay = publicEventLog(verified.log, matchId, verified.finalStateHash);
+  const teamNames = verified.log.header.formatVersion === 2 ? await loadReplayTeamNames(database, matchId) : null;
+  const safeReplay = publicEventLog(verified.log, matchId, verified.finalStateHash, teamNames);
   const body = `${JSON.stringify(safeReplay, null, 2)}\n`;
   return {
     body,

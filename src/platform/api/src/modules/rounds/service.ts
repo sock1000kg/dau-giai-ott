@@ -34,6 +34,19 @@ export interface RuleSetDetail extends RuleSetSummary {
   readonly rules: RoundRuleSetRulesV1;
 }
 
+export class RoundCloseError extends Error {
+  public readonly details: Readonly<Record<string, string | number>>;
+
+  public constructor(
+    code: 'ROUND_NOT_OPEN' | 'ROUND_RULE_SET_MISSING' | 'ROUND_GRACE_NOT_ENDED',
+    details: Readonly<Record<string, string | number>> = {},
+  ) {
+    super(code);
+    this.name = 'RoundCloseError';
+    this.details = details;
+  }
+}
+
 export class RuleSetInvalidError extends Error {
   public readonly details: readonly { readonly path: string; readonly code: string }[];
 
@@ -493,6 +506,10 @@ export async function executeTransition(
     const round = await getRoundForUpdate(tx, input.roundId);
     if (!round) throw new Error('ROUND_NOT_FOUND');
 
+    if (input.action.type === 'close' && round.status !== 'SUBMISSION_OPEN') {
+      throw new RoundCloseError('ROUND_NOT_OPEN', { status: round.status });
+    }
+
     const allowedEdges = ALLOWED_TRANSITIONS[round.status] ?? [];
     if (!allowedEdges.includes(input.action.type)) throw new Error('ROUND_TRANSITION_INVALID');
 
@@ -515,15 +532,20 @@ export async function executeTransition(
       }
 
       case 'close': {
-        if (round.status !== 'SUBMISSION_OPEN') throw new Error('ROUND_TRANSITION_INVALID');
-        if (!round.rule_set_id) throw new Error('ROUND_TRANSITION_INVALID');
+        if (round.status !== 'SUBMISSION_OPEN') throw new RoundCloseError('ROUND_NOT_OPEN', { status: round.status });
+        if (!round.rule_set_id) throw new RoundCloseError('ROUND_RULE_SET_MISSING');
         const ruleSetData = await tx.query<{ readonly rules: unknown }>(
           'SELECT rules FROM round_rule_sets WHERE id = $1',
           [round.rule_set_id],
         );
         const graceEndsAt = getGraceEndsFromRuleSet(ruleSetData.rows[0]?.rules);
-        if (!graceEndsAt) throw new Error('ROUND_TRANSITION_INVALID');
-        if (now < new Date(graceEndsAt)) throw new Error('ROUND_TRANSITION_INVALID');
+        if (!graceEndsAt) throw new RoundCloseError('ROUND_RULE_SET_MISSING');
+        if (now < new Date(graceEndsAt)) {
+          throw new RoundCloseError('ROUND_GRACE_NOT_ENDED', {
+            graceEndsAt: new Date(graceEndsAt).toISOString(),
+            retryAfterSeconds: Math.ceil((new Date(graceEndsAt).getTime() - now.getTime()) / 1000),
+          });
+        }
         await tx.query(
           "UPDATE qualification_rounds SET status = 'SUBMISSION_CLOSED', closed_at = $2 WHERE id = $1",
           [input.roundId, now],

@@ -1,10 +1,11 @@
 import { useEffect, useRef, type KeyboardEvent } from 'react';
 import type { ReplayMove } from './replay-state.ts';
 
-export function MoveList({ moves, currentEntry, onSeek }: {
+export function MoveList({ moves, currentEntry, onSeek, sideLabel = (side) => `Đội ${side}` }: {
   readonly moves: readonly ReplayMove[];
   readonly currentEntry: number | undefined;
   readonly onSeek: (eventIndex: number) => void;
+  readonly sideLabel?: (side: 'X' | 'O') => string;
 }) {
   const buttons = useRef<(HTMLButtonElement | null)[]>([]);
   const scroller = useRef<HTMLOListElement | null>(null);
@@ -34,7 +35,7 @@ export function MoveList({ moves, currentEntry, onSeek }: {
         onClick={() => onSeek(move.eventIndex)} onKeyDown={(event) => navigate(event, index)}>
         <span className="rp-move-no rp-mono">Nước {index + 1}:</span>
         <span className={`rp-chip rp-chip--${move.input.side.toLowerCase()}`} aria-hidden="true">{move.input.side}</span>
-        <span className="rp-move-text">Đội {move.input.side} · lượt {move.turnId} · <span className="rp-mono">{move.input.kind === 'apply'
+        <span className="rp-move-text">{sideLabel(move.input.side)} · lượt {move.turnId} · <span className="rp-mono">{move.input.kind === 'apply'
           ? `${move.input.action.pieceId} → ${String.fromCharCode(65 + move.input.action.to.col)}${move.input.action.to.row + 1}`
           : move.input.kind === 'skip' ? 'Bỏ lượt' : 'Xử thua'}</span></span>
       </button>

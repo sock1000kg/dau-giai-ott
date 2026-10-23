@@ -84,7 +84,7 @@ describe('public lists with limits', () => {
     fireEvent.click(within(region('Kết quả')).getByRole('button', { name: 'Xem thêm (30 còn lại)' }));
     expect(items('Kết quả').length).toBe(40);
     stub(fixture(0, 55, 0, new Date(Date.now() + 1000).toISOString()));
-    await act(async () => { await vi.advanceTimersByTimeAsync(30_000); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(10_000); });
     const shown = items('Kết quả');
     expect(shown.length).toBe(40);
     expect(shown[0]).toContain('R55 vs S55');

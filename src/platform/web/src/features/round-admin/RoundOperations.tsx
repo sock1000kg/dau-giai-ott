@@ -14,6 +14,7 @@ import {
   type RoundSummary,
   type RuleSetSummary,
 } from './api.ts';
+import { formatVietnamDateTime } from '../../lib/format-date.ts';
 import { estimateWorstCase, formatDuration } from './estimate.ts';
 import type { RoundRuleSetRulesV1 } from './rules-form.ts';
 
@@ -44,6 +45,18 @@ function failureMessage(error: unknown): string {
   if (error instanceof RoundAdminApiError && error.code === 'IDEMPOTENCY_KEY_REUSED') {
     return 'Khóa idempotency đã dùng cho yêu cầu khác — đã tải lại trạng thái mới.';
   }
+  if (error instanceof RoundAdminApiError && error.code === 'ROUND_GRACE_NOT_ENDED') {
+    const graceEndsAt = typeof error.info.graceEndsAt === 'string' ? error.info.graceEndsAt : null;
+    return graceEndsAt !== null
+      ? `Chưa thể đóng nộp bài: thời gian ân hạn kết thúc lúc ${formatVietnamDateTime(graceEndsAt)} (giờ Việt Nam).`
+      : 'Chưa thể đóng nộp bài: thời gian ân hạn chưa kết thúc.';
+  }
+  if (error instanceof RoundAdminApiError && error.code === 'ROUND_NOT_OPEN') {
+    return 'Không thể đóng nộp bài: round hiện không ở trạng thái đang mở nộp bài.';
+  }
+  if (error instanceof RoundAdminApiError && error.code === 'ROUND_RULE_SET_MISSING') {
+    return 'Không thể đóng nộp bài: round chưa khóa bộ luật hợp lệ.';
+  }
   if (error instanceof RoundAdminApiError && error.code === 'ROUND_TRANSITION_INVALID') {
     return 'Thao tác không còn hợp lệ ở trạng thái hiện tại.';
   }
@@ -70,6 +83,22 @@ export function RoundOperations({ stage }: Readonly<{ stage: string }>) {
   const [startContext, setStartContext] = useState<{ readonly teamCount: number; readonly rules: RoundRuleSetRulesV1 | null } | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [createReason, setCreateReason] = useState('');
+  const [graceByRound, setGraceByRound] = useState<Readonly<Record<string, string>>>({});
+
+  const loadGraceTimes = useCallback(async (list: readonly RoundSummary[]) => {
+    const entries = await Promise.all(list
+      .filter((round) => round.status === 'SUBMISSION_OPEN' && round.ruleSetId !== null)
+      .map(async (round): Promise<readonly [string, string] | null> => {
+        try {
+          const detail = await getRuleSetDetail(round.ruleSetId as string);
+          const graceEndsAt = detail.rules.schedule.graceEndsAt;
+          return typeof graceEndsAt === 'string' ? [round.id, graceEndsAt] : null;
+        } catch {
+          return null; // The close button still works without the hint.
+        }
+      }));
+    setGraceByRound(Object.fromEntries(entries.filter((entry): entry is readonly [string, string] => entry !== null)));
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -78,12 +107,13 @@ export function RoundOperations({ stage }: Readonly<{ stage: string }>) {
       const [fetchedRounds, fetchedRuleSets] = await Promise.all([listRounds(stage), listRuleSets(stage)]);
       setRounds(fetchedRounds);
       setRuleSets(fetchedRuleSets);
+      void loadGraceTimes(fetchedRounds);
     } catch (cause) {
       setError(failureMessage(cause));
     } finally {
       setLoading(false);
     }
-  }, [stage]);
+  }, [stage, loadGraceTimes]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -109,7 +139,7 @@ export function RoundOperations({ stage }: Readonly<{ stage: string }>) {
       setMessage(updated.replayed === true ? 'Máy chủ đã xử lý yêu cầu trước đó — không tạo thao tác mới.' : 'Đã áp dụng thao tác.');
     } catch (cause) {
       await reconcileAfterError(round);
-      if (cause instanceof RoundAdminApiError && (cause.code === 'ROUND_TRANSITION_INVALID' || cause.status === 404 || cause.code === 'IDEMPOTENCY_KEY_REUSED')) {
+      if (cause instanceof RoundAdminApiError && (cause.code === 'ROUND_TRANSITION_INVALID' || cause.status === 404 || cause.code === 'IDEMPOTENCY_KEY_REUSED') && action !== 'close') {
         setMessage('Trạng thái đã thay đổi ở nơi khác — đã tải lại.');
       } else {
         setError(failureMessage(cause));
@@ -267,9 +297,14 @@ export function RoundOperations({ stage }: Readonly<{ stage: string }>) {
                     <small className="field-help" id={`round-reconcile-help-${round.id}`}>{RECONCILE_HELP}</small>
                   </span>
                 ) : (
-                  <button key={action} type="button" disabled={busyRound !== null} onClick={() => openActionDialog(round, action)}>
-                    {`${ACTION_LABELS[action]}…`}
-                  </button>
+                  <span key={action}>
+                    <button type="button" disabled={busyRound !== null} onClick={() => openActionDialog(round, action)}>
+                      {`${ACTION_LABELS[action]}…`}
+                    </button>
+                    {action === 'close' && graceByRound[round.id] !== undefined && (
+                      <small className="field-help">Chỉ đóng được sau khi hết ân hạn: {formatVietnamDateTime(graceByRound[round.id] as string)} (giờ Việt Nam)</small>
+                    )}
+                  </span>
                 ))}
               </div>
             </li>

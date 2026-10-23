@@ -57,7 +57,7 @@ export { recordGateResult, listGateResults, type GateResultView, type RecordGate
 export { applyRoundRatings, rebuildRatingLedger } from './modules/ratings/service.ts';
 export { createS3Storage, type ObjectStorage, type S3StorageOptions } from './storage/s3.ts';
 export { MatchQueue, MATCH_QUEUE_NAME, type MatchQueueOptions, type EnqueuedMatch } from './queue/match-queue.ts';
-export { createRuleSet, listRuleSets, getRuleSet, createRound, listRounds, getRound, executeTransition, getAllowedTransitions, getAllowedActions, RuleSetInvalidError, type RoundServiceOptions, type RuleSetSummary, type RuleSetDetail, type RoundSummary, type RoundActionType } from './modules/rounds/service.ts';
+export { createRuleSet, listRuleSets, getRuleSet, createRound, listRounds, getRound, executeTransition, getAllowedTransitions, getAllowedActions, RuleSetInvalidError, RoundCloseError, type RoundServiceOptions, type RuleSetSummary, type RuleSetDetail, type RoundSummary, type RoundActionType } from './modules/rounds/service.ts';
 export { catalogView, validateAgainstCatalog, ENGINE_VERSIONS, FAULT_POLICY_VERSIONS, MAP_REGISTRY, type CatalogView, type MatchRules, type RegisteredMap } from './modules/rounds/catalog.ts';
 export { registerRoundRoutes, type RoundRoutesOptions } from './modules/rounds/routes.ts';
 export { validateRoundRuleSetRules, computeRulesSha256, canonicalJson, assertTransition, ALLOWED_TRANSITIONS, ROUND_RULE_SET_SCHEMA_VERSION, type RoundRuleSetRulesV1, type RoundStatus, type RoundAction, type ValidationError } from './modules/rounds/types.ts';
@@ -81,7 +81,7 @@ export { registerOperationsRoutes, type OperationsRoutesOptions } from './module
 export { INFRA_FAILURE_REASONS, evaluateRerunEligibility } from './modules/operations/types.ts';
 export { computeRoundResultsHash } from './modules/operations/results-hash.ts';
 export { publishPublicSnapshot, projectPublicSnapshot, type PublicSnapshot } from './modules/public-snapshots/publisher.ts';
-export { collectQualificationSnapshot, publishQualificationSnapshot, type PublicEditorial } from './modules/public-snapshots/source.ts';
+export { collectQualificationSnapshot, publishQualificationSnapshot, NoValidAnnouncedRulesError, type PublicEditorial } from './modules/public-snapshots/source.ts';
 
 export {
   createTestRun,

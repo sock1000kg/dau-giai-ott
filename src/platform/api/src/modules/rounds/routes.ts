@@ -10,6 +10,7 @@ import {
   getRuleSet,
   listRounds,
   listRuleSets,
+  RoundCloseError,
   RuleSetInvalidError,
   type CreateRuleSetInput,
   type TransitionInput,
@@ -25,6 +26,14 @@ const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}
 
 function sendRoundError(reply: FastifyReply, error: unknown) {
   if (!(error instanceof Error)) throw error;
+  if (error instanceof RoundCloseError) {
+    const messages = {
+      ROUND_NOT_OPEN: 'Round is not open for submissions',
+      ROUND_RULE_SET_MISSING: 'Round has no usable rule set',
+      ROUND_GRACE_NOT_ENDED: 'Grace period has not ended yet',
+    } as const;
+    return reply.status(409).send({ error: { code: error.message, message: messages[error.message as keyof typeof messages], details: error.details } });
+  }
   const clientErrors: Readonly<Record<string, Readonly<{ statusCode: number; code: string; message: string }>>> = {
     TOURNAMENT_STAGE_INVALID: { statusCode: 400, code: 'TOURNAMENT_STAGE_INVALID', message: 'Invalid tournament stage' },
     INVALID_REASON: { statusCode: 400, code: 'INVALID_REASON', message: 'Reason must be 1-500 characters' },

@@ -111,6 +111,22 @@ describe('spectator replay projection', () => {
     expect(body).toContain('"schemaVersion": 1');
   });
 
+  it('adds sanitized team names to v2 only; v1 stays byte-identical', async () => {
+    const v2Log = await buildV2Log();
+    const names = { X: 'Đội <b>Đỏ</b>\n\u0007', O: 'N'.repeat(300) };
+    const projected = publicEventLog(v2Log, MATCH_ID, v2Log.footer.result.finalStateHash, names) as any;
+    expect(projected.teams.X).toEqual({ name: 'Đội <b>Đỏ</b>' });
+    expect(Array.from(projected.teams.O.name)).toHaveLength(128);
+    expect(Object.keys(projected.teams)).toEqual(['X', 'O']);
+    expect(Object.keys(projected.teams.X)).toEqual(['name']);
+    const without = publicEventLog(v2Log, MATCH_ID, v2Log.footer.result.finalStateHash) as any;
+    expect(without.teams).toBeUndefined();
+
+    const v1Log = await buildV1Log();
+    const v1 = publicEventLog(v1Log, MATCH_ID, v1Log.footer.result.finalStateHash, names) as any;
+    expect(v1.teams).toBeUndefined();
+  });
+
   it('projects v2 log to schemaVersion 2 with truthful versions, timeControl and timing array', async () => {
     const v2Log = await buildV2Log();
     const finalHash = v2Log.footer.result.finalStateHash;

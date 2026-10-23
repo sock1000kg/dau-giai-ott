@@ -48,9 +48,12 @@ export class RoundAdminApiError extends Error {
   public readonly status: number;
   public readonly code: string | null;
   public readonly details: readonly ServerValidationDetail[];
+  /** Object-shaped `error.details` (e.g. `graceEndsAt` for `ROUND_GRACE_NOT_ENDED`); empty when absent. */
+  public readonly info: Readonly<Record<string, unknown>>;
 
-  public constructor(status: number, code: string | null, details: readonly ServerValidationDetail[] = []) {
+  public constructor(status: number, code: string | null, details: readonly ServerValidationDetail[] = [], info: Readonly<Record<string, unknown>> = {}) {
     super('Round administration request failed');
+    this.info = info;
     this.name = 'RoundAdminApiError';
     this.status = status;
     this.code = code;
@@ -88,6 +91,9 @@ async function request(path: string, init: RequestInit = {}): Promise<unknown> {
       response.status,
       typeof root?.code === 'string' ? root.code : null,
       root !== null ? serverDetails(root.details) : [],
+      root !== null && typeof root.details === 'object' && root.details !== null && !Array.isArray(root.details)
+        ? root.details as Record<string, unknown>
+        : {},
     );
   }
   return body;

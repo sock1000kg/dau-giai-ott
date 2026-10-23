@@ -86,6 +86,7 @@ When the source event log has `formatVersion: 2` (Bot Protocol v2), the replay r
       }
     }
   },
+  "teams": { "X": { "name": "<team name>" }, "O": { "name": "<team name>" } },
   "entries": [],
   "timing": [
     {
@@ -113,6 +114,15 @@ When the source event log has `formatVersion: 2` (Bot Protocol v2), the replay r
 - `header.protocolVersion`: `2` (truthful reflection of the bot protocol used in the match).
 - `header.engineVersion`: exported `ENGINE_VERSION` from `@ott/game-core` (currently `"1.0.0"`).
 - `header.limits.timeControl`: allowlisted projection of the match's time control configuration (`startupMs`, `totalBotBudgetMs`, `matchWallClockMs`, and `perTurn` policy). Private container resource limits (memory, CPU shares, pids) are stripped.
+
+### Team names
+
+`teams` is present on schemaVersion 2 artifacts only (v1 artifacts have none and stay byte-identical to their golden
+fixture). It carries display names only — no team ids, submission ids or other metadata — resolved from
+`matches.x_submission_id` / `o_submission_id` → `submissions.team_id` → `teams.name`. Names are text-only (control
+characters replaced by spaces, whitespace collapsed) and at most 128 characters. If a name cannot be resolved, `teams`
+is omitted and players fall back to the `Đội X` / `Đội O` labels. Authorization is unchanged; the names are already public
+in results and the leaderboard.
 
 ### Timing Array Schema
 

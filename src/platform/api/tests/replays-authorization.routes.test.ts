@@ -3,7 +3,7 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import { describe, expect, it, vi } from 'vitest';
 import { DEFAULT_LIMITS } from '@ott/bot-protocol';
 import { DEFAULT_MAP } from '@ott/game-core';
-import { CoreGameAdapter, ScriptedBot, runMatch, serializeEventLog } from '@ott/match-runner';
+import { CoreGameAdapter, FakeClock, ScriptedBot, runMatch, serializeEventLog } from '@ott/match-runner';
 import type { QueryResult, QueryResultRow } from 'pg';
 import type { Database } from '../src/db/client.ts';
 import { AuthorizationError } from '../src/modules/auth/authorize.ts';
@@ -59,6 +59,7 @@ async function createFixture(
   state: 'PRIVATE' | 'STAGED' | 'PUBLISHED',
   xTeamId: string,
   oTeamId: string,
+  protocolV2 = false,
 ): Promise<MatchFixture> {
   const matchId = randomUUID();
   const xSubId = randomUUID();
@@ -69,8 +70,20 @@ async function createFixture(
   const firstState = game.create(gameConfig);
   const firstAction = game.listLegalActions(firstState, 'X')[0]!;
   const report = await runMatch(
-    { matchId, seed: `SEED-${matchId}`, game: gameConfig, limits: { ...DEFAULT_LIMITS, maxTurns: 1 } },
-    { game, bots: { X: new ScriptedBot({ replies: [{ kind: 'action', action: firstAction }] }), O: new ScriptedBot({ replies: [] }) } },
+    {
+      matchId, seed: `SEED-${matchId}`, game: gameConfig, limits: { ...DEFAULT_LIMITS, maxTurns: 1 },
+      ...(protocolV2 ? {
+        protocolV2: {
+          timeControl: { startupMs: 5000, totalBotBudgetMs: 60000, matchWallClockMs: 120000, perTurn: { mode: 'FIXED' as const, fixedMs: 3000 } },
+          botSeeds: { X: 'BOT-SEED-X', O: 'BOT-SEED-O' },
+        },
+      } : {}),
+    },
+    {
+      game,
+      bots: { X: new ScriptedBot({ replies: [{ kind: 'action', action: firstAction }] }), O: new ScriptedBot({ replies: [] }) },
+      ...(protocolV2 ? { clock: new FakeClock() } : {}),
+    },
   );
   const rawLogBytes = Buffer.from(serializeEventLog(report.log), 'utf8');
   const checksum = `sha256:${createHash('sha256').update(rawLogBytes).digest('hex')}`;
@@ -106,6 +119,13 @@ function createMockDatabase(fixtures: readonly MatchFixture[]): Database {
           return qr([{ tournament_stage: fixture.stage }] as unknown as Row[]);
         }
         return qr([] as Row[]);
+      }
+
+      // 1b. replay team names (names only)
+      if (sql.includes('x_team_name')) {
+        const fixture = fixtureByMatchId.get(matchId);
+        if (!fixture) return qr([] as Row[]);
+        return qr([{ x_team_name: `Team X ${fixture.xTeamId.slice(0, 4)}`, o_team_name: `Team O ${fixture.oTeamId.slice(0, 4)}` }] as unknown as Row[]);
       }
 
       // 2. assertPrivateReplayAccess - matches
@@ -337,6 +357,37 @@ describe('P3-D05 Replays Authorization Routes and Policy Matrix', () => {
     });
 
     await app.close();
+  });
+
+  it('adds the real team names to v2 replays and never other participants', async () => {
+    const fixture = await createFixture('FINALS', 'PUBLISHED', teamXId, teamOId, true);
+    const storage = memoryStorage();
+    await storage.put(fixture.eventLogKey, fixture.rawLogBytes);
+    const database = createMockDatabase([fixture]);
+
+    const teamApp = createTestApp(principals.teamO, database, storage);
+    const own = await teamApp.inject({ method: 'GET', url: `/api/v1/replays/${fixture.matchId}` });
+    expect(own.statusCode).toBe(200);
+    const body = own.json();
+    expect(body.schemaVersion).toBe(2);
+    expect(body.teams).toEqual({ X: { name: `Team X ${teamXId.slice(0, 4)}` }, O: { name: `Team O ${teamOId.slice(0, 4)}` } });
+    expect(own.body).not.toContain(teamXId);
+    expect(own.body).not.toContain(fixture.xSubId);
+    await teamApp.close();
+
+    const thirdApp = createTestApp(principals.thirdTeam, database, storage);
+    const other = await thirdApp.inject({ method: 'GET', url: `/api/v1/replays/${fixture.matchId}` });
+    expect(other.statusCode).toBe(404);
+    expect(other.body).not.toContain('Team X');
+    await thirdApp.close();
+
+    const v1Fixture = await createFixture('FINALS', 'PUBLISHED', teamXId, teamOId);
+    await storage.put(v1Fixture.eventLogKey, v1Fixture.rawLogBytes);
+    const v1App = createTestApp(principals.btc, createMockDatabase([v1Fixture]), storage);
+    const v1 = await v1App.inject({ method: 'GET', url: `/api/v1/replays/${v1Fixture.matchId}` });
+    expect(v1.json().schemaVersion).toBe(1);
+    expect(v1.json().teams).toBeUndefined();
+    await v1App.close();
   });
 
   it('returns identical projection bytes and checksum between private and public for FINALS PUBLISHED', async () => {

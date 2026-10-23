@@ -279,7 +279,41 @@ describe('P3-D01 round-rules routes', () => {
       payload: { reason: 'cannot close from draft' },
     });
     expect(response.statusCode).toBe(409);
-    expect(response.json().error.code).toBe('ROUND_TRANSITION_INVALID');
+    expect(response.json().error.code).toBe('ROUND_NOT_OPEN');
+    expect(response.json().error.details).toEqual({ status: 'DRAFT_RULES' });
+    await app.close();
+  });
+
+  it('returns 409 ROUND_RULE_SET_MISSING when an open round has no rule set', async () => {
+    const query = vi.fn().mockResolvedValue({ rows: [mockRoundRow({ status: 'SUBMISSION_OPEN', rule_set_id: null })] });
+    const app = createApp(btcPrincipal(), query);
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/admin/rounds/00000000-0000-4000-8000-000000000001/close',
+      payload: { reason: 'no rule set' },
+    });
+    expect(response.statusCode).toBe(409);
+    expect(response.json().error.code).toBe('ROUND_RULE_SET_MISSING');
+    await app.close();
+  });
+
+  it('returns 409 ROUND_GRACE_NOT_ENDED with graceEndsAt and retryAfterSeconds', async () => {
+    const graceEndsAt = '2099-01-01T00:00:00.000Z';
+    const query = vi.fn(async (sql: string) => {
+      if (sql.includes('FROM round_rule_sets')) return { rows: [{ rules: { schedule: { graceEndsAt } } }] };
+      return { rows: [mockRoundRow({ status: 'SUBMISSION_OPEN', rule_set_id: '00000000-0000-4000-8000-000000000002' })] };
+    });
+    const app = createApp(btcPrincipal(), query as unknown as ReturnType<typeof vi.fn>);
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/admin/rounds/00000000-0000-4000-8000-000000000001/close',
+      payload: { reason: 'too early' },
+    });
+    expect(response.statusCode).toBe(409);
+    const error = response.json().error;
+    expect(error.code).toBe('ROUND_GRACE_NOT_ENDED');
+    expect(error.details.graceEndsAt).toBe(graceEndsAt);
+    expect(error.details.retryAfterSeconds).toBeGreaterThan(0);
     await app.close();
   });
 

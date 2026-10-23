@@ -109,6 +109,8 @@ export interface SpectatorReplayV2 {
     game: Readonly<{ engineVersion: string; maxTurns: number; map: SpectatorMapV1 }>;
     limits: Readonly<{ timeControl: SpectatorTimeControlV2 }>;
   }>;
+  /** Team display names (names only); absent on artifacts that could not resolve them. */
+  readonly teams?: Readonly<Record<ReplaySide, Readonly<{ name: string }>>>;
   readonly entries: readonly SpectatorReplayEntryV1[];
   readonly timing: readonly SpectatorTimingDecision[];
   readonly result: Readonly<{
@@ -338,6 +340,22 @@ function timeControlDefinition(value: unknown): SpectatorTimeControlV2 {
   };
 }
 
+const TEAM_NAME_MAX_LENGTH = 128;
+
+function teamName(value: unknown): { readonly name: string } {
+  const entry = object(value);
+  if (Object.keys(entry).some((key) => key !== 'name')) return invalid();
+  const name = text(entry.name);
+  if (name.length > TEAM_NAME_MAX_LENGTH * 2) return invalid();
+  return { name };
+}
+
+function teams(value: unknown): { readonly X: { readonly name: string }; readonly O: { readonly name: string } } {
+  const entry = object(value);
+  if (Object.keys(entry).some((key) => key !== 'X' && key !== 'O')) return invalid();
+  return { X: teamName(entry.X), O: teamName(entry.O) };
+}
+
 export function parseSpectatorReplay(value: unknown): SpectatorReplay {
   const replay = object(value);
   if (replay.schema !== 'ott.spectator-replay') throw new SpectatorReplayError('UNSUPPORTED_SCHEMA');
@@ -409,6 +427,7 @@ export function parseSpectatorReplay(value: unknown): SpectatorReplay {
   const timeControl = timeControlDefinition(limits.timeControl);
   if (!Array.isArray(replay.timing)) return invalid();
   const timing = replay.timing.map(timingDecision);
+  const replayTeams = replay.teams === undefined ? undefined : teams(replay.teams);
 
   return {
     schema: 'ott.spectator-replay',
@@ -423,6 +442,7 @@ export function parseSpectatorReplay(value: unknown): SpectatorReplay {
       game: { engineVersion: gameEngineVersion, maxTurns, map },
       limits: { timeControl },
     },
+    ...(replayTeams === undefined ? {} : { teams: replayTeams }),
     entries,
     timing,
     result: safeResult,

@@ -2,7 +2,8 @@
 
 P3-L05 uses a static read model, separate from authenticated application routes.
 `/public` reads only `/snapshots/latest.json` and the immutable artifact it names.
-The operator publishes every 15–30 seconds, or after a result/rule/status change.
+The coordinator publishes every `OTT_COORD_SNAPSHOT_INTERVAL_MS` (default 5 seconds), so an opened round is visible within about 15 seconds.
+When the newest round's rules fail validation or the stored hash does not match, the iteration is skipped and the log says which check failed (`reason`, invalid `paths`; never the rules).
 There is no public endpoint that queries the database or execution worker.
 
 ## Files and cache
@@ -11,7 +12,7 @@ There is no public endpoint that queries the database or execution worker.
 exactly `snapshot-<sha256>.json`, with a lowercase 64-character hexadecimal digest.
 The digest covers the exact UTF-8 artifact bytes, including its final newline.
 Serve the pointer with `Cache-Control: no-cache` and immutable artifacts with
-`Cache-Control: public, max-age=31536000, immutable`. Polling runs every 30 seconds
+`Cache-Control: public, max-age=31536000, immutable`. Polling runs every 10 seconds
 after the previous request completes; no overlapping polling requests.
 
 The DTO is `PublicSnapshot`, exported by `@ott/platform-api`. See the runnable

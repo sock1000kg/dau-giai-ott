@@ -163,7 +163,7 @@ integration('P3-D01 round-rules PostgreSQL integration', () => {
         { roundId, action: { type: 'close' }, reason: 'too early', actorAccountId: accountId },
         { now: () => new Date('2026-10-18T11:00:00.000Z') },
       ),
-    ).rejects.toThrow('ROUND_TRANSITION_INVALID');
+    ).rejects.toMatchObject({ message: 'ROUND_GRACE_NOT_ENDED', details: { retryAfterSeconds: expect.any(Number) } });
   });
 
   it('close after grace period succeeds', async () => {

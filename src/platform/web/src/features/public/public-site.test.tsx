@@ -65,7 +65,7 @@ describe('public-site static snapshots', () => {
     render(<App />); await act(async () => { await vi.advanceTimersByTimeAsync(0); });
     expect(screen.getByRole('heading', { level: 1, name: /Week 1/ })).toBeTruthy();
     fetcher.mockRejectedValue(new Error('offline'));
-    await act(async () => { await vi.advanceTimersByTimeAsync(30_000); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(10_000); });
     expect(screen.getByRole('alert').textContent).toMatch(/bản cập nhật cuối/);
     expect(screen.getByText('Dự kiến khắc phục: 10 phút')).toBeTruthy();
     expect(screen.getByRole('heading', { level: 1, name: /Week 1/ })).toBeTruthy();

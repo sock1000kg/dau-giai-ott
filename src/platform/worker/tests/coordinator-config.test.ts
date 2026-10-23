@@ -41,7 +41,7 @@ describe('Coordinator Configuration (P2-T32)', () => {
     expect(config.dispatchIntervalMs).toBe(1000);
     expect(config.dispatchLimit).toBe(100);
     expect(config.settleIntervalMs).toBe(5000);
-    expect(config.snapshotIntervalMs).toBe(30000);
+    expect(config.snapshotIntervalMs).toBe(5000);
     // repo root derived from this test file (src/platform/worker/tests -> four levels up), never from the cwd
     const repoRoot = fileURLToPath(new URL('../../../../', import.meta.url));
     expect(config.snapshotDir).toBe(path.resolve(repoRoot, 'src/platform/web/public/snapshots'));
