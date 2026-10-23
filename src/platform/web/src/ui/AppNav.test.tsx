@@ -20,7 +20,7 @@ describe('AppNav', () => {
   it('renders exactly the team link set', () => {
     render(<AppNav role="TEAM_ACCOUNT" pathname="/" onLogout={noop} />);
     expect(links().map((link) => [link.textContent, link.getAttribute('href')])).toEqual([
-      ['Tổng quan', '/'], ['Nộp bot', '/team/submissions'], ['Kết quả', '/team/results'],
+      ['Tổng quan', '/'], ['Nộp bot', '/team/submissions'], ['Kết quả', '/team/results'], ['Đổi mật khẩu', '/team/password'],
     ]);
   });
 

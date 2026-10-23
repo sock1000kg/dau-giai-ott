@@ -1064,7 +1064,7 @@ Task `P2-T42`–`P2-T53` là đợt giao diện riêng, không tự đóng `P2-C
 **Dependencies:** `P2-T56`.
 **Files:** `src/platform/web/src/features/auth/api.ts`, `src/platform/web/src/features/auth/ChangePasswordPage.tsx`, `src/platform/web/src/features/auth/auth.ui.test.tsx`, `src/platform/web/src/app/routes.tsx`, `src/platform/web/README.md`.
 **Ước lượng:** M (5 file).
-**Hoàn tất:** 2026-10-23 — Thêm team-only route `/team/password`, API client, confirm/input/error handling và đưa session client về login sau 204 (API đã revoke toàn bộ session). Thêm route/nav matrix và flow test đổi password; web auth+route focused tests 34/34, typecheck/build và `git diff --check` pass. Browser DevTools còn chờ deploy P2-E.
+**Hoàn tất:** 2026-10-23 — Thêm team-only route `/team/password`, API client, confirm/input/error handling và đưa session client về login sau 204 (API đã revoke toàn bộ session). Thêm route/nav matrix và flow test đổi password; full web suite 409/409, typecheck/build và `git diff --check` pass. Browser DevTools còn chờ deploy P2-E.
 
 ## Checkpoint P2-D — Đội đổi mật khẩu
 
@@ -1080,6 +1080,7 @@ Task `P2-T42`–`P2-T53` là đợt giao diện riêng, không tự đóng `P2-C
 **Dependencies:** `P2-T55`, `P2-T35`.
 **Files:** `src/platform/api/src/demo/reset-team-passwords.ts`, `src/platform/api/tests/demo-password-reset.integration.test.ts`, `src/platform/api/package.json`, `docs/runbooks/local-demo.md`.
 **Ước lượng:** M (4 file).
+**Implementation/test:** 2026-10-23 — CLI `demo:reset-passwords` guard opt-in/dev-test/public-hosted-finals, allowlist active TEAM_ACCOUNT, Argon2id, account lock, audit, revoke Redis sessions, CSV atomic mode 0600; isolated DB/Redis tests 9/9 pass (rerun idempotency included), API typecheck/build pass. Acceptance status vẫn mở cho tới khi dependency `P2-T35` được tick.
 
 ### [ ] P2-T59 — Lập lịch job reset mật khẩu demo
 

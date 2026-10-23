@@ -13,7 +13,8 @@
     "test:coverage": "vitest run --coverage --coverage.include=src",
     "build": "tsc -p tsconfig.build.json",
     "db:migrate": "tsx src/db/migrate.ts",
-    "demo:seed": "tsx src/demo/seed-accounts.ts"
+    "demo:seed": "tsx src/demo/seed-accounts.ts",
+    "demo:reset-passwords": "tsx src/demo/reset-team-passwords.ts"
   },
   "dependencies": {
     "@ott/bot-protocol": "*",
