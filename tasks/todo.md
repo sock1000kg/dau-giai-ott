@@ -814,6 +814,7 @@ Không triển khai ID này. Qualification E2E được chuyển cho Đinh Đứ
 **Dependencies:** `P2-T34`, `P2-T35`.
 **Files dự kiến:** `scripts/demo.sh`, `scripts/tests/demo.test.sh`, `package.json`, `docs/runbooks/local-demo.md`.
 **Ước lượng:** M (4 file)
+**Implementation/test:** 2026-10-23 — Sửa local `up` để ghi `APP_BIND` giống public mode; shell guard suite 181/181 và `bash -n` pass. Trước fix, `--bind 127.0.0.1` không được truyền vào Compose (tạm dừng web service trong demo đang kiểm tra); checkbox vẫn chờ full P2-T34/P2-T35 cycle.
 
 ### [ ] P2-T37 — Clean-checkout browser demo qualification
 

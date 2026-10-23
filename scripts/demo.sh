@@ -579,6 +579,7 @@ S3_SECRET_ACCESS_KEY=${s3_sec}
 S3_BUCKET=ott-demo-bucket
 S3_API_PORT=${s3_port}
 APP_PORT=${port}
+APP_BIND=${bind_addr}
 DOCKER_SOCKET=${DOCKER_SOCKET}
 DOCKER_GID=${doc_gid}
 OTT_DEPLOYMENT_MODE=dev

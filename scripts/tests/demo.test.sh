@@ -273,7 +273,7 @@ EOF
     OTT_DEMO_PROJECT="${disposable_project}" \
     OTT_DEMO_ENV_FILE="${test_env_file}" \
     DOCKER_SOCKET="${fake_socket}" \
-    bash "${DEMO_SCRIPT}" up --no-build --port 19999
+    bash "${DEMO_SCRIPT}" up --no-build --port 19999 --bind 127.0.0.1
 
   assert_eq "0" "${TEST_CODE}" "up --no-build succeeds with mock docker"
 
@@ -294,6 +294,7 @@ EOF
   assert_contains "POSTGRES_PASSWORD=" "${env_content}" "demo.env contains POSTGRES_PASSWORD"
   assert_contains "REDIS_PASSWORD=" "${env_content}" "demo.env contains REDIS_PASSWORD"
   assert_contains "S3_SECRET_ACCESS_KEY=" "${env_content}" "demo.env contains S3_SECRET_ACCESS_KEY"
+  assert_contains "APP_BIND=127.0.0.1" "${env_content}" "local demo respects the loopback bind address"
   assert_contains "OTT_BOOTSTRAP_BTC_PASSWORD=ABC123" "${env_content}" "demo.env aligns bootstrap BTC password to ABC123"
 
   # Verify secrets are not ABC123
@@ -324,7 +325,7 @@ EOF
   # 5a. Verify plain up generated env keys vs golden keys for non-public
   local actual_keys
   actual_keys="$(grep -E '^[A-Z0-9_]+=' "${test_env_file}" | cut -d= -f1 | sort | paste -sd, -)"
-  local golden_keys="APP_PORT,DEMO_GID,DEMO_UID,DOCKER_GID,DOCKER_SOCKET,OTT_BOOTSTRAP_BTC_PASSWORD,OTT_BOOTSTRAP_BTC_USERNAME,OTT_DEMO_MODE,OTT_DEPLOYMENT_MODE,OTT_SECURE_COOKIES,POSTGRES_DB,POSTGRES_PASSWORD,POSTGRES_PORT,POSTGRES_USER,REDIS_PASSWORD,REDIS_PORT,S3_ACCESS_KEY_ID,S3_API_PORT,S3_BUCKET,S3_SECRET_ACCESS_KEY"
+  local golden_keys="APP_BIND,APP_PORT,DEMO_GID,DEMO_UID,DOCKER_GID,DOCKER_SOCKET,OTT_BOOTSTRAP_BTC_PASSWORD,OTT_BOOTSTRAP_BTC_USERNAME,OTT_DEMO_MODE,OTT_DEPLOYMENT_MODE,OTT_SECURE_COOKIES,POSTGRES_DB,POSTGRES_PASSWORD,POSTGRES_PORT,POSTGRES_USER,REDIS_PASSWORD,REDIS_PORT,S3_ACCESS_KEY_ID,S3_API_PORT,S3_BUCKET,S3_SECRET_ACCESS_KEY"
   assert_eq "${golden_keys}" "${actual_keys}" "Plain up generates exactly expected golden keys without modification"
 
   # 5b. --bind validation
