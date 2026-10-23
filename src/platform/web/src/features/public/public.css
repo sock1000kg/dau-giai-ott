@@ -4,6 +4,12 @@
 .pub-overview-summary { margin: 0; color: var(--ui-text-muted); line-height: 1.6; }
 .pub-updated { color: var(--ui-text-muted); font-size: 14px; }
 .pub-state { margin: 0; padding: var(--ui-space-5); border: 1px dashed var(--ui-border-strong); border-radius: var(--ui-radius-md); color: var(--ui-text-muted); text-align: center; }
+.pub-resources { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--ui-space-4); }
+.pub-resources > div { flex: 1 1 420px; }
+.pub-resources p { margin: 0; }
+.pub-resources p + p { margin-top: var(--ui-space-2); }
+.pub-resources .ui-button { flex: 0 0 auto; }
+@media (max-width: 639px) { .pub-resources .ui-button { width: 100%; } }
 
 .pub-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--ui-space-4); }
 @media (min-width: 1024px) {

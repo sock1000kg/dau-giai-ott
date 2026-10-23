@@ -8,6 +8,24 @@ import { formatWait } from './format-wait.ts';
 import './public.css';
 
 const LEADERBOARD_LIMIT = 10;
+const BOT_RESOURCES_FILE = 'ott-bot-resources-v1.zip';
+
+function BotResources() {
+  return <section aria-label="Tài nguyên làm bot">
+    <Card as="div" title="Tài nguyên làm bot" className="pub-resources">
+      <div>
+        <p id="bot-resources-description">Gói ZIP gồm Bot Protocol v1/v2, JSON Schema, bot Python mẫu và hướng dẫn đóng gói bot bằng Python, Node.js hoặc Go.</p>
+        <p className="pub-muted">Giới hạn thời gian, bộ nhớ và dung lượng có thể thay đổi theo round. Hãy xem phần Luật hiện tại trên trang này trước khi nộp bot.</p>
+      </div>
+      <a
+        aria-describedby="bot-resources-description"
+        className="ui-button ui-button--primary"
+        download={BOT_RESOURCES_FILE}
+        href={`/downloads/${BOT_RESOURCES_FILE}`}
+      >Tải bộ tài nguyên làm bot (.zip)</a>
+    </Card>
+  </section>;
+}
 
 export function formatVnDateTime(iso: string): string {
   const date = new Date(iso);
@@ -35,6 +53,7 @@ export function PublicTournamentPage() {
     return () => { stopped = true; controller.abort(); clearTimeout(timer); };
   }, []);
   if (!snapshot) return <Page title="Giải đấu OTT">
+    <BotResources />
     <p className="pub-state" role="status">{failed ? 'Chưa tải được dữ liệu công khai. Trang sẽ tự thử lại.' : 'Đang tải dữ liệu…'}</p></Page>;
   const stale = failed || now - Date.parse(snapshot.updatedAt) > 90_000;
   const newestFirst = [...snapshot.results].reverse();
@@ -49,6 +68,7 @@ export function PublicTournamentPage() {
       <h2 className="pub-overview-title">{snapshot.round.name}</h2>
       <p className="pub-overview-summary">{snapshot.status.message}</p>
       </section>
+    <BotResources />
     {stale && <Alert tone="warning">Dữ liệu có thể đã cũ. Đang giữ bản cập nhật cuối cùng.</Alert>}
     <div className="pub-grid pub-grid--panels">
       <div className="pub-stack"><section aria-label="Trạng thái"><Card as="div" title="Trạng thái"><p>{snapshot.status.message}</p>

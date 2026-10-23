@@ -1,4 +1,6 @@
 import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { act, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../../app/App.tsx';
@@ -31,6 +33,20 @@ function setup(snapshot = fixture()) {
 afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers(); window.history.replaceState({}, '', '/'); });
 
 describe('public-site static snapshots', () => {
+  it('offers the bot resource bundle even while tournament data is loading', () => {
+    vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(() => undefined)));
+    window.history.replaceState({}, '', '/public');
+
+    render(<App />);
+
+    const download = screen.getByRole('link', { name: 'Tải bộ tài nguyên làm bot (.zip)' });
+    expect(download.getAttribute('href')).toBe('/downloads/ott-bot-resources-v1.zip');
+    expect(download.getAttribute('download')).toBe('ott-bot-resources-v1.zip');
+    expect(screen.getByRole('region', { name: 'Tài nguyên làm bot' })).toBeTruthy();
+    const archive = readFileSync(resolve(process.cwd(), 'public/downloads/ott-bot-resources-v1.zip'));
+    expect(archive.subarray(0, 4).toString('hex')).toBe('504b0304');
+  });
+
   it('renders public data without session, database, worker or control requests', async () => {
     const { fetcher } = setup(); window.history.replaceState({}, '', '/public');
     render(<App />);

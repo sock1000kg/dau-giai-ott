@@ -1,0 +1,46 @@
+{
+  "exportType": "sanitized-demo-database-snapshot",
+  "exportedAt": "2026-10-23T14:10:39.054Z",
+  "source": "active local demo database",
+  "credentials": "omitted; regenerate via ./scripts/demo.sh accounts",
+  "accounts": [
+    {
+      "username": "btc",
+      "role": "BTC_ADMIN",
+      "status": "ACTIVE",
+      "team_name": null
+    },
+    {
+      "username": "team01",
+      "role": "TEAM_ACCOUNT",
+      "status": "ACTIVE",
+      "team_name": "Team 01"
+    },
+    {
+      "username": "team02",
+      "role": "TEAM_ACCOUNT",
+      "status": "ACTIVE",
+      "team_name": "Team 02"
+    }
+  ],
+  "teams": [
+    "Team 01",
+    "Team 02"
+  ],
+  "sampleDataCounts": {
+    "qualification_rounds": 0,
+    "rounds": 0,
+    "submissions": 0,
+    "series": 0,
+    "matches": 0,
+    "match_results": 0,
+    "rating_ledger": 0,
+    "replay_publications": 0
+  },
+  "sampleDefinitions": [
+    "samples/qualification-demo.json",
+    "samples/qualification-demo-extra.json",
+    "samples/qualification-demo-moving.json",
+    "samples/qualification-demo-all-v2.json"
+  ]
+}
