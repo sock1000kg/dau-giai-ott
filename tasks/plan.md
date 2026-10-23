@@ -307,6 +307,26 @@ Chrome DevTools MCP chưa có trong phiên lập plan; T42 kiểm tra/cấu hìn
 
 `P2-T55` cập nhật auth requirement/ADR/contracts cho đổi password đã xác thực và chốt chính sách reset demo. `P2-T56`–`P2-T57` triển khai API/UI đổi password; `P2-T58`–`P2-T59` tạo lệnh và lịch reset account demo, sau dependency `P2-T35`; `P2-T60` sửa route sau login theo principal. Job chỉ local/test, opt-in, username allowlist tường minh, mặc định 03:00 `Asia/Ho_Chi_Minh`, public mode bị từ chối. `P2-T55`–`P2-T60` có checkpoint auth và browser/E2E cuối trong checklist. Đây là thay đổi auth độc lập, không thuộc redesign UI `P2-T42`–`P2-T54`.
 
+### Demo snapshot đầy đủ và cron khôi phục mỗi giờ
+
+`P2-T61`–`P2-T64` mở rộng demo reset từ đổi mật khẩu thành khôi phục một baseline hoàn chỉnh. Baseline là bundle bất biến gồm PostgreSQL, SeaweedFS (OCI/replay), public snapshots và manifest SHA-256; Redis không được coi là nguồn dữ liệu và phải được làm sạch sau restore. Snapshot chứa dữ liệu lịch sử mẫu đã xác minh cho `btc`, `team01`, `team02`, `team03`, `team04`; file credential plaintext không nằm trong bundle hoặc Git.
+
+```text
+P2-T35 + P2-T38 + P2-T58
+             │
+             └──► P2-T61 tạo/kiểm định baseline bundle
+                           │
+                           └──► P2-T62 demo.sh restore-demo
+                                         │
+                                         └──► P2-T63 OS crontab mỗi giờ
+                                                       │
+                                                       └──► P2-T64 deploy + browser/restore drill ──► P2-F
+```
+
+Restore dừng các process ghi dữ liệu, kiểm checksum trước khi thay đổi state, khôi phục sạch DB/storage/snapshot, reset đúng bốn mật khẩu đội qua command `P2-T58`, xóa session/queue Redis rồi mới mở lại stack. Cron chạy trên OS bằng user vận hành riêng, dùng `flock`, đường dẫn tuyệt đối, timeout và log không chứa secret; scheduler container của `P2-T59` giữ disabled để tránh hai lịch chạy đồng thời. Chỉ bật crontab sau khi một restore drill thủ công pass và snapshot nguồn được giữ nguyên để rollback.
+
+Mỗi task dùng branch riêng từ `main`. Bundle baseline và credential là artifact root-only trên server, không commit. `P2-T64` lưu evidence không nhạy cảm gồm checksum ID, row/object counts, health, login và browser flow trước/sau hai chu kỳ; không lưu dump, token, password hoặc nội dung replay private trong repo.
+
 ## 10. Rủi ro
 
 | Rủi ro | Mức độ | Giảm thiểu |
@@ -317,6 +337,10 @@ Chrome DevTools MCP chưa có trong phiên lập plan; T42 kiểm tra/cấu hìn
 | Child process treo/rò rỉ | Cao | Cleanup trong `finally`, timeout monotonic, test còn PID/open handle |
 | Một owner xử lý toàn bộ Phase 2 còn lại | Cao | Task S/M, một branch/task, checkpoint sau từng cụm và full gate tại `P2-T29` |
 | Task vượt 5 file | Trung bình | Tách task trước khi bắt đầu; không mở rộng scope trong cùng PR |
+| Snapshot chỉ có DB nên replay bị thiếu | Cao | Bundle PostgreSQL + SeaweedFS + public snapshots; manifest ghi checksum/count và restore drill kiểm replay |
+| Cron chạy khi restore trước chưa xong | Cao | OS `flock` + timeout; duplicate trigger thoát an toàn và ghi trạng thái không chứa secret |
+| Restore lỗi giữa chừng làm demo không nhất quán | Cao | Verify bundle trước, dừng writer, backup recovery trước lần deploy đầu, post-restore invariants trước khi mở gateway |
+| Hai scheduler cùng reset dữ liệu | Cao | Không bật profile scheduler `P2-T59`; OS crontab là scheduler duy nhất cho full snapshot restore |
 
 ## 11. Open questions chuyển sang Gate P3-0
 
