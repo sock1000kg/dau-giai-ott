@@ -1,13 +1,14 @@
 import type { FinalsProofMetadata, FinalsRankingStanding, FinalsSeriesPairing } from './api.ts';
 
 export interface GroupStandingsProps {
-  readonly proof: FinalsProofMetadata;
+  /** Kept for API compatibility; proof metadata is not shown to the public. */
+  readonly proof?: FinalsProofMetadata;
   readonly standings: readonly FinalsRankingStanding[];
   readonly bracket: readonly FinalsSeriesPairing[];
   readonly isStale?: boolean;
 }
 
-export function GroupStandings({ proof, standings, bracket, isStale }: GroupStandingsProps) {
+export function GroupStandings({ standings, bracket, isStale }: GroupStandingsProps) {
   // Pure presentation of bracket nodes from server payload (AC-1)
   const qfPairings = bracket.filter((p) => p.pairingId.startsWith('QF'));
   const sfPairings = bracket.filter((p) => p.pairingId.startsWith('SF'));
@@ -16,40 +17,11 @@ export function GroupStandings({ proof, standings, bracket, isStale }: GroupStan
 
   return (
     <section aria-label="Bảng xếp hạng và Nhánh đấu Chung kết" className="finals-standings-section">
-      {/* Proof Metadata Card (AC-2) */}
-      <div className="credential-card finals-proof-card" aria-label="Bằng chứng xác thực cryptographic bundle">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-          <h2>Bằng chứng Kết quả Chung kết (Cryptographic Proof)</h2>
-          <span className="submission-status" style={{ borderColor: '#80e4d0', color: '#80e4d0' }}>
-            ✓ {proof.status}
-          </span>
-        </div>
-
-        {isStale && (
-          <p role="alert" style={{ color: '#ffd59a', fontWeight: 'bold', marginTop: '8px' }}>
-            ⚠️ Dữ liệu đang hiển thị từ bản cập nhật gần nhất (Stale snapshot).
-          </p>
-        )}
-
-        <dl style={{ marginTop: '12px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
-          <div>
-            <dt>Mã Bundle</dt>
-            <dd><code>{proof.bundleId}</code> (v{proof.bundleVersion})</dd>
-          </div>
-          <div>
-            <dt>Khóa ký Ed25519</dt>
-            <dd><code>{proof.keyId}</code></dd>
-          </div>
-          <div>
-            <dt>Thời gian xác thực</dt>
-            <dd><time dateTime={proof.importedAt}>{proof.importedAt}</time></dd>
-          </div>
-          <div style={{ gridColumn: '1 / -1' }}>
-            <dt>SHA-256 Canonical Manifest</dt>
-            <dd style={{ wordBreak: 'break-all' }}><code>{proof.manifestSha256}</code></dd>
-          </div>
-        </dl>
-      </div>
+      {isStale && (
+        <p role="alert" className="finals-stale-note">
+          Dữ liệu đang hiển thị từ bản cập nhật gần nhất.
+        </p>
+      )}
 
       {/* 8-Team Standings Table */}
       <div className="leaderboard-table-scroll" style={{ marginTop: '24px' }}>
@@ -84,35 +56,35 @@ export function GroupStandings({ proof, standings, bracket, isStale }: GroupStan
       {/* Finals 8-Team Single Elimination Bracket Tree (AC-1) */}
       <div style={{ marginTop: '32px' }} aria-label="Sơ đồ Nhánh đấu Vòng Chung kết">
         <h2>Sơ đồ Nhánh đấu (Finals Bracket)</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', marginTop: '16px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', marginTop: '16px', alignItems: 'stretch' }}>
           {/* Tứ kết */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <h3 style={{ fontSize: '14px', textTransform: 'uppercase', color: '#8ea4b7' }}>Tứ kết (BO3)</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '12px' }}>
+            <h3 style={{ fontSize: '14px', textTransform: 'uppercase', color: '#8ea4b7', textAlign: 'center', margin: 0 }}>Tứ kết (BO3)</h3>
             {qfPairings.map((pairing) => (
               <PairingCard key={pairing.pairingId} pairing={pairing} />
             ))}
           </div>
 
           {/* Bán kết */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <h3 style={{ fontSize: '14px', textTransform: 'uppercase', color: '#8ea4b7' }}>Bán kết (BO3)</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '12px' }}>
+            <h3 style={{ fontSize: '14px', textTransform: 'uppercase', color: '#8ea4b7', textAlign: 'center', margin: 0 }}>Bán kết (BO3)</h3>
             {sfPairings.map((pairing) => (
               <PairingCard key={pairing.pairingId} pairing={pairing} />
             ))}
           </div>
 
           {/* Chung kết & Tranh hạng ba */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <h3 style={{ fontSize: '14px', textTransform: 'uppercase', color: '#8ea4b7' }}>Chung kết & Hạng 3</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '12px' }}>
+            <h3 style={{ fontSize: '14px', textTransform: 'uppercase', color: '#8ea4b7', textAlign: 'center', margin: 0 }}>Chung kết & Hạng 3</h3>
             {finalPairing && (
               <div>
-                <span style={{ fontSize: '11px', color: '#ffd59a', fontWeight: 'bold' }}>TRANH VÔ ĐỊCH</span>
+                <div style={{ fontSize: '11px', color: '#ffd59a', fontWeight: 'bold', textAlign: 'center', marginBottom: '4px' }}>TRANH VÔ ĐỊCH</div>
                 <PairingCard pairing={finalPairing} isChampMatch />
               </div>
             )}
             {bronzePairing && (
               <div style={{ marginTop: '8px' }}>
-                <span style={{ fontSize: '11px', color: '#8ea4b7' }}>TRANH HẠNG BA</span>
+                <div style={{ fontSize: '11px', color: '#8ea4b7', textAlign: 'center', marginBottom: '4px' }}>TRANH HẠNG BA</div>
                 <PairingCard pairing={bronzePairing} />
               </div>
             )}

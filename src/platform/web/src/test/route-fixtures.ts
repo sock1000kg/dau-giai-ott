@@ -121,6 +121,7 @@ export function installRouteFetch(role: TestRole): RouteApi {
       if (pathname === '/api/v1/admin/submissions/flagged') return json(200, { data: { items: [] }, pagination: page([]) });
       if (pathname === '/api/v1/admin/result-bundles/keys') return json(200, { data: [] });
       if (pathname === '/api/v1/public/queue-overrides') return json(200, { data: { items: [] } });
+      if (pathname === '/api/v1/public/rounds/current/maps') return json(404, { error: { code: 'NO_PUBLISHED_ROUND', message: 'No published round' } });
       if (pathname === '/api/v1/submissions') return json(200, { data: noReferenceBot ? [submission, { ...submission, id: '77777777-7777-4777-8777-777777777777' }] : [submission], pagination: { page: 1, pageSize: 20, totalItems: noReferenceBot ? 2 : 1, totalPages: 1 }, preflightQueueLength: 0 });
       if (pathname === '/api/v1/test-run-policy') {
         return json(200, { data: {

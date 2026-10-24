@@ -9,6 +9,8 @@
 # ==============================================================================
 set -Eeuo pipefail
 export PYTHONDONTWRITEBYTECODE=1
+# The guard and live suites must not seed the sample qualification round (slow); individual tests opt in.
+export OTT_DEMO_SAMPLE_DATA=0
 
 MODE="${1:-guards}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -78,6 +80,9 @@ run_guard_tests() {
   local tmp_dir
   tmp_dir="$(mktemp -d)"
   local cleanup_dirs=("${tmp_dir}")
+  # Hygiene: tests that call `reset`/`accounts` without their own path must never touch the developer's real
+  # .local/demo/accounts.csv (a `reset --yes` used to delete it).
+  export OTT_DEMO_ACCOUNTS_CSV="${tmp_dir}/default_accounts.csv"
 
   cleanup_guards() {
     local d
@@ -383,6 +388,48 @@ EOF
     FAILED_TESTS=$((FAILED_TESTS + 1))
     echo "  FAIL: Tester password contains invalid or ambiguous characters: ${pub_team_pass}" >&2
   fi
+
+  # 5c-1. Sample qualification data is seeded by `up` through scripts/seed-sample-data.py (opt-in here)
+  local real_python3 seed_log
+  real_python3="$(command -v python3)"
+  seed_log="${tmp_dir}/seed_sample_calls.log"
+  : > "${seed_log}"
+  cat > "${mock_bin}/python3" <<EOF_PY
+#!/usr/bin/env bash
+for arg in "\$@"; do
+  if [[ "\$arg" == *seed-sample-data.py ]]; then
+    echo "\$@" >> "${seed_log}"
+    exit 0
+  fi
+done
+exec "${real_python3}" "\$@"
+EOF_PY
+  chmod +x "${mock_bin}/python3"
+  local seed_env="${tmp_dir}/seed_sample.env"
+  run_cmd env PATH="${mock_bin}:${PATH}" \
+    OTT_DEMO_PROJECT="${disposable_project}" \
+    OTT_DEMO_ENV_FILE="${seed_env}" \
+    OTT_DEMO_SAMPLE_DATA=1 \
+    DOCKER_SOCKET="${fake_socket}" \
+    bash "${DEMO_SCRIPT}" up --no-build --port 19996
+  assert_eq "0" "${TEST_CODE}" "up with sample data enabled succeeds"
+  assert_contains "Seeding sample qualification data" "${TEST_OUT}" "up announces the sample data step"
+  local seed_calls
+  seed_calls="$(cat "${seed_log}")"
+  assert_contains "--sample ${REPO_ROOT}/samples/qualification-demo-seed.json" "${seed_calls}" "up runs seed-sample-data.py with the seed sample"
+  assert_contains "--skip-if-exists" "${seed_calls}" "sample seeding is idempotent (--skip-if-exists)"
+  assert_contains "--base-url http://127.0.0.1:19996" "${seed_calls}" "sample seeding targets the stack's gateway port"
+  : > "${seed_log}"
+  rm -f "${seed_env}"
+  run_cmd env PATH="${mock_bin}:${PATH}" \
+    OTT_DEMO_PROJECT="${disposable_project}" \
+    OTT_DEMO_ENV_FILE="${seed_env}" \
+    OTT_DEMO_SAMPLE_DATA=1 \
+    DOCKER_SOCKET="${fake_socket}" \
+    bash "${DEMO_SCRIPT}" up --no-build --no-sample-data --port 19996
+  assert_eq "0" "${TEST_CODE}" "up --no-sample-data succeeds"
+  assert_eq "" "$(cat "${seed_log}")" "--no-sample-data skips seed-sample-data.py"
+  rm -f "${mock_bin}/python3" "${seed_env}"
 
   # 5c-2. Public accounts are fixed and public: they come from demo/accounts.csv (single source of truth)
   local csv_btc_pass csv_team_pass csv_team_count
@@ -1266,7 +1313,7 @@ EOF
   local default_seed_log="${tmp_dir}/default_seed_env.log"
   touch "${default_seed_log}"
 
-  run_cmd bash -c 'cd "'"${fake_repo}"'" && env PATH="'"${isolation_bin}:${PATH}"'" \
+  run_cmd bash -c 'cd "'"${fake_repo}"'" && env -u OTT_DEMO_ACCOUNTS_CSV PATH="'"${isolation_bin}:${PATH}"'" \
     DOCKER_SEED_LOG="'"${default_seed_log}"'" \
     OTT_DEMO_PROJECT="'"${disposable_project}"'" \
     DOCKER_SOCKET="'"${fake_socket}"'" \
@@ -1488,7 +1535,7 @@ EOF
 
   # Case A: Early failure hook right after trap installation
   rm -f "${sub_log}"
-  run_cmd env PATH="${trap_sub_bin}:${PATH}" \
+  run_cmd env -u OTT_DEMO_ACCOUNTS_CSV PATH="${trap_sub_bin}:${PATH}" \
     SUB_STUB_LOG="${sub_log}" \
     OTT_DEMO_SCRIPT="${sub_demo}" \
     DEMO_E2E_FAIL_AFTER="trap" \
@@ -1505,7 +1552,7 @@ EOF
 
   # Case B: Success path reaches cleanup once with exit 0
   rm -f "${sub_log}"
-  run_cmd env PATH="${trap_sub_bin}:${PATH}" \
+  run_cmd env -u OTT_DEMO_ACCOUNTS_CSV PATH="${trap_sub_bin}:${PATH}" \
     SUB_STUB_LOG="${sub_log}" \
     OTT_DEMO_SCRIPT="${sub_demo}" \
     bash "${REPO_ROOT}/scripts/run-local-demo-e2e.sh"
@@ -1518,7 +1565,7 @@ EOF
 
   # Case C: Clean checkout early failure path removes worktree directory
   rm -f "${sub_log}"
-  run_cmd env PATH="${trap_sub_bin}:${PATH}" \
+  run_cmd env -u OTT_DEMO_ACCOUNTS_CSV PATH="${trap_sub_bin}:${PATH}" \
     SUB_STUB_LOG="${sub_log}" \
     STUB_NPM_FAIL="1" \
     OTT_DEMO_SCRIPT="${sub_demo}" \

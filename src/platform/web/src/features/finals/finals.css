@@ -6,6 +6,7 @@
 .finals-overview-copy p { margin: 0; color: var(--ui-text-muted); line-height: 1.6; overflow-wrap: anywhere; }
 .finals-overview-meta { display: grid; gap: var(--ui-space-1); color: var(--ui-text-muted); font-size: 12px; overflow-wrap: anywhere; }
 .finals-stale-badge { color: var(--ui-warning); font-weight: 700; }
+.finals-stale-note { margin: 0 0 var(--ui-space-3); color: var(--ui-warning); font-weight: 700; }
 .finals-state { padding: var(--ui-space-5); border: 1px dashed var(--ui-border-strong); border-radius: var(--ui-radius-md); color: var(--ui-text-muted); }
 .finals-state--error { color: var(--ui-danger); }
 .finals-standings-section { display: grid; min-width: 0; gap: var(--ui-space-5); }

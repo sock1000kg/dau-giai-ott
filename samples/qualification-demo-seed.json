@@ -1,0 +1,32 @@
+{
+  "stage": "QUALIFICATION",
+  "optionalTeams": true,
+  "teams": [
+    {
+      "username": "team01",
+      "botArchive": "samples/bots/demo-first.oci.tar"
+    },
+    {
+      "username": "team02",
+      "botArchive": "samples/bots/demo-middle.oci.tar"
+    },
+    {
+      "username": "team03",
+      "botArchive": "samples/bots/demo-last.oci.tar"
+    },
+    {
+      "username": "team04",
+      "botArchive": "samples/bots/demo-first.oci.tar"
+    },
+    {
+      "username": "team05",
+      "botArchive": "samples/bots/demo-middle.oci.tar"
+    },
+    {
+      "username": "team06",
+      "botArchive": "samples/bots/demo-last.oci.tar"
+    }
+  ],
+  "submissionWindowSeconds": 150,
+  "graceSeconds": 5
+}

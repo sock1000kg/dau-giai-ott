@@ -53,7 +53,7 @@ export function FinalsPage({ initialSnapshot = null }: FinalsPageProps) {
 
   if (loading && !snapshot) {
     return (
-      <Page title="Vòng Chung kết" description="Bảng đấu, lịch thi đấu và kết quả đã xác minh.">
+      <Page title="Vòng Chung kết" description="Bảng đấu, lịch thi đấu và kết quả.">
         <p className="finals-state" role="status" aria-busy="true">Đang tải dữ liệu snapshot vòng chung kết…</p>
       </Page>
     );
@@ -83,10 +83,7 @@ export function FinalsPage({ initialSnapshot = null }: FinalsPageProps) {
         <div className="finals-overview-copy">
           <span className="eyebrow">VÒNG CHUNG KẾT · 8 ĐỘI TRANH TÀI</span>
           <h2>Nhánh đấu chính thức</h2>
-          <p>Đối chiếu lịch, kết quả và bằng chứng phát hành của vòng chung kết.</p>
-          <p style={{ color: '#a8b8c8', margin: 0, fontSize: '13px' }}>
-            Giải đấu: <code>{snapshot.tournamentId}</code> · Bộ luật: <code>{snapshot.finalsRuleSetId}</code>
-          </p>
+          <p>Đối chiếu lịch và kết quả của vòng chung kết.</p>
         </div>
 
         <div className="finals-overview-meta">
@@ -101,7 +98,6 @@ export function FinalsPage({ initialSnapshot = null }: FinalsPageProps) {
 
       {/* Standings & Bracket */}
       <GroupStandings
-        proof={snapshot.proof}
         standings={snapshot.standings}
         bracket={snapshot.bracket}
         isStale={isStale}

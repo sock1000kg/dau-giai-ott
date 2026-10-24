@@ -133,7 +133,7 @@ describe('Finals UI — AC-1: Server Bracket & Score Presentation', () => {
     expect(screen.getAllByText(/Đội Theta \(#8\)/).length).toBeGreaterThanOrEqual(1);
 
     // 3. Score breakdown criterion provided by adapter is rendered verbatim
-    expect(screen.getByText(/Điểm bắt quân: 12 - 4/)).toBeTruthy();
+    expect(screen.getByText(/Điểm bắt quân 12–4/)).toBeTruthy();
 
     // 4. Standings table renders exact outcomes from server
     expect(screen.getByText('Vô địch')).toBeTruthy();
@@ -142,15 +142,17 @@ describe('Finals UI — AC-1: Server Bracket & Score Presentation', () => {
 });
 
 describe('Finals UI — AC-2: Proof Metadata & Stale State', () => {
-  it('renders cryptographic proof metadata and VERIFIED badge', () => {
+  it('does not show cryptographic proof metadata to the public', () => {
     const fixture = createFinalsFixture();
     render(<FinalsPage initialSnapshot={fixture} />);
 
-    // Check proof card metadata
-    expect(screen.getByText(/bundle-finals-official-001/)).toBeTruthy();
-    expect(screen.getByText(/poc-test-key/)).toBeTruthy();
-    expect(screen.getByText(VALID_MANIFEST_HASH)).toBeTruthy();
-    expect(screen.getByText('✓ VERIFIED')).toBeTruthy();
+    // Bundle id, key id, manifest hash, tournament and rule-set ids are meaningless to spectators.
+    expect(screen.queryByText(/bundle-finals-official-001/)).toBeNull();
+    expect(screen.queryByText(/poc-test-key/)).toBeNull();
+    expect(screen.queryByText(VALID_MANIFEST_HASH)).toBeNull();
+    expect(screen.queryByText(/Cryptographic Proof/)).toBeNull();
+    expect(screen.queryByText(/TOURNAMENT_FINALS_2026/)).toBeNull();
+    expect(screen.queryByText(/ruleset-finals-v1/)).toBeNull();
   });
 
   it('does not render stale warning for published snapshot with old verifiedAt/updatedAt', () => {
@@ -203,12 +205,12 @@ describe('Finals UI — AC-3: Replay Publication Privacy & Accessibility', () =>
     render(<FinalsPage initialSnapshot={fixture} />);
 
     // QF1 Game 1 has replayPublished: true -> link exists and carries bundleId
-    const replayLinkGame1 = screen.getByRole('link', { name: 'Xem replay ván 1 trận Tứ kết 1' });
+    const replayLinkGame1 = screen.getByRole('link', { name: 'Phát replay ván 1 trận Tứ kết 1' });
     expect(replayLinkGame1).toBeTruthy();
     expect(replayLinkGame1.getAttribute('href')).toBe('/spectator/replays/00000000-0000-4000-8000-000000000001?bundle=bundle-finals-official-001');
 
     // QF2 Game 1 has replayPublished: false -> link MUST NOT be rendered
-    expect(screen.queryByRole('link', { name: 'Xem replay ván 1 trận Tứ kết 2' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Phát replay ván 1 trận Tứ kết 2' })).toBeNull();
     expect(screen.getByText('Chưa công bố')).toBeTruthy();
   });
 

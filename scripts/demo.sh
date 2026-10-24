@@ -345,6 +345,7 @@ Options:
   --bind <ADDR>  Bind address for web gateway (default: 0.0.0.0)
   --port <PORT>  Port to publish the web gateway on (default: 8080)
   --no-build     Skip image build step (use pre-existing images)
+  --no-sample-data  Do not seed the sample qualification round (also OTT_DEMO_SAMPLE_DATA=0)
   --help, -h     Show this help message
 EOF
 }
@@ -469,6 +470,7 @@ sub_up() {
   local port="8080"
   local port_specified=0
   local build_flag="--build"
+  local sample_data=1
   local is_public=0
   local bind_addr="0.0.0.0"
   local from_refresh=0
@@ -484,6 +486,10 @@ sub_up() {
         ;;
       --no-build)
         build_flag=""
+        shift
+        ;;
+      --no-sample-data)
+        sample_data=0
         shift
         ;;
       --public)
@@ -750,6 +756,35 @@ EOF
     print_public_urls "${port}"
   else
     print_urls "${port}"
+  fi
+
+  if (( sample_data == 1 )) && [[ "${OTT_DEMO_SAMPLE_DATA:-1}" != "0" ]]; then
+    seed_sample_round "${port}"
+  fi
+}
+
+# Seeds one published qualification round (bots, matches, results, leaderboard) through the real API so that
+# /public, the leaderboard and the results pages have data. Skipped when a round already exists. A failure
+# only warns: the stack stays usable.
+seed_sample_round() {
+  local port="$1"
+  local sample="${REPO_ROOT}/samples/qualification-demo-seed.json"
+  if ! command -v python3 >/dev/null 2>&1; then
+    echo "Warning: python3 not found; skipping sample qualification data (the public page will be empty until a round is run)." >&2
+    return 0
+  fi
+  if [[ ! -f "${sample}" ]]; then
+    echo "Warning: ${sample} not found; skipping sample qualification data." >&2
+    return 0
+  fi
+  echo "Seeding sample qualification data (takes a few minutes; the site is already usable)..."
+  if ! python3 -B "${REPO_ROOT}/scripts/seed-sample-data.py" \
+    --base-url "http://127.0.0.1:${port}" \
+    --accounts "${ACCOUNTS_CSV}" \
+    --env-file "${DEMO_ENV_FILE}" \
+    --sample "${sample}" \
+    --skip-if-exists; then
+    echo "Warning: sample data seeding failed; /public may stay empty. Retry: python3 scripts/seed-sample-data.py --base-url http://127.0.0.1:${port} --accounts '${ACCOUNTS_CSV}' --env-file '${DEMO_ENV_FILE}' --sample samples/qualification-demo-seed.json --skip-if-exists" >&2
   fi
 }
 
