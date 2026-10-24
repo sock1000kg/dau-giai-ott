@@ -28,7 +28,7 @@ Cần Node.js `^22.12.0`, Docker Engine ≥ 24 với Compose v2.
 ./scripts/demo.sh reset     # xóa stack demo
 ```
 
-Tài khoản của demo công khai ([demo/accounts.csv](demo/accounts.csv)): `btc` và `team01`–`team10`, mật khẩu công khai có chủ đích vì dữ liệu được reset và nạp lại định kỳ. Stack local mặc định (`demo.sh up`, không `--public`) chỉ có `btc`, `team01`, `team02` với mật khẩu `ABC123`.
+Tài khoản của demo công khai: [demo/accounts.csv](demo/accounts.csv) (`btc` và `team01`–`team10`, mật khẩu công khai có chủ đích). `./scripts/demo.sh up --public` và **`./scripts/demo.sh refresh --yes`** (reset dữ liệu, chạy bằng cron hằng ngày) đều nạp lại đúng các tài khoản và mật khẩu trong file này. Stack local mặc định (`demo.sh up`, không `--public`) chỉ có `btc`, `team01`, `team02` với mật khẩu `ABC123`.
 
 Hướng dẫn đầy đủ: [docs/runbooks/local-demo.md](docs/runbooks/local-demo.md). Dựng bản công khai sau Cloudflare tunnel: [docs/runbooks/public-demo-hosting.md](docs/runbooks/public-demo-hosting.md).
 

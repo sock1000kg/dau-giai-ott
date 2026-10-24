@@ -21,6 +21,7 @@ The public demo accounts are **fixed and public on purpose**: anyone with the UR
 
 - **Tournament Administrator (`btc`)**: password from the `btc` row of `demo/accounts.csv`.
 - **Tester Teams (`team01` … `team10`)**: one shared password from the `team*` rows (all rows must share it). Teams may change their own password in the UI; the next `refresh` restores the CSV value.
+- **Reset = back to the CSV.** `./scripts/demo.sh refresh --yes` first re-reads `demo/accounts.csv` (validated; an invalid file stops the refresh before anything is touched), rewrites the account keys in `.local/demo/demo.env`, wipes all data and re-seeds exactly these accounts. After a `git pull` that changes the CSV, the next refresh applies it.
 - Infrastructure passwords (PostgreSQL, Redis, S3) are still random and live only in `.local/demo/demo.env`.
 - The scheduled reset-to-default job is not part of `--public` mode and must remain disabled there. The scheduled data reset is `refresh --yes` (cron), not this password-reset job. Never set `OTT_DEMO_PASSWORD_RESET_ENABLED=true` on a public demo host.
 

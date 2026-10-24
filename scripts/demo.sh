@@ -131,6 +131,25 @@ load_public_accounts() {
   ' "${file}"
 }
 
+# Rewrites the public-account keys of an existing public demo.env from demo/accounts.csv so that a
+# data reset ("refresh") always re-seeds exactly the accounts listed in the CSV. Other keys are untouched.
+sync_public_accounts_into_env() {
+  local values btc_pass team_pass team_count tmp
+  values="$(load_public_accounts)" || return 1
+  IFS=$'\t' read -r btc_pass team_pass team_count <<< "${values}"
+  tmp="${DEMO_ENV_FILE}.sync.$$"
+  ( umask 077
+    OTT_SYNC_BTC="${btc_pass}" OTT_SYNC_TEAM="${team_pass}" OTT_SYNC_COUNT="${team_count}" \
+    awk -F'=' '
+      $1 == "OTT_BOOTSTRAP_BTC_PASSWORD" || $1 == "OTT_DEMO_BTC_PASSWORD" { print $1 "=" ENVIRON["OTT_SYNC_BTC"]; next }
+      $1 == "OTT_DEMO_TEAM_PASSWORD" { print $1 "=" ENVIRON["OTT_SYNC_TEAM"]; next }
+      $1 == "OTT_DEMO_TEAM_COUNT" { print $1 "=" ENVIRON["OTT_SYNC_COUNT"]; next }
+      { print }
+    ' "${DEMO_ENV_FILE}" > "${tmp}" ) || { rm -f "${tmp}"; return 1; }
+  chmod 0600 "${tmp}"
+  mv "${tmp}" "${DEMO_ENV_FILE}"
+}
+
 generate_tester_password() {
   if command -v python3 >/dev/null 2>&1; then
     python3 -c "import secrets; chars = [c for c in 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789' if c not in '0O1lI']; print(''.join(secrets.choice(chars) for _ in range(12)))"
@@ -915,6 +934,12 @@ sub_refresh() {
     fi
     echo "$$" > "${lock_dir}/pid"
     CLEANUP_FILES+=("${lock_dir}")
+  fi
+
+  # Public demo: the reset must re-seed exactly the accounts of demo/accounts.csv (validated before any docker action).
+  if grep -q '^DEMO_PUBLIC=true' "${DEMO_ENV_FILE}" 2>/dev/null; then
+    sync_public_accounts_into_env || exit 1
+    echo "Public demo accounts re-read from demo/accounts.csv."
   fi
 
   echo "Refreshing demo stack for project '${COMPOSE_PROJECT}' (preserving demo.env and accounts.csv)..."

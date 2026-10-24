@@ -537,6 +537,56 @@ EOF
   kill "${bg_flock_pid}" 2>/dev/null || true
   wait "${bg_flock_pid}" 2>/dev/null || true
 
+  # Public refresh re-reads demo/accounts.csv: env is rewritten with the CSV credentials before docker runs
+  local sync_env="${tmp_dir}/sync_public.env"
+  local sync_csv="${tmp_dir}/sync_accounts.csv"
+  printf 'username,password,role,team\nbtc,BtcSecretNew1,BTC_ADMIN,\nteam01,TeamSecretNew1,TEAM_ACCOUNT,Team 01\nteam02,TeamSecretNew1,TEAM_ACCOUNT,Team 02\nteam03,TeamSecretNew1,TEAM_ACCOUNT,Team 03\n' > "${sync_csv}"
+  cat > "${sync_env}" <<EOF_SYNC
+POSTGRES_PASSWORD=infra-pg-keep
+OTT_BOOTSTRAP_BTC_PASSWORD=oldbtc
+OTT_DEMO_BTC_PASSWORD=oldbtc
+OTT_DEMO_TEAM_COUNT=10
+OTT_DEMO_TEAM_PASSWORD=oldteam
+DEMO_PUBLIC=true
+EOF_SYNC
+  chmod 600 "${sync_env}"
+  > "${docker_log}"
+  run_cmd env PATH="${mock_bin}:${PATH}" \
+    OTT_DEMO_PROJECT="${disposable_project}" \
+    OTT_DEMO_ENV_FILE="${sync_env}" \
+    OTT_DEMO_PUBLIC_ACCOUNTS_CSV="${sync_csv}" \
+    DOCKER_SOCKET="${fake_socket}" \
+    bash "${DEMO_SCRIPT}" refresh --yes
+  local sync_content
+  sync_content="$(cat "${sync_env}")"
+  assert_contains "OTT_BOOTSTRAP_BTC_PASSWORD=BtcSecretNew1" "${sync_content}" "public refresh rewrites the bootstrap btc password from the CSV"
+  assert_contains "OTT_DEMO_BTC_PASSWORD=BtcSecretNew1" "${sync_content}" "public refresh rewrites the demo btc password from the CSV"
+  assert_contains "OTT_DEMO_TEAM_PASSWORD=TeamSecretNew1" "${sync_content}" "public refresh rewrites the team password from the CSV"
+  assert_contains "OTT_DEMO_TEAM_COUNT=3" "${sync_content}" "public refresh rewrites the team count from the CSV"
+  assert_contains "POSTGRES_PASSWORD=infra-pg-keep" "${sync_content}" "public refresh leaves infrastructure passwords untouched"
+  assert_not_contains "oldbtc" "${sync_content}" "public refresh leaves no stale btc password"
+  local sync_mode
+  sync_mode="$(stat -c %a "${sync_env}" 2>/dev/null || stat -f %Lp "${sync_env}" 2>/dev/null || echo "")"
+  assert_eq "600" "${sync_mode}" "public refresh keeps demo.env at mode 0600"
+  assert_contains "down --volumes --remove-orphans" "$(cat "${docker_log}")" "public refresh still wipes the data volumes after syncing"
+
+  # Public refresh with an invalid CSV: exit 1 before any docker action, env untouched, no password echoed
+  printf 'username,password,role,team\nteam01,TeamSecretNew1,TEAM_ACCOUNT,Team 01\n' > "${sync_csv}"
+  local sync_before
+  sync_before="$(cat "${sync_env}")"
+  > "${docker_log}"
+  run_cmd env PATH="${mock_bin}:${PATH}" \
+    OTT_DEMO_PROJECT="${disposable_project}" \
+    OTT_DEMO_ENV_FILE="${sync_env}" \
+    OTT_DEMO_PUBLIC_ACCOUNTS_CSV="${sync_csv}" \
+    DOCKER_SOCKET="${fake_socket}" \
+    bash "${DEMO_SCRIPT}" refresh --yes
+  assert_eq "1" "${TEST_CODE}" "public refresh with an invalid accounts CSV exits 1"
+  assert_contains "exactly one btc row" "${TEST_OUT}" "public refresh reports the CSV problem"
+  assert_not_contains "TeamSecretNew1" "${TEST_OUT}" "public refresh never echoes a password"
+  assert_eq "" "$(cat "${docker_log}")" "invalid accounts CSV stops refresh before any docker action"
+  assert_eq "${sync_before}" "$(cat "${sync_env}")" "invalid accounts CSV leaves demo.env untouched"
+
   # Refresh with missing demo.env exits 1, prints error, stub docker log empty, no env created
   local missing_refresh_env="${tmp_dir}/missing_refresh.env"
   rm -f "${missing_refresh_env}"
