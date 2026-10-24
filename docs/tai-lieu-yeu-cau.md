@@ -317,8 +317,8 @@ Map hợp lệ PHẢI bảo đảm:
 
 Contract v1 đã khóa ngày 09/10/2026 tại:
 
-- `docs/contracts/bot-protocol-v1.md`
-- `docs/contracts/bot-protocol-v1.schema.json`
+- `docs/contracts/bot-protocol-v2.md` và `docs/contracts/bot-protocol-v2.schema.json` (giao thức duy nhất được hỗ trợ)
+- `docs/contracts/bot-protocol-v1.md` và `docs/contracts/bot-protocol-v1.schema.json` — **deprecated, không dùng**; chỉ lưu lịch sử Phase 1
 - `docs/contracts/fixtures/`
 
 Khi phần tóm tắt dưới đây thiếu chi tiết, contract/schema đã khóa được ưu tiên.

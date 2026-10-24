@@ -35,12 +35,11 @@ after copying the extra two OCI archives. The loader checks that the new teams
 have no prior submissions, reconciles and publishes the completed previous
 round, then creates the new round through the API.
 
-Those original OCI canaries speak Bot Protocol v1. Qualification rules on the
-current demo stack pin Protocol v2, so their ACTION responses are rejected as
-`SCHEMA_VIOLATION`; historical replays from those rounds contain no moves. To
-demonstrate moving bots, build the corpus and append
-`samples/qualification-demo-moving.json` with `team05` and `team06`. Its two
-dedicated v2 images use first-legal and capture-first strategies:
+The original OCI canaries (`first-legal`, `node-action`, `native-action`) were written against the deprecated
+Bot Protocol v1. Qualification rules pin Protocol v2, so their `ACTION` responses (with `protocolVersion: 1`)
+are rejected as `SCHEMA_VIOLATION` and the historical replays from those rounds contain no moves. Use only
+v2-capable bots for demonstrations: build the corpus and append `samples/qualification-demo-moving.json` with
+`team05` and `team06`; its two dedicated v2 images use first-legal and capture-first strategies:
 
 ```bash
 python3 scripts/seed-sample-data.py --append --sample samples/qualification-demo-moving.json

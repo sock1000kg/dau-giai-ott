@@ -1,6 +1,11 @@
 # Bot Protocol v1
 
-> Status: **LOCKED**
+> **DEPRECATED — DO NOT USE.** Bot Protocol v1 is retired. Every official match, preflight check and test run
+> uses [Bot Protocol v2](bot-protocol-v2.md); teams must implement v2 only. A bot that answers with
+> `protocolVersion: 1` is rejected as `SCHEMA_VIOLATION`. This file is kept only as a historical record of
+> Phase 1; do not write new bots, samples, fixtures or docs against it.
+>
+> Status: **DEPRECATED (historical, formerly LOCKED)**
 >
 > Approval: `HIGH RECOMMEND` — tự động duyệt bởi Đinh Đức Thuận
 >
