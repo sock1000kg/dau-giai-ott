@@ -72,7 +72,7 @@ export function RuleSetArchive({ ruleSets, rounds, onUseAsBase }: Readonly<{
     <section className="rule-set-archive" aria-label="Lưu trữ phiên bản bộ luật">
       <h3>Các phiên bản bộ luật</h3>
       {sorted.length === 0 ? <p>Chưa có phiên bản nào.</p> : (
-        <ul aria-label="Danh sách phiên bản">
+        <ul className="rule-set-list-region" role="region" tabIndex={0} aria-label="Danh sách phiên bản, cuộn được">
           {sorted.map((entry) => {
             const using = roundsUsingRuleSet(rounds, entry.id);
             return (
@@ -95,7 +95,6 @@ export function RuleSetArchive({ ruleSets, rounds, onUseAsBase }: Readonly<{
         {detail.status === 'error' && (
           <div role="alert">
             <p>Không thể tải phiên bản bộ luật.</p>
-            <button type="button" onClick={() => void select(detail.id)}>Thử lại</button>
           </div>
         )}
         {detail.status === 'ready' && (

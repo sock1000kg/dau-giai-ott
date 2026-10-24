@@ -89,7 +89,7 @@ export function RoundAdminPage() {
         <span>Stage</span> · Vòng: <Badge accent>Vòng loại (QUALIFICATION)</Badge>
       </p>
 
-      {loadError !== null && <div role="alert"><p>{loadError}</p><button type="button" onClick={() => void load()}>Thử lại</button></div>}
+      {loadError !== null && <div role="alert"><p>{loadError}</p></div>}
       {loading && <p role="status" aria-busy="true">Đang tải dữ liệu round…</p>}
 
       {!loading && loadError === null && (

@@ -20,7 +20,7 @@ describe('RuleSetArchive', () => {
   it('lists versions newest first with usage badges', async () => {
     setup();
     render(<RoundAdminPage />);
-    const list = await screen.findByRole('list', { name: 'Danh sách phiên bản' });
+    const list = await screen.findByRole('region', { name: 'Danh sách phiên bản, cuộn được' });
     const items = within(list).getAllByRole('listitem');
     expect(items).toHaveLength(2);
     expect(items[0]?.textContent).toContain('v2');
@@ -33,7 +33,7 @@ describe('RuleSetArchive', () => {
   it('loads detail once for the selected id, shows engine and maps read-only, without moving focus', async () => {
     const { detailCalls } = setup();
     render(<RoundAdminPage />);
-    const list = await screen.findByRole('list', { name: 'Danh sách phiên bản' });
+    const list = await screen.findByRole('region', { name: 'Danh sách phiên bản, cuộn được' });
     const before = detailCalls.length;
     const button = within(list).getAllByRole('button')[0] as HTMLButtonElement;
     button.focus();
@@ -49,23 +49,24 @@ describe('RuleSetArchive', () => {
     expect(button.getAttribute('aria-pressed')).toBe('true');
   });
 
-  it('shows an error with retry when the detail request fails', async () => {
+  it('shows an error when the detail request fails and recovers on re-selecting the version', async () => {
     const fails = new Set([id2]);
     setup({ detailFails: fails });
     render(<RoundAdminPage />);
-    const list = await screen.findByRole('list', { name: 'Danh sách phiên bản' });
+    const list = await screen.findByRole('region', { name: 'Danh sách phiên bản, cuộn được' });
     // The page prefill also requests id2; only the archive click is checked here.
     fireEvent.click(within(list).getAllByRole('button')[0] as HTMLButtonElement);
     expect(await screen.findByText(/không thể tải phiên bản bộ luật/i)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /thử lại/i })).toBeNull();
     fails.clear();
-    fireEvent.click(screen.getByRole('button', { name: 'Thử lại' }));
+    fireEvent.click(within(list).getAllByRole('button')[0] as HTMLButtonElement);
     expect(await screen.findByRole('heading', { name: 'Phiên bản v2' })).toBeTruthy();
   });
 
   it('uses a version as the base of the editor and shows a note', async () => {
     setup();
     render(<RoundAdminPage />);
-    const list = await screen.findByRole('list', { name: 'Danh sách phiên bản' });
+    const list = await screen.findByRole('region', { name: 'Danh sách phiên bản, cuộn được' });
     const editor = screen.getByRole('region', { name: 'Phiên bản bộ luật mới' });
     expect((within(editor).getByLabelText(/engine version/i) as HTMLInputElement).value).toBe('2.0.0');
     fireEvent.click(within(list).getAllByRole('button')[1] as HTMLButtonElement);

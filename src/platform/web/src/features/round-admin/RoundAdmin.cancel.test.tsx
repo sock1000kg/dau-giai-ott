@@ -105,7 +105,9 @@ describe('RoundAdmin cancel round (loop 101)', () => {
     fireEvent.change(within(dialog).getByLabelText('Lý do'), { target: { value: 'mở nhầm vòng' } });
     expect(confirm.disabled).toBe(false);
     fireEvent.click(confirm);
-    await waitFor(() => expect(within(operations).getByText('Đã hủy')).toBeTruthy());
+    const row = (await within(operations).findByRole('heading', { name: 'Round 3' })).closest('li')!;
+    await waitFor(() => expect(within(row).getByText('Đã hủy')).toBeTruthy());
+    expect(within(row).getByRole('status').textContent).toBe('Đã áp dụng thao tác.');
     const post = calls.find((call) => call.url.endsWith('/cancel'));
     expect(JSON.parse(String(post?.init?.body))).toEqual({ reason: 'mở nhầm vòng' });
     expect(screen.queryByRole('form', { name: 'Xác nhận hủy vòng' })).toBeNull();
