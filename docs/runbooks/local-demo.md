@@ -18,7 +18,7 @@ npm --workspace @ott/sandbox-corpus run build:corpus
 python3 scripts/seed-sample-data.py
 ```
 
-The sample definition is in `samples/qualification-demo.json`. The loader reads
+The default sample definition is in `samples/qualification-demo-all-v2.json`. The loader reads
 the private `.local/demo/accounts.csv` and `demo.env`, authenticates through the
 loopback gateway, and uses the same API path as real submissions. It refuses to
 run outside `OTT_DEMO_MODE=true` / `OTT_DEPLOYMENT_MODE=dev`, when the required
@@ -27,13 +27,12 @@ reset any data. The first run can take several minutes while preflight and
 matches execute. If interrupted after creating a round, inspect
 `./scripts/demo.sh round status` before taking further action.
 
-On `jump-jits`, copy the two generated archives into their declared paths
+On `jump-jits`, copy the generated archives into their declared paths
 under `/opt/ott/`, then run `cd /opt/ott && python3 scripts/seed-sample-data.py`.
-To add a second sample round without removing the first, use
-`python3 scripts/seed-sample-data.py --append --sample samples/qualification-demo-extra.json`
-after copying the extra two OCI archives. The loader checks that the new teams
-have no prior submissions, reconciles the completed previous round (rating
-auto-publishes it), then creates the new round through the API.
+To add an additional sample round without removing the first, use
+`python3 scripts/seed-sample-data.py --append --sample samples/qualification-demo-moving.json`.
+The loader checks that the new teams have no prior submissions, reconciles the completed
+previous round (rating auto-publishes it), then creates the new round through the API.
 
 The original OCI canaries (`first-legal`, `node-action`, `native-action`) were written against the deprecated
 Bot Protocol v1. Qualification rules pin Protocol v2, so their `ACTION` responses (with `protocolVersion: 1`)
@@ -56,6 +55,8 @@ to replace the active submissions for `team01`–`team04` with four distinct v2
 archives. `team05` and `team06` already use v2 images. The loader tracks series
 that existed before the new round and waits for this round's results before
 reconciling; it does not treat older finalized series as completion evidence.
+
+> Note: Legacy samples referencing Bot Protocol v1 bots (`first-legal`, `node-action`, `capture-first`, `native-action` in `samples/qualification-demo.json` and `samples/qualification-demo-extra.json`) are deprecated: replays contain no moves — do not use. The default sample `samples/qualification-demo-all-v2.json` and `samples/qualification-demo-moving.json` use Bot Protocol v2 fixtures with full gameplay replays.
 
 ### 1. System Requirements
 - **Docker**: Version ≥ 24.0 with Docker Compose v2 reachable (`docker compose`).

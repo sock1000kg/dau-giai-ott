@@ -4,10 +4,10 @@
 
 ## Trong gói có gì?
 
-- `protocol/`: tài liệu, JSON Schema và ví dụ giao tiếp của Bot Protocol v1/v2.
-- `samples/python/`: SDK và hai bot Python mẫu theo Protocol v1.
-- `samples/node/`: bot Node.js mẫu đọc được Protocol v1/v2.
-- `samples/go/`: bot Go mẫu theo Protocol v1.
+- `protocol/`: tài liệu, JSON Schema và ví dụ giao tiếp của Bot Protocol v2.
+- `samples/python/`: SDK và hai bot Python mẫu theo Protocol v2.
+- `samples/node/`: bot Node.js mẫu theo Protocol v2.
+- `samples/go/`: bot Go mẫu theo Protocol v2.
 - `starter-kits/README.md`: hướng dẫn đóng gói bot thành file OCI `.tar` để nộp.
 
 Các bot mẫu chỉ chọn một nước đi hợp lệ đơn giản. Đội thi cần tự viết chiến thuật của mình.

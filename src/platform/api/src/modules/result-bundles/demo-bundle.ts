@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { generateKeyPairSync } from 'node:crypto';
+import { createHash, generateKeyPairSync } from 'node:crypto';
 import {
   DEFAULT_LIMITS,
   type InitMessage,
@@ -11,9 +11,21 @@ import {
   type TurnResultMessageV2,
   type MatchResultMessage,
   type MatchResultMessageV2,
+  type TimeControlV2,
 } from '@ott/bot-protocol';
 import { DEFAULT_MAP, GOALS, type GameAction } from '@ott/game-core';
-import { CoreGameAdapter, runMatch, serializeEventLog, type EventLogV1, type BotPort, type BotReply, type BotStartResult } from '@ott/match-runner';
+import {
+  CoreGameAdapter,
+  runMatch,
+  serializeEventLog,
+  type AnyEventLog,
+  type EventLogV1,
+  type EventLogV2,
+  type BotPort,
+  type BotReply,
+  type BotStartResult,
+  FakeClock,
+} from '@ott/match-runner';
 
 import { publicEventLog } from '../replays/service.ts';
 import {
@@ -124,14 +136,23 @@ function chooseDemoAction(
   return best;
 }
 
+export const DEMO_TIME_CONTROL: TimeControlV2 = {
+  startupMs: 5000,
+  totalBotBudgetMs: 60000,
+  matchWallClockMs: 150000,
+  perTurn: { mode: 'FIXED', fixedMs: 3000 },
+};
+
 class DemoActionBot implements BotPort {
-  #protocolVersion: 1 | 2 = 1;
+  #protocolVersion: 1 | 2 = 2;
   #side: 'X' | 'O' = 'X';
 
   readonly #strategy: DemoStrategy;
+  readonly #clock: FakeClock;
 
-  constructor(strategy: DemoStrategy) {
+  constructor(strategy: DemoStrategy, clock: FakeClock) {
     this.#strategy = strategy;
+    this.#clock = clock;
   }
 
   async start(init: InitMessage | InitMessageV2): Promise<BotStartResult> {
@@ -144,6 +165,7 @@ class DemoActionBot implements BotPort {
     update: StateUpdateMessage | StateUpdateMessageV2,
     _timeoutMs: number,
   ): Promise<BotReply> {
+    this.#clock.advance(50);
     const chosen = chooseDemoAction(this.#strategy, this.#side, update);
     if (!chosen) {
       return { ok: false, code: 'SCHEMA_VIOLATION' };
@@ -152,13 +174,9 @@ class DemoActionBot implements BotPort {
       type: 'ACTION',
       turnId: update.turnId,
       action: chosen,
+      protocolVersion: 2,
+      matchId: update.matchId,
     };
-    if (this.#protocolVersion === 2) {
-      message.protocolVersion = 2;
-    } else {
-      message.protocolVersion = 1;
-      message.matchId = (update as StateUpdateMessage).matchId;
-    }
     return { ok: true, message };
   }
 
@@ -183,7 +201,7 @@ interface DemoGameOutcome {
   };
   readonly eventLogSha256: string;
   /** The un-projected log the hash was computed over; kept so tests can recompute the digest. */
-  readonly sourceLog: EventLogV1;
+  readonly sourceLog: AnyEventLog;
 }
 
 /**
@@ -197,10 +215,31 @@ export async function generateDeterministicReplay(
 ): Promise<DemoGameOutcome> {
   const game = new CoreGameAdapter();
   const gameConfig = { gameId: matchId, engineVersion: '1.0.0', map: DEFAULT_MAP, maxTurns: 40 };
+  const clock = new FakeClock(0);
+  const botSeeds = {
+    X: createHash('sha256').update(`demo-bot-seed-X-${matchId}`).digest('hex'),
+    O: createHash('sha256').update(`demo-bot-seed-O-${matchId}`).digest('hex'),
+  };
 
   const report = await runMatch(
-    { matchId, seed: `demo-seed-${matchId}`, game: gameConfig, limits: { ...DEFAULT_LIMITS, maxTurns: 40 } },
-    { game, bots: { X: new DemoActionBot(strategies.X), O: new DemoActionBot(strategies.O) } },
+    {
+      matchId,
+      seed: `demo-seed-${matchId}`,
+      game: gameConfig,
+      limits: { ...DEFAULT_LIMITS, maxTurns: 40 },
+      protocolV2: {
+        timeControl: DEMO_TIME_CONTROL,
+        botSeeds,
+      },
+    },
+    {
+      game,
+      bots: {
+        X: new DemoActionBot(strategies.X, clock),
+        O: new DemoActionBot(strategies.O, clock),
+      },
+      clock,
+    },
   );
 
   const replay = publicEventLog(
@@ -235,7 +274,7 @@ export async function generateDeterministicReplay(
 
 export interface DemoTournamentOptions {
   /** When given, receives the source (un-projected) event log of every played game, by matchId. */
-  readonly sourceLogs?: Map<string, EventLogV1>;
+  readonly sourceLogs?: Map<string, AnyEventLog>;
 }
 
 export async function createSyntheticDemoTournament(

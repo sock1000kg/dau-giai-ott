@@ -30,12 +30,12 @@ class MemoryStorage implements ObjectStorage {
 }
 
 class FirstLegalBot implements BotPort {
-  private init?: InitMessage;
-  async start(init: InitMessage): Promise<BotStartResult> { this.init = init; return { ok: true }; }
-  async requestAction(update: StateUpdateMessage) {
+  private init?: InitMessage | import('@ott/bot-protocol').InitMessageV2;
+  async start(init: InitMessage | import('@ott/bot-protocol').InitMessageV2): Promise<BotStartResult> { this.init = init; return { ok: true }; }
+  async requestAction(update: StateUpdateMessage | import('@ott/bot-protocol').StateUpdateMessageV2) {
     const action = update.legalActions[0];
     if (action === undefined || this.init === undefined) return { ok: false as const, code: 'BOT_CRASHED' as const };
-    return { ok: true as const, message: { type: 'ACTION' as const, protocolVersion: 1 as const, matchId: this.init.matchId, turnId: update.turnId, action } };
+    return { ok: true as const, message: { type: 'ACTION' as const, protocolVersion: update.protocolVersion as any, matchId: this.init.matchId, turnId: update.turnId, action } };
   }
   async notifyStateUpdate(_update: StateUpdateMessage): Promise<void> {}
   async sendTurnResult(_message: TurnResultMessage): Promise<void> {}

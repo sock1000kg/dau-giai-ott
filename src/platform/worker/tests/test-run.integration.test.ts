@@ -421,6 +421,41 @@ describe('P3-N03: Test-Run Quota, Opponent Policy & Private Artifacts', () => {
   });
 
   describe('Test Run Execution & Replay Storage', () => {
+    const mockRoundRules = {
+      schemaVersion: 1,
+      engineVersion: '1.0.0',
+      mapSet: [{ mapId: 'default', checksum: 'a'.repeat(64) }],
+      maxTurns: 100,
+      faultPolicyVersion: 'P2_BASELINE_V1',
+      timeControl: {
+        startupMs: 5000,
+        totalBotBudgetMs: 60000,
+        matchWallClockMs: 150000,
+        perTurn: { mode: 'FIXED' as const, fixedMs: 3000 },
+      },
+      resources: {
+        memoryMiB: 512,
+        milliCpu: 1000,
+        pids: 64,
+        tmpfsMiB: 64,
+        archiveMiB: 256,
+        unpackedMiB: 512,
+        maxLayers: 16,
+      },
+      schedule: {
+        submissionOpensAt: '2026-01-01T00:00:00Z',
+        submissionDeadlineAt: '2026-12-31T00:00:00Z',
+        graceEndsAt: '2026-12-31T01:00:00Z',
+        runStartsAt: '2026-12-31T02:00:00Z',
+        runMaxHours: 24,
+        appealEndsAt: '2027-01-07T00:00:00Z',
+      },
+      testRun: {
+        quotaPerTeamPerDay: 5,
+        opponents: ['BTC_REFERENCE' as const, 'OWN_SUBMISSION' as const],
+      },
+    };
+
     it('executes test run job and stores private replay in storage without touching ratings', async () => {
       const testRunId = randomUUID();
       const teamId = randomUUID();
@@ -453,6 +488,8 @@ describe('P3-N03: Test-Run Quota, Opponent Policy & Private Artifacts', () => {
                 sub_config_digest: 'sha256:' + '2'.repeat(64),
                 sub_entrypoint: JSON.stringify(['/bot']),
                 sub_policy_version: 'P2_BASELINE_V1',
+                round_id: 'round-1',
+                round_rules: mockRoundRules,
               }],
             };
           }
@@ -483,10 +520,28 @@ describe('P3-N03: Test-Run Quota, Opponent Policy & Private Artifacts', () => {
           entrypoint: ['/bot'],
           reference: { submissionId: 'reference:FIRST_LEGAL', archiveSha256: dummySha, manifestDigest: 'sha256:' + '3'.repeat(64), configDigest: 'sha256:' + '4'.repeat(64), policyVersion: 'P2_BASELINE_V1' },
         }),
-        createBotPort: async () =>
-          new ScriptedBot({
-            replies: [{ kind: 'error', code: 'BOT_TIMEOUT' }],
-          }),
+        createBotPort: async () => ({
+          start: async () => ({ ok: true }),
+          requestAction: async (update: any) => {
+            if (update.turnId === 1 && update.legalActions?.length > 0) {
+              return {
+                ok: true,
+                message: {
+                  type: 'ACTION',
+                  protocolVersion: update.protocolVersion ?? 2,
+                  matchId: update.matchId,
+                  turnId: update.turnId,
+                  action: update.legalActions[0],
+                },
+              };
+            }
+            return { ok: false, code: 'BOT_CRASHED' };
+          },
+          notifyStateUpdate: async () => {},
+          sendTurnResult: async () => {},
+          finish: async () => {},
+          stop: async () => {},
+        }),
       });
 
       expect(result.alreadyFinished).toBe(false);
@@ -501,6 +556,15 @@ describe('P3-N03: Test-Run Quota, Opponent Policy & Private Artifacts', () => {
       // The API replay projection requires header.game.gameId === matchId (replays/service.ts publicEventLog).
       expect(storedReplay.header.game.gameId).toBe(testRunId);
       expect(storedReplay.footer.result.finalStateHash).toBeDefined();
+      expect(storedReplay.header.formatVersion).toBe(2);
+      expect(storedReplay.header.protocolVersion).toBe(2);
+      expect((storedReplay.header.limits as any).timeControl).toEqual(mockRoundRules.timeControl);
+      expect(Array.isArray((storedReplay as any).timing)).toBe(true);
+      expect((storedReplay as any).timing.length).toBeGreaterThan(0);
+      const applied = storedReplay.entries.some((e: any) =>
+        e.events.some((ev: any) => ev.type === 'ACTION_APPLIED'),
+      );
+      expect(applied).toBe(true);
     });
 
     it('fails closed and refunds the reservation when a BTC reference bot is not configured', async () => {
@@ -531,6 +595,8 @@ describe('P3-N03: Test-Run Quota, Opponent Policy & Private Artifacts', () => {
               sub_config_digest: 'sha256:' + '2'.repeat(64),
               sub_entrypoint: JSON.stringify(['/bot']),
               sub_policy_version: 'P2_BASELINE_V1',
+              round_id: 'round-1',
+              round_rules: mockRoundRules,
             }] };
           }
           if (sql.includes("status = 'RUNNING'")) return { rows: [{ id: testRunId }] };
@@ -580,6 +646,8 @@ describe('P3-N03: Test-Run Quota, Opponent Policy & Private Artifacts', () => {
               sub_config_digest: 'sha256:' + '2'.repeat(64),
               sub_entrypoint: JSON.stringify(['/bot']),
               sub_policy_version: 'P2_BASELINE_V1',
+              round_id: 'round-1',
+              round_rules: mockRoundRules,
             }] };
           }
           if (sql.includes("status = 'RUNNING'")) return { rows: [{ id: testRunId }] };
@@ -617,6 +685,7 @@ describe('P3-N03: Test-Run Quota, Opponent Policy & Private Artifacts', () => {
             sub_object_key: 'submissions/team-bot.tar', sub_archive_sha256: ownSha,
             sub_manifest_digest: 'sha256:' + '1'.repeat(64), sub_config_digest: 'sha256:' + '2'.repeat(64),
             sub_entrypoint: JSON.stringify(['/bot']), sub_policy_version: 'P2_BASELINE_V1',
+            round_id: 'round-1', round_rules: mockRoundRules,
           }] };
           if (sql.includes("status = 'RUNNING'")) return { rows: [{ id: testRunId }] };
           if (sql.includes("status = 'FAILED'")) { failedWith = String(params?.[0]); return { rows: [] }; }
@@ -668,6 +737,8 @@ describe('P3-N03: Test-Run Quota, Opponent Policy & Private Artifacts', () => {
                 sub_config_digest: 'sha256:' + '2'.repeat(64),
                 sub_entrypoint: JSON.stringify(['/bot']),
                 sub_policy_version: 'P2_BASELINE_V1',
+                round_id: 'round-1',
+                round_rules: mockRoundRules,
               }],
             };
           }
@@ -708,7 +779,7 @@ describe('P3-N03: Test-Run Quota, Opponent Policy & Private Artifacts', () => {
         capturedReferences.push(reference);
         createdBots.push({ role: reference.submissionId });
         return new ScriptedBot({
-          replies: [{ kind: 'error', code: 'BOT_TIMEOUT' }],
+          replies: [{ kind: 'error', code: 'BOT_CRASHED' }],
         });
       };
 
@@ -764,6 +835,8 @@ describe('P3-N03: Test-Run Quota, Opponent Policy & Private Artifacts', () => {
                 sub_config_digest: 'sha256:' + '2'.repeat(64),
                 sub_entrypoint: JSON.stringify(['/bot']),
                 sub_policy_version: 'P2_BASELINE_V1',
+                round_id: 'round-1',
+                round_rules: mockRoundRules,
               }],
             };
           }
@@ -832,6 +905,8 @@ describe('P3-N03: Test-Run Quota, Opponent Policy & Private Artifacts', () => {
                 sub_config_digest: 'sha256:' + '2'.repeat(64),
                 sub_entrypoint: JSON.stringify(['/bot']),
                 sub_policy_version: 'P2_BASELINE_V1',
+                round_id: 'round-1',
+                round_rules: mockRoundRules,
               }],
             };
           }
@@ -862,10 +937,28 @@ describe('P3-N03: Test-Run Quota, Opponent Policy & Private Artifacts', () => {
         testRunId,
         database: mockDb,
         storage: mockStorage,
-        createBotPort: async () =>
-          new ScriptedBot({
-            replies: [{ kind: 'error', code: 'BOT_TIMEOUT' }],
-          }),
+        createBotPort: async () => ({
+          start: async () => ({ ok: true }),
+          requestAction: async (update: any) => {
+            if (update.turnId === 1 && update.legalActions?.length > 0) {
+              return {
+                ok: true,
+                message: {
+                  type: 'ACTION',
+                  protocolVersion: update.protocolVersion ?? 2,
+                  matchId: update.matchId,
+                  turnId: update.turnId,
+                  action: update.legalActions[0],
+                },
+              };
+            }
+            return { ok: false, code: 'BOT_CRASHED' };
+          },
+          notifyStateUpdate: async () => {},
+          sendTurnResult: async () => {},
+          finish: async () => {},
+          stop: async () => {},
+        }),
       });
 
       expect(result.alreadyFinished).toBe(false);
@@ -908,6 +1001,8 @@ describe('P3-N03: Test-Run Quota, Opponent Policy & Private Artifacts', () => {
                 sub_config_digest: 'sha256:' + '2'.repeat(64),
                 sub_entrypoint: JSON.stringify(['/bot']),
                 sub_policy_version: 'P2_BASELINE_V1',
+                round_id: 'round-1',
+                round_rules: mockRoundRules,
               }],
             };
           }
@@ -937,10 +1032,28 @@ describe('P3-N03: Test-Run Quota, Opponent Policy & Private Artifacts', () => {
         testRunId,
         database: mockDb,
         storage: mockStorage,
-        createBotPort: async () =>
-          new ScriptedBot({
-            replies: [{ kind: 'error', code: 'BOT_TIMEOUT' }],
-          }),
+        createBotPort: async () => ({
+          start: async () => ({ ok: true }),
+          requestAction: async (update: any) => {
+            if (update.turnId === 1 && update.legalActions?.length > 0) {
+              return {
+                ok: true,
+                message: {
+                  type: 'ACTION',
+                  protocolVersion: update.protocolVersion ?? 2,
+                  matchId: update.matchId,
+                  turnId: update.turnId,
+                  action: update.legalActions[0],
+                },
+              };
+            }
+            return { ok: false, code: 'BOT_CRASHED' };
+          },
+          notifyStateUpdate: async () => {},
+          sendTurnResult: async () => {},
+          finish: async () => {},
+          stop: async () => {},
+        }),
       });
 
       expect(result.alreadyFinished).toBe(false);
@@ -979,6 +1092,8 @@ describe('P3-N03: Test-Run Quota, Opponent Policy & Private Artifacts', () => {
                 sub_config_digest: 'sha256:' + '2'.repeat(64),
                 sub_entrypoint: JSON.stringify(['/bot']),
                 sub_policy_version: 'P2_BASELINE_V1',
+                round_id: 'round-1',
+                round_rules: mockRoundRules,
               }],
             };
           }
@@ -1012,6 +1127,159 @@ describe('P3-N03: Test-Run Quota, Opponent Policy & Private Artifacts', () => {
 
       expect(result.alreadyFinished).toBe(false);
       expect(failedWith).toBe('MAP_UNKNOWN');
+    });
+
+    it('fails closed with TEST_RUN_ROUND_RULES_UNAVAILABLE and refunds quota when round rules cannot be loaded', async () => {
+      const testRunId = randomUUID();
+      const teamId = randomUUID();
+      const subId = randomUUID();
+      let failedWith: string | null = null;
+      let quotaConsumed = true;
+
+      const mockDb = {
+        query: vi.fn().mockImplementation(async (sql: string, params?: readonly unknown[]) => {
+          if (sql.includes('FROM test_runs')) {
+            return {
+              rows: [{
+                id: testRunId,
+                team_id: teamId,
+                status: 'QUEUED',
+                submission_id: subId,
+                opponent_type: 'BTC_REFERENCE',
+                opponent_submission_id: null,
+                opponent_reference_bot: 'FIRST_LEGAL',
+                seed: 'seed123',
+                sub_object_key: 'submissions/team-bot.tar',
+                sub_archive_sha256: 'sha256:' + 'a'.repeat(64),
+                sub_manifest_digest: 'sha256:' + '1'.repeat(64),
+                sub_config_digest: 'sha256:' + '2'.repeat(64),
+                sub_entrypoint: JSON.stringify(['/bot']),
+                sub_policy_version: 'P2_BASELINE_V1',
+                round_id: null,
+                round_rules: null,
+              }],
+            };
+          }
+          if (sql.includes("status = 'RUNNING'")) return { rows: [{ id: testRunId }] };
+          if (sql.includes("status = 'FAILED'")) {
+            failedWith = String(params?.[0]);
+            quotaConsumed = params?.[1] === false;
+            return { rows: [] };
+          }
+          return { rows: [] };
+        }),
+      } as unknown as Database;
+
+      const result = await runTestJob({ testRunId, database: mockDb, storage: mockStorage });
+      expect(result.alreadyFinished).toBe(false);
+      expect(result.isInfraFailure).toBe(true);
+      expect(failedWith).toBe('TEST_RUN_ROUND_RULES_UNAVAILABLE');
+      expect(quotaConsumed).toBe(false);
+    });
+
+    it('fails closed with TEST_RUN_ROUND_RULES_UNAVAILABLE when round rules have invalid timeControl', async () => {
+      const testRunId = randomUUID();
+      const teamId = randomUUID();
+      const subId = randomUUID();
+      let failedWith: string | null = null;
+      let quotaConsumed = true;
+
+      const mockDb = {
+        query: vi.fn().mockImplementation(async (sql: string, params?: readonly unknown[]) => {
+          if (sql.includes('FROM test_runs')) {
+            return {
+              rows: [{
+                id: testRunId,
+                team_id: teamId,
+                status: 'QUEUED',
+                submission_id: subId,
+                opponent_type: 'BTC_REFERENCE',
+                opponent_submission_id: null,
+                opponent_reference_bot: 'FIRST_LEGAL',
+                seed: 'seed123',
+                sub_object_key: 'submissions/team-bot.tar',
+                sub_archive_sha256: 'sha256:' + 'a'.repeat(64),
+                sub_manifest_digest: 'sha256:' + '1'.repeat(64),
+                sub_config_digest: 'sha256:' + '2'.repeat(64),
+                sub_entrypoint: JSON.stringify(['/bot']),
+                sub_policy_version: 'P2_BASELINE_V1',
+                round_id: 'round-1',
+                round_rules: {
+                  engineVersion: '1.0.0',
+                  maxTurns: 200,
+                  timeControl: {
+                    startupMs: 5000,
+                    totalBotBudgetMs: 60000,
+                    // Invalid: perTurn fixedMs is 0
+                    perTurn: { mode: 'FIXED', fixedMs: 0 },
+                  },
+                },
+              }],
+            };
+          }
+          if (sql.includes("status = 'RUNNING'")) return { rows: [{ id: testRunId }] };
+          if (sql.includes("status = 'FAILED'")) {
+            failedWith = String(params?.[0]);
+            quotaConsumed = params?.[1] === false;
+            return { rows: [] };
+          }
+          return { rows: [] };
+        }),
+      } as unknown as Database;
+
+      const result = await runTestJob({ testRunId, database: mockDb, storage: mockStorage });
+      expect(result.alreadyFinished).toBe(false);
+      expect(result.isInfraFailure).toBe(true);
+      expect(failedWith).toBe('TEST_RUN_ROUND_RULES_UNAVAILABLE');
+      expect(quotaConsumed).toBe(false);
+    });
+
+    it('fails closed with TEST_RUN_ROUND_RULES_UNAVAILABLE when round rules string is malformed JSON', async () => {
+      const testRunId = randomUUID();
+      const teamId = randomUUID();
+      const subId = randomUUID();
+      let failedWith: string | null = null;
+      let quotaConsumed = true;
+
+      const mockDb = {
+        query: vi.fn().mockImplementation(async (sql: string, params?: readonly unknown[]) => {
+          if (sql.includes('FROM test_runs')) {
+            return {
+              rows: [{
+                id: testRunId,
+                team_id: teamId,
+                status: 'QUEUED',
+                submission_id: subId,
+                opponent_type: 'BTC_REFERENCE',
+                opponent_submission_id: null,
+                opponent_reference_bot: 'FIRST_LEGAL',
+                seed: 'seed123',
+                sub_object_key: 'submissions/team-bot.tar',
+                sub_archive_sha256: 'sha256:' + 'a'.repeat(64),
+                sub_manifest_digest: 'sha256:' + '1'.repeat(64),
+                sub_config_digest: 'sha256:' + '2'.repeat(64),
+                sub_entrypoint: JSON.stringify(['/bot']),
+                sub_policy_version: 'P2_BASELINE_V1',
+                round_id: 'round-1',
+                round_rules: 'malformed { json',
+              }],
+            };
+          }
+          if (sql.includes("status = 'RUNNING'")) return { rows: [{ id: testRunId }] };
+          if (sql.includes("status = 'FAILED'")) {
+            failedWith = String(params?.[0]);
+            quotaConsumed = params?.[1] === false;
+            return { rows: [] };
+          }
+          return { rows: [] };
+        }),
+      } as unknown as Database;
+
+      const result = await runTestJob({ testRunId, database: mockDb, storage: mockStorage });
+      expect(result.alreadyFinished).toBe(false);
+      expect(result.isInfraFailure).toBe(true);
+      expect(failedWith).toBe('TEST_RUN_ROUND_RULES_UNAVAILABLE');
+      expect(quotaConsumed).toBe(false);
     });
   });
 });

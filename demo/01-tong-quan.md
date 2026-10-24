@@ -148,7 +148,7 @@ Ban tổ chức hỗ trợ các đội bằng:
   (`/public`) và được BTC soạn tại **Round** (`/admin/rounds`).
 - Tài liệu giao tiếp bot, bot mẫu và hướng dẫn starter kit được tải ngay tại **Thông tin giải đấu**
   (`/public`), thẻ **Tài nguyên làm bot**, nút **Tải bộ tài nguyên làm bot (.zip)**.
-- Gói tải gồm Bot Protocol v1/v2, JSON Schema, dữ liệu giao tiếp mẫu, bot mẫu Python/Node.js/Go và hướng
+- Gói tải gồm Bot Protocol v2, JSON Schema, dữ liệu giao tiếp mẫu, bot mẫu Python/Node.js/Go và hướng
   dẫn đóng gói file OCI `.tar` để nộp.
 - Chức năng **chạy thử bot** cũng chưa có mục riêng trên menu của đội thi.
 
