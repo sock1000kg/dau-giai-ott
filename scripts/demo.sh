@@ -574,7 +574,6 @@ OTT_BOOTSTRAP_BTC_PASSWORD=${btc_pass}
 OTT_DEMO_BTC_PASSWORD=${btc_pass}
 OTT_DEMO_TEAM_COUNT=10
 OTT_DEMO_TEAM_PASSWORD=${tester_pass}
-OTT_DEMO_REFERENCE_BOT_HOST_DIR=${REPO_ROOT}/.local/demo/reference-bot
 DEMO_UID=$(id -u)
 DEMO_GID=$(id -g)
 DEMO_PUBLIC=true
@@ -600,31 +599,12 @@ OTT_SECURE_COOKIES=false
 OTT_DEMO_MODE=true
 OTT_BOOTSTRAP_BTC_USERNAME=btc
 OTT_BOOTSTRAP_BTC_PASSWORD=ABC123
-OTT_DEMO_REFERENCE_BOT_HOST_DIR=${REPO_ROOT}/.local/demo/reference-bot
 DEMO_UID=$(id -u)
 DEMO_GID=$(id -g)
 EOF
     fi
     chmod 0600 "${tmp_env}"
     mv -n "${tmp_env}" "${DEMO_ENV_FILE}"
-    chmod 0600 "${DEMO_ENV_FILE}"
-  fi
-
-  # Keep an optional BTC reference archive outside git and expose only its read-only mount.
-  local reference_bot_dir="${OTT_DEMO_REFERENCE_BOT_HOST_DIR:-${REPO_ROOT}/.local/demo/reference-bot}"
-  mkdir -p -m 700 "${reference_bot_dir}"
-  chmod 700 "${reference_bot_dir}"
-  export OTT_DEMO_REFERENCE_BOT_HOST_DIR="$(cd "${reference_bot_dir}" && pwd)"
-  if [[ -n "${OTT_DEMO_REFERENCE_BOT_ARCHIVE:-}" ]]; then
-    if [[ "${OTT_DEMO_REFERENCE_BOT_ARCHIVE}" == /reference-bot/* ]]; then
-      : # Container path is already configured in the private demo env file.
-    else
-      echo "Error: OTT_DEMO_REFERENCE_BOT_ARCHIVE must use the container path /reference-bot/<filename> in ${DEMO_ENV_FILE}." >&2
-      exit 1
-    fi
-  fi
-  if [[ -f "${DEMO_ENV_FILE}" ]] && ! rg -q '^OTT_DEMO_REFERENCE_BOT_HOST_DIR=' "${DEMO_ENV_FILE}"; then
-    printf '\nOTT_DEMO_REFERENCE_BOT_HOST_DIR=%s\n' "${OTT_DEMO_REFERENCE_BOT_HOST_DIR}" >> "${DEMO_ENV_FILE}"
     chmod 0600 "${DEMO_ENV_FILE}"
   fi
 

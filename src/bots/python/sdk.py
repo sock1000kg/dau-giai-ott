@@ -8,14 +8,23 @@ class BotSDK:
         self.on_state_update: Optional[Callable[[Dict[str, Any]], Optional[Dict[str, Any]]]] = None
         self.on_turn_result: Optional[Callable[[Dict[str, Any]], None]] = None
         self.on_match_result: Optional[Callable[[Dict[str, Any]], None]] = None
+        self.protocol_version: int = 1
 
-    def send_action(self, match_id: str, turn_id: int, action: Dict[str, Any]) -> None:
+    def send_action(
+        self,
+        match_id: str,
+        turn_id: int,
+        action: Dict[str, Any],
+        protocol_version: Optional[int] = None,
+    ) -> None:
         """
         Gửi ACTION message qua stdout theo đúng chuẩn NDJSON.
         """
+        if protocol_version is None:
+            protocol_version = self.protocol_version
         action_msg = {
             "type": "ACTION",
-            "protocolVersion": 1,
+            "protocolVersion": protocol_version,
             "matchId": match_id,
             "turnId": turn_id,
             "action": action
@@ -36,7 +45,7 @@ class BotSDK:
             line = line.strip()
             if not line:
                 continue
-            
+
             try:
                 msg = json.loads(line)
             except json.JSONDecodeError:
@@ -46,6 +55,10 @@ class BotSDK:
             if not isinstance(msg, dict):
                 self.log(f"Invalid message format, expected object: {line}")
                 continue
+
+            incoming_version = msg.get("protocolVersion")
+            if isinstance(incoming_version, int) and incoming_version > 0:
+                self.protocol_version = incoming_version
 
             msg_type = msg.get("type")
             if msg_type == "INIT":
@@ -58,7 +71,8 @@ class BotSDK:
                         self.send_action(
                             match_id=msg.get("matchId", ""),
                             turn_id=msg.get("turnId", 0),
-                            action=action
+                            action=action,
+                            protocol_version=self.protocol_version,
                         )
             elif msg_type == "TURN_RESULT":
                 if self.on_turn_result:

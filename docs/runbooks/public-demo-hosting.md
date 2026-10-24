@@ -78,7 +78,10 @@ Welcome to the OTT Tournament Demo!
 Web Portal: https://<your-public-tunnel-domain>/
 Usernames: team01 through team10 (pick any unused team)
 Tester Password: <shared-tester-password>
+Download pre-built demo bot (.oci.tar): https://<your-public-tunnel-domain>/downloads/ott-demo-bot-go-v1.oci.tar
 ```
+
+Testers can download the pre-built demo bot `ott-demo-bot-go-v1.oci.tar` directly from the public tournament page or the link above, upload it as their initial submission, or test against the seeded BTC baseline (`btc-baseline`) opponent on the test-run page.
 
 ---
 

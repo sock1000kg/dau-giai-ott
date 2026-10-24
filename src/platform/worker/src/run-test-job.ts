@@ -143,17 +143,69 @@ export async function runTestJob(options: RunTestJobOptions): Promise<RunTestJob
     let refO: OciArtifactReference;
 
     if (testRun.opponent_type === 'BTC_REFERENCE') {
-      if (!options.getReferenceBot) {
-        throw new Error('REFERENCE_BOT_UNAVAILABLE');
-      } else {
-        const refBot = await options.getReferenceBot(testRun.opponent_reference_bot ?? 'FIRST_LEGAL');
-        archiveO = refBot.archive;
-        if (archiveChecksum(archiveO) !== refBot.reference.archiveSha256) {
-          throw new Error('OPPONENT_ARCHIVE_CHECKSUM_MISMATCH');
+      const getRef = options.getReferenceBot ?? (async (botId: string) => {
+        const found = await database.query<{
+          id: string;
+          object_key: string;
+          archive_sha256: string;
+          manifest_digest: string;
+          config_digest: string;
+          entrypoint: string | readonly string[];
+          policy_version: string;
+        }>(
+          `SELECT id, object_key, archive_sha256, manifest_digest, config_digest, entrypoint, policy_version
+           FROM test_run_reference_bots WHERE id = $1 AND enabled = TRUE`,
+          [botId],
+        );
+        const row = found.rows[0];
+        if (!row) throw new Error('REFERENCE_BOT_UNAVAILABLE');
+        let refPolicy: SandboxPolicy;
+        try {
+          refPolicy = resolveSandboxPolicy(row.policy_version);
+        } catch {
+          throw new Error('REFERENCE_BOT_POLICY_MISMATCH');
         }
-        entrypointO = refBot.entrypoint;
-        refO = refBot.reference;
+        if (refPolicy.version !== effectivePolicy.version) {
+          throw new Error('REFERENCE_BOT_POLICY_MISMATCH');
+        }
+        const entrypoint = Array.isArray(row.entrypoint)
+          ? row.entrypoint
+          : (JSON.parse(row.entrypoint as string) as string[]);
+        return {
+          archive: await storage.get(row.object_key),
+          entrypoint,
+          reference: {
+            submissionId: `reference:${row.id}`,
+            archiveSha256: row.archive_sha256,
+            manifestDigest: row.manifest_digest,
+            configDigest: row.config_digest,
+            policyVersion: effectivePolicy.version,
+          },
+        };
+      });
+      if (!testRun.opponent_reference_bot) {
+        throw new Error('REFERENCE_BOT_UNAVAILABLE');
       }
+      const refBot = await getRef(testRun.opponent_reference_bot);
+      archiveO = refBot.archive;
+      if (archiveChecksum(archiveO) !== refBot.reference.archiveSha256) {
+        throw new Error('OPPONENT_ARCHIVE_CHECKSUM_MISMATCH');
+      }
+      if (refBot.reference.policyVersion !== effectivePolicy.version) {
+        try {
+          const resolved = resolveSandboxPolicy(refBot.reference.policyVersion);
+          if (resolved.version !== effectivePolicy.version) {
+            throw new Error('REFERENCE_BOT_POLICY_MISMATCH');
+          }
+        } catch {
+          throw new Error('REFERENCE_BOT_POLICY_MISMATCH');
+        }
+      }
+      entrypointO = refBot.entrypoint;
+      refO = {
+        ...refBot.reference,
+        policyVersion: effectivePolicy.version,
+      };
     } else {
       // OWN_SUBMISSION
       const oppSubRes = await database.query<{
@@ -216,7 +268,7 @@ export async function runTestJob(options: RunTestJobOptions): Promise<RunTestJob
         matchId: testRun.id,
         seed: testRun.seed,
         game: {
-          gameId: `test-game-${testRun.id}`,
+          gameId: testRun.id,
           engineVersion: '1.0.0',
           map: effectiveMap,
           maxTurns: 100,
@@ -296,6 +348,7 @@ function isInfrastructureFailure(message: string): boolean {
     'WORKER_CRASH',
     'OBJECT_NOT_FOUND',
     'REFERENCE_BOT_UNAVAILABLE',
+    'REFERENCE_BOT_POLICY_MISMATCH',
     'REPLAY_INTEGRITY_FAILED',
   ];
   return infraErrors.some((code) => message.includes(code));

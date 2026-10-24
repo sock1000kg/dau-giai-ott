@@ -676,3 +676,16 @@ The existing `deploy/lan/compose.yml` and `deploy/lan/.env.example` templates co
 ## Demo accounts and credential CSV (`P2-T35`)
 
 To seed idempotent local demo accounts (`btc`, `team01`, `team02`) with public demo credentials and export the local CSV to `.local/demo/accounts.csv`, see the runbook at [`docs/runbooks/local-demo.md`](../../../docs/runbooks/local-demo.md).
+
+## BTC Reference Bot Seeding (`P3-N03` / Loop 91)
+
+The platform provides an idempotent reference bot seeder for demo environments:
+
+```bash
+npm run demo:seed-reference-bot --workspace @ott/platform-api
+```
+
+- **Guards**: Requires `OTT_DEMO_MODE=true` and `OTT_DEPLOYMENT_MODE=dev|test`. Refuses execution in production environments.
+- **Archive Validation**: Validates the uncompressed OCI archive (`ott-demo-bot-go-v1.oci.tar`) via `validateOciSubmission` from `@ott/job-contract` and asserts against pinned SHA-256 (`80d1dd7d9fb46f3c2a4779f0a62cc7ee0d6a3ce4b741df026adbb7bf6109b4e6`).
+- **Storage & Catalog**: Uploads to object storage at `reference-bots/<sha256>.oci.tar` if not already present, and upserts a row into `test_run_reference_bots` (`id='btc-baseline'`, `display_name='BTC baseline'`). On conflict, object/digest fields are updated while preserving any administrative `enabled` state.
+- **Lifecycle Integration**: Integrated into `seed-demo` in `infra/local/compose.yaml`, so `demo.sh up` and `demo.sh refresh` automatically seed the baseline bot for test runs.

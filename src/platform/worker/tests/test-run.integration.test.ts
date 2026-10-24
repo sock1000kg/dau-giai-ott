@@ -12,7 +12,7 @@ import {
   TestRunError,
   type TestRunEnqueuer,
 } from '@ott/platform-api';
-import { QUEUE_PRIORITY, type MatchJobV1 } from '@ott/job-contract';
+import { QUEUE_PRIORITY, type MatchJobV1, type OciArtifactReference } from '@ott/job-contract';
 import { ScriptedBot } from '@ott/match-runner';
 import { parseAnyEventLog } from '@ott/match-runner';
 import { runTestJob } from '../src/run-test-job.ts';
@@ -498,6 +498,8 @@ describe('P3-N03: Test-Run Quota, Opponent Policy & Private Artifacts', () => {
         new TextDecoder().decode(storedObjects.get(`replays/test-runs/${testRunId}.json`)),
       );
       expect(storedReplay.header.matchId).toBe(testRunId);
+      // The API replay projection requires header.game.gameId === matchId (replays/service.ts publicEventLog).
+      expect(storedReplay.header.game.gameId).toBe(testRunId);
       expect(storedReplay.footer.result.finalStateHash).toBeDefined();
     });
 
@@ -522,6 +524,55 @@ describe('P3-N03: Test-Run Quota, Opponent Policy & Private Artifacts', () => {
               opponent_type: 'BTC_REFERENCE',
               opponent_submission_id: null,
               opponent_reference_bot: 'FIRST_LEGAL',
+              seed: 'seed123',
+              sub_object_key: 'submissions/team-bot.tar',
+              sub_archive_sha256: ownSha,
+              sub_manifest_digest: 'sha256:' + '1'.repeat(64),
+              sub_config_digest: 'sha256:' + '2'.repeat(64),
+              sub_entrypoint: JSON.stringify(['/bot']),
+              sub_policy_version: 'P2_BASELINE_V1',
+            }] };
+          }
+          if (sql.includes("status = 'RUNNING'")) return { rows: [{ id: testRunId }] };
+          if (sql.includes('UPDATE test_runs SET status = $1')) return { rows: [] };
+          if (sql.includes("status = 'FAILED'")) {
+            failedWith = String(params?.[0]);
+            quotaConsumed = params?.[1] === false;
+            return { rows: [] };
+          }
+          return { rows: [] };
+        }),
+      } as unknown as Database;
+
+      const result = await runTestJob({ testRunId, database: mockDb, storage: mockStorage });
+
+      expect(result.isInfraFailure).toBe(true);
+      expect(failedWith).toBe('REFERENCE_BOT_UNAVAILABLE');
+      expect(quotaConsumed).toBe(false);
+      expect(storedObjects.has(`replays/test-runs/${testRunId}.json`)).toBe(false);
+    });
+
+    it('fails closed when opponent_reference_bot is null for BTC_REFERENCE test run', async () => {
+      const testRunId = randomUUID();
+      const teamId = randomUUID();
+      const subId = randomUUID();
+      const ownArchive = new TextEncoder().encode('team-bot');
+      const ownSha = 'sha256:' + createHash('sha256').update(ownArchive).digest('hex');
+      storedObjects.set('submissions/team-bot.tar', ownArchive);
+      let failedWith: string | null = null;
+      let quotaConsumed = true;
+
+      const mockDb = {
+        query: vi.fn().mockImplementation(async (sql: string, params?: readonly unknown[]) => {
+          if (sql.includes('FROM test_runs tr')) {
+            return { rows: [{
+              id: testRunId,
+              team_id: teamId,
+              status: 'QUEUED',
+              submission_id: subId,
+              opponent_type: 'BTC_REFERENCE',
+              opponent_submission_id: null,
+              opponent_reference_bot: null,
               seed: 'seed123',
               sub_object_key: 'submissions/team-bot.tar',
               sub_archive_sha256: ownSha,
@@ -581,6 +632,172 @@ describe('P3-N03: Test-Run Quota, Opponent Policy & Private Artifacts', () => {
       expect(result.isInfraFailure).toBe(true);
       expect(failedWith).toBe('OPPONENT_ARCHIVE_CHECKSUM_MISMATCH');
       expect(storedObjects.has(`replays/test-runs/${testRunId}.json`)).toBe(false);
+    });
+
+    it('resolves a BTC_REFERENCE opponent from test_run_reference_bots in DB and runs against it without getReferenceBot option', async () => {
+      const testRunId = randomUUID();
+      const teamId = randomUUID();
+      const subId = randomUUID();
+      const ownArchive = new TextEncoder().encode('team-bot-code');
+      const ownSha = 'sha256:' + createHash('sha256').update(ownArchive).digest('hex');
+      const refArchive = new TextEncoder().encode('btc-baseline-bot-code');
+      const refSha = 'sha256:' + createHash('sha256').update(refArchive).digest('hex');
+      storedObjects.set('submissions/team-bot.tar', ownArchive);
+      storedObjects.set('reference-bots/btc-baseline.oci.tar', refArchive);
+
+      let completedWithResult: Record<string, unknown> | null = null;
+      let completedReplayKey: string | null = null;
+      let failedWith: string | null = null;
+
+      const mockDb = {
+        query: vi.fn().mockImplementation(async (sql: string, params?: readonly unknown[]) => {
+          if (sql.includes('FROM test_runs tr')) {
+            return {
+              rows: [{
+                id: testRunId,
+                team_id: teamId,
+                status: 'QUEUED',
+                submission_id: subId,
+                opponent_type: 'BTC_REFERENCE',
+                opponent_submission_id: null,
+                opponent_reference_bot: 'btc-baseline',
+                seed: 'seed-btc-test',
+                sub_object_key: 'submissions/team-bot.tar',
+                sub_archive_sha256: ownSha,
+                sub_manifest_digest: 'sha256:' + '1'.repeat(64),
+                sub_config_digest: 'sha256:' + '2'.repeat(64),
+                sub_entrypoint: JSON.stringify(['/bot']),
+                sub_policy_version: 'P2_BASELINE_V1',
+              }],
+            };
+          }
+          if (sql.includes("status = 'RUNNING'")) return { rows: [{ id: testRunId }] };
+          if (sql.includes('FROM test_run_reference_bots WHERE id = $1 AND enabled = TRUE')) {
+            return {
+              rows: [{
+                id: 'btc-baseline',
+                object_key: 'reference-bots/btc-baseline.oci.tar',
+                archive_sha256: refSha,
+                manifest_digest: 'sha256:' + '3'.repeat(64),
+                config_digest: 'sha256:' + '4'.repeat(64),
+                entrypoint: JSON.stringify(['/bot']),
+                policy_version: 'P2_BASELINE_V1',
+              }],
+            };
+          }
+          if (sql.includes("status = 'FAILED'")) {
+            failedWith = String(params?.[0]);
+            return { rows: [] };
+          }
+          if (sql.includes("status = 'COMPLETED'")) {
+            completedWithResult = typeof params?.[0] === 'string' ? JSON.parse(params[0]) : (params?.[0] as Record<string, unknown>);
+            completedReplayKey = String(params?.[1]);
+            return { rows: [] };
+          }
+          return { rows: [] };
+        }),
+      } as unknown as Database;
+
+      const createdBots: Array<{ role: string }> = [];
+      const capturedReferences: Array<OciArtifactReference> = [];
+      const fakeBotFactory = (
+        _archive: Uint8Array,
+        reference: OciArtifactReference,
+        _entrypoint: readonly string[],
+      ) => {
+        capturedReferences.push(reference);
+        createdBots.push({ role: reference.submissionId });
+        return new ScriptedBot({
+          replies: [{ kind: 'error', code: 'BOT_TIMEOUT' }],
+        });
+      };
+
+      const result = await runTestJob({
+        testRunId,
+        database: mockDb,
+        storage: mockStorage,
+        createBotPort: fakeBotFactory,
+      });
+
+      expect(result.alreadyFinished).toBe(false);
+      expect(result.outcome).toBeDefined();
+      expect(completedWithResult).toBeDefined();
+      expect(completedReplayKey).toBe(`replays/test-runs/${testRunId}.json`);
+      expect(createdBots).toHaveLength(2);
+      expect(createdBots[0]!.role).toBe(subId);
+      expect(createdBots[1]!.role).toBe('reference:btc-baseline');
+      expect(capturedReferences).toHaveLength(2);
+      expect(capturedReferences[0]!.policyVersion).toBe('OTT_SANDBOX_V1');
+      expect(capturedReferences[1]!.policyVersion).toBe('OTT_SANDBOX_V1');
+      expect(failedWith).toBeNull();
+    });
+
+    it('fails closed with REFERENCE_BOT_POLICY_MISMATCH when catalog row policy is unsupported or mismatched', async () => {
+      const testRunId = randomUUID();
+      const teamId = randomUUID();
+      const subId = randomUUID();
+      const ownArchive = new TextEncoder().encode('team-bot-code');
+      const ownSha = 'sha256:' + createHash('sha256').update(ownArchive).digest('hex');
+      const refArchive = new TextEncoder().encode('btc-baseline-bot-code');
+      const refSha = 'sha256:' + createHash('sha256').update(refArchive).digest('hex');
+      storedObjects.set('submissions/team-bot.tar', ownArchive);
+      storedObjects.set('reference-bots/btc-baseline.oci.tar', refArchive);
+
+      let failedWith: string | null = null;
+
+      const mockDb = {
+        query: vi.fn().mockImplementation(async (sql: string, params?: readonly unknown[]) => {
+          if (sql.includes('FROM test_runs tr')) {
+            return {
+              rows: [{
+                id: testRunId,
+                team_id: teamId,
+                status: 'QUEUED',
+                submission_id: subId,
+                opponent_type: 'BTC_REFERENCE',
+                opponent_submission_id: null,
+                opponent_reference_bot: 'btc-baseline',
+                seed: 'seed-btc-test',
+                sub_object_key: 'submissions/team-bot.tar',
+                sub_archive_sha256: ownSha,
+                sub_manifest_digest: 'sha256:' + '1'.repeat(64),
+                sub_config_digest: 'sha256:' + '2'.repeat(64),
+                sub_entrypoint: JSON.stringify(['/bot']),
+                sub_policy_version: 'P2_BASELINE_V1',
+              }],
+            };
+          }
+          if (sql.includes("status = 'RUNNING'")) return { rows: [{ id: testRunId }] };
+          if (sql.includes('FROM test_run_reference_bots WHERE id = $1 AND enabled = TRUE')) {
+            return {
+              rows: [{
+                id: 'btc-baseline',
+                object_key: 'reference-bots/btc-baseline.oci.tar',
+                archive_sha256: refSha,
+                manifest_digest: 'sha256:' + '3'.repeat(64),
+                config_digest: 'sha256:' + '4'.repeat(64),
+                entrypoint: JSON.stringify(['/bot']),
+                policy_version: 'UNSUPPORTED_POLICY_VER',
+              }],
+            };
+          }
+          if (sql.includes("status = 'FAILED'")) {
+            failedWith = String(params?.[0]);
+            return { rows: [] };
+          }
+          return { rows: [] };
+        }),
+      } as unknown as Database;
+
+      const result = await runTestJob({
+        testRunId,
+        database: mockDb,
+        storage: mockStorage,
+      });
+
+      expect(result.alreadyFinished).toBe(false);
+      expect(result.isInfraFailure).toBe(true);
+      expect(failedWith).toBe('REFERENCE_BOT_POLICY_MISMATCH');
     });
 
     it('executes self-play test runs and records the resolved map metadata', async () => {

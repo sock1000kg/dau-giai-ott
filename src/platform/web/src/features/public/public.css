@@ -8,8 +8,9 @@
 .pub-resources > div { flex: 1 1 420px; }
 .pub-resources p { margin: 0; }
 .pub-resources p + p { margin-top: var(--ui-space-2); }
+.pub-resources-actions { display: flex; flex-wrap: wrap; gap: var(--ui-space-2); flex: 0 0 auto; }
 .pub-resources .ui-button { flex: 0 0 auto; }
-@media (max-width: 639px) { .pub-resources .ui-button { width: 100%; } }
+@media (max-width: 639px) { .pub-resources-actions { width: 100%; flex-direction: column; } .pub-resources .ui-button { width: 100%; } }
 
 .pub-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--ui-space-4); }
 @media (min-width: 1024px) {

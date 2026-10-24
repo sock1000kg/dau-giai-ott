@@ -102,6 +102,60 @@ class TestBotSDK(unittest.TestCase):
             
         self.assertIn("Malformed JSON: invalid json", stderr.getvalue())
 
+    def test_echo_protocol_version_v2(self):
+        def on_state_update(msg):
+            return {"pieceId": "X-ROCK-1", "to": {"col": 1, "row": 2}}
+
+        self.sdk.on_state_update = on_state_update
+
+        stdin = io.StringIO('{"type":"STATE_UPDATE","protocolVersion":2,"matchId":"m-v2","turnId":1,"state":{},"legalActions":[]}\n')
+        stdout = io.StringIO()
+
+        with patch('sys.stdin', stdin), patch('sys.stdout', stdout):
+            self.sdk.run()
+
+        output = stdout.getvalue().strip()
+        parsed = json.loads(output)
+        self.assertEqual(parsed["type"], "ACTION")
+        self.assertEqual(parsed["protocolVersion"], 2)
+        self.assertEqual(parsed["matchId"], "m-v2")
+
+    def test_echo_protocol_version_from_init(self):
+        def on_state_update(msg):
+            return {"pieceId": "X-ROCK-1", "to": {"col": 1, "row": 2}}
+
+        self.sdk.on_state_update = on_state_update
+
+        # Message without protocolVersion in STATE_UPDATE echoes protocolVersion seen in INIT
+        stdin = io.StringIO('{"type":"INIT","protocolVersion":2,"matchId":"m-v2"}\n{"type":"STATE_UPDATE","matchId":"m-v2","turnId":1,"state":{},"legalActions":[]}\n')
+        stdout = io.StringIO()
+
+        with patch('sys.stdin', stdin), patch('sys.stdout', stdout):
+            self.sdk.run()
+
+        output = stdout.getvalue().strip()
+        parsed = json.loads(output)
+        self.assertEqual(parsed["type"], "ACTION")
+        self.assertEqual(parsed["protocolVersion"], 2)
+
+    def test_ignore_non_int_protocol_version(self):
+        def on_state_update(msg):
+            return {"pieceId": "X-ROCK-1", "to": {"col": 1, "row": 2}}
+
+        self.sdk.on_state_update = on_state_update
+
+        # Message with non-int protocolVersion does not corrupt protocol_version
+        stdin = io.StringIO('{"type":"STATE_UPDATE","protocolVersion":"invalid","matchId":"m-v1","turnId":1,"state":{},"legalActions":[]}\n')
+        stdout = io.StringIO()
+
+        with patch('sys.stdin', stdin), patch('sys.stdout', stdout):
+            self.sdk.run()
+
+        output = stdout.getvalue().strip()
+        parsed = json.loads(output)
+        self.assertEqual(parsed["type"], "ACTION")
+        self.assertEqual(parsed["protocolVersion"], 1)
+
 if __name__ == '__main__':
     unittest.main()
 

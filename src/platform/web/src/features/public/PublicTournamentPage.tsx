@@ -10,20 +10,30 @@ import './public.css';
 
 const LEADERBOARD_LIMIT = 10;
 const BOT_RESOURCES_FILE = 'ott-bot-resources-v1.zip';
+const DEMO_BOT_FILE = 'ott-demo-bot-go-v1.oci.tar';
 
 function BotResources() {
   return <section aria-label="Tài nguyên làm bot">
     <Card as="div" title="Tài nguyên làm bot" className="pub-resources">
       <div>
         <p id="bot-resources-description">Gói ZIP gồm Bot Protocol v1/v2, JSON Schema, bot Python mẫu và hướng dẫn đóng gói bot bằng Python, Node.js hoặc Go.</p>
+        <p id="demo-bot-description">Bot mẫu Go đã build sẵn (.oci.tar, ~810 KB) sẵn sàng nộp hoặc dùng thử luồng test run ngay.</p>
         <p className="pub-muted">Giới hạn thời gian, bộ nhớ và dung lượng có thể thay đổi theo round. Bản đồ thi đấu của vòng hiện tại có thể xem và tải về tại mục Bản đồ của vòng bên dưới.</p>
       </div>
-      <a
-        aria-describedby="bot-resources-description"
-        className="ui-button ui-button--primary"
-        download={BOT_RESOURCES_FILE}
-        href={`/downloads/${BOT_RESOURCES_FILE}`}
-      >Tải bộ tài nguyên làm bot (.zip)</a>
+      <div className="pub-resources-actions">
+        <a
+          aria-describedby="bot-resources-description"
+          className="ui-button ui-button--primary"
+          download={BOT_RESOURCES_FILE}
+          href={`/downloads/${BOT_RESOURCES_FILE}`}
+        >Tải bộ tài nguyên làm bot (.zip)</a>
+        <a
+          aria-describedby="demo-bot-description"
+          className="ui-button ui-button--secondary"
+          download={DEMO_BOT_FILE}
+          href={`/downloads/${DEMO_BOT_FILE}`}
+        >Bot mẫu đã build (.oci.tar)</a>
+      </div>
     </Card>
   </section>;
 }

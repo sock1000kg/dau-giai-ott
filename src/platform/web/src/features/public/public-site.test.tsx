@@ -45,6 +45,30 @@ describe('public-site static snapshots', () => {
     expect(screen.getByRole('region', { name: 'Tài nguyên làm bot' })).toBeTruthy();
     const archive = readFileSync(resolve(process.cwd(), 'public/downloads/ott-bot-resources-v1.zip'));
     expect(archive.subarray(0, 4).toString('hex')).toBe('504b0304');
+
+    const downloadTar = screen.getByRole('link', { name: 'Bot mẫu đã build (.oci.tar)' });
+    expect(downloadTar.getAttribute('href')).toBe('/downloads/ott-demo-bot-go-v1.oci.tar');
+    expect(downloadTar.getAttribute('download')).toBe('ott-demo-bot-go-v1.oci.tar');
+    const tarFile = readFileSync(resolve(process.cwd(), 'public/downloads/ott-demo-bot-go-v1.oci.tar'));
+    expect(tarFile.byteLength).toBe(829440);
+    const tarSha = createHash('sha256').update(tarFile).digest('hex');
+    expect(tarSha).toBe('80d1dd7d9fb46f3c2a4779f0a62cc7ee0d6a3ce4b741df026adbb7bf6109b4e6');
+  });
+
+  it('verifies shipped bot samples do not hard-code protocolVersion: 1 in ACTION replies', () => {
+    const samplesDir = resolve(process.cwd(), 'public/downloads/ott-bot-resources-v1/samples');
+    const sampleFiles = [
+      resolve(samplesDir, 'go/bot-v1.go'),
+      resolve(samplesDir, 'node/bot-v1-v2.mjs'),
+      resolve(samplesDir, 'python/sdk.py'),
+      resolve(samplesDir, 'python/first_legal_bot.py'),
+      resolve(samplesDir, 'python/capture_first_bot.py'),
+    ];
+    for (const filePath of sampleFiles) {
+      const content = readFileSync(filePath, 'utf-8');
+      expect(content).not.toMatch(/"protocolVersion"\s*:\s*1\s*[,}]/);
+      expect(content).not.toMatch(/protocolVersion\s*:\s*1\s*[,}]/);
+    }
   });
 
   it('renders public data without session, database, worker or control requests', async () => {
