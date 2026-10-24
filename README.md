@@ -28,6 +28,8 @@ Cần Node.js `^22.12.0`, Docker Engine ≥ 24 với Compose v2.
 ./scripts/demo.sh reset     # xóa stack demo
 ```
 
+Tài khoản demo local (mật khẩu công khai, chỉ dùng cho demo): [demo/accounts.csv](demo/accounts.csv). Chế độ `--public` tạo mật khẩu ngẫu nhiên, xem bằng `./scripts/demo.sh accounts --reveal`.
+
 Hướng dẫn đầy đủ: [docs/runbooks/local-demo.md](docs/runbooks/local-demo.md). Dựng bản công khai sau Cloudflare tunnel: [docs/runbooks/public-demo-hosting.md](docs/runbooks/public-demo-hosting.md).
 
 ## Phát triển

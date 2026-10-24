@@ -1,0 +1,4 @@
+username,password,role,team
+btc,ABC123,BTC_ADMIN,
+team01,ABC123,TEAM_ACCOUNT,Team 01
+team02,ABC123,TEAM_ACCOUNT,Team 02
