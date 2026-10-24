@@ -384,6 +384,71 @@ EOF
     echo "  FAIL: Tester password contains invalid or ambiguous characters: ${pub_team_pass}" >&2
   fi
 
+  # 5c-2. Public accounts are fixed and public: they come from demo/accounts.csv (single source of truth)
+  local csv_btc_pass csv_team_pass csv_team_count
+  csv_btc_pass="$(awk -F',' '$1=="btc"{print $2}' "${REPO_ROOT}/demo/accounts.csv" | tr -d '\r')"
+  csv_team_pass="$(awk -F',' '$1=="team01"{print $2}' "${REPO_ROOT}/demo/accounts.csv" | tr -d '\r')"
+  csv_team_count="$(awk -F',' '$1 ~ /^team[0-9][0-9]$/{n++} END{print n}' "${REPO_ROOT}/demo/accounts.csv")"
+  assert_eq "${csv_btc_pass}" "${pub_btc_pass}" "public demo.env btc password equals demo/accounts.csv"
+  assert_eq "${csv_team_pass}" "${pub_team_pass}" "public demo.env tester password equals demo/accounts.csv"
+  assert_contains "OTT_DEMO_TEAM_COUNT=${csv_team_count}" "${pub_content}" "public demo.env team count equals the number of team rows in demo/accounts.csv"
+  local pub_pg_pass
+  pub_pg_pass="$(grep '^POSTGRES_PASSWORD=' "${pub_env_file}" | cut -d= -f2-)"
+  if [[ "${pub_pg_pass}" != "${csv_btc_pass}" && "${pub_pg_pass}" != "${csv_team_pass}" ]]; then
+    PASSED_TESTS=$((PASSED_TESTS + 1))
+    echo "  PASS: infrastructure passwords stay random (POSTGRES_PASSWORD differs from the public accounts)"
+  else
+    FAILED_TESTS=$((FAILED_TESTS + 1))
+    echo "  FAIL: POSTGRES_PASSWORD equals a public account password" >&2
+  fi
+
+  # 5c-3. demo/accounts.csv validation: clear error, exit 1, no password echoed, no env file created
+  local bad_name bad_csv bad_env
+  local -a bad_cases=(
+    "header|username,pass,role,team\nbtc,Secret1Secret1,BTC_ADMIN,\nteam01,Secret2Secret2,TEAM_ACCOUNT,Team 01\n|header must be exactly"
+    "nobtc|username,password,role,team\nteam01,Secret2Secret2,TEAM_ACCOUNT,Team 01\n|exactly one btc row"
+    "mixedpw|username,password,role,team\nbtc,Secret1Secret1,BTC_ADMIN,\nteam01,Secret2Secret2,TEAM_ACCOUNT,Team 01\nteam02,Secret3Secret3,TEAM_ACCOUNT,Team 02\n|share one password"
+    "dup|username,password,role,team\nbtc,Secret1Secret1,BTC_ADMIN,\nteam01,Secret2Secret2,TEAM_ACCOUNT,Team 01\nteam01,Secret2Secret2,TEAM_ACCOUNT,Team 01\n|duplicate username"
+    "gap|username,password,role,team\nbtc,Secret1Secret1,BTC_ADMIN,\nteam01,Secret2Secret2,TEAM_ACCOUNT,Team 01\nteam03,Secret2Secret2,TEAM_ACCOUNT,Team 03\n|consecutive from team01"
+    "short|username,password,role,team\nbtc,abc,BTC_ADMIN,\nteam01,Secret2Secret2,TEAM_ACCOUNT,Team 01\n|invalid password"
+    "teamname|username,password,role,team\nbtc,Secret1Secret1,BTC_ADMIN,\nteam01,Secret2Secret2,TEAM_ACCOUNT,Wrong\n|team name must be"
+  )
+  local bad_entry
+  for bad_entry in "${bad_cases[@]}"; do
+    bad_name="${bad_entry%%|*}"
+    local rest="${bad_entry#*|}"
+    local bad_content="${rest%|*}"
+    local bad_expect="${rest##*|}"
+    bad_csv="${tmp_dir}/bad_accounts_${bad_name}.csv"
+    bad_env="${tmp_dir}/bad_pub_${bad_name}.env"
+    printf '%b' "${bad_content}" > "${bad_csv}"
+    run_cmd env PATH="${mock_bin}:${PATH}" \
+      OTT_DEMO_PROJECT="${disposable_project}" \
+      OTT_DEMO_ENV_FILE="${bad_env}" \
+      OTT_DEMO_PUBLIC_ACCOUNTS_CSV="${bad_csv}" \
+      DOCKER_SOCKET="${fake_socket}" \
+      bash "${DEMO_SCRIPT}" up --public --no-build --port 19997 --bind 127.0.0.1
+    assert_eq "1" "${TEST_CODE}" "up --public with bad accounts CSV (${bad_name}) exits 1"
+    assert_contains "${bad_expect}" "${TEST_OUT}" "bad accounts CSV (${bad_name}) reports: ${bad_expect}"
+    assert_not_contains "Secret1Secret1" "${TEST_OUT}" "bad accounts CSV (${bad_name}) output never echoes a password"
+    assert_not_contains "Secret2Secret2" "${TEST_OUT}" "bad accounts CSV (${bad_name}) output never echoes a team password"
+    if [[ ! -e "${bad_env}" ]]; then
+      PASSED_TESTS=$((PASSED_TESTS + 1))
+      echo "  PASS: bad accounts CSV (${bad_name}) creates no demo.env"
+    else
+      FAILED_TESTS=$((FAILED_TESTS + 1))
+      echo "  FAIL: bad accounts CSV (${bad_name}) created ${bad_env}" >&2
+    fi
+  done
+  run_cmd env PATH="${mock_bin}:${PATH}" \
+    OTT_DEMO_PROJECT="${disposable_project}" \
+    OTT_DEMO_ENV_FILE="${tmp_dir}/missing_csv.env" \
+    OTT_DEMO_PUBLIC_ACCOUNTS_CSV="${tmp_dir}/does-not-exist.csv" \
+    DOCKER_SOCKET="${fake_socket}" \
+    bash "${DEMO_SCRIPT}" up --public --no-build --port 19997 --bind 127.0.0.1
+  assert_eq "1" "${TEST_CODE}" "up --public with a missing accounts CSV exits 1"
+  assert_contains "public demo accounts file not found" "${TEST_OUT}" "missing accounts CSV reports a clear error"
+
   # Second run: public env not overwritten
   local pub_sha
   pub_sha="$(sha256sum "${pub_env_file}" | awk '{print $1}')"

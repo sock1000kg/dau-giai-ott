@@ -17,9 +17,12 @@ Public demo mode provisions **10 team accounts** (`team01`..`team10`) plus the t
 - **Dedicated Host / VM**: The worker and coordinator containers mount `/var/run/docker.sock` to execute sandbox runner containers. Mounting the host Docker daemon socket is **root-equivalent on that host**. You should run the demo on a **dedicated host or virtual machine**, not a shared multi-tenant server.
 
 ### Demo Authentication Model
-- **Tournament Administrator (`btc`)**: Seeded with a private 32-character random password. This password is meant strictly for the tournament operator and must never be shared with testers.
-- **Tester Teams (`team01` through `team10`)**: Seeded with **one shared 12-character tester password** (`OTT_DEMO_TEAM_PASSWORD`) generated using base62 characters excluding ambiguous glyphs (`0O1lI`). All ten teams share this single password.
-- The scheduled reset-to-default job is not part of `--public` mode and must remain disabled there. Public tester credentials stay random; only BTC may use the official reset workflow. Never set `OTT_DEMO_PASSWORD_RESET_ENABLED=true` on a public demo host.
+The public demo accounts are **fixed and public on purpose**: anyone with the URL may log in, including as `btc`, and try every feature. This is safe because all data is wiped and re-imported on a schedule (`refresh`, see below). The single source of truth is the committed file [`demo/accounts.csv`](../../demo/accounts.csv); `./scripts/demo.sh up --public` reads the credentials and the number of teams from it (override the path with `OTT_DEMO_PUBLIC_ACCOUNTS_CSV` only for tests). Do not put real secrets in any account.
+
+- **Tournament Administrator (`btc`)**: password from the `btc` row of `demo/accounts.csv`.
+- **Tester Teams (`team01` … `team10`)**: one shared password from the `team*` rows (all rows must share it). Teams may change their own password in the UI; the next `refresh` restores the CSV value.
+- Infrastructure passwords (PostgreSQL, Redis, S3) are still random and live only in `.local/demo/demo.env`.
+- The scheduled reset-to-default job is not part of `--public` mode and must remain disabled there. The scheduled data reset is `refresh --yes` (cron), not this password-reset job. Never set `OTT_DEMO_PASSWORD_RESET_ENABLED=true` on a public demo host.
 
 ---
 
@@ -56,28 +59,19 @@ cloudflared tunnel --url http://localhost:8080
 
 The credentials file `.local/demo/accounts.csv` is written with restrictive `0600` permissions and is git-ignored.
 
-To inspect the generated credentials:
-
-```bash
-# Print safe overview (passwords redacted)
-./scripts/demo.sh accounts
-
-# Print full CSV including unredacted passwords to stdout
-./scripts/demo.sh accounts --reveal
-```
+The credentials are the rows of [`demo/accounts.csv`](../../demo/accounts.csv). `./scripts/demo.sh accounts` prints the seeded CSV (`.local/demo/accounts.csv`) with passwords redacted; add `--reveal` to print it in full (it will match `demo/accounts.csv`).
 
 ### Handout Procedure
-1. Run `./scripts/demo.sh accounts --reveal` to obtain the credentials.
-2. Note the private `btc` password and keep it strictly confidential for tournament management.
-3. Share the public web URL and the **single shared tester password** with your participants.
-4. Testers can log into any unused team account (`team01` through `team10`) using the shared password.
+1. Share the public web URL and `demo/accounts.csv` (or just the usernames `team01` … `team10` and the shared team password from it).
+2. Testers can log into any team account; the `btc` account (password in the CSV) is also open on purpose so everybody can try the tournament-administrator features.
+3. Remind everyone that the demo is wiped on a schedule.
 
 Example invitation message:
 ```text
 Welcome to the OTT Tournament Demo!
 Web Portal: https://<your-public-tunnel-domain>/
-Usernames: team01 through team10 (pick any unused team)
-Tester Password: <shared-tester-password>
+Accounts: see demo/accounts.csv in the repository (btc, team01 … team10)
+Everything is reset on a schedule - feel free to break things.
 Download pre-built demo bot (.oci.tar): https://<your-public-tunnel-domain>/downloads/ott-demo-bot-go-v1.oci.tar
 ```
 
@@ -215,7 +209,7 @@ If credentials leak or you want to wipe everything and regenerate completely new
 
 ## 7. Known Limits & Security Considerations
 
-- **Shared Tester Password Model**: All tester teams (`team01` through `team10`) share the same password. Any tester possessing the password can log in as any team account. This model is intended solely for trial demonstrations and informal testing, not untrusted competitive tournaments.
+- **Public Credentials By Design**: `btc` and all `team*` accounts use the passwords published in `demo/accounts.csv`. Anyone can act as BTC (create, open, cancel and start rounds), upload arbitrary OCI bots that run in the sandbox, and change team passwords until the next reset. The scheduled `refresh --yes` (see the cron line) is therefore **mandatory**, not optional. Because the worker and coordinator mount the Docker socket (root-equivalent on the host), host the demo on a dedicated VM that holds nothing else of value.
 - **Development Mode (`OTT_DEPLOYMENT_MODE=dev`)**: The demo stack runs in `dev` mode to enable the seed endpoint and relaxed authentication configurations.
 - **Unencrypted Origin**: The web gateway listens on plain HTTP (`APP_PORT`). You must terminate TLS at your reverse proxy or tunnel edge.
 - **Secure Cookie Flags**: When `OTT_SECURE_COOKIES=true` is set (default in `--public` mode), Fastify sets `secure: true` on cookies (`src/platform/api/src/modules/auth/plugin.ts` lines 184, 319). The session cookie `ott_session` also carries `httpOnly: true` and `sameSite: 'lax'` (lines 180–183, 315–318), while the MFA challenge cookie carries `sameSite: 'strict'` (line 164).

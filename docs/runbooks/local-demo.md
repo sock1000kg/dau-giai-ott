@@ -71,14 +71,14 @@ reconciling; it does not treat older finalized series as completion evidence.
 # 1a. Bring up the local demo stack (default: 2 teams, password ABC123)
 ./scripts/demo.sh up
 
-# 1b. Bring up the public demo stack (10 tester teams, secure cookies, random passwords)
+# 1b. Bring up the public demo stack (accounts and passwords come from demo/accounts.csv, secure cookies)
 # See docs/runbooks/public-demo-hosting.md for complete remote hosting instructions.
 ./scripts/demo.sh up --public [--bind 127.0.0.1] [--port 8080]
 
 # 2a. View demo accounts (passwords redacted)
 ./scripts/demo.sh accounts
 
-# 2b. Reveal unredacted credentials to distribute to testers
+# 2b. Print the credentials in full (public demo: they equal demo/accounts.csv)
 ./scripts/demo.sh accounts --reveal
 
 # 3. Check container health, ready probe, and CSV status
