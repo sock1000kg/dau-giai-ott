@@ -11,6 +11,7 @@ node_modules
 dist
 **/dist
 **/*.oci.tar
+!src/platform/web/public/downloads/ott-demo-bot-go-v1.oci.tar
 coverage
 **/coverage
 *.log

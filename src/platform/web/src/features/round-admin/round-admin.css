@@ -9,3 +9,46 @@
 
 .round-rule-form .rr-checksum { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.8125rem; overflow: hidden; text-overflow: ellipsis; min-width: 0; max-width: 100%; box-sizing: border-box; }
 .round-admin-catalog-warning { display: grid; gap: 8px; margin-bottom: 12px; }
+
+/* Bounded scroll regions for round operations list and rule-set archive */
+.round-list-region,
+.rule-set-list-region {
+  max-height: min(70vh, 640px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--ui-border-strong) transparent;
+  padding-right: var(--ui-space-1, 4px);
+}
+
+.round-list-region:focus-visible,
+.rule-set-list-region:focus-visible {
+  outline: var(--ui-focus-ring, 2px solid #2563eb);
+  outline-offset: 2px;
+}
+
+.round-list-region::-webkit-scrollbar,
+.rule-set-list-region::-webkit-scrollbar {
+  width: 8px;
+}
+
+.round-list-region::-webkit-scrollbar-track,
+.rule-set-list-region::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.round-list-region::-webkit-scrollbar-thumb,
+.rule-set-list-region::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: var(--ui-border-strong);
+}
+
+.round-list-region::-webkit-scrollbar-thumb:hover,
+.rule-set-list-region::-webkit-scrollbar-thumb:hover {
+  background: var(--ui-text-muted);
+}
+
+.round-action-error {
+  color: var(--ui-danger);
+  margin: 8px 0;
+}

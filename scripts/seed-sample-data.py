@@ -127,9 +127,9 @@ def main():
                 result = data(request(args.base_url, f"/api/v1/admin/rounds/{prior_id}/reconcile",
                                       "POST", {"reason": "Reconcile completed sample round"}, btc)[0])
                 status = result["status"]
-                if status == "RATED":
+                if status in ("RATED", "PUBLISHED"):
                     break
-        if status == "RATED":
+        if status == "RATED":  # legacy row: rating now auto-publishes, only old RATED rounds need the extra call
             result = data(request(args.base_url, f"/api/v1/admin/rounds/{prior_id}/publish",
                                   "POST", {"reason": "Publish completed sample round"}, btc)[0])
             status = result["status"]
@@ -158,7 +158,7 @@ def main():
         "schedule": {"submissionOpensAt": iso(now - 3600), "submissionDeadlineAt": iso(deadline),
                      "graceEndsAt": iso(grace), "runStartsAt": iso(grace),
                      "runMaxHours": 24, "appealEndsAt": iso(now + 86400)},
-        "testRun": {"quotaPerTeamPerDay": 5, "opponents": ["BTC_REFERENCE"]}
+        "testRun": {"quotaPerTeamPerDay": 5, "opponents": ["OWN_SUBMISSION", "BTC_REFERENCE"]}
     }
     rule_id = data(request(args.base_url, "/api/v1/admin/round-rule-sets", "POST", {
         "tournamentStage": "QUALIFICATION", "reason": "Sample qualification data", "rules": rules
@@ -203,14 +203,16 @@ def main():
                 result = data(request(args.base_url, f"/api/v1/admin/rounds/{round_id}/reconcile",
                                       "POST", {"reason": "Reconcile sample results"}, btc)[0])
                 status = result["status"]
-                if status == "RATED":
+                if status in ("RATED", "PUBLISHED"):
                     break
-            if status != "RATED":
+            if status not in ("RATED", "PUBLISHED"):
                 time.sleep(3)
                 continue
-            published = data(request(args.base_url, f"/api/v1/admin/rounds/{round_id}/publish",
-                                     "POST", {"reason": "Publish sample results"}, btc)[0])
-            if published["status"] != "PUBLISHED":
+            if status == "RATED":  # legacy server without auto-publish
+                published = data(request(args.base_url, f"/api/v1/admin/rounds/{round_id}/publish",
+                                         "POST", {"reason": "Publish sample results"}, btc)[0])
+                status = published["status"]
+            if status != "PUBLISHED":
                 raise RuntimeError("Sample round did not reach PUBLISHED")
             print(f"Done: {len(items)} finalized series, {count} leaderboard teams, round PUBLISHED", flush=True)
             return

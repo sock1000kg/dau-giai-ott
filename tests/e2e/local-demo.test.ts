@@ -313,7 +313,7 @@ describe('Clean-checkout local demo qualification E2E (P2-T37 API-level)', () =>
         schedule: demoSchedule.schedule,
         testRun: {
           quotaPerTeamPerDay: 5,
-          opponents: ['BTC_REFERENCE'],
+          opponents: ['OWN_SUBMISSION', 'BTC_REFERENCE'],
         },
       },
     };
@@ -386,6 +386,26 @@ describe('Clean-checkout local demo qualification E2E (P2-T37 API-level)', () =>
     expect(targetRound, `Round ${roundId} must exist`).toBeTruthy();
     expect(targetRound?.status, `Round ${roundId} status must be SUBMISSION_OPEN`).toBe('SUBMISSION_OPEN');
     expect(targetRound?.ruleSetId, `Round ${roundId} must bind to rule set ${ruleSetId}`).toBe(ruleSetId);
+
+    // Assertion (a): anonymous public maps endpoint returns current round map, and download equals definition
+    const publicMapsRes = await apiRequest(baseUrl, '/api/v1/public/rounds/current/maps');
+    const publicMapsText = await assertStatus(publicMapsRes, 200, 'GET /api/v1/public/rounds/current/maps');
+    const publicMapsJson = JSON.parse(publicMapsText) as {
+      round?: { name: string; status: string };
+      maps?: Array<{ mapId: string; checksum: string; definition: Record<string, unknown> }>;
+    };
+    expect(publicMapsJson.maps?.length, 'Public maps must contain at least one map').toBeGreaterThanOrEqual(1);
+    const pubMap = publicMapsJson.maps![0]!;
+    expect(pubMap.mapId).toBe(mapId);
+    expect(pubMap.checksum).toBe(mapChecksum);
+
+    const downloadRes = await apiRequest(
+      baseUrl,
+      `/api/v1/public/maps/${encodeURIComponent(pubMap.mapId)}?checksum=${encodeURIComponent(pubMap.checksum)}`,
+    );
+    const downloadText = await assertStatus(downloadRes, 200, `Download map ${pubMap.mapId}`);
+    const downloadJson = JSON.parse(downloadText);
+    expect(downloadJson).toEqual(pubMap.definition);
   });
 
   // ---------------------------------------------------------------------------
@@ -549,6 +569,258 @@ describe('Clean-checkout local demo qualification E2E (P2-T37 API-level)', () =>
       const flaggedJson = JSON.parse(flaggedText) as { data?: unknown[]; total?: number };
       expect(flaggedJson.total, 'Demo fixtures should produce zero duplicate flags').toBe(0);
       expect(flaggedJson.data, 'Flagged submissions list should be empty').toEqual([]);
+
+      // Assertion (b): team runs a self-play test run on default map and polls until terminal status (<= 120s)
+      const policyRes = await apiRequest(baseUrl, '/api/v1/test-run-policy', { jar: team01Jar });
+      const policyText = await assertStatus(policyRes, 200, 'GET /api/v1/test-run-policy');
+      const policyJson = JSON.parse(policyText) as {
+        data?: {
+          maps?: Array<{ mapId: string; checksum: string }>;
+          opponents?: {
+            ownSubmissionAllowed: boolean;
+            referenceBots?: Array<{ id: string; displayName: string }>;
+          };
+        };
+      };
+      expect(policyJson.data?.opponents?.ownSubmissionAllowed, 'ownSubmissionAllowed must be true for test run').toBe(true);
+      const testMap = policyJson.data?.maps?.[0];
+      expect(testMap, 'Test run policy must provide maps').toBeTruthy();
+
+      const createTestRunRes = await apiRequest(baseUrl, '/api/v1/test-runs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': `e2e-self-play-${Date.now()}`,
+        },
+        body: JSON.stringify({
+          submissionId: submission01Id,
+          opponentType: 'OWN_SUBMISSION',
+          opponentSubmissionId: submission01Id,
+          mapId: testMap!.mapId,
+          mapChecksum: testMap!.checksum,
+        }),
+        jar: team01Jar,
+      });
+      const createTestRunText = await assertStatus(createTestRunRes, [200, 201], 'POST /api/v1/test-runs (self-play)');
+      const createTestRunJson = JSON.parse(createTestRunText) as { data?: { id: string; status: string } };
+      const testRunId = createTestRunJson.data?.id;
+      expect(testRunId, 'Test run ID must be returned').toBeTruthy();
+
+      const testRunDeadline = Date.now() + 120_000;
+      let finalTestRunStatus = createTestRunJson.data?.status ?? 'QUEUED';
+      while (Date.now() < testRunDeadline) {
+        if (finalTestRunStatus === 'COMPLETED' || finalTestRunStatus === 'FAILED' || finalTestRunStatus === 'CANCELLED') {
+          break;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        const pollRes = await apiRequest(baseUrl, `/api/v1/test-runs/${testRunId}`, { jar: team01Jar });
+        if (pollRes.status === 200) {
+          const pollJson = (await pollRes.json()) as { data?: { status: string } };
+          finalTestRunStatus = pollJson.data?.status ?? finalTestRunStatus;
+        }
+      }
+      const selfRunRes = await apiRequest(baseUrl, `/api/v1/test-runs/${testRunId}`, { jar: team01Jar });
+      const selfRunText = await assertStatus(selfRunRes, 200, 'GET /api/v1/test-runs/:id (self-play)');
+      const selfRunJson = JSON.parse(selfRunText) as {
+        data?: {
+          status: string;
+          result?: { reason?: string; winnerSide?: string; turnCount?: number };
+          failureReason?: string | null;
+        };
+      };
+      finalTestRunStatus = selfRunJson.data?.status ?? finalTestRunStatus;
+      const selfFailure = selfRunJson.data?.failureReason ?? 'none';
+      expect(['COMPLETED', 'FAILED'], `Test run ${testRunId} must reach terminal status (status: ${finalTestRunStatus}, failureReason: ${selfFailure})`).toContain(finalTestRunStatus);
+      expect(finalTestRunStatus, `Test run ${testRunId} must complete successfully without forfeit or schema violation (status: ${finalTestRunStatus}, failureReason: ${selfFailure})`).toBe('COMPLETED');
+      expect(selfRunJson.data?.result?.reason, `Self-play match result reason must not be FORFEIT (failureReason: ${selfFailure})`).not.toBe('FORFEIT');
+      expect(selfRunJson.data?.failureReason, `Self-play test run must not fail: ${selfFailure}`).toBeFalsy();
+
+      const selfReplayRes = await apiRequest(baseUrl, `/api/v1/test-runs/${testRunId}/replay`, { jar: team01Jar });
+      const selfReplayText = await assertStatus(selfReplayRes, 200, 'GET /api/v1/test-runs/:id/replay (self-play)');
+      const selfReplay = JSON.parse(selfReplayText) as {
+        entries?: Array<{
+          input?: { kind?: string; side?: string; reason?: string; fault?: string };
+          events?: Array<{ type?: string }>;
+        }>;
+        faults?: {
+          X?: { recoverableTotal?: number; lastErrorCode?: string | null };
+          O?: { recoverableTotal?: number; lastErrorCode?: string | null };
+        };
+        result?: { reason?: string };
+      };
+      const selfEntries = selfReplay.entries ?? [];
+      const selfSkipViolations = selfEntries.filter(
+        (e) => e.input?.kind === 'skip' && e.input?.reason === 'SCHEMA_VIOLATION',
+      );
+      expect(selfSkipViolations, 'Self-play replay must not contain SCHEMA_VIOLATION skip entries').toHaveLength(0);
+
+      const selfForfeitEntries = selfEntries.filter(
+        (e) => e.input?.kind === 'forfeit' || e.input?.fault === 'SCHEMA_VIOLATION',
+      );
+      expect(selfForfeitEntries, 'Self-play replay must not contain forfeit or SCHEMA_VIOLATION entries').toHaveLength(0);
+
+      expect(selfReplay.faults?.X, 'Self-play replay must expose faults.X').toBeDefined();
+      expect(selfReplay.faults?.O, 'Self-play replay must expose faults.O').toBeDefined();
+      expect(selfReplay.faults?.X?.recoverableTotal, 'Self-play side X recoverable faults must be 0').toBe(0);
+      expect(selfReplay.faults?.O?.recoverableTotal, 'Self-play side O recoverable faults must be 0').toBe(0);
+      expect(selfReplay.faults?.X?.lastErrorCode, 'Self-play side X lastErrorCode must not be SCHEMA_VIOLATION').not.toBe('SCHEMA_VIOLATION');
+      expect(selfReplay.faults?.O?.lastErrorCode, 'Self-play side O lastErrorCode must not be SCHEMA_VIOLATION').not.toBe('SCHEMA_VIOLATION');
+
+      const selfApplyEntries = selfEntries.filter((e) => e.input?.kind === 'apply');
+      expect(selfApplyEntries.length, 'Self-play replay must contain at least 3 non-skip moves').toBeGreaterThanOrEqual(3);
+      expect(selfReplay.result?.reason, 'Self-play replay result reason must not be FORFEIT').not.toBe('FORFEIT');
+
+      // Assertion (c): gateway serves downloadable demo bot with pinned checksum
+      const downloadRes = await fetch(`${baseUrl}/downloads/ott-demo-bot-go-v1.oci.tar`);
+      expect(downloadRes.status, 'GET /downloads/ott-demo-bot-go-v1.oci.tar must return 200').toBe(200);
+      const downloadBuf = Buffer.from(await downloadRes.arrayBuffer());
+      expect(downloadBuf.byteLength, 'Demo bot archive must match expected size').toBe(829440);
+      const downloadSha256 = crypto.createHash('sha256').update(downloadBuf).digest('hex');
+      expect(downloadSha256, 'Downloaded demo bot must match pinned SHA-256').toBe(
+        '80d1dd7d9fb46f3c2a4779f0a62cc7ee0d6a3ce4b741df026adbb7bf6109b4e6',
+      );
+
+      // Assertion (d): test run against BTC_REFERENCE (btc-baseline)
+      const refBots = policyJson.data?.opponents?.referenceBots ?? [];
+      expect(
+        refBots.some((b: { id: string }) => b.id === 'btc-baseline'),
+        'referenceBots must list btc-baseline',
+      ).toBe(true);
+
+      const btcTestRunRes = await apiRequest(baseUrl, '/api/v1/test-runs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': `e2e-btc-ref-${Date.now()}`,
+        },
+        body: JSON.stringify({
+          submissionId: submission01Id,
+          opponentType: 'BTC_REFERENCE',
+          opponentReferenceBot: 'btc-baseline',
+          mapId: testMap!.mapId,
+          mapChecksum: testMap!.checksum,
+        }),
+        jar: team01Jar,
+      });
+      const btcTestRunText = await assertStatus(btcTestRunRes, [200, 201], 'POST /api/v1/test-runs (BTC_REFERENCE)');
+      const btcTestRunJson = JSON.parse(btcTestRunText) as { data?: { id: string; status: string } };
+      const btcTestRunId = btcTestRunJson.data?.id;
+      expect(btcTestRunId, 'BTC test run ID must be returned').toBeTruthy();
+
+      const btcDeadline = Date.now() + 120_000;
+      let finalBtcStatus = btcTestRunJson.data?.status ?? 'QUEUED';
+      while (Date.now() < btcDeadline) {
+        if (finalBtcStatus === 'COMPLETED' || finalBtcStatus === 'FAILED' || finalBtcStatus === 'CANCELLED') {
+          break;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        const pollRes = await apiRequest(baseUrl, `/api/v1/test-runs/${btcTestRunId}`, { jar: team01Jar });
+        if (pollRes.status === 200) {
+          const pollJson = (await pollRes.json()) as { data?: { status: string } };
+          finalBtcStatus = pollJson.data?.status ?? finalBtcStatus;
+        }
+      }
+      const btcRunRes = await apiRequest(baseUrl, `/api/v1/test-runs/${btcTestRunId}`, { jar: team01Jar });
+      const btcRunText = await assertStatus(btcRunRes, 200, 'GET /api/v1/test-runs/:id (BTC_REFERENCE)');
+      const btcRunJson = JSON.parse(btcRunText) as {
+        data?: {
+          status: string;
+          result?: { reason?: string; winnerSide?: string; turnCount?: number };
+          failureReason?: string | null;
+        };
+      };
+      finalBtcStatus = btcRunJson.data?.status ?? finalBtcStatus;
+      const btcFailure = btcRunJson.data?.failureReason ?? 'none';
+      expect(['COMPLETED', 'FAILED'], `BTC test run ${btcTestRunId} must reach terminal status (status: ${finalBtcStatus}, failureReason: ${btcFailure})`).toContain(finalBtcStatus);
+      expect(finalBtcStatus, `BTC test run ${btcTestRunId} must complete successfully without forfeit or schema violation (status: ${finalBtcStatus}, failureReason: ${btcFailure})`).toBe('COMPLETED');
+      expect(btcRunJson.data?.result?.reason, `BTC test run match result reason must not be FORFEIT (failureReason: ${btcFailure})`).not.toBe('FORFEIT');
+      expect(btcRunJson.data?.failureReason, `BTC test run must not fail: ${btcFailure}`).toBeFalsy();
+
+      const btcReplayRes = await apiRequest(baseUrl, `/api/v1/test-runs/${btcTestRunId}/replay`, { jar: team01Jar });
+      const btcReplayText = await assertStatus(btcReplayRes, 200, 'GET /api/v1/test-runs/:id/replay (BTC_REFERENCE)');
+      const btcReplay = JSON.parse(btcReplayText) as {
+        entries?: Array<{
+          input?: { kind?: string; side?: string; reason?: string; fault?: string };
+          events?: Array<{ type?: string }>;
+        }>;
+        faults?: {
+          X?: { recoverableTotal?: number; lastErrorCode?: string | null };
+          O?: { recoverableTotal?: number; lastErrorCode?: string | null };
+        };
+        result?: { reason?: string };
+      };
+      const btcEntries = btcReplay.entries ?? [];
+      const btcSkipViolations = btcEntries.filter(
+        (e) => e.input?.kind === 'skip' && e.input?.reason === 'SCHEMA_VIOLATION',
+      );
+      expect(btcSkipViolations, 'BTC test run replay must not contain SCHEMA_VIOLATION skip entries').toHaveLength(0);
+
+      const btcForfeitEntries = btcEntries.filter(
+        (e) => e.input?.kind === 'forfeit' || e.input?.fault === 'SCHEMA_VIOLATION',
+      );
+      expect(btcForfeitEntries, 'BTC test run replay must not contain forfeit or SCHEMA_VIOLATION entries').toHaveLength(0);
+
+      expect(btcReplay.faults?.X, 'BTC test run replay must expose faults.X').toBeDefined();
+      expect(btcReplay.faults?.O, 'BTC test run replay must expose faults.O').toBeDefined();
+      expect(btcReplay.faults?.X?.recoverableTotal, 'BTC test run side X recoverable faults must be 0').toBe(0);
+      expect(btcReplay.faults?.O?.recoverableTotal, 'BTC test run side O recoverable faults must be 0').toBe(0);
+      expect(btcReplay.faults?.X?.lastErrorCode, 'BTC test run side X lastErrorCode must not be SCHEMA_VIOLATION').not.toBe('SCHEMA_VIOLATION');
+      expect(btcReplay.faults?.O?.lastErrorCode, 'BTC test run side O lastErrorCode must not be SCHEMA_VIOLATION').not.toBe('SCHEMA_VIOLATION');
+
+      const btcApplyEntries = btcEntries.filter((e) => e.input?.kind === 'apply');
+      expect(btcApplyEntries.length, 'BTC test run replay must contain at least 3 non-skip moves').toBeGreaterThanOrEqual(3);
+      expect(btcReplay.result?.reason, 'BTC replay result reason must not be FORFEIT').not.toBe('FORFEIT');
+
+      // Assertion (e): upload downloaded demo bot as team01 submission and verify preflight promotes to ACTIVE
+      const demoBotReserveRes = await apiRequest(baseUrl, '/api/v1/submission-reservations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ archiveSha256: `sha256:${downloadSha256}` }),
+        jar: team01Jar,
+      });
+      const demoBotReserveText = await assertStatus(demoBotReserveRes, [200, 201], 'Reserve downloaded demo bot submission');
+      const demoBotReserveJson = JSON.parse(demoBotReserveText) as { data?: { id: string } };
+      const demoReservationId = demoBotReserveJson.data?.id;
+      expect(demoReservationId, 'Downloaded bot reservation ID must be present').toBeTruthy();
+
+      const demoUploadRes = await apiRequest(baseUrl, '/api/v1/submissions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/octet-stream',
+          'x-reservation-id': demoReservationId!,
+        },
+        body: downloadBuf,
+        jar: team01Jar,
+      });
+      const demoUploadText = await assertStatus(demoUploadRes, [200, 201], 'Upload downloaded demo bot archive');
+      const demoUploadJson = JSON.parse(demoUploadText) as {
+        data?: { id: string; status: string; archiveSha256: string };
+      };
+      const demoSubId = demoUploadJson.data?.id;
+      expect(demoSubId, 'Downloaded bot submission ID must be present').toBeTruthy();
+      expect(demoUploadJson.data?.archiveSha256, 'Downloaded bot SHA-256 must match digest').toBe(`sha256:${downloadSha256}`);
+
+      // Poll until the newly uploaded demo bot reaches ACTIVE
+      const demoPollDeadline = Date.now() + 120_000;
+      let demoSubStatus = 'PREFLIGHT';
+      while (Date.now() < demoPollDeadline) {
+        const subListRes = await apiRequest(baseUrl, '/api/v1/submissions', { jar: team01Jar });
+        if (subListRes.status === 200) {
+          const subListJson = (await subListRes.json()) as {
+            data?: Array<{ id: string; status: string }>;
+          };
+          const target = subListJson.data?.find((s) => s.id === demoSubId);
+          if (target) {
+            demoSubStatus = target.status;
+            if (target.status === 'ACTIVE') break;
+            if (target.status !== 'PREFLIGHT') break;
+          }
+        }
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      }
+      expect(demoSubStatus, `Downloaded demo bot submission ${demoSubId} must reach ACTIVE`).toBe('ACTIVE');
+      submission01Id = demoSubId!;
+      submission01Status = demoSubStatus;
     },
   );
 

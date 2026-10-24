@@ -32,15 +32,14 @@ under `/opt/ott/`, then run `cd /opt/ott && python3 scripts/seed-sample-data.py`
 To add a second sample round without removing the first, use
 `python3 scripts/seed-sample-data.py --append --sample samples/qualification-demo-extra.json`
 after copying the extra two OCI archives. The loader checks that the new teams
-have no prior submissions, reconciles and publishes the completed previous
-round, then creates the new round through the API.
+have no prior submissions, reconciles the completed previous round (rating
+auto-publishes it), then creates the new round through the API.
 
-Those original OCI canaries speak Bot Protocol v1. Qualification rules on the
-current demo stack pin Protocol v2, so their ACTION responses are rejected as
-`SCHEMA_VIOLATION`; historical replays from those rounds contain no moves. To
-demonstrate moving bots, build the corpus and append
-`samples/qualification-demo-moving.json` with `team05` and `team06`. Its two
-dedicated v2 images use first-legal and capture-first strategies:
+The original OCI canaries (`first-legal`, `node-action`, `native-action`) were written against the deprecated
+Bot Protocol v1. Qualification rules pin Protocol v2, so their `ACTION` responses (with `protocolVersion: 1`)
+are rejected as `SCHEMA_VIOLATION` and the historical replays from those rounds contain no moves. Use only
+v2-capable bots for demonstrations: build the corpus and append `samples/qualification-demo-moving.json` with
+`team05` and `team06`; its two dedicated v2 images use first-legal and capture-first strategies:
 
 ```bash
 python3 scripts/seed-sample-data.py --append --sample samples/qualification-demo-moving.json
@@ -88,6 +87,7 @@ reconciling; it does not treat older finalized series as completion evidence.
 ./scripts/demo.sh round status
 
 # 5. Open round submissions (creates round and rule set if needed)
+# Note: rounds already opened with an older rule set template keep their locked rules, so self-play stays unavailable until BTC opens a new round or rule set allowing own submissions.
 ./scripts/demo.sh round open
 
 # 6. Close submissions and schedule round matches
@@ -112,7 +112,10 @@ reconciling; it does not treat older finalized series as completion evidence.
 # 10. Stop the running containers (data volumes preserved)
 ./scripts/demo.sh stop
 
-# 11. Full clean reset (destroys containers, volumes, demo.env, and accounts.csv)
+# 11. Print editorial path and example announcement
+./scripts/demo.sh editorial
+
+# 12. Full clean reset (destroys containers, volumes, demo.env, and accounts.csv; keeps editorial/public.json)
 ./scripts/demo.sh reset [--yes]
 ```
 
@@ -132,6 +135,13 @@ npm run demo:reset
 When `./scripts/demo.sh up` completes, it displays the access URLs:
 - **Local Machine**: `http://127.0.0.1:8080/`
 - **Second Device on Same LAN / Wi-Fi**: `http://<LAN_IP>:8080/` (where `<LAN_IP>` is the host's LAN IP, e.g. `http://192.168.1.50:8080/`). The web gateway binds to `0.0.0.0:8080`, allowing colleagues or spectator devices on the same Wi-Fi network to browse match results, replays, and leaderboards without additional tunneling tools.
+
+### 4. BTC Reference Bot, Demo Finals Bundle & Pre-Built Demo Bot
+
+- **BTC Baseline (`btc-baseline`)**: The demo stack automatically provisions a BTC reference bot named "BTC baseline" in the catalog (`test_run_reference_bots`). It runs a minimal Go bot compiled from `src/bots/oci-fixtures/demo-bot-go/bot.go` that plays the first available legal action on each turn and works with Protocol v1 and v2.
+- **Demo Finals ResultBundle (`demo-finals-key`)**: The demo stack automatically provisions a synthetic completed finals bundle with 8 teams (`Team 01`..`Team 08`), full playoff bracket (Quarterfinals, Semifinals, Final, Bronze match), series results, and match replays. The bundle is signed with an ephemeral demo Ed25519 key registered in `result_bundle_keys`. In the web UI at `/finals`, the bracket is fully interactive with playable match replays, labelled with the footer note `* Dữ liệu chung kết mẫu` in demo mode.
+- **Automatic Re-Seeding on `refresh`**: Running `./scripts/demo.sh refresh` resets database and S3 datastores to a clean state and immediately re-executes `seed-demo`, which idempotently re-uploads and re-seeds `btc-baseline` as well as the demo finals ResultBundle.
+- **Downloadable Demo Bot**: The gateway serves a ready-to-submit pre-built bot archive at `/downloads/ott-demo-bot-go-v1.oci.tar` (829,440 bytes, SHA-256 `80d1dd7d9fb46f3c2a4779f0a62cc7ee0d6a3ce4b741df026adbb7bf6109b4e6`, checksum file at `/downloads/ott-demo-bot-go-v1.oci.tar.sha256`). Teams can download this bot from the public tournament page and upload it immediately as their first submission or use it for test runs.
 
 ---
 

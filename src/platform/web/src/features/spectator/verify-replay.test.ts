@@ -268,6 +268,77 @@ describe('spectator replay integrity client', () => {
     expect(fetchMock).toHaveBeenCalledWith(`/api/v1/public/replays/${matchId}`, { credentials: 'omit' });
   });
 
+  it('requests the public bundle replay endpoint when bundleId is supplied', async () => {
+    const body = `${JSON.stringify(validReplay(), null, 2)}\n`;
+    const fetchMock = vi.fn().mockResolvedValue(response(body));
+    vi.stubGlobal('fetch', fetchMock);
+    const bundleId = 'demo-finals-bundle-2026';
+    await fetchPublicReplay(matchId, bundleId);
+    expect(fetchMock).toHaveBeenCalledWith(`/api/v1/public/result-bundles/${bundleId}/replays/${matchId}`, { credentials: 'omit' });
+  });
+
+  it('falls back to non-bundle route when bundleId is malformed', async () => {
+    const body = `${JSON.stringify(validReplay(), null, 2)}\n`;
+    const fetchMock = vi.fn().mockResolvedValue(response(body));
+    vi.stubGlobal('fetch', fetchMock);
+    await fetchPublicReplay(matchId, '../malformed/bundle');
+    expect(fetchMock).toHaveBeenCalledWith(`/api/v1/public/replays/${matchId}`, { credentials: 'omit' });
+  });
+
+  it('applies the importer bundle-id rule: 1..128 chars, no path/query/fragment/whitespace/control characters', async () => {
+    const body = `${JSON.stringify(validReplay(), null, 2)}\n`;
+    for (const bad of ['', 'a'.repeat(129), 'a/b', 'a?b', 'a#b', 'a b', 'a\tb', 'a\u0000b']) {
+      const fetchMock = vi.fn().mockResolvedValue(response(body));
+      vi.stubGlobal('fetch', fetchMock);
+      await fetchPublicReplay(matchId, bad);
+      expect(fetchMock).toHaveBeenCalledWith(`/api/v1/public/replays/${matchId}`, { credentials: 'omit' });
+    }
+    for (const good of ['a', 'a'.repeat(128), 'bundle@v1+x', 'finals_2026.v1:final']) {
+      const fetchMock = vi.fn().mockResolvedValue(response(body));
+      vi.stubGlobal('fetch', fetchMock);
+      await fetchPublicReplay(matchId, good);
+      expect(fetchMock).toHaveBeenCalledWith(
+        `/api/v1/public/result-bundles/${encodeURIComponent(good)}/replays/${matchId}`,
+        { credentials: 'omit' },
+      );
+    }
+  });
+
+  it('handles bundle-path 404 and 500 error states identically to normal path', async () => {
+    const fetch404 = vi.fn().mockResolvedValue(new Response('', { status: 404 }));
+    vi.stubGlobal('fetch', fetch404);
+    await expect(fetchPublicReplay(matchId, 'valid-bundle-id')).rejects.toMatchObject({ code: 'REPLAY_NOT_FOUND' });
+
+    const fetch500 = vi.fn().mockResolvedValue(new Response('', { status: 500 }));
+    vi.stubGlobal('fetch', fetch500);
+    await expect(fetchPublicReplay(matchId, 'valid-bundle-id')).rejects.toMatchObject({ code: 'REPLAY_UNAVAILABLE' });
+  });
+
+  it('verifies integrity and headers on the bundle path response', async () => {
+    const body = `${JSON.stringify(validReplay(), null, 2)}\n`;
+    // Bad sha256 header on bundle response
+    const badShaResponse = new Response(body, {
+      status: 200,
+      headers: {
+        'content-type': 'application/vnd.ott.spectator-replay+json; version=1',
+        'x-replay-sha256': 'sha256:' + '0'.repeat(64),
+      },
+    });
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(badShaResponse));
+    await expect(fetchPublicReplay(matchId, 'valid-bundle-id')).rejects.toMatchObject({ code: 'CHECKSUM_MISMATCH' });
+
+    // Wrong media type on bundle response
+    const badTypeResponse = new Response(body, {
+      status: 200,
+      headers: {
+        'content-type': 'text/plain',
+        'x-replay-sha256': `sha256:${createHash('sha256').update(body).digest('hex')}`,
+      },
+    });
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(badTypeResponse));
+    await expect(fetchPublicReplay(matchId, 'valid-bundle-id')).rejects.toMatchObject({ code: 'UNSUPPORTED_SCHEMA' });
+  });
+
   it('normalizes network failures and rejects invalid match identifiers before fetching', async () => {
     const fetchMock = vi.fn().mockRejectedValue(new TypeError('network details'));
     vi.stubGlobal('fetch', fetchMock);

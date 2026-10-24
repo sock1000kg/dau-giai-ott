@@ -147,8 +147,12 @@ keys, `NONE`/30s per-turn modes and out-of-bounds values are rejected).
 
 `qualification_rounds` drives the lifecycle state machine
 `DRAFT_RULES → SUBMISSION_OPEN → SUBMISSION_CLOSED → RUNNING → SETTLING →
-RATED → PUBLISHED`. `POST /api/v1/admin/rounds` creates the draft; `POST
-/api/v1/admin/rounds/:id/{open|close|start|pause|resume|reconcile|publish}`
+RATED → PUBLISHED`, plus the terminal `CANCELLED` (see below). `RATED` is
+transient: the rate transaction also writes `PUBLISHED` (`published_at`,
+`results_hash`) and a second audit row `ROUND_PUBLISHED` ("auto-published after
+rating"), so a rated qualification round is public immediately and the next
+round can be created right away. `POST /api/v1/admin/rounds` creates the draft; `POST
+/api/v1/admin/rounds/:id/{open|close|start|pause|resume|reconcile|publish|cancel}`
 applies one transition per request with a 1–500 char `reason` (except
 `reconcile`). Every transition locks the round row `FOR UPDATE`, re-checks
 the edge in service and in a DB trigger, and writes exactly one audit row
@@ -163,7 +167,26 @@ schedule or audit); same key + different hash → `IDEMPOTENCY_KEY_REUSED`.
 `start` freezes the schedule snapshot by calling `scheduleRound`, which
 keeps its own Phase 2 transaction (AC2). `reconcile` moves `RUNNING →
 SETTLING` only when every linked series is terminal, then applies
-`applyRoundRatings` exactly once before `SETTLING → RATED` (AC3).
+`applyRoundRatings` exactly once before `SETTLING → RATED → PUBLISHED` (AC3).
+A legacy row left at `RATED` (before auto-publish existed) is published by the next
+`reconcile` (idempotent, one audit row). `publish` remains only for such legacy
+`RATED` rows; on a `PUBLISHED` round it is a no-op returning `replayed: true`, on any
+other status `409 ROUND_TRANSITION_INVALID`. `reconcile` on a `PUBLISHED` round
+returns it unchanged. Round JSON never offers `publish` in `allowedActions`
+(`RATED` offers `reconcile`).
+
+`cancel` (migration `0021_round_cancel.sql`) moves `DRAFT_RULES`,
+`SUBMISSION_OPEN` or `SUBMISSION_CLOSED` to the terminal `CANCELLED` status. Body
+`{reason}` with a 3–500 char reason; the audit row `ROUND_CANCELLED` stores
+`details.previousStatus`, and `qualification_rounds.cancelled_at`/`cancel_reason`
+are set. From any other status — including a `SUBMISSION_CLOSED` round whose
+`start` was already initiated, because its series may be being created — the
+answer is `409 ROUND_NOT_CANCELLABLE` with `details.status`. A cancelled round
+does not count as the active round of its stage (the one-active-round unique
+index and `createRound` ignore `PUBLISHED` and `CANCELLED`), round numbers are
+not reused, rule sets and team submissions are untouched, and the public
+snapshot / `GET /api/v1/public/rounds/current/maps` skip `CANCELLED` rounds
+(latest round that is neither `DRAFT_RULES` nor `CANCELLED`).
 
 Routes are BTC-admin only (`requireRole(requireAuthenticated(...),
 'BTC_ADMIN')`) and registered in `createAuthApp` with no storage
@@ -173,7 +196,7 @@ dependency. Stable error codes: `ROUND_TRANSITION_INVALID` (409),
 (`details.graceEndsAt` ISO, `details.retryAfterSeconds`; close is only allowed
 once `schedule.graceEndsAt` has passed),
 `RULE_SET_NOT_FOUND` (404), `RULE_SET_STAGE_MISMATCH` (409),
-`ROUND_ALREADY_EXISTS_IN_STAGE` (409), `IDEMPOTENCY_KEY_INVALID` (400),
+`ROUND_ALREADY_EXISTS_IN_STAGE` (409), `ROUND_NOT_CANCELLABLE` (409, `cancel` only), `IDEMPOTENCY_KEY_INVALID` (400),
 `IDEMPOTENCY_KEY_REUSED` (409), `INVALID_REASON`/`RULE_SET_INVALID`/
 `TOURNAMENT_STAGE_INVALID` (400), `ROUND_NOT_FOUND` (404).
 
@@ -183,6 +206,23 @@ this lifecycle (`P3-D03`). Deadline extension ("gia hạn") is not part of
 `P3-D01`.
 
 ## Rule-set catalog and match snapshot wiring (`P3-D25`)
+
+- **Map registry**: In-memory catalog (`src/modules/rounds/catalog.ts`) holds
+  known map definitions (`DEFAULT_MAP`). `findMap(mapId, checksum)` and
+  `findMapByChecksum(checksum)` resolve definitions by ID and checksum.
+- **Public map endpoints**:
+  - `GET /api/v1/public/rounds/current/maps`: Anonymous endpoint returning the current
+    published/running qualification round's map set with full definitions.
+  - `GET /api/v1/public/maps/:mapId?checksum=<hex64>`: Anonymous download route delivering
+    the map definition JSON as an attachment (`Content-Disposition: attachment; filename="..."`).
+- **Team test-runs** (`P3-N03`, Loop 88):
+  - **Self-play**: Teams may test their submissions against themselves (`submissionId === opponentSubmissionId`).
+    Self-play is strictly permitted for private test runs; official rounds never pair a team against itself.
+  - **Map choice**: `GET /api/v1/test-run-policy` returns the active round's `maps`. `POST /api/v1/test-runs`
+    accepts `mapId` and `mapChecksum` (must match an entry in the round's `mapSet`, otherwise `422 MAP_NOT_IN_ROUND`).
+  - **Worker execution**: The worker resolves `tr.map_checksum` via `findMapByChecksum` (or falls back to `DEFAULT_MAP`
+    for `test_map_default`), runs match with the resolved map, and persists `{ ...result, mapId, mapChecksum }`.
+    Unresolvable checksums fail fast with `MAP_UNKNOWN`.
 
 The locked `RoundRuleSet` now drives the matches that `start` schedules.
 What the existing `matches` columns can carry is wired: `engine_version`,
@@ -490,7 +530,7 @@ any nesting depth) is dropped.
 
 ### Round results hash
 
-At `publish` the round's `results_hash` is stored (column added in 0013, settable only once and only with
+When the round is published (automatically at the end of the rate transaction, or via the legacy `publish`) its `results_hash` is stored (column added in 0013, settable only once and only with
 `status = 'PUBLISHED'`), written to the `ROUND_PUBLISHED` audit `details.resultsHash` and returned as
 `resultsHash` by `GET /api/v1/admin/rounds/:roundId` and the publish response. It is
 `sha256(canonicalJson(document))` with `canonicalJson` from `rounds/types.ts` (sorted keys, no whitespace) and
@@ -502,7 +542,7 @@ At `publish` the round's `results_hash` is stored (column added in 0013, settabl
 ```
 
 `matches` are the schedule round's `FINALIZED` matches with a result ordered by match id; `ratings` are its
-`rating_ledger` rows ordered by `(series_id, team_id)`. A second publish is `409 ROUND_TRANSITION_INVALID`
+`rating_ledger` rows ordered by `(series_id, team_id)`. A second publish is a `replayed` no-op
 and cannot change the stored hash.
 
 ### Verification
@@ -659,3 +699,44 @@ The existing `deploy/lan/compose.yml` and `deploy/lan/.env.example` templates co
 ## Demo accounts and credential CSV (`P2-T35`)
 
 To seed idempotent local demo accounts (`btc`, `team01`, `team02`) with public demo credentials and export the local CSV to `.local/demo/accounts.csv`, see the runbook at [`docs/runbooks/local-demo.md`](../../../docs/runbooks/local-demo.md).
+
+## BTC Reference Bot Seeding (`P3-N03` / Loop 91)
+
+The platform provides an idempotent reference bot seeder for demo environments:
+
+```bash
+npm run demo:seed-reference-bot --workspace @ott/platform-api
+```
+
+- **Guards**: Requires `OTT_DEMO_MODE=true` and `OTT_DEPLOYMENT_MODE=dev|test`. Refuses execution in production environments.
+- **Archive Validation**: Validates the uncompressed OCI archive (`ott-demo-bot-go-v1.oci.tar`) via `validateOciSubmission` from `@ott/job-contract` and asserts against pinned SHA-256 (`80d1dd7d9fb46f3c2a4779f0a62cc7ee0d6a3ce4b741df026adbb7bf6109b4e6`).
+- **Storage & Catalog**: Uploads to object storage at `reference-bots/<sha256>.oci.tar` if not already present, and upserts a row into `test_run_reference_bots` (`id='btc-baseline'`, `display_name='BTC baseline'`). On conflict, object/digest fields are updated while preserving any administrative `enabled` state.
+- **Lifecycle Integration**: Integrated into `seed-demo` in `infra/local/compose.yaml`, so `demo.sh up` and `demo.sh refresh` automatically seed the baseline bot for test runs.
+
+## Finals ResultBundle Workflow & CLI (`P3-D09` / Loop 96)
+
+Cryptographic ResultBundle workflow for finals rounds:
+
+### Key Management Endpoints (BTC_ADMIN only)
+- `GET /api/v1/admin/result-bundles/keys`: List allowlisted and revoked keys with usage stats.
+- `POST /api/v1/admin/result-bundles/keys`: Register an Ed25519 public key. Rejects private keys (400 `RESULT_BUNDLE_KEY_PRIVATE_REJECTED`), computes fingerprint as lowercase SHA-256 hex of SPKI DER, and enforces `fingerprintConfirmation`. Emits `RESULT_BUNDLE_KEY_ALLOWLISTED` audit log.
+- `POST /api/v1/admin/result-bundles/keys/:keyId/revoke`: Revoke an existing key (`revoked_at` set). Emits `RESULT_BUNDLE_KEY_REVOKED` audit log.
+
+### ResultBundle Import & Verification
+- `POST /api/v1/admin/result-bundles`: Full publish of signed ResultBundle (body limit 257M).
+- `POST /api/v1/admin/result-bundles?dryRun=true` or `/verify`: Dry-run validation of manifest signature, per-file hashes, key allowlist, and artifact schema without persisting.
+- `GET /api/v1/public/finals/snapshot`: Latest public finals snapshot with verified cryptographic proof metadata.
+
+### Offline CLI (`scripts/finals-bundle.mjs`)
+Wrapped via `npm run finals-bundle -- <cmd>`:
+- `keygen --out-dir <dir> --key-id <id>`: Generates Ed25519 keypair (`.private.pem` mode 0600, `.public.pem` mode 0644).
+- `fingerprint --public <pem>`: Computes lowercase SHA-256 SPKI DER hex fingerprint.
+- `export --db-url <url> --competition <id> --round <round> --private-key <pem> --key-id <id> --bundle-id <id> --out <file>`: Exports finalized round artifacts and signs the manifest.
+- `verify --bundle <file> --public <pem>`: Offline validation of bundle signature and artifacts.
+- `demo-export --out <file> [--key-dir <dir>]`: Generates synthetic valid finals bundle with demo key.
+
+### Demo Finals Seeding
+```bash
+npm run demo:seed-finals-bundle --workspace @ott/platform-api
+```
+Automatically run by `seed-demo` in `infra/local/compose.yaml` during `demo.sh up` / `refresh`.

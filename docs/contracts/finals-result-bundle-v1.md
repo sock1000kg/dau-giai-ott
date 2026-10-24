@@ -16,7 +16,7 @@ The manifest is UTF-8 JSON canonicalized with RFC 8785 before Ed25519 signing. I
 ```ts
 type ResultBundleManifestV1 = {
   schemaVersion: 1;
-  bundleId: string;
+  bundleId: string; // 1..128 chars; the web client only builds a bundle URL for ids without `/`, `?`, `#`, whitespace or control characters
   bundleVersion: number;
   tournamentId: string;
   finalsRuleSetId: string;
@@ -84,8 +84,25 @@ and `VERIFIED`. It never exposes the private key, internal object key or unpubli
 - **HTTP**: `POST /api/v1/admin/result-bundles` (BTC-only; body `{ manifest, signature, artifacts:
   [{ path, payloadBase64 }] }`; 201 new / 200 replayed) and
   `GET /api/v1/public/result-bundles/:bundleId` (anonymous; verified proof metadata per version only).
-  Error mapping: 400 malformed manifest/correction/body, 422 key not allowlisted, signature invalid,
-  artifact missing/tampered/unlisted, 409 version conflict.
+  - **Dry-run mode**: `POST /api/v1/admin/result-bundles?dryRun=true` or `POST /api/v1/admin/result-bundles/verify`
+    validates signature, per-file hashes, key allowlist and artifact schema, returning
+    `{ data: { bundleId, bundleVersion, keyId, fingerprint, artifacts: n, valid: true } }` without persisting.
+  - **Public snapshot**: `GET /api/v1/public/finals/snapshot` returns the latest published finals bundle artifacts
+    (bracket, schedule, standings, series, replays) together with cryptographic proof metadata.
+    Snapshot recency: published bundles represent finalized data; `updatedAt` reflects request time while `proof.importedAt` reflects verification time, avoiding false stale warnings.
+  - **Public bundle replays (D2)**: `GET /api/v1/public/result-bundles/:bundleId/replays/:matchId` serves spectator
+    replays (`replays/<matchId>.json`) from the latest `VERIFIED` version of the bundle with headers
+    `content-type: application/vnd.ott.spectator-replay+json;version=N` and `x-replay-sha256: sha256:<digest>`.
+  Error mapping: 400 malformed manifest/correction/body/key private rejected (RESULT_BUNDLE_KEY_PRIVATE_REJECTED), 422 key not allowlisted, signature invalid,
+  artifact missing/tampered/unlisted/schema-invalid (RESULT_BUNDLE_ARTIFACT_INVALID), 409 version conflict.
+- **Key Registration & Management Endpoints (BTC_ADMIN only)**:
+  - `GET /api/v1/admin/result-bundles/keys`: lists all registered public keys (`keyId`, `fingerprint`, `algorithm`, `allowlistedAt`, `revokedAt`, `bundleCount`).
+  - `POST /api/v1/admin/result-bundles/keys`: registers an Ed25519 public key.
+    - Body: `{ keyId, publicKeyPem, fingerprintConfirmation, reason }`.
+    - **Fingerprint Definition**: Lowercase hexadecimal string of the SHA-256 digest of the SubjectPublicKeyInfo (SPKI) DER byte array (`KeyObject.export({ type: 'spki', format: 'der' })`). In Web Crypto, base64-decoding the PEM contents between headers yields the identical SPKI DER bytes.
+    - Confirmation: `fingerprintConfirmation` must match the computed fingerprint (case-insensitive, ignoring `:` and whitespace).
+    - Private keys are rejected with 400 `RESULT_BUNDLE_KEY_PRIVATE_REJECTED` and never logged or persisted.
+  - `POST /api/v1/admin/result-bundles/keys/:keyId/revoke`: revokes a key with reason (`revoked_at` set). Idempotent if already revoked. Revoked keys reject any subsequent bundle imports.
 - **Dependency note**: `P3-N07` (isolated LAN deployment) is still open, so verification uses a clearly
   labelled test key generated inside the integration test; production signing stays on the offline side.
 

@@ -58,7 +58,7 @@ export { applyRoundRatings, rebuildRatingLedger } from './modules/ratings/servic
 export { createS3Storage, type ObjectStorage, type S3StorageOptions } from './storage/s3.ts';
 export { MatchQueue, MATCH_QUEUE_NAME, type MatchQueueOptions, type EnqueuedMatch } from './queue/match-queue.ts';
 export { createRuleSet, listRuleSets, getRuleSet, createRound, listRounds, getRound, executeTransition, getAllowedTransitions, getAllowedActions, RuleSetInvalidError, RoundCloseError, type RoundServiceOptions, type RuleSetSummary, type RuleSetDetail, type RoundSummary, type RoundActionType } from './modules/rounds/service.ts';
-export { catalogView, validateAgainstCatalog, ENGINE_VERSIONS, FAULT_POLICY_VERSIONS, MAP_REGISTRY, type CatalogView, type MatchRules, type RegisteredMap } from './modules/rounds/catalog.ts';
+export { catalogView, validateAgainstCatalog, findMap, findMapByChecksum, ENGINE_VERSIONS, FAULT_POLICY_VERSIONS, MAP_REGISTRY, type CatalogView, type MatchRules, type RegisteredMap } from './modules/rounds/catalog.ts';
 export { registerRoundRoutes, type RoundRoutesOptions } from './modules/rounds/routes.ts';
 export { validateRoundRuleSetRules, computeRulesSha256, canonicalJson, assertTransition, ALLOWED_TRANSITIONS, ROUND_RULE_SET_SCHEMA_VERSION, type RoundRuleSetRulesV1, type RoundStatus, type RoundAction, type ValidationError } from './modules/rounds/types.ts';
 export {
@@ -150,3 +150,72 @@ export {
   type MatchArtifact,
   type SeriesArtifact,
 } from './modules/result-bundles/artifacts.ts';
+export {
+  canonicalSha256,
+  canonicalizeJson,
+  sha256HexOf,
+} from './modules/result-bundles/canonical.ts';
+export {
+  DEMO_BUNDLE_ID,
+  DEMO_BUNDLE_VERSION,
+  DEMO_FINALS_CREATED_AT,
+  DEMO_KEY_ID,
+  DEMO_RULE_SET_ID,
+  DEMO_TOURNAMENT_ID,
+  buildSyntheticDemoBundle,
+  createSyntheticDemoTournament,
+  exportDemoFinalsBundle,
+  type DemoBundleArtifactPayload,
+  type DemoBundleJsonEnvelope,
+  type ExportDemoFinalsBundleOptions,
+  type ExportDemoFinalsBundleResult,
+} from './modules/result-bundles/demo-bundle.ts';
+export {
+  buildSignedResultBundle,
+  type BuildResultBundleInput,
+  type ResultBundleArtifactInput,
+  type SignedResultBundle,
+} from './modules/result-bundles/exporter.ts';
+export {
+  getPublishedResultBundleProof,
+  importResultBundle,
+  normalizeArtifactPath,
+  parseResultBundleManifest,
+  verifyResultBundle,
+  verifyResultBundleEnvelope,
+  verifyResultBundlePayload,
+  type ImportResultBundleOptions,
+  type PureVerifiedBundle,
+  type ResultBundleArtifactPayload,
+  type ResultBundleCorrection,
+  type ResultBundleImportInput,
+  type ResultBundleImportResult,
+  type ResultBundleManifestArtifact,
+  type ResultBundleManifestV1,
+  type ResultBundlePublicProof,
+  type ResultBundleVerifyResult,
+  type VerifyResultBundlePayloadOptions,
+} from './modules/result-bundles/importer.ts';
+export {
+  allowlistResultBundleKey,
+  computeKeyFingerprint,
+  listResultBundleKeys,
+  normalizeFingerprint,
+  revokeResultBundleKey,
+  validateKeyId,
+  validatePublicKeyPem,
+  validateReason,
+  type AllowlistKeyInput,
+  type AllowlistKeyResult,
+  type ResultBundleKeyRecord,
+  type RevokeKeyInput,
+  type RevokeKeyResult,
+} from './modules/result-bundles/keys.ts';
+export {
+  publicEventLog,
+} from './modules/replays/service.ts';
+export {
+  projectFinalsSnapshot,
+  registerResultBundleRoutes,
+  type ResultBundleRoutesOptions,
+} from './modules/result-bundles/routes.ts';

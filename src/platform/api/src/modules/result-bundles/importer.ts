@@ -1,7 +1,9 @@
 import { createPublicKey, randomUUID, verify as verifySignature } from 'node:crypto';
 
 import type { Database } from '../../db/client.ts';
+import { validateBundleArtifacts, type FinalsBundleView } from './artifacts.ts';
 import { canonicalSha256, canonicalizeJson, sha256HexOf } from './canonical.ts';
+import { computeKeyFingerprint } from './keys.ts';
 
 /**
  * P3-D09 hosted importer for signed ResultBundles (docs/contracts/finals-result-bundle-v1.md).
@@ -206,29 +208,45 @@ export interface ImportResultBundleOptions {
   readonly actorAccountId: string;
 }
 
+export interface ResultBundleVerifyResult {
+  readonly bundleId: string;
+  readonly bundleVersion: number;
+  readonly keyId: string;
+  readonly fingerprint: string;
+  readonly artifacts: number;
+  readonly valid: true;
+}
+
+export interface VerifyResultBundlePayloadOptions {
+  readonly publicKeyPem: string;
+}
+
+export interface PureVerifiedBundle {
+  readonly manifest: ResultBundleManifestV1;
+  readonly canonical: string;
+  readonly manifestSha256: string;
+  readonly fingerprint: string;
+  readonly provided: ReadonlyMap<string, Uint8Array>;
+  readonly view: FinalsBundleView;
+}
+
+export interface VerifiedBundleEnvelope extends PureVerifiedBundle {
+  readonly keyPem: string;
+}
+
 /**
- * Verifies a signed bundle and publishes it all-or-nothing: strict manifest → canonical text →
- * allowlisted key → Ed25519 signature → every artifact present with matching byte length and SHA-256 →
- * one transaction that stores everything and only then marks `VERIFIED`. Re-importing the same
- * bundle/version/content is idempotent; changed content for the same version is refused, so a
- * correction must use a higher `bundleVersion` with `correctionOf.reason`.
+ * DB-free verifier: manifest schema → canonical text → Ed25519 signature → per-file hashes & presence
+ * → artifact schemas & cross-references. Shared between hosted importer, dry-run, and offline CLI.
  */
-export async function importResultBundle(
-  database: Database,
+export function verifyResultBundlePayload(
   input: ResultBundleImportInput,
-  options: ImportResultBundleOptions,
-): Promise<ResultBundleImportResult> {
+  options: VerifyResultBundlePayloadOptions,
+): PureVerifiedBundle {
   const manifest = parseResultBundleManifest(input.manifest);
   const canonical = canonicalizeJson(manifest);
   const manifestSha256 = canonicalSha256(manifest);
 
-  const key = await database.query<BundleKeyRow>(
-    'SELECT public_key_pem FROM result_bundle_keys WHERE key_id = $1 AND revoked_at IS NULL',
-    [manifest.keyId],
-  );
-  const allowlisted = key.rows[0];
-  if (allowlisted === undefined) throw new Error('RESULT_BUNDLE_KEY_UNKNOWN');
-  if (!verifyEd25519(allowlisted.public_key_pem, canonical, input.signature)) {
+  if (!verifyEd25519(options.publicKeyPem, canonical, input.signature)) {
     throw new Error('RESULT_BUNDLE_SIGNATURE_INVALID');
   }
 
@@ -246,6 +264,84 @@ export async function importResultBundle(
     }
   }
   if (provided.size !== manifest.artifacts.length) throw new Error('RESULT_BUNDLE_ARTIFACT_UNLISTED');
+
+  const artifactBytesList = manifest.artifacts.map((declared) => ({
+    path: declared.path,
+    mediaType: declared.mediaType,
+    bytes: provided.get(declared.path)!,
+  }));
+
+  const validation = validateBundleArtifacts(artifactBytesList);
+  if (!validation.ok) {
+    throw new Error('RESULT_BUNDLE_ARTIFACT_INVALID');
+  }
+
+  const fingerprint = computeKeyFingerprint(options.publicKeyPem);
+
+  return {
+    manifest,
+    canonical,
+    manifestSha256,
+    fingerprint,
+    provided,
+    view: validation.value,
+  };
+}
+
+export async function verifyResultBundleEnvelope(
+  database: Database,
+  input: ResultBundleImportInput,
+): Promise<VerifiedBundleEnvelope> {
+  const manifest = parseResultBundleManifest(input.manifest);
+
+  const key = await database.query<BundleKeyRow>(
+    'SELECT public_key_pem FROM result_bundle_keys WHERE key_id = $1 AND revoked_at IS NULL',
+    [manifest.keyId],
+  );
+  const allowlisted = key.rows[0];
+  if (allowlisted === undefined) throw new Error('RESULT_BUNDLE_KEY_UNKNOWN');
+
+  const pure = verifyResultBundlePayload(input, { publicKeyPem: allowlisted.public_key_pem });
+
+  return {
+    ...pure,
+    keyPem: allowlisted.public_key_pem,
+  };
+}
+
+/**
+ * Dry-run verification: runs full signature, key allowlist, artifact presence and hash verification
+ * without writing anything to the database.
+ */
+export async function verifyResultBundle(
+  database: Database,
+  input: ResultBundleImportInput,
+): Promise<ResultBundleVerifyResult> {
+  const verified = await verifyResultBundleEnvelope(database, input);
+  return {
+    bundleId: verified.manifest.bundleId,
+    bundleVersion: verified.manifest.bundleVersion,
+    keyId: verified.manifest.keyId,
+    fingerprint: verified.fingerprint,
+    artifacts: verified.manifest.artifacts.length,
+    valid: true,
+  };
+}
+
+/**
+ * Verifies a signed bundle and publishes it all-or-nothing: strict manifest → canonical text →
+ * allowlisted key → Ed25519 signature → every artifact present with matching byte length and SHA-256 →
+ * one transaction that stores everything and only then marks `VERIFIED`. Re-importing the same
+ * bundle/version/content is idempotent; changed content for the same version is refused, so a
+ * correction must use a higher `bundleVersion` with `correctionOf.reason`.
+ */
+export async function importResultBundle(
+  database: Database,
+  input: ResultBundleImportInput,
+  options: ImportResultBundleOptions,
+): Promise<ResultBundleImportResult> {
+  const verified = await verifyResultBundleEnvelope(database, input);
+  const { manifest, manifestSha256, provided } = verified;
 
   return database.transaction(async (transaction) => {
     const existing = await transaction.query<BundleRow>(

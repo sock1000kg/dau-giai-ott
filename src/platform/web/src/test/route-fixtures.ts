@@ -119,12 +119,14 @@ export function installRouteFetch(role: TestRole): RouteApi {
       if (pathname === '/api/v1/results/series') return json(200, { data: { items: [seriesResult], pagination: page([seriesResult]) } });
       if (pathname === '/api/v1/admin/operations/audit') return json(200, { data: { items: [] }, pagination: page([]) });
       if (pathname === '/api/v1/admin/submissions/flagged') return json(200, { data: { items: [] }, pagination: page([]) });
+      if (pathname === '/api/v1/admin/result-bundles/keys') return json(200, { data: [] });
       if (pathname === '/api/v1/public/queue-overrides') return json(200, { data: { items: [] } });
       if (pathname === '/api/v1/submissions') return json(200, { data: noReferenceBot ? [submission, { ...submission, id: '77777777-7777-4777-8777-777777777777' }] : [submission], pagination: { page: 1, pageSize: 20, totalItems: noReferenceBot ? 2 : 1, totalPages: 1 }, preflightQueueLength: 0 });
       if (pathname === '/api/v1/test-run-policy') {
         return json(200, { data: {
         roundId: 'round-current', quota: { limit: 2, consumed: 0, reserved: 0, remaining: 2, resetsAt: '2026-10-19T00:00:00.000Z' },
         admissionPaused: false, opponents: { referenceBots: noReferenceBot ? [] : [{ id: 'FIRST_LEGAL', displayName: 'Bot tham chiếu — đi hợp lệ đầu tiên' }], ownSubmissionAllowed: true },
+        maps: [{ mapId: 'default', version: 1, checksum: 'a'.repeat(64), name: 'Bản đồ tiêu chuẩn' }],
       } });
       }
       if (pathname === '/api/v1/test-runs') return json(200, { data: testRuns, pagination: { page: 1, pageSize: 20, totalItems: testRuns.length, totalPages: testRuns.length === 0 ? 0 : 1 } });

@@ -31,12 +31,13 @@ function sendRoundError(reply: FastifyReply, error: unknown) {
       ROUND_NOT_OPEN: 'Round is not open for submissions',
       ROUND_RULE_SET_MISSING: 'Round has no usable rule set',
       ROUND_GRACE_NOT_ENDED: 'Grace period has not ended yet',
+      ROUND_NOT_CANCELLABLE: 'Round can only be cancelled before it starts',
     } as const;
     return reply.status(409).send({ error: { code: error.message, message: messages[error.message as keyof typeof messages], details: error.details } });
   }
   const clientErrors: Readonly<Record<string, Readonly<{ statusCode: number; code: string; message: string }>>> = {
     TOURNAMENT_STAGE_INVALID: { statusCode: 400, code: 'TOURNAMENT_STAGE_INVALID', message: 'Invalid tournament stage' },
-    INVALID_REASON: { statusCode: 400, code: 'INVALID_REASON', message: 'Reason must be 1-500 characters' },
+    INVALID_REASON: { statusCode: 400, code: 'INVALID_REASON', message: 'Reason must be 1-500 characters (at least 3 to cancel a round)' },
     RULE_SET_INVALID: { statusCode: 400, code: 'RULE_SET_INVALID', message: 'Invalid rule set' },
     ROUND_ALREADY_EXISTS_IN_STAGE: { statusCode: 409, code: 'ROUND_ALREADY_EXISTS_IN_STAGE', message: 'A round already exists in this stage' },
     ROUND_NOT_FOUND: { statusCode: 404, code: 'ROUND_NOT_FOUND', message: 'Round not found' },
@@ -109,6 +110,8 @@ function buildAction(type: string, ruleSetId?: string, idempotencyKey?: string):
       return { type: 'reconcile' };
     case 'publish':
       return { type: 'publish' };
+    case 'cancel':
+      return { type: 'cancel' };
     default:
       return null;
   }
@@ -196,7 +199,7 @@ export function registerRoundRoutes(app: FastifyInstance, options: RoundRoutesOp
     }
   });
 
-  const transitionActions = ['open', 'close', 'start', 'pause', 'resume', 'reconcile', 'publish'] as const;
+  const transitionActions = ['open', 'close', 'start', 'pause', 'resume', 'reconcile', 'publish', 'cancel'] as const;
   for (const action of transitionActions) {
     app.post<{ Params: { roundId: string }; Body: Record<string, unknown> }>(
       `/api/v1/admin/rounds/:roundId/${action}`,

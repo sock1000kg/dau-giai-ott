@@ -240,19 +240,74 @@ Nhằm bảo đảm tính minh bạch, an toàn tuyệt đối và phân quyền
 
 ### 8.1. Nghi thức Sinh Khóa (Key Generation Ceremony)
 1. Cặp khóa Ed25519 được sinh trên một máy tính quản trị air-gapped hoàn toàn ngắt mạng (`no-wifi`, `no-bluetooth`).
-2. Khóa riêng (`private_key.pem`) được lưu trữ trong phân vùng mã hóa AES-256 trên USB phần cứng của Key Custodian.
-3. Khóa công khai (`public_key.pem`) và mã nhận diện khóa (`keyId`, ví dụ: `ott-finals-2026-key1`) được xuất và cung cấp cho nền tảng web công khai trước ngày diễn ra sự kiện.
+2. Thực thi lệnh sinh khóa:
+   ```bash
+   # Lệnh copy-ready sinh khóa Ed25519 (private key mode 0600, không in ra terminal)
+   npm run finals-bundle -- keygen --out-dir ./keys --key-id ott-finals-2026-key1
+   ```
+   Lệnh xuất ra `ott-finals-2026-key1.private.pem` (mode 0600) và `ott-finals-2026-key1.public.pem` (mode 0644), đồng thời in ra `keyId` và `fingerprint` (SHA-256 SPKI DER hex).
+3. Kiểm tra hoặc tính lại fingerprint của public key:
+   ```bash
+   npm run finals-bundle -- fingerprint --public ./keys/ott-finals-2026-key1.public.pem
+   ```
+4. Khóa riêng (`ott-finals-2026-key1.private.pem`) được lưu trữ trong phân vùng mã hóa AES-256 trên USB phần cứng của Key Custodian.
+5. Đăng ký khóa công khai trên Web Admin ("Khóa công khai ResultBundle"):
+   - BTC paste nội dung `ott-finals-2026-key1.public.pem`.
+   - Giao diện tính và hiển thị live preview fingerprint từ Web Crypto.
+   - BTC gõ lại fingerprint đọc từ máy air-gapped vào ô xác nhận để tránh sai sót.
+   - Bấm "Đăng ký khóa" (hệ thống lưu vào CSDL và ghi nhận audit log `RESULT_BUNDLE_KEY_ALLOWLISTED`).
 
-### 8.2. Nghi thức Ký Số ResultBundle (Signing Ceremony)
-1. Sau khi trận đấu hoặc loạt trận chung kết hoàn tất, hệ thống LAN tự động xuất thư mục artifact gồm:
-   - `bracket.json`: Nhánh đấu và kết quả tiến bước.
-   - `schedule.json`: Lịch thi đấu và trạng thái series.
-   - `standings.json`: Bảng xếp hạng 8 đội hạt giống.
-   - `series/*.json`: Chi tiết tỷ số adapter và game breakdown.
-   - `replays/*.json`: Dữ liệu replay spectator.
-2. Script xuất gói tạo `manifest.json` chứa danh sách SHA-256 của từng file và chuẩn hóa theo chuẩn RFC 8785.
-3. Key Custodian nạp private key, thực thi script ký số Ed25519 sinh ra trường `signature` (chuỗi Base64).
-4. Gói dữ liệu `bundle.tar.gz` hoàn chỉnh được chuyển giao sang cổng Internet qua USB kiểm dịch.
+### 8.2. Nghi thức Ký Số ResultBundle & Xuất Gói (Signing Ceremony)
+1. Sau khi trận đấu hoặc loạt trận chung kết hoàn tất, thực hiện xuất bundle từ CSDL LAN. Command yêu cầu chỉ định nguồn lưu trữ replay event logs qua `--storage-dir <dir>` (hệ thống file cục bộ) HOẶC S3/SeaweedFS options (`--s3-endpoint`, `--s3-bucket`, `--s3-access-key-id`, `--s3-secret-access-key` hoặc biến môi trường `S3_*`). Hệ thống sẽ tự động đối soát SHA-256 từng file log với hash trong CSDL trước khi đóng gói:
+
+   **Tùy chọn A — Sử dụng lưu trữ file cục bộ (`--storage-dir`):**
+   ```bash
+   # Lệnh copy-ready xuất ResultBundle với local storage directory
+   npm run finals-bundle -- export \
+     --db-url "$DATABASE_URL" \
+     --competition comp-finals-2026 \
+     --round QUARTERFINAL \
+     --storage-dir /var/data/ott-replays \
+     --private-key ./keys/ott-finals-2026-key1.private.pem \
+     --key-id ott-finals-2026-key1 \
+     --bundle-id bundle-finals-qf-01 \
+     --out /media/usb/bundle-finals-qf-01.json
+   ```
+
+   **Tùy chọn B — Sử dụng S3 / SeaweedFS / MinIO storage:**
+   ```bash
+   # Lệnh copy-ready xuất ResultBundle với cấu hình S3 (secret nạp qua biến môi trường, không nằm trên argv)
+   export S3_ENDPOINT=http://127.0.0.1:9000
+   export S3_BUCKET=ott-replays
+   export S3_ACCESS_KEY_ID="$MINIO_ACCESS_KEY"
+   export S3_SECRET_ACCESS_KEY="$MINIO_SECRET_KEY"
+   export S3_REGION=us-east-1
+   npm run finals-bundle -- export \
+     --db-url "$DATABASE_URL" \
+     --competition comp-finals-2026 \
+     --round QUARTERFINAL \
+     --private-key ./keys/ott-finals-2026-key1.private.pem \
+     --key-id ott-finals-2026-key1 \
+     --bundle-id bundle-finals-qf-01 \
+     --out /media/usb/bundle-finals-qf-01.json
+   ```
+   *Lưu ý:* Cờ `--s3-endpoint`, `--s3-bucket`, `--s3-access-key-id`, `--s3-secret-access-key`, `--s3-region` vẫn dùng được như phương án thay thế, nhưng **không nên** truyền `--s3-secret-access-key` trên dòng lệnh vì secret sẽ lộ trong `ps` và shell history; ưu tiên biến môi trường `S3_*` ở trên. Nếu không cấu hình `--storage-dir` hoặc S3, CLI sẽ từ chối xuất với mã lỗi `EVENT_LOG_STORAGE_REQUIRED`.
+
+   Lệnh kiểm tra tính toàn vẹn, xác nhận vòng đấu đã hoàn tất, thu thập bracket/standings/schedule/series/replays, đối soát tính toàn vẹn SHA-256 event logs, chuẩn hóa RFC 8785, ký bằng Ed25519 private key và đóng gói thành 1 file JSON chứa `manifest`, `signature`, và `artifacts`.
+2. Kiểm tra tính hợp lệ của bundle trước khi rút USB:
+   ```bash
+   # Lệnh copy-ready kiểm tra offline bundle với public key
+   npm run finals-bundle -- verify \
+     --bundle /media/usb/bundle-finals-qf-01.json \
+     --public ./keys/ott-finals-2026-key1.public.pem
+   ```
+3. Chuyển file `bundle-finals-qf-01.json` qua USB kiểm dịch sang máy tính có Internet.
+4. Trên giao diện Web Admin Online ("Nhập ResultBundle"):
+   - Chọn file `bundle-finals-qf-01.json`.
+   - Hệ thống tự động gửi yêu cầu Dry-Run (`?dryRun=true` hoặc `/verify`) kiểm tra chữ ký, hash từng file, key allowlist và schema.
+   - Giao diện hiển thị bản xem trước: `bundleId`, `bundleVersion`, `keyId`, số lượng artifacts và kết quả xác thực.
+   - Bấm nút "Công bố" (chỉ kích hoạt khi dry-run hợp lệ) để nạp chính thức vào nền tảng trực tuyến.
+   - Sau khi công bố, badge `VERIFIED` và chứng chỉ mật mã hiển thị công khai trên trang Chung kết.
 
 ### 8.3. Quy trình Thu Hồi Khóa Khẩn Cấp (Emergency Key Revocation & Rollback)
 - **Kịch bản:** Khi phát hiện USB chứa private key bị thất lạc, nghi ngờ lộ khóa hoặc xuất hiện bundle có chữ ký trái phép.

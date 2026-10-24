@@ -128,7 +128,7 @@ run_guard_tests() {
   assert_eq "0" "${TEST_CODE}" "demo.sh --help exits 0"
 
   local sub
-  for sub in up status accounts refresh logs round stop reset; do
+  for sub in up status accounts refresh logs round stop reset editorial; do
     run_cmd bash "${DEMO_SCRIPT}" "${sub}" --help
     assert_eq "0" "${TEST_CODE}" "demo.sh ${sub} --help exits 0"
   done
@@ -325,7 +325,7 @@ EOF
   # 5a. Verify plain up generated env keys vs golden keys for non-public
   local actual_keys
   actual_keys="$(grep -E '^[A-Z0-9_]+=' "${test_env_file}" | cut -d= -f1 | sort | paste -sd, -)"
-  local golden_keys="APP_BIND,APP_PORT,DEMO_GID,DEMO_UID,DOCKER_GID,DOCKER_SOCKET,OTT_BOOTSTRAP_BTC_PASSWORD,OTT_BOOTSTRAP_BTC_USERNAME,OTT_DEMO_MODE,OTT_DEMO_REFERENCE_BOT_HOST_DIR,OTT_DEPLOYMENT_MODE,OTT_SECURE_COOKIES,POSTGRES_DB,POSTGRES_PASSWORD,POSTGRES_PORT,POSTGRES_USER,REDIS_PASSWORD,REDIS_PORT,S3_ACCESS_KEY_ID,S3_API_PORT,S3_BUCKET,S3_SECRET_ACCESS_KEY"
+  local golden_keys="APP_BIND,APP_PORT,DEMO_GID,DEMO_UID,DOCKER_GID,DOCKER_SOCKET,OTT_BOOTSTRAP_BTC_PASSWORD,OTT_BOOTSTRAP_BTC_USERNAME,OTT_DEMO_MODE,OTT_DEPLOYMENT_MODE,OTT_SECURE_COOKIES,POSTGRES_DB,POSTGRES_PASSWORD,POSTGRES_PORT,POSTGRES_USER,REDIS_PASSWORD,REDIS_PORT,S3_ACCESS_KEY_ID,S3_API_PORT,S3_BUCKET,S3_SECRET_ACCESS_KEY"
   assert_eq "${golden_keys}" "${actual_keys}" "Plain up generates exactly expected golden keys without modification"
 
   # 5b. --bind validation
@@ -1505,7 +1505,7 @@ EOF
   # ----------------------------------------------------------------------------
   # 20. Local Demo Schedule Builder Unit Tests (Docker-free vitest)
   # ----------------------------------------------------------------------------
-  echo "[20/20] Testing demo schedule builder contract (Docker-free vitest)..."
+  echo "[20/21] Testing demo schedule builder contract (Docker-free vitest)..."
   local sched_test_out
   local sched_rc=0
   sched_test_out="$(npx vitest run tests/e2e/local-demo-schedule.test.ts --config tests/e2e/local-demo.config.ts 2>&1)" || sched_rc=$?
@@ -1517,6 +1517,93 @@ EOF
     echo "  FAIL: local-demo-schedule.test.ts failed (exit ${sched_rc}):" >&2
     echo "${sched_test_out}" >&2
   fi
+
+  # ----------------------------------------------------------------------------
+  # 21. Editorial File Lifecycle & demo.sh editorial (Docker-free)
+  # ----------------------------------------------------------------------------
+  echo "[21/21] Testing demo editorial file lifecycle and demo.sh editorial..."
+  local editorial_tmp="${tmp_dir}/custom_editorial"
+  run_cmd env OTT_DEMO_EDITORIAL_HOST_DIR="${editorial_tmp}" bash "${DEMO_SCRIPT}" editorial
+  assert_eq "0" "${TEST_CODE}" "demo.sh editorial exits 0"
+  assert_contains "Editorial file: ${editorial_tmp}/public.json" "${TEST_OUT}" "editorial prints expected path"
+  assert_contains "Example announcement:" "${TEST_OUT}" "editorial prints example announcement"
+
+  # Test that up creates the file if missing
+  local edit_test_env="${tmp_dir}/edit_demo.env"
+  run_cmd env PATH="${mock_bin}:${PATH}" \
+    OTT_DEMO_PROJECT="${disposable_project}" \
+    OTT_DEMO_ENV_FILE="${edit_test_env}" \
+    OTT_DEMO_EDITORIAL_HOST_DIR="${editorial_tmp}" \
+    DOCKER_SOCKET="${fake_socket}" \
+    bash "${DEMO_SCRIPT}" up --no-build --port 19997
+
+  assert_eq "0" "${TEST_CODE}" "up with custom editorial dir succeeds"
+  if [[ -f "${editorial_tmp}/public.json" ]]; then
+    PASSED_TESTS=$((PASSED_TESTS + 1))
+    echo "  PASS: public.json created by demo.sh up"
+  else
+    FAILED_TESTS=$((FAILED_TESTS + 1))
+    echo "  FAIL: public.json was not created by demo.sh up" >&2
+  fi
+
+  local edit_content
+  edit_content="$(cat "${editorial_tmp}/public.json")"
+  assert_contains '"announcements": []' "${edit_content}" "public.json contains empty announcements array"
+  assert_contains '"minimumSeries": 5' "${edit_content}" "public.json contains minimumSeries default"
+
+  # Reset preserves public.json
+  run_cmd env PATH="${mock_bin}:${PATH}" \
+    OTT_DEMO_PROJECT="${disposable_project}" \
+    OTT_DEMO_ENV_FILE="${edit_test_env}" \
+    OTT_DEMO_EDITORIAL_HOST_DIR="${editorial_tmp}" \
+    bash "${DEMO_SCRIPT}" reset --yes
+  if [[ -f "${editorial_tmp}/public.json" ]]; then
+    PASSED_TESTS=$((PASSED_TESTS + 1))
+    echo "  PASS: public.json preserved across demo.sh reset"
+  else
+    FAILED_TESTS=$((FAILED_TESTS + 1))
+    echo "  FAIL: public.json was unexpectedly wiped by demo.sh reset" >&2
+  fi
+
+  # ----------------------------------------------------------------------------
+  # 22. Testing reference bot seed configuration in compose and demo.sh up/refresh
+  # ----------------------------------------------------------------------------
+  echo "[22/22] Testing reference bot seed configuration in compose and demo.sh up/refresh..."
+  local compose_content
+  compose_content="$(cat "${REPO_ROOT}/infra/local/compose.yaml")"
+  assert_contains "OTT_REFERENCE_BOT_FILE:" "${compose_content}" "compose.yaml defines OTT_REFERENCE_BOT_FILE for seed-demo"
+  assert_contains "/seed/ott-demo-bot-go-v1.oci.tar:ro" "${compose_content}" "compose.yaml mounts ott-demo-bot-go-v1.oci.tar read-only"
+  assert_contains "S3_ENDPOINT:" "${compose_content}" "compose.yaml passes S3_ENDPOINT to seed-demo"
+  assert_contains "S3_BUCKET:" "${compose_content}" "compose.yaml passes S3_BUCKET to seed-demo"
+  assert_contains "S3_ACCESS_KEY_ID:" "${compose_content}" "compose.yaml passes S3_ACCESS_KEY_ID to seed-demo"
+  assert_contains "S3_SECRET_ACCESS_KEY:" "${compose_content}" "compose.yaml passes S3_SECRET_ACCESS_KEY to seed-demo"
+
+  # Verify stub docker saw seed-demo with profile demo during refresh
+  assert_contains "seed-demo" "${refresh_log_out}" "stub docker was invoked with seed-demo during refresh"
+  assert_contains "--profile demo" "${refresh_log_out}" "stub docker was invoked with --profile demo during refresh"
+
+  local oci_tar_line negation_line all_negations
+  oci_tar_line="$(grep -n '^\*\*/\*\.oci\.tar$' "${REPO_ROOT}/.dockerignore" | cut -d: -f1)"
+  negation_line="$(grep -n '^!src/platform/web/public/downloads/ott-demo-bot-go-v1\.oci\.tar$' "${REPO_ROOT}/.dockerignore" | cut -d: -f1)"
+  if [[ -n "${oci_tar_line}" && -n "${negation_line}" && "${negation_line}" -gt "${oci_tar_line}" ]]; then
+    PASSED_TESTS=$((PASSED_TESTS + 1))
+    echo "  PASS: .dockerignore negation comes after **/*.oci.tar"
+  else
+    FAILED_TESTS=$((FAILED_TESTS + 1))
+    echo "  FAIL: .dockerignore negation must come after **/*.oci.tar (oci_line: '${oci_tar_line}', neg_line: '${negation_line}')" >&2
+  fi
+
+  all_negations="$(grep -E '^!.*\.oci\.tar$' "${REPO_ROOT}/.dockerignore")"
+  assert_eq "!src/platform/web/public/downloads/ott-demo-bot-go-v1.oci.tar" "${all_negations}" "Exactly one .oci.tar negation exists in .dockerignore"
+
+  # ----------------------------------------------------------------------------
+  # 23. Testing finals bundle seed configuration in compose and demo.sh up/refresh
+  # ----------------------------------------------------------------------------
+  echo "[23/23] Testing finals bundle seed configuration in compose and demo.sh up/refresh..."
+  assert_contains "OTT_DEMO_FINALS_DIR:" "${compose_content}" "compose.yaml defines OTT_DEMO_FINALS_DIR for seed-demo"
+  assert_contains "/demo" "${compose_content}" "compose.yaml mounts /demo"
+  assert_contains "demo:seed-finals-bundle" "$(cat "${REPO_ROOT}/src/platform/api/package.json")" "package.json defines demo:seed-finals-bundle script"
+  assert_contains "finals-bundle" "$(cat "${REPO_ROOT}/package.json")" "root package.json defines finals-bundle script"
 
   echo "================================================================="
   echo "Guard Tests Summary: ${PASSED_TESTS} passed, ${FAILED_TESTS} failed"

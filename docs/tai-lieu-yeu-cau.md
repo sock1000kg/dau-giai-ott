@@ -228,6 +228,8 @@ DRAFT_RULES → SUBMISSION_OPEN → SUBMISSION_CLOSED → RUNNING → SETTLING �
   (mục 11.3). Trong lúc round chạy, kết quả từng trận hiện ngay nhưng Elo trên bảng xếp hạng là Elo đầu
   tuần, kèm nhãn rõ ràng.
 - `PUBLISHED`: bảng xếp hạng chính thức của tuần được công bố; khi đó cổng nộp của tuần sau mới được mở.
+  Vòng loại tự chuyển sang `PUBLISHED` ngay khi xếp hạng xong, không cần BTC bấm công bố. (Đồng bộ docs-as-code, loop 101.)
+- `CANCELLED`: BTC có thể hủy một round chưa bắt đầu (trước `RUNNING`) kèm lý do; trạng thái cuối, bản nộp của đội giữ nguyên và round mới có thể được tạo ngay. (Đồng bộ docs-as-code, loop 101.)
 - BTC CÓ THỂ tạm dừng round (không nhận job mới, job đang chạy vẫn chạy xong) và tiếp tục; KHÔNG ĐƯỢC
   sửa bộ luật của round đang chạy. Thay đổi luật chỉ có hiệu lực từ round sau.
 
@@ -317,8 +319,8 @@ Map hợp lệ PHẢI bảo đảm:
 
 Contract v1 đã khóa ngày 09/10/2026 tại:
 
-- `docs/contracts/bot-protocol-v1.md`
-- `docs/contracts/bot-protocol-v1.schema.json`
+- `docs/contracts/bot-protocol-v2.md` và `docs/contracts/bot-protocol-v2.schema.json` (giao thức duy nhất được hỗ trợ)
+- `docs/contracts/bot-protocol-v1.md` và `docs/contracts/bot-protocol-v1.schema.json` — **deprecated, không dùng**; chỉ lưu lịch sử Phase 1
 - `docs/contracts/fixtures/`
 
 Khi phần tóm tắt dưới đây thiếu chi tiết, contract/schema đã khóa được ưu tiên.

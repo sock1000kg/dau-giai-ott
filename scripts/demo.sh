@@ -260,6 +260,7 @@ Subcommands:
   round     Manage qualification round lifecycle as BTC administrator
   stop      Stop running containers without destroying data volumes
   reset     Confirm and remove demo containers, volumes, env, and CSV
+  editorial Print editorial path and example announcement structure
 
 Run 'demo.sh <subcommand> --help' for details on each subcommand.
 EOF
@@ -379,6 +380,17 @@ fixed Compose project. Requires confirmation matching the project name.
 
 Options:
   --yes          Bypass confirmation prompt (for automated testing)
+  --help, -h     Show this help message
+EOF
+}
+
+editorial_help() {
+  cat <<EOF
+Usage: demo.sh editorial [options]
+
+Print the public editorial JSON file path and example announcement structure.
+
+Options:
   --help, -h     Show this help message
 EOF
 }
@@ -562,7 +574,6 @@ OTT_BOOTSTRAP_BTC_PASSWORD=${btc_pass}
 OTT_DEMO_BTC_PASSWORD=${btc_pass}
 OTT_DEMO_TEAM_COUNT=10
 OTT_DEMO_TEAM_PASSWORD=${tester_pass}
-OTT_DEMO_REFERENCE_BOT_HOST_DIR=${REPO_ROOT}/.local/demo/reference-bot
 DEMO_UID=$(id -u)
 DEMO_GID=$(id -g)
 DEMO_PUBLIC=true
@@ -588,7 +599,6 @@ OTT_SECURE_COOKIES=false
 OTT_DEMO_MODE=true
 OTT_BOOTSTRAP_BTC_USERNAME=btc
 OTT_BOOTSTRAP_BTC_PASSWORD=ABC123
-OTT_DEMO_REFERENCE_BOT_HOST_DIR=${REPO_ROOT}/.local/demo/reference-bot
 DEMO_UID=$(id -u)
 DEMO_GID=$(id -g)
 EOF
@@ -598,30 +608,38 @@ EOF
     chmod 0600 "${DEMO_ENV_FILE}"
   fi
 
-  # Keep an optional BTC reference archive outside git and expose only its read-only mount.
-  local reference_bot_dir="${OTT_DEMO_REFERENCE_BOT_HOST_DIR:-${REPO_ROOT}/.local/demo/reference-bot}"
-  mkdir -p -m 700 "${reference_bot_dir}"
-  chmod 700 "${reference_bot_dir}"
-  export OTT_DEMO_REFERENCE_BOT_HOST_DIR="$(cd "${reference_bot_dir}" && pwd)"
-  if [[ -n "${OTT_DEMO_REFERENCE_BOT_ARCHIVE:-}" ]]; then
-    if [[ "${OTT_DEMO_REFERENCE_BOT_ARCHIVE}" == /reference-bot/* ]]; then
-      : # Container path is already configured in the private demo env file.
-    else
-      echo "Error: OTT_DEMO_REFERENCE_BOT_ARCHIVE must use the container path /reference-bot/<filename> in ${DEMO_ENV_FILE}." >&2
-      exit 1
-    fi
-  fi
-  if [[ -f "${DEMO_ENV_FILE}" ]] && ! rg -q '^OTT_DEMO_REFERENCE_BOT_HOST_DIR=' "${DEMO_ENV_FILE}"; then
-    printf '\nOTT_DEMO_REFERENCE_BOT_HOST_DIR=%s\n' "${OTT_DEMO_REFERENCE_BOT_HOST_DIR}" >> "${DEMO_ENV_FILE}"
-    chmod 0600 "${DEMO_ENV_FILE}"
-  fi
-
   # Ensure the accounts CSV directory exists (mode 0700) and is what seed-demo mounts.
   # OTT_DEMO_ACCOUNTS_CSV may point outside .local/demo (e.g. the e2e runner); never write the default dir then.
   mkdir -p -m 700 "$(dirname "${ACCOUNTS_CSV}")"
   OTT_DEMO_ACCOUNTS_DIR="$(cd "$(dirname "${ACCOUNTS_CSV}")" && pwd)"
   OTT_DEMO_ACCOUNTS_BASENAME="$(basename "${ACCOUNTS_CSV}")"
   export OTT_DEMO_ACCOUNTS_DIR OTT_DEMO_ACCOUNTS_BASENAME
+
+  local finals_dir="${OTT_DEMO_ACCOUNTS_DIR}/finals"
+  mkdir -p -m 700 "${finals_dir}"
+  chmod 700 "${finals_dir}"
+
+  # Initialize public editorial JSON only if missing (mounts into coordinator at /editorial)
+  local editorial_dir="${OTT_DEMO_EDITORIAL_HOST_DIR:-${REPO_ROOT}/.local/demo/editorial}"
+  mkdir -p -m 700 "${editorial_dir}"
+  chmod 700 "${editorial_dir}"
+  export OTT_DEMO_EDITORIAL_HOST_DIR="$(cd "${editorial_dir}" && pwd)"
+  local editorial_file="${editorial_dir}/public.json"
+  if [[ ! -f "${editorial_file}" ]]; then
+    cat > "${editorial_file}" << 'EOF'
+{
+  "announcements": [],
+  "faq": [],
+  "status": {
+    "message": "Hệ thống hoạt động bình thường",
+    "incidentEta": null
+  },
+  "changelog": "",
+  "minimumSeries": 5
+}
+EOF
+    chmod 0600 "${editorial_file}"
+  fi
 
   echo "Bringing up Docker Compose project '${COMPOSE_PROJECT}'..."
   docker compose -p "${COMPOSE_PROJECT}" -f "${COMPOSE_FILE}" --env-file "${DEMO_ENV_FILE}" up ${build_flag:+"$build_flag"} --wait
@@ -1000,7 +1018,31 @@ sub_reset() {
   fi
 
   rm -f "${ACCOUNTS_CSV}" "${DEMO_ENV_FILE}"
+  rm -rf "${REPO_ROOT}/.local/demo/finals" 2>/dev/null || true
   echo "Reset complete."
+}
+
+# ------------------------------------------------------------------------------
+# Subcommand: editorial
+# ------------------------------------------------------------------------------
+sub_editorial() {
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --help|-h)
+        editorial_help
+        exit 0
+        ;;
+      *)
+        echo "Error: Unknown option '$1' for editorial." >&2
+        exit 2
+        ;;
+    esac
+  done
+
+  local editorial_dir="${OTT_DEMO_EDITORIAL_HOST_DIR:-${REPO_ROOT}/.local/demo/editorial}"
+  local editorial_file="${editorial_dir}/public.json"
+  echo "Editorial file: ${editorial_file}"
+  echo 'Example announcement: {"title": "Bảo trì hệ thống", "body": "Hệ thống sẽ bảo trì từ 22:00 đến 23:00."}'
 }
 
 # ------------------------------------------------------------------------------
@@ -1372,6 +1414,9 @@ case "${COMMAND}" in
     ;;
   reset)
     sub_reset "$@"
+    ;;
+  editorial)
+    sub_editorial "$@"
     ;;
   --help|-h)
     main_help

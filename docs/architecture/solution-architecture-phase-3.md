@@ -130,8 +130,12 @@ stateDiagram-v2
     RUNNING --> RUNNING: pause/resume admission
     RUNNING --> SETTLING: all series terminal
     SETTLING --> RATED: rating transaction once
-    RATED --> PUBLISHED: publish snapshot + round hash
+    RATED --> PUBLISHED: same transaction: round hash + auto-publish
+    DRAFT_RULES --> CANCELLED: BTC cancel (before start)
+    SUBMISSION_OPEN --> CANCELLED: BTC cancel (before start)
+    SUBMISSION_CLOSED --> CANCELLED: BTC cancel (before start)
     PUBLISHED --> [*]
+    CANCELLED --> [*]
 ```
 
 Invariants:
@@ -140,7 +144,8 @@ Invariants:
 - `START` chỉ chạy sau `SUBMISSION_CLOSED`, có reason/audit và idempotency key.
 - Pause ngừng nhận job mới; job đang chạy được phép hoàn tất.
 - Snapshot submission/rating/schedule seed đóng băng trước enqueue; worker order không đổi pairing/Elo.
-- `RATED` chỉ sau mọi series terminal; `PUBLISHED` phát snapshot/rule/result hash ra public channel.
+- `RATED` chỉ sau mọi series terminal; vòng loại tự chuyển `PUBLISHED` trong cùng transaction xếp hạng (không còn bước công bố thủ công), phát snapshot/rule/result hash ra public channel. Chung kết công bố khi nhập ResultBundle.
+- BTC hủy được vòng trước `START` (`DRAFT_RULES`/`SUBMISSION_OPEN`/`SUBMISSION_CLOSED`) với reason ≥ 3 ký tự; `CANCELLED` là trạng thái cuối, không giải phóng số vòng, bản nộp của đội giữ nguyên.
 
 ### 5.2 Submission và test run
 

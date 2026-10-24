@@ -38,7 +38,12 @@ function requestMessage(error: unknown): string {
 }
 
 function displayOpponent(run: TestRun, policy: TestRunPolicy | null): string {
-  if (run.opponentType === 'OWN_SUBMISSION') return 'Submission khác của đội';
+  if (run.opponentType === 'OWN_SUBMISSION') {
+    if (run.opponentSubmissionId === run.submissionId) {
+      return 'Chính bot này (tự đấu)';
+    }
+    return 'Submission khác của đội';
+  }
   return policy?.opponents.referenceBots.find((bot) => bot.id === run.opponentReferenceBot)?.displayName ?? run.opponentReferenceBot ?? 'Bot tham chiếu BTC';
 }
 
@@ -48,14 +53,19 @@ export function TestRunsPage() {
   const [submissions, setSubmissions] = useState<readonly TeamSubmission[]>([]);
   const [runs, setRuns] = useState<readonly TestRun[]>([]);
   const [submissionId, setSubmissionId] = useState('');
-  const [opponentType, setOpponentType] = useState<TestRunOpponentType>('BTC_REFERENCE');
+  const [opponentType, setOpponentType] = useState<TestRunOpponentType>('OWN_SUBMISSION');
   const [opponentId, setOpponentId] = useState('');
+  const [selectedMapKey, setSelectedMapKey] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const eligibleSubmissions = useMemo(() => submissions.filter((item) => item.status === 'ACTIVE' || item.status === 'VALID'), [submissions]);
-  const ownOpponents = useMemo(() => eligibleSubmissions.filter((item) => item.id !== submissionId), [eligibleSubmissions, submissionId]);
+
+  const selectedMap = useMemo(() => {
+    if (!policy || !policy.maps || policy.maps.length === 0) return null;
+    return policy.maps.find((m) => `${m.mapId}::${m.checksum}` === selectedMapKey) ?? policy.maps[0];
+  }, [policy, selectedMapKey]);
 
   const loadRuns = useCallback(async () => {
     const result = await listTestRuns(1, PAGE_SIZE);
@@ -72,8 +82,22 @@ export function TestRunsPage() {
       setPolicy(nextPolicy);
       setSubmissions(nextSubmissions.items);
       setRuns(nextRuns.items);
-      setSubmissionId((previous) => previous || nextSubmissions.items.find((item) => item.status === 'ACTIVE' || item.status === 'VALID')?.id || '');
-      setOpponentId((previous) => previous || nextPolicy.opponents.referenceBots[0]?.id || nextSubmissions.items.find((item) => item.status === 'ACTIVE' || item.status === 'VALID')?.id || '');
+      const defaultSubId = nextSubmissions.items.find((item) => item.status === 'ACTIVE' || item.status === 'VALID')?.id || '';
+      setSubmissionId((previous) => previous || defaultSubId);
+
+      const defaultOpponentType: TestRunOpponentType = nextPolicy.opponents.ownSubmissionAllowed
+        ? 'OWN_SUBMISSION'
+        : (nextPolicy.opponents.referenceBots.length > 0 ? 'BTC_REFERENCE' : 'OWN_SUBMISSION');
+      setOpponentType(defaultOpponentType);
+
+      setOpponentId(defaultOpponentType === 'OWN_SUBMISSION'
+        ? defaultSubId
+        : (nextPolicy.opponents.referenceBots[0]?.id || defaultSubId));
+
+      const firstMap = nextPolicy.maps?.[0];
+      if (firstMap) {
+        setSelectedMapKey((previous) => previous || `${firstMap.mapId}::${firstMap.checksum}`);
+      }
     } catch (cause) {
       setError(requestMessage(cause));
     } finally {
@@ -104,6 +128,7 @@ export function TestRunsPage() {
         opponentType,
         ...(opponentType === 'BTC_REFERENCE' ? { opponentReferenceBot: opponentId } : { opponentSubmissionId: opponentId }),
         ...(policy.roundId !== null ? { roundId: policy.roundId } : {}),
+        ...(selectedMap ? { mapId: selectedMap.mapId, mapChecksum: selectedMap.checksum } : {}),
       }, intentKey.current);
       intentKey.current = null;
       setSuccess('Đã nhận yêu cầu chạy thử. Trạng thái sẽ tự cập nhật trong danh sách bên dưới.');
@@ -119,7 +144,9 @@ export function TestRunsPage() {
   const paused = policy?.admissionPaused === true;
   const quotaEmpty = policy !== null && policy.quota.remaining <= 0;
   const noSubmission = eligibleSubmissions.length === 0;
-  const noReferenceBot = policy !== null && policy.opponents.referenceBots.length === 0;
+  const hasReferenceBots = (policy?.opponents.referenceBots.length ?? 0) > 0;
+  const ownSubmissionAllowed = Boolean(policy?.opponents.ownSubmissionAllowed);
+  const hasOpponentOptions = hasReferenceBots || ownSubmissionAllowed;
 
   return (
     <Page title="Chạy thử bot" description="Thử submission của đội trong môi trường thi đấu cô lập. Lượt chạy thử không ảnh hưởng Elo.">
@@ -144,28 +171,95 @@ export function TestRunsPage() {
         <Card title="Tạo lượt chạy thử" className="test-runs-create">
           <form className="test-runs-form" onSubmit={(event) => void handleSubmit(event)}>
             <Field label="Bot của đội" help="Chỉ dùng submission đã qua kiểm tra và còn hợp lệ.">
-              <Select value={submissionId} onChange={(event) => setSubmissionId(event.target.value)} disabled={loading || noSubmission || submitting} required>
+              <Select
+                value={submissionId}
+                onChange={(event) => {
+                  const newId = event.target.value;
+                  if (opponentType === 'OWN_SUBMISSION' && opponentId === submissionId) {
+                    setOpponentId(newId);
+                  }
+                  setSubmissionId(newId);
+                }}
+                disabled={loading || noSubmission || submitting}
+                required
+              >
                 <option value="" disabled>Chọn submission</option>
                 {eligibleSubmissions.map((submission) => <option key={submission.id} value={submission.id}>{submission.id.slice(0, 8)} · {submission.status}</option>)}
               </Select>
             </Field>
-            <Field label="Bot đối thủ">
-              <Select value={opponentType} onChange={(event) => { setOpponentType(event.target.value as TestRunOpponentType); setOpponentId(''); }} disabled={loading || submitting}>
-                {policy?.opponents.referenceBots.length ? <option value="BTC_REFERENCE">Bot tham chiếu BTC</option> : null}
-                {policy?.opponents.ownSubmissionAllowed ? <option value="OWN_SUBMISSION">Submission khác của đội</option> : null}
-              </Select>
-            </Field>
-            {opponentType === 'BTC_REFERENCE' && !noReferenceBot ? <Field label="Bot tham chiếu BTC">
-              <Select value={opponentId} onChange={(event) => setOpponentId(event.target.value)} disabled={loading || submitting} required>
-                {policy?.opponents.referenceBots.map((bot) => <option key={bot.id} value={bot.id}>{bot.displayName}</option>)}
-              </Select>
-            </Field> : opponentType === 'BTC_REFERENCE' ? <p className="test-runs-empty" role="status">Bot tham chiếu BTC chưa được cấu hình cho môi trường này.</p> : <Field label="Submission đối thủ" help="Phải khác bot đang được thử và thuộc đội của bạn.">
-              <Select value={opponentId} onChange={(event) => setOpponentId(event.target.value)} disabled={loading || submitting || ownOpponents.length === 0} required>
-                <option value="" disabled>Chọn submission khác</option>
-                {ownOpponents.map((submission) => <option key={submission.id} value={submission.id}>{submission.id.slice(0, 8)} · {submission.status}</option>)}
-              </Select>
-            </Field>}
-            <Button type="submit" disabled={loading || submitting || paused || quotaEmpty || noSubmission || opponentId === '' || (opponentType === 'BTC_REFERENCE' && noReferenceBot)} loading={submitting}>
+            {hasOpponentOptions ? (
+              <Field label="Bot đối thủ">
+                <Select
+                  value={opponentType}
+                  onChange={(event) => {
+                    const nextType = event.target.value as TestRunOpponentType;
+                    setOpponentType(nextType);
+                    if (nextType === 'OWN_SUBMISSION') {
+                      setOpponentId(submissionId || eligibleSubmissions[0]?.id || '');
+                    } else {
+                      setOpponentId(policy?.opponents.referenceBots[0]?.id || '');
+                    }
+                  }}
+                  disabled={loading || submitting}
+                >
+                  {ownSubmissionAllowed ? <option value="OWN_SUBMISSION">Bot của đội</option> : null}
+                  {hasReferenceBots ? <option value="BTC_REFERENCE">Bot tham chiếu BTC</option> : null}
+                </Select>
+              </Field>
+            ) : null}
+            {opponentType === 'BTC_REFERENCE' && hasReferenceBots ? (
+              <Field label="Bot tham chiếu BTC">
+                <Select value={opponentId} onChange={(event) => setOpponentId(event.target.value)} disabled={loading || submitting} required>
+                  {policy?.opponents.referenceBots.map((bot) => <option key={bot.id} value={bot.id}>{bot.displayName}</option>)}
+                </Select>
+              </Field>
+            ) : opponentType === 'OWN_SUBMISSION' && ownSubmissionAllowed ? (
+              <Field label="Submission đối thủ" help="Có thể chọn chính bot đang thử để tự đấu.">
+                <Select value={opponentId} onChange={(event) => setOpponentId(event.target.value)} disabled={loading || submitting || eligibleSubmissions.length === 0} required>
+                  <option value="" disabled>Chọn submission</option>
+                  {eligibleSubmissions.map((submission) => {
+                    const isSelf = submission.id === submissionId;
+                    const label = isSelf
+                      ? `${submission.id.slice(0, 8)} · ${formatTime(submission.createdAt)} (chính bot này)`
+                      : `${submission.id.slice(0, 8)} · ${submission.status}`;
+                    return <option key={submission.id} value={submission.id}>{label}</option>;
+                  })}
+                </Select>
+              </Field>
+            ) : (
+              <p className="test-runs-empty" role="status">Bot tham chiếu BTC chưa được cấu hình cho môi trường này.</p>
+            )}
+            {policy?.maps && policy.maps.length > 0 && (
+              <div className="test-runs-map-field">
+                <Field label="Bản đồ">
+                  <Select
+                    value={selectedMapKey}
+                    onChange={(event) => setSelectedMapKey(event.target.value)}
+                    disabled={loading || submitting}
+                    required
+                  >
+                    {policy.maps.map((map) => (
+                      <option key={`${map.mapId}::${map.checksum}`} value={`${map.mapId}::${map.checksum}`}>
+                        {map.name ? `${map.name} (${map.mapId} · ${map.checksum.slice(0, 8)})` : `${map.mapId} (${map.checksum.slice(0, 8)})`}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+                {selectedMap && (
+                  <p className="test-runs-map-download">
+                    <a
+                      href={`/api/v1/public/maps/${encodeURIComponent(selectedMap.mapId)}?checksum=${encodeURIComponent(selectedMap.checksum)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      download
+                    >
+                      Xem/tải bản đồ
+                    </a>
+                  </p>
+                )}
+              </div>
+            )}
+            <Button type="submit" disabled={loading || submitting || paused || quotaEmpty || noSubmission || opponentId === '' || !hasOpponentOptions} loading={submitting}>
               {submitting ? 'Đang gửi…' : 'Chạy thử'}
             </Button>
           </form>

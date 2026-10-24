@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../../app/App.tsx';
 import { loadPublicSnapshot, type PublicSnapshot } from './snapshot.ts';
@@ -45,18 +45,48 @@ describe('public-site static snapshots', () => {
     expect(screen.getByRole('region', { name: 'Tài nguyên làm bot' })).toBeTruthy();
     const archive = readFileSync(resolve(process.cwd(), 'public/downloads/ott-bot-resources-v1.zip'));
     expect(archive.subarray(0, 4).toString('hex')).toBe('504b0304');
+
+    const downloadTar = screen.getByRole('link', { name: 'Bot mẫu đã build (.oci.tar)' });
+    expect(downloadTar.getAttribute('href')).toBe('/downloads/ott-demo-bot-go-v1.oci.tar');
+    expect(downloadTar.getAttribute('download')).toBe('ott-demo-bot-go-v1.oci.tar');
+    const tarFile = readFileSync(resolve(process.cwd(), 'public/downloads/ott-demo-bot-go-v1.oci.tar'));
+    expect(tarFile.byteLength).toBe(829440);
+    const tarSha = createHash('sha256').update(tarFile).digest('hex');
+    expect(tarSha).toBe('80d1dd7d9fb46f3c2a4779f0a62cc7ee0d6a3ce4b741df026adbb7bf6109b4e6');
+  });
+
+  it('verifies shipped bot samples do not hard-code protocolVersion: 1 in ACTION replies', () => {
+    const samplesDir = resolve(process.cwd(), 'public/downloads/ott-bot-resources-v1/samples');
+    const sampleFiles = [
+      resolve(samplesDir, 'go/bot-v1.go'),
+      resolve(samplesDir, 'node/bot-v1-v2.mjs'),
+      resolve(samplesDir, 'python/sdk.py'),
+      resolve(samplesDir, 'python/first_legal_bot.py'),
+      resolve(samplesDir, 'python/capture_first_bot.py'),
+    ];
+    for (const filePath of sampleFiles) {
+      const content = readFileSync(filePath, 'utf-8');
+      expect(content).not.toMatch(/"protocolVersion"\s*:\s*1\s*[,}]/);
+      expect(content).not.toMatch(/protocolVersion\s*:\s*1\s*[,}]/);
+    }
   });
 
   it('renders public data without session, database, worker or control requests', async () => {
     const { fetcher } = setup(); window.history.replaceState({}, '', '/public');
     render(<App />);
     await screen.findByRole('heading', { level: 1, name: /Week 1/ });
-    for (const name of ['Hàng đợi', 'Kết quả', 'Bảng xếp hạng', 'Luật hiện tại', 'Lịch', 'Thông báo', 'FAQ', 'Trạng thái']) {
+    for (const name of ['Hàng đợi', 'Kết quả', 'Bảng xếp hạng', 'Luật hiện tại', 'Lịch', 'Thông báo', 'FAQ', 'Bản đồ của vòng']) {
       expect(screen.getByRole('region', { name })).toBeTruthy();
     }
     expect(screen.getByText('Chưa đủ series')).toBeTruthy();
     expect(screen.queryByRole('link', { name: 'Replay' })).toBeNull();
-    expect(fetcher.mock.calls.map(([url]) => url)).toEqual(['/snapshots/latest.json', expect.stringMatching(/^\/snapshots\/snapshot-[0-9a-f]{64}\.json$/)]);
+    await waitFor(() => {
+      expect(fetcher.mock.calls.map(([url]) => url)).toEqual([
+        '/snapshots/latest.json',
+        expect.stringMatching(/^\/snapshots\/snapshot-[0-9a-f]{64}\.json$/),
+        '/api/v1/public/rounds/current/maps',
+      ]);
+    });
     for (const [, options] of fetcher.mock.calls) {
       expect(options?.method ?? 'GET').toBe('GET');
       expect(options?.credentials).toBe('omit');
@@ -76,14 +106,14 @@ describe('public-site static snapshots', () => {
     expect(screen.getByRole('alert').textContent).toMatch(/đã cũ/);
     expect(screen.getByRole('link', { name: 'Bảng xếp hạng' }).getAttribute('href')).toBe('/leaderboard');
   });
-  it('retains the last good snapshot and incident ETA when polling fails', async () => {
+  it('retains the last good snapshot when polling fails', async () => {
     vi.useFakeTimers(); const { fetcher } = setup(); window.history.replaceState({}, '', '/public');
     render(<App />); await act(async () => { await vi.advanceTimersByTimeAsync(0); });
     expect(screen.getByRole('heading', { level: 1, name: /Week 1/ })).toBeTruthy();
     fetcher.mockRejectedValue(new Error('offline'));
     await act(async () => { await vi.advanceTimersByTimeAsync(10_000); });
     expect(screen.getByRole('alert').textContent).toMatch(/bản cập nhật cuối/);
-    expect(screen.getByText('Dự kiến khắc phục: 10 phút')).toBeTruthy();
+    expect(screen.getByText('Worker recovery')).toBeTruthy();
     expect(screen.getByRole('heading', { level: 1, name: /Week 1/ })).toBeTruthy();
   });
   it('rejects checksum mutation, unsafe pointer paths and old snapshots', async () => {

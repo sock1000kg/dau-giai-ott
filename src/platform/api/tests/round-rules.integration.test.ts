@@ -253,24 +253,28 @@ integration('P3-D01 round-rules PostgreSQL integration', () => {
     const ledgerBefore = await database.query('SELECT id FROM rating_ledger WHERE series_id IN (SELECT id FROM series WHERE round_id = $1)', [scheduleRoundId]);
 
     const ratedResult = await executeTransition(database, { roundId, action: { type: 'reconcile' }, reason: 'apply ratings', actorAccountId: accountId });
-    expect(ratedResult.status).toBe('RATED');
+    expect(ratedResult.status).toBe('PUBLISHED');
+    expect(ratedResult.resultsHash).toMatch(/^[0-9a-f]{64}$/);
 
     const ledgerAfter = await database.query('SELECT id FROM rating_ledger WHERE series_id IN (SELECT id FROM series WHERE round_id = $1)', [scheduleRoundId]);
     expect(ledgerAfter.rows).toHaveLength(ledgerBefore.rows.length);
 
     const ratedAgain = await executeTransition(database, { roundId, action: { type: 'reconcile' }, reason: 'idempotent ratings', actorAccountId: accountId });
-    expect(ratedAgain.status).toBe('RATED');
+    expect(ratedAgain.status).toBe('PUBLISHED');
 
     const ledgerFinal = await database.query('SELECT id FROM rating_ledger WHERE series_id IN (SELECT id FROM series WHERE round_id = $1)', [scheduleRoundId]);
     expect(ledgerFinal.rows).toHaveLength(ledgerBefore.rows.length);
   });
 
-  it('publish only from RATED', async () => {
+  it('publish on an already auto-published round is a replayed no-op', async () => {
     const published = await executeTransition(database, { roundId, action: { type: 'publish' }, reason: 'publish results', actorAccountId: accountId });
     expect(published.status).toBe('PUBLISHED');
+    expect(published.replayed).toBe(true);
+    const audits = await database.query("SELECT action FROM audit_events WHERE target_id = $1 AND action IN ('ROUND_RATED','ROUND_PUBLISHED') ORDER BY created_at, action DESC", [roundId]);
+    expect(audits.rows.map((row) => (row as { action: string }).action).sort()).toEqual(['ROUND_PUBLISHED', 'ROUND_RATED']);
   });
 
-  it('create next round blocked until PUBLISHED', async () => {
+  it('create next round is allowed right after rating (auto-published)', async () => {
     const nextRound = await createRound(database, { tournamentStage: stage, reason: 'next round', actorAccountId: accountId });
     expect(nextRound.status).toBe('DRAFT_RULES');
     await expect(createRound(database, { tournamentStage: stage, reason: 'third round', actorAccountId: accountId })).rejects.toThrow('ROUND_ALREADY_EXISTS_IN_STAGE');

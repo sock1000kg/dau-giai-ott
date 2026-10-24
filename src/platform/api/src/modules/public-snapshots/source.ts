@@ -1,5 +1,6 @@
 import type { Database } from '../../db/client.ts';
 import { leaderboardSql, type LeaderboardRow } from '../ratings/routes.ts';
+import { findMap } from '../rounds/catalog.ts';
 import { computeRulesSha256, validateRoundRuleSetRules, type RoundRuleSetRulesV1 } from '../rounds/types.ts';
 import { finalsEligibility } from '../scheduling/eligibility.ts';
 import { publishPublicSnapshot, type PublicSnapshot } from './publisher.ts';
@@ -39,7 +40,7 @@ export async function collectQualificationSnapshot(database: Database, editorial
       version: number; rules: RoundRuleSetRulesV1; rules_sha256: string;
     }>(`SELECT q.round_number, q.status, q.schedule_round_id, r.version, r.rules, r.rules_sha256
       FROM qualification_rounds q JOIN round_rule_sets r ON r.id = q.rule_set_id
-      WHERE q.tournament_stage = 'QUALIFICATION' AND q.status <> 'DRAFT_RULES'
+      WHERE q.tournament_stage = 'QUALIFICATION' AND q.status NOT IN ('DRAFT_RULES', 'CANCELLED')
       ORDER BY q.round_number DESC LIMIT 1`);
     const round = selected.rows[0];
     if (!round) throw new NoValidAnnouncedRulesError('NO_ROUND');
@@ -60,6 +61,31 @@ export async function collectQualificationSnapshot(database: Database, editorial
     const ranked = await tx.query<LeaderboardRow>(leaderboardSql, ['QUALIFICATION', null, 0]);
     const pending = new Map(matches.rows.filter((m) => m.status === 'SCHEDULED' || m.status === 'RUNNING').map((m) => [m.id, m]));
     const rules = round.rules;
+    const mapDefinitions: unknown[] = [];
+    for (const entry of rules.mapSet) {
+      const found = findMap(entry.mapId, entry.checksum);
+      if (found) {
+        mapDefinitions.push(found.definition);
+      } else {
+        mapDefinitions.push({
+          mapId: entry.mapId,
+          checksum: entry.checksum,
+          error: 'không có định nghĩa trong danh mục',
+        });
+      }
+    }
+    for (const m of matches.rows) {
+      if (m.map_definition) {
+        mapDefinitions.push(m.map_definition);
+      }
+    }
+    function mapDedupeKey(d: unknown): string {
+      if (typeof d === 'object' && d !== null && 'mapId' in d && 'checksum' in d) {
+        return `${String((d as { mapId: unknown }).mapId)}:${String((d as { checksum: unknown }).checksum)}`;
+      }
+      return JSON.stringify(d);
+    }
+    const dedupedMaps = [...new Map(mapDefinitions.map((d) => [mapDedupeKey(d), d])).values()];
     return {
       schemaVersion: 1, updatedAt: now.toISOString(), stage: 'QUALIFICATION',
       round: { name: `Round ${round.round_number}`, status: round.status },
@@ -75,8 +101,7 @@ export async function collectQualificationSnapshot(database: Database, editorial
           minimumSeries: editorial.minimumSeries }).eligible })),
       rules: { version: `${round.version} · sha256:${round.rules_sha256}`, engineVersion: rules.engineVersion, sections: [
         { title: 'Map set', body: JSON.stringify(rules.mapSet) },
-        { title: 'Bàn cờ đã khóa', body: JSON.stringify([...new Map(matches.rows.map((m) => [JSON.stringify(m.map_definition), m.map_definition])).values()]) },
-        { title: 'Thay đổi', body: editorial.changelog },
+        { title: 'Bàn cờ đã khóa', body: JSON.stringify(dedupedMaps) },
         { title: 'Time control', body: JSON.stringify(rules.timeControl) },
         { title: 'maxTurns / fault policy', body: `${rules.maxTurns} / ${rules.faultPolicyVersion}` },
         { title: 'Sandbox limits', body: JSON.stringify(rules.resources) },

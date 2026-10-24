@@ -147,7 +147,9 @@ describe('RoundAdmin operations console', () => {
     fireEvent.change(screen.getByLabelText('Lý do'), { target: { value: 'Chạy round 3' } });
     fireEvent.change(screen.getByLabelText(/nhập số round/i), { target: { value: '3' } });
     fireEvent.click(screen.getByRole('button', { name: /xác nhận bắt đầu/i }));
-    expect(await screen.findByText(/trạng thái đã thay đổi ở nơi khác/i)).toBeTruthy();
+    const row = (await within(operations).findByRole('heading', { name: 'Round 3' })).closest('li')!;
+    expect(await within(row).findByText(/trạng thái đã thay đổi ở nơi khác/i)).toBeTruthy();
+    expect(within(row).getByRole('status').textContent).toMatch(/trạng thái đã thay đổi ở nơi khác/i);
     await waitFor(() => expect(within(operations).queryByRole('button', { name: /tạm dừng/i })).toBeTruthy());
     expect(within(operations).queryByRole('button', { name: /bắt đầu round/i })).toBeNull();
   });

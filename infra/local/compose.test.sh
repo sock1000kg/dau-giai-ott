@@ -226,6 +226,23 @@ PY
     echo "  OK: All checks passed via python3."
   fi
 
+  # Assert .dockerignore negates the demo bot so it is included in the web image build
+  local dockerignore_file="${SCRIPT_DIR}/../../.dockerignore"
+  local oci_line negation_line all_negations
+  oci_line="$(grep -n '^\*\*/\*\.oci\.tar$' "${dockerignore_file}" | cut -d: -f1)"
+  negation_line="$(grep -n '^!src/platform/web/public/downloads/ott-demo-bot-go-v1\.oci\.tar$' "${dockerignore_file}" | cut -d: -f1)"
+  all_negations="$(grep -E '^!.*\.oci\.tar$' "${dockerignore_file}")"
+
+  if [[ -z "${negation_line}" || -z "${oci_line}" || "${negation_line}" -le "${oci_line}" ]]; then
+    echo "FAIL: .dockerignore negation !src/platform/web/public/downloads/ott-demo-bot-go-v1.oci.tar must come after **/*.oci.tar" >&2
+    exit 1
+  fi
+  if [[ "${all_negations}" != "!src/platform/web/public/downloads/ott-demo-bot-go-v1.oci.tar" ]]; then
+    echo "FAIL: exactly one .oci.tar negation must exist in .dockerignore, got: ${all_negations}" >&2
+    exit 1
+  fi
+  echo "  OK: .dockerignore includes downloadable demo bot in web image context (after **/*.oci.tar with no other oci negations)."
+
   echo "==> [STATIC] All Compose static assertions PASSED."
 }
 

@@ -8,6 +8,8 @@
 @media (min-width: 900px) { .test-runs-layout { grid-template-columns: minmax(18rem, .8fr) minmax(0, 1.2fr); } }
 .test-runs-form { display: grid; gap: var(--ui-space-4); }
 .test-runs-form > .ui-button { justify-self: start; min-width: 10rem; }
+.test-runs-map-field { display: grid; gap: var(--ui-space-1); }
+.test-runs-map-download { margin: 0; font-size: 13px; }
 .test-runs-note, .test-runs-empty { color: var(--ui-text-muted); font-size: 14px; }
 .test-runs-alert { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--ui-space-3); }
 .test-runs-alert p { margin: 0; }

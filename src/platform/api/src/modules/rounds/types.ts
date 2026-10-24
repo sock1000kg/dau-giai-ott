@@ -9,7 +9,8 @@ export type RoundStatus =
   | 'RUNNING'
   | 'SETTLING'
   | 'RATED'
-  | 'PUBLISHED';
+  | 'PUBLISHED'
+  | 'CANCELLED';
 
 export type RoundAction =
   | { type: 'create' }
@@ -19,7 +20,8 @@ export type RoundAction =
   | { type: 'pause' }
   | { type: 'resume' }
   | { type: 'reconcile' }
-  | { type: 'publish' };
+  | { type: 'publish' }
+  | { type: 'cancel' };
 
 export interface RoundRuleSetRulesV1 {
   schemaVersion: typeof ROUND_RULE_SET_SCHEMA_VERSION;
@@ -331,13 +333,16 @@ export function validateRoundRuleSetRules(rules: unknown): { readonly errors: re
 }
 
 export const ALLOWED_TRANSITIONS: Readonly<Record<RoundStatus, Readonly<RoundAction['type'][]>>> = {
-  DRAFT_RULES: ['open'],
-  SUBMISSION_OPEN: ['close'],
-  SUBMISSION_CLOSED: ['start'],
+  DRAFT_RULES: ['open', 'cancel'],
+  SUBMISSION_OPEN: ['close', 'cancel'],
+  SUBMISSION_CLOSED: ['start', 'cancel'],
   RUNNING: ['pause', 'resume', 'reconcile'],
   SETTLING: ['reconcile'],
+  // RATED is transient: rating auto-publishes in the same transaction. `publish` stays only for legacy rows
+  // that were left at RATED before auto-publish existed (the next reconcile also publishes them).
   RATED: ['publish'],
   PUBLISHED: [],
+  CANCELLED: [],
 };
 
 export function assertTransition(
@@ -380,6 +385,6 @@ export function assertTransition(
     }
   }
 
-  if (['open', 'close', 'start', 'pause', 'resume', 'reconcile', 'publish'].includes(action.type)) {
+  if (['open', 'close', 'start', 'pause', 'resume', 'reconcile', 'publish', 'cancel'].includes(action.type)) {
   }
 }

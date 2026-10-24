@@ -78,7 +78,12 @@ Welcome to the OTT Tournament Demo!
 Web Portal: https://<your-public-tunnel-domain>/
 Usernames: team01 through team10 (pick any unused team)
 Tester Password: <shared-tester-password>
+Download pre-built demo bot (.oci.tar): https://<your-public-tunnel-domain>/downloads/ott-demo-bot-go-v1.oci.tar
 ```
+
+Testers can download the pre-built demo bot `ott-demo-bot-go-v1.oci.tar` directly from the public tournament page or the link above, upload it as their initial submission, or test against the seeded BTC baseline (`btc-baseline`) opponent on the test-run page.
+
+The public demo stack also pre-seeds a completed finals tournament ResultBundle (`demo-finals-key`), allowing testers to explore the interactive finals bracket and sample replays under `/finals` with a demo notice footer.
 
 ---
 
@@ -91,7 +96,7 @@ As the tournament administrator (BTC), open the qualification round:
 ./scripts/demo.sh round open --yes
 ```
 
-This verifies or creates the tournament stage and rule set, transitioning the round to `SUBMISSION_OPEN`.
+This verifies or creates the tournament stage and rule set, transitioning the round to `SUBMISSION_OPEN`. (Note: rounds already opened with an older rule set template keep their locked rules, so self-play stays unavailable until BTC opens a new round or rule set allowing own submissions).
 
 ### Step 2: Bot Submissions
 Each tester navigates to the web portal in their browser:
@@ -151,8 +156,19 @@ During multi-day testing events, you can reset test submissions and matches each
 - **What Refresh Keeps**:
   - Configuration file `.local/demo/demo.env`.
   - Credentials file `.local/demo/accounts.csv`.
+  - Editorial file `.local/demo/editorial/public.json`.
   - Pre-built local Docker images (rebuilding is skipped).
   - Existing login passwords for `btc` and `team01`..`team10`. Note that password hashes inside PostgreSQL are freshly computed with new salts upon re-seeding, but they match the preserved passwords.
+
+### Announcements & Editorial Management
+Announcements on the public page come from `.local/demo/editorial/public.json`, which is mounted into the coordinator at `/editorial/public.json` and re-read on every snapshot publish (every ~5 seconds).
+
+- View the file path and example announcement structure:
+  ```bash
+  ./scripts/demo.sh editorial
+  ```
+- To update announcements, edit `.local/demo/editorial/public.json` directly. The coordinator will publish the updated announcements in the next snapshot cycle automatically without restarting containers.
+- The editorial file is preserved across both `demo.sh refresh` and `demo.sh reset`.
 
 ### Recommended Daily Cron
 To automatically reset the demo environment every morning at 04:00 AM:

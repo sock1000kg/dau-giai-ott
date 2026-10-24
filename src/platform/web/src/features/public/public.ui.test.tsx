@@ -33,12 +33,11 @@ afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.useRealTimers(); window.h
 describe('public tournament page restyle', () => {
   it('renders every labelled section, grid wrappers and the leaderboard anchor', async () => {
     await mount();
-    for (const name of ['Trạng thái', 'Hàng đợi', 'Kết quả', 'Bảng xếp hạng', 'Luật hiện tại', 'Lịch', 'Thông báo', 'FAQ']) {
+    for (const name of ['Bản đồ của vòng', 'Hàng đợi', 'Kết quả', 'Bảng xếp hạng', 'Luật hiện tại', 'Lịch', 'Thông báo', 'FAQ']) {
       expect(screen.getByRole('region', { name })).toBeTruthy();
     }
     expect(document.getElementById('leaderboard')?.getAttribute('aria-label')).toBe('Bảng xếp hạng');
     expect(document.querySelectorAll('.pub-grid').length).toBe(2);
-    expect(screen.getByText('Dự kiến khắc phục: Chưa có ước tính sự cố')).toBeTruthy();
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Giải đấu OTT · Week 1');
   });
 

@@ -5,7 +5,7 @@ import type { OciArtifactReference } from '@ott/job-contract';
 import type { BotPort } from '@ott/match-runner';
 import { CoreGameAdapter, runMatch, serializeEventLog, verifyReplay } from '@ott/match-runner';
 import type { Database, ObjectStorage } from '@ott/platform-api';
-import { completeTestRun, failTestRun, type TestRunRecord } from '@ott/platform-api';
+import { completeTestRun, failTestRun, findMapByChecksum, type TestRunRecord } from '@ott/platform-api';
 import { SANDBOX_POLICY_V1, resolveSandboxPolicy, type SandboxPolicy } from './sandbox/policy.ts';
 import { SandboxOciBotPort } from './sandbox/oci-bot-port.ts';
 import { defaultWorkerMetrics, type WorkerMetrics } from './metrics.ts';
@@ -58,6 +58,7 @@ interface TestRunJoinedRow {
   readonly opponent_submission_id: string | null;
   readonly opponent_reference_bot: string | null;
   readonly seed: string;
+  readonly map_checksum?: string;
   readonly sub_object_key: string;
   readonly sub_archive_sha256: string;
   readonly sub_manifest_digest: string;
@@ -78,6 +79,7 @@ export async function runTestJob(options: RunTestJobOptions): Promise<RunTestJob
   const queryRes = await database.query<TestRunJoinedRow>(
     `SELECT tr.id, tr.team_id, tr.status, tr.submission_id, tr.opponent_type,
             tr.opponent_submission_id, tr.opponent_reference_bot, tr.seed,
+            tr.map_checksum,
             s.object_key as sub_object_key,
             s.archive_sha256 as sub_archive_sha256,
             s.oci_manifest_digest as sub_manifest_digest,
@@ -141,17 +143,69 @@ export async function runTestJob(options: RunTestJobOptions): Promise<RunTestJob
     let refO: OciArtifactReference;
 
     if (testRun.opponent_type === 'BTC_REFERENCE') {
-      if (!options.getReferenceBot) {
-        throw new Error('REFERENCE_BOT_UNAVAILABLE');
-      } else {
-        const refBot = await options.getReferenceBot(testRun.opponent_reference_bot ?? 'FIRST_LEGAL');
-        archiveO = refBot.archive;
-        if (archiveChecksum(archiveO) !== refBot.reference.archiveSha256) {
-          throw new Error('OPPONENT_ARCHIVE_CHECKSUM_MISMATCH');
+      const getRef = options.getReferenceBot ?? (async (botId: string) => {
+        const found = await database.query<{
+          id: string;
+          object_key: string;
+          archive_sha256: string;
+          manifest_digest: string;
+          config_digest: string;
+          entrypoint: string | readonly string[];
+          policy_version: string;
+        }>(
+          `SELECT id, object_key, archive_sha256, manifest_digest, config_digest, entrypoint, policy_version
+           FROM test_run_reference_bots WHERE id = $1 AND enabled = TRUE`,
+          [botId],
+        );
+        const row = found.rows[0];
+        if (!row) throw new Error('REFERENCE_BOT_UNAVAILABLE');
+        let refPolicy: SandboxPolicy;
+        try {
+          refPolicy = resolveSandboxPolicy(row.policy_version);
+        } catch {
+          throw new Error('REFERENCE_BOT_POLICY_MISMATCH');
         }
-        entrypointO = refBot.entrypoint;
-        refO = refBot.reference;
+        if (refPolicy.version !== effectivePolicy.version) {
+          throw new Error('REFERENCE_BOT_POLICY_MISMATCH');
+        }
+        const entrypoint = Array.isArray(row.entrypoint)
+          ? row.entrypoint
+          : (JSON.parse(row.entrypoint as string) as string[]);
+        return {
+          archive: await storage.get(row.object_key),
+          entrypoint,
+          reference: {
+            submissionId: `reference:${row.id}`,
+            archiveSha256: row.archive_sha256,
+            manifestDigest: row.manifest_digest,
+            configDigest: row.config_digest,
+            policyVersion: effectivePolicy.version,
+          },
+        };
+      });
+      if (!testRun.opponent_reference_bot) {
+        throw new Error('REFERENCE_BOT_UNAVAILABLE');
       }
+      const refBot = await getRef(testRun.opponent_reference_bot);
+      archiveO = refBot.archive;
+      if (archiveChecksum(archiveO) !== refBot.reference.archiveSha256) {
+        throw new Error('OPPONENT_ARCHIVE_CHECKSUM_MISMATCH');
+      }
+      if (refBot.reference.policyVersion !== effectivePolicy.version) {
+        try {
+          const resolved = resolveSandboxPolicy(refBot.reference.policyVersion);
+          if (resolved.version !== effectivePolicy.version) {
+            throw new Error('REFERENCE_BOT_POLICY_MISMATCH');
+          }
+        } catch {
+          throw new Error('REFERENCE_BOT_POLICY_MISMATCH');
+        }
+      }
+      entrypointO = refBot.entrypoint;
+      refO = {
+        ...refBot.reference,
+        policyVersion: effectivePolicy.version,
+      };
     } else {
       // OWN_SUBMISSION
       const oppSubRes = await database.query<{
@@ -190,6 +244,18 @@ export async function runTestJob(options: RunTestJobOptions): Promise<RunTestJob
       };
     }
 
+    // 4b. Resolve map definition from map_checksum
+    let effectiveMap: import('@ott/game-core').MapDefinition;
+    if (!testRun.map_checksum || testRun.map_checksum === 'test_map_default') {
+      effectiveMap = DEFAULT_MAP;
+    } else {
+      const registered = findMapByChecksum(testRun.map_checksum);
+      if (!registered) {
+        throw new Error('MAP_UNKNOWN');
+      }
+      effectiveMap = registered.definition;
+    }
+
     // 5. Instantiate bot ports
     const [botX, botO] = await Promise.all([
       factory(archiveX, refX, entrypointX, effectivePolicy),
@@ -202,9 +268,9 @@ export async function runTestJob(options: RunTestJobOptions): Promise<RunTestJob
         matchId: testRun.id,
         seed: testRun.seed,
         game: {
-          gameId: `test-game-${testRun.id}`,
+          gameId: testRun.id,
           engineVersion: '1.0.0',
-          map: DEFAULT_MAP,
+          map: effectiveMap,
           maxTurns: 100,
         },
         limits: { ...DEFAULT_LIMITS, maxTurns: 100 },
@@ -226,7 +292,11 @@ export async function runTestJob(options: RunTestJobOptions): Promise<RunTestJob
     // 8. Complete test run in database
     await completeTestRun(database, {
       testRunId: testRun.id,
-      result: report.result as unknown as Record<string, unknown>,
+      result: {
+        ...(report.result as unknown as Record<string, unknown>),
+        mapId: effectiveMap.mapId,
+        mapChecksum: effectiveMap.checksum,
+      },
       replayKey,
       replaySha256,
       finalStateHash: report.log.footer.result.finalStateHash,
@@ -278,6 +348,7 @@ function isInfrastructureFailure(message: string): boolean {
     'WORKER_CRASH',
     'OBJECT_NOT_FOUND',
     'REFERENCE_BOT_UNAVAILABLE',
+    'REFERENCE_BOT_POLICY_MISMATCH',
     'REPLAY_INTEGRITY_FAILED',
   ];
   return infraErrors.some((code) => message.includes(code));

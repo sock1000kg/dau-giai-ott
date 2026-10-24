@@ -13,25 +13,42 @@ function messageFor(error: unknown): string {
   return 'Không thể tải replay lúc này. Vui lòng thử lại.';
 }
 
-export function SpectatorReplayPage({ matchId }: { readonly matchId: string }) {
+export function SpectatorReplayPage({
+  matchId,
+  bundleId,
+}: {
+  readonly matchId: string;
+  readonly bundleId?: string | null;
+}) {
   const [replay, setReplay] = useState<SpectatorReplay | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [attempt, setAttempt] = useState(0);
 
+  const effectiveBundleId =
+    bundleId ??
+    (typeof window !== 'undefined'
+      ? new URLSearchParams(window.location.search).get('bundle')
+      : null);
+
   useEffect(() => {
     let active = true;
     setLoading(true);
     setError(null);
-    void fetchPublicReplay(matchId).then((verified) => {
-      if (active) setReplay(verified);
-    }).catch((cause: unknown) => {
-      if (active) setError(messageFor(cause));
-    }).finally(() => {
-      if (active) setLoading(false);
-    });
-    return () => { active = false; };
-  }, [attempt, matchId]);
+    void fetchPublicReplay(matchId, effectiveBundleId)
+      .then((verified) => {
+        if (active) setReplay(verified);
+      })
+      .catch((cause: unknown) => {
+        if (active) setError(messageFor(cause));
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [attempt, matchId, effectiveBundleId]);
 
   return (
     <main className="ui-page rp-page">

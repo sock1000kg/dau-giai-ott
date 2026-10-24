@@ -10,6 +10,7 @@ import { createPasswordHasher } from '../modules/auth/passwords.ts';
 import type { PasswordHasher } from '../modules/auth/types.ts';
 import { createS3Storage } from '../storage/s3.ts';
 import { seedDemoReferenceBot } from './seed-reference-bot.ts';
+import { seedDemoFinalsBundle } from './seed-finals-bundle.ts';
 
 export const PUBLIC_DEMO_PASSWORD = 'ABC123';
 
@@ -277,35 +278,49 @@ export async function main(): Promise<void> {
     });
     process.stdout.write(`Seeded demo accounts to CSV: ${csvPath}\n`);
     process.stdout.write(`Accounts: ${summary.map((s) => s.username).join(', ')}\n`);
-    const referenceArchivePath = env.OTT_DEMO_REFERENCE_BOT_ARCHIVE;
-    if (referenceArchivePath) {
-      const resolvedArchivePath = path.resolve(referenceArchivePath);
-      if (resolvedArchivePath !== '/reference-bot' && !resolvedArchivePath.startsWith('/reference-bot/')) {
-        throw new Error('OTT_DEMO_REFERENCE_BOT_ARCHIVE must point inside the read-only /reference-bot mount');
-      }
-      const { S3_ENDPOINT, S3_BUCKET, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY, S3_REGION } = env;
-      if (!S3_ENDPOINT || !S3_BUCKET || !S3_ACCESS_KEY_ID || !S3_SECRET_ACCESS_KEY) {
-        throw new Error('S3 configuration is required to seed the configured BTC reference bot');
-      }
+
+    const s3Configured = Boolean(
+      env.S3_ENDPOINT && env.S3_BUCKET && env.S3_ACCESS_KEY_ID && env.S3_SECRET_ACCESS_KEY,
+    );
+    if (s3Configured) {
       const s3Client = new S3Client({
-        endpoint: S3_ENDPOINT,
-        region: S3_REGION ?? 'us-east-1',
+        endpoint: env.S3_ENDPOINT!,
+        region: env.S3_REGION ?? 'us-east-1',
         forcePathStyle: true,
-        credentials: { accessKeyId: S3_ACCESS_KEY_ID, secretAccessKey: S3_SECRET_ACCESS_KEY },
+        credentials: {
+          accessKeyId: env.S3_ACCESS_KEY_ID!,
+          secretAccessKey: env.S3_SECRET_ACCESS_KEY!,
+        },
       });
       try {
         const seeded = await seedDemoReferenceBot({
           database,
-          storage: createS3Storage({ client: s3Client, bucket: S3_BUCKET }),
-          archive: await fs.promises.readFile(resolvedArchivePath),
+          storage: createS3Storage({ client: s3Client, bucket: env.S3_BUCKET! }),
           environment: env,
         });
-        process.stdout.write(`Seeded BTC reference bot ${seeded.id} (${seeded.checksum})\n`);
+        process.stdout.write(
+          `Seeded BTC reference bot ${seeded.id} (${seeded.archiveSha256})\n`,
+        );
       } finally {
         s3Client.destroy();
       }
     } else {
-      process.stdout.write('BTC reference bot not seeded; configure OTT_DEMO_REFERENCE_BOT_ARCHIVE and matching digest metadata to enable it.\n');
+      process.stdout.write('S3 not configured; skipping BTC reference bot seed.\n');
+    }
+
+    try {
+      const finalsResult = await seedDemoFinalsBundle({
+        database,
+        environment: env,
+      });
+      process.stdout.write(
+        `Seeded demo finals bundle ${finalsResult.bundleId} (key ${finalsResult.keyId}, replayed=${finalsResult.replayed})\n`,
+      );
+    } catch (err) {
+      process.stderr.write(
+        `Failed to seed demo finals bundle: ${err instanceof Error ? err.message : String(err)}\n`,
+      );
+      throw err;
     }
   } finally {
     await database.close();

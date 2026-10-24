@@ -14,7 +14,7 @@ Không dùng một thứ tự ưu tiên duy nhất cho mọi vấn đề. Mỗi 
 | Nghiệp vụ, luật game, phạm vi sản phẩm | [Đặc tả yêu cầu](tai-lieu-yeu-cau.md) | Plan/task chỉ triển khai một phần đã nêu |
 | Quyết định kiến trúc đã chấp nhận | [ADRs](decisions/) | Tài liệu khác phải dẫn link, không quyết định lại |
 | Bức tranh kiến trúc và ranh giới component | [SA Phase 2](architecture/solution-architecture-phase-2.md), [SA Phase 3](architecture/solution-architecture-phase-3.md) | Mô tả cách ghép hệ thống; SA không được thay exact semantics trong ADR/contract Accepted |
-| Engine/Bot/Auth/Replay/Finals contract | [Engine API v1](contracts/engine-api-v1.md), [Bot Protocol v1](contracts/bot-protocol-v1.md), [Bot Protocol v2](contracts/bot-protocol-v2.md), [Platform Auth v1](contracts/platform-auth-v1.md), [Platform Auth v2](contracts/platform-auth-v2.md), [Spectator Replay v1](contracts/spectator-replay-v1.md), [Finals Format v1](contracts/finals-format-v1.md), [ResultBundle v1](contracts/finals-result-bundle-v1.md) | Phần tóm tắt không được thay đổi field/semantics; schema v2 được triển khai trong task owner tương ứng |
+| Engine/Bot/Auth/Replay/Finals contract | [Engine API v1](contracts/engine-api-v1.md), [Bot Protocol v2](contracts/bot-protocol-v2.md) (the only supported protocol; [v1](contracts/bot-protocol-v1.md) is deprecated, historical only), [Platform Auth v1](contracts/platform-auth-v1.md), [Platform Auth v2](contracts/platform-auth-v2.md), [Spectator Replay v1](contracts/spectator-replay-v1.md), [Finals Format v1](contracts/finals-format-v1.md), [ResultBundle v1](contracts/finals-result-bundle-v1.md) | Phần tóm tắt không được thay đổi field/semantics; schema v2 được triển khai trong task owner tương ứng |
 | Owner và ranh giới module | [Phân công Phase 1–3](team-assignment.md) | Chọn đúng mục theo phase; AI context chỉ lọc phần liên quan cho từng người |
 | Package, phiên bản công cụ, liên kết module và lệnh chạy | [Convention package module](conventions/module-package.md) | Task card chỉ dẫn lệnh theo convention, không pin phiên bản riêng |
 | Dependency, checkpoint và trạng thái task | [Task checklist](../tasks/todo.md) | [Implementation plan](../tasks/plan.md) chỉ cung cấp bức tranh tổng thể |
@@ -97,7 +97,7 @@ Quy tắc:
 - [ADR-0009 — Hosted PoC một server lab](decisions/0009-single-server-hosted-poc-topology.md).
 - [ADR-0010 — Finals bracket và signed ResultBundle](decisions/0010-finals-bracket-and-signed-result-bundle.md).
 - [Engine API v1](contracts/engine-api-v1.md).
-- [Bot Protocol v1](contracts/bot-protocol-v1.md), [JSON Schema](contracts/bot-protocol-v1.schema.json) và [fixtures](contracts/fixtures/).
+- [Bot Protocol v1](contracts/bot-protocol-v1.md) (**deprecated — không dùng**, chỉ lưu lịch sử Phase 1), [JSON Schema](contracts/bot-protocol-v1.schema.json) và [fixtures](contracts/fixtures/).
 - [Bot Protocol v2](contracts/bot-protocol-v2.md), [JSON Schema](contracts/bot-protocol-v2.schema.json) và [fixtures](contracts/fixtures/bot-protocol-v2-valid.ndjson).
 - [Platform Authentication Contract v1](contracts/platform-auth-v1.md).
 - [Platform Authentication Contract v2](contracts/platform-auth-v2.md).

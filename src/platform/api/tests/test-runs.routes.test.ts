@@ -181,4 +181,219 @@ describe('test-run portal API contract', () => {
       .toThrowError(ReplayApiError);
     await app.close();
   });
+
+  describe('B4: Test-run self-play, opponent policies & map selection', () => {
+    function setupTestApp(roundRulesOverrides: Partial<any> = {}) {
+      const teamId = 'team-1';
+      const roundMap = { mapId: 'default', checksum: 'a'.repeat(64) };
+      const roundRules = {
+        mapSet: roundRulesOverrides.mapSet ?? [roundMap],
+        testRun: {
+          quotaPerTeamPerDay: 5,
+          opponents: ['OWN_SUBMISSION', 'BTC_REFERENCE'],
+          ...roundRulesOverrides,
+        },
+      };
+
+      const storedRuns = new Map<string, any>();
+      let lastInsertedMapChecksum: string | null = null;
+
+      const db: Database = {
+        async query<Row extends QueryResultRow = QueryResultRow>(sql: string, params?: readonly unknown[]): Promise<QueryResult<Row>> {
+          if (sql.includes('FROM qualification_rounds')) {
+            return qr([{ id: 'round-1', status: 'SUBMISSION_OPEN', paused_at: null, rules: roundRules }] as unknown as Row[]);
+          }
+          if (sql.includes('FROM test_runs WHERE team_id = $1 AND idempotency_key = $2')) {
+            const key = `${params?.[0]}:${params?.[1]}`;
+            const existing = storedRuns.get(key);
+            return qr(existing ? [existing as Row] : []);
+          }
+          if (sql.includes('COUNT(*) FILTER')) {
+            return qr([{ consumed: 0, reserved: 0 }] as unknown as Row[]);
+          }
+          if (sql.includes('FROM submissions') && sql.includes('WHERE id = $1')) {
+            const subId = params?.[0];
+            if (subId === 'foreign-sub') {
+              return qr([{ id: 'foreign-sub', team_id: 'team-other', status: 'ACTIVE' }] as unknown as Row[]);
+            }
+            return qr([{ id: subId, team_id: teamId, status: 'ACTIVE' }] as unknown as Row[]);
+          }
+          if (sql.includes('FROM submissions') && sql.includes('created_at')) {
+            return qr([{ id: 'sub-single', status: 'ACTIVE', created_at: new Date() }] as unknown as Row[]);
+          }
+          if (sql.includes('FROM test_run_reference_bots')) {
+            return qr([{ id: 'btc-v1', display_name: 'BTC baseline' }] as unknown as Row[]);
+          }
+          if (sql.includes('INSERT INTO test_runs')) {
+            const runId = randomUUID();
+            lastInsertedMapChecksum = params?.[7] as string;
+            const record = {
+              id: runId,
+              team_id: params?.[1],
+              round_id: params?.[2],
+              submission_id: params?.[3],
+              opponent_type: params?.[4],
+              opponent_submission_id: params?.[5],
+              opponent_reference_bot: params?.[6],
+              map_checksum: params?.[7],
+              seed: params?.[8],
+              status: 'QUEUED',
+              quota_consumed: false,
+              created_at: new Date(),
+              idempotency_key: params?.[10],
+              request_hash: params?.[11],
+            };
+            storedRuns.set(`${record.team_id}:${record.idempotency_key}`, record);
+            return qr([record as unknown as Row]);
+          }
+          if (sql.includes('INSERT INTO test_run_outbox')) {
+            return qr([] as Row[]);
+          }
+          return qr([] as Row[]);
+        },
+        async transaction<T>(work: (tx: Database) => Promise<T>) { return work(this); },
+        async close() {},
+      };
+
+      const app = appFor({ accountId: 'a', role: 'TEAM_ACCOUNT', teamId }, { database: db, storage: { async get() { return new Uint8Array(); }, async put() {}, async copy() {}, async remove() {} } });
+      return { app, getLastMapChecksum: () => lastInsertedMapChecksum };
+    }
+
+    it('accepts self-play test runs (opponentSubmissionId === submissionId)', async () => {
+      const { app } = setupTestApp();
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/v1/test-runs',
+        headers: { 'idempotency-key': 'idem-self-play-001' },
+        payload: { submissionId: 'sub-1', opponentType: 'OWN_SUBMISSION', opponentSubmissionId: 'sub-1' },
+      });
+      expect(res.statusCode).toBe(201);
+      expect(res.json().data.opponentSubmissionId).toBe('sub-1');
+      await app.close();
+    });
+
+    it('rejects another team submission as opponent with 403 FORBIDDEN', async () => {
+      const { app } = setupTestApp();
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/v1/test-runs',
+        headers: { 'idempotency-key': 'idem-foreign-001' },
+        payload: { submissionId: 'sub-1', opponentType: 'OWN_SUBMISSION', opponentSubmissionId: 'foreign-sub' },
+      });
+      expect(res.statusCode).toBe(403);
+      expect(res.json().error.code).toBe('OPPONENT_SUBMISSION_NOT_OWNED');
+      await app.close();
+    });
+
+    it('rejects mapId/mapChecksum not in round mapSet with 422 MAP_NOT_IN_ROUND', async () => {
+      const { app } = setupTestApp();
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/v1/test-runs',
+        headers: { 'idempotency-key': 'idem-bad-map-001' },
+        payload: {
+          submissionId: 'sub-1', opponentType: 'OWN_SUBMISSION', opponentSubmissionId: 'sub-1',
+          mapId: 'unregistered-map', mapChecksum: 'b'.repeat(64),
+        },
+      });
+      expect(res.statusCode).toBe(422);
+      expect(res.json().error.code).toBe('MAP_NOT_IN_ROUND');
+      await app.close();
+    });
+
+    it('rejects when only one of mapId or mapChecksum is provided with 400', async () => {
+      const { app } = setupTestApp();
+      const res1 = await app.inject({
+        method: 'POST',
+        url: '/api/v1/test-runs',
+        headers: { 'idempotency-key': 'idem-half-map-001' },
+        payload: { submissionId: 'sub-1', opponentType: 'OWN_SUBMISSION', opponentSubmissionId: 'sub-1', mapId: 'default' },
+      });
+      expect(res1.statusCode).toBe(400);
+
+      const res2 = await app.inject({
+        method: 'POST',
+        url: '/api/v1/test-runs',
+        headers: { 'idempotency-key': 'idem-half-map-002' },
+        payload: { submissionId: 'sub-1', opponentType: 'OWN_SUBMISSION', opponentSubmissionId: 'sub-1', mapChecksum: 'a'.repeat(64) },
+      });
+      expect(res2.statusCode).toBe(400);
+      await app.close();
+    });
+
+    it('defaults to the first map of the mapSet and stores its real checksum', async () => {
+      const { app, getLastMapChecksum } = setupTestApp();
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/v1/test-runs',
+        headers: { 'idempotency-key': 'idem-default-map-001' },
+        payload: { submissionId: 'sub-1', opponentType: 'OWN_SUBMISSION', opponentSubmissionId: 'sub-1' },
+      });
+      expect(res.statusCode).toBe(201);
+      expect(getLastMapChecksum()).toBe('a'.repeat(64));
+      expect(getLastMapChecksum()).not.toBe('test_map_default');
+      await app.close();
+    });
+
+    it('rejects same idempotency key with different map with 409 IDEMPOTENCY_KEY_REUSED', async () => {
+      const { app } = setupTestApp({
+        mapSet: [
+          { mapId: 'default', checksum: 'a'.repeat(64) },
+          { mapId: 'alt', checksum: 'b'.repeat(64) },
+        ],
+      });
+      const res1 = await app.inject({
+        method: 'POST',
+        url: '/api/v1/test-runs',
+        headers: { 'idempotency-key': 'idem-reused-key-001' },
+        payload: {
+          submissionId: 'sub-1', opponentType: 'OWN_SUBMISSION', opponentSubmissionId: 'sub-1',
+          mapId: 'default', mapChecksum: 'a'.repeat(64),
+        },
+      });
+      expect(res1.statusCode).toBe(201);
+
+      const res2 = await app.inject({
+        method: 'POST',
+        url: '/api/v1/test-runs',
+        headers: { 'idempotency-key': 'idem-reused-key-001' },
+        payload: {
+          submissionId: 'sub-1', opponentType: 'OWN_SUBMISSION', opponentSubmissionId: 'sub-1',
+          mapId: 'alt', mapChecksum: 'b'.repeat(64),
+        },
+      });
+      expect(res2.statusCode).toBe(409);
+      expect(res2.json().error.code).toBe('IDEMPOTENCY_KEY_REUSED');
+      await app.close();
+    });
+
+    it('rejects an opponent type not listed in round testRun.opponents with 400', async () => {
+      const { app } = setupTestApp({
+        opponents: ['BTC_REFERENCE'],
+      });
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/v1/test-runs',
+        headers: { 'idempotency-key': 'idem-opp-not-allowed-001' },
+        payload: { submissionId: 'sub-1', opponentType: 'OWN_SUBMISSION', opponentSubmissionId: 'sub-1' },
+      });
+      expect(res.statusCode).toBe(400);
+      expect(res.json().error.code).toBe('INVALID_TEST_RUN_OPPONENT');
+      await app.close();
+    });
+
+    it('policy response returns maps and ownSubmissionAllowed: true with a single submission', async () => {
+      const { app } = setupTestApp();
+      const res = await app.inject({
+        method: 'GET',
+        url: '/api/v1/test-run-policy',
+      });
+      expect(res.statusCode).toBe(200);
+      const data = res.json().data;
+      expect(data.opponents.ownSubmissionAllowed).toBe(true);
+      expect(data.maps).toHaveLength(1);
+      expect(data.maps[0]).toMatchObject({ mapId: 'default', checksum: 'a'.repeat(64) });
+      await app.close();
+    });
+  });
 });

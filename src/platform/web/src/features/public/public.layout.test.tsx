@@ -47,7 +47,6 @@ describe('public panel layout (heights are not assertable in jsdom; checked in a
 
   it('uses plain Vietnamese wait wording instead of ETA', async () => {
     await mount();
-    expect(screen.getByText('Dự kiến khắc phục: 10 phút')).toBeTruthy();
     expect(screen.getByText('Dự kiến chờ ~1 phút')).toBeTruthy();
     expect(screen.getByText('Chưa có ước tính')).toBeTruthy();
     expect(document.body.textContent).not.toMatch(/ETA/);

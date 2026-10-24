@@ -196,7 +196,7 @@ def cmd_catalog_ruleset(args: argparse.Namespace) -> int:
             "schedule": schedule,
             "testRun": {
                 "quotaPerTeamPerDay": 5,
-                "opponents": ["BTC_REFERENCE"],
+                "opponents": ["OWN_SUBMISSION", "BTC_REFERENCE"],
             },
         },
     }

@@ -256,27 +256,6 @@ export async function createWorkerRuntime(
             database: database!,
             storage: storage!,
             metrics,
-            getReferenceBot: async (botId) => {
-              const found = await database!.query<{
-                id: string; object_key: string; archive_sha256: string; manifest_digest: string;
-                config_digest: string; entrypoint: string | readonly string[]; policy_version: string;
-              }>(`SELECT id, object_key, archive_sha256, manifest_digest, config_digest, entrypoint, policy_version
-                 FROM test_run_reference_bots WHERE id = $1 AND enabled = TRUE`, [botId]);
-              const row = found.rows[0];
-              if (!row) throw new Error('REFERENCE_BOT_UNAVAILABLE');
-              const entrypoint = Array.isArray(row.entrypoint) ? row.entrypoint : JSON.parse(row.entrypoint as string) as string[];
-              return {
-                archive: await storage!.get(row.object_key),
-                entrypoint,
-                reference: {
-                  submissionId: `reference:${row.id}`,
-                  archiveSha256: row.archive_sha256,
-                  manifestDigest: row.manifest_digest,
-                  configDigest: row.config_digest,
-                  policyVersion: row.policy_version,
-                },
-              };
-            },
           });
           return;
         }

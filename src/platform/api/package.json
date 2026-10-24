@@ -14,6 +14,8 @@
     "build": "tsc -p tsconfig.build.json",
     "db:migrate": "tsx src/db/migrate.ts",
     "demo:seed": "tsx src/demo/seed-accounts.ts",
+    "demo:seed-reference-bot": "tsx src/demo/seed-reference-bot.ts",
+    "demo:seed-finals-bundle": "tsx src/demo/seed-finals-bundle.ts",
     "demo:reset-passwords": "tsx src/demo/reset-team-passwords.ts",
     "demo:reset-scheduler": "tsx src/demo/reset-password-scheduler.ts"
   },

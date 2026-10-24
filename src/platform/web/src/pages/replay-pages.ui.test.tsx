@@ -61,4 +61,25 @@ describe.each([
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(screen.queryByRole('alert')).toBeNull();
   });
+
+  it('SpectatorReplayPage uses bundle route when bundleId is provided or in URL', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(ok());
+    vi.stubGlobal('fetch', fetchMock);
+    render(<SpectatorReplayPage matchId={matchId} bundleId="bundle-demo-99" />);
+    expect(await screen.findByRole('region', { name: /trình phát replay/i })).toBeTruthy();
+    expect(fetchMock).toHaveBeenCalledWith(`/api/v1/public/result-bundles/bundle-demo-99/replays/${matchId}`, { credentials: 'omit' });
+  });
+
+  it('SpectatorReplayPage reads ?bundle= from window.location.search', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(ok());
+    vi.stubGlobal('fetch', fetchMock);
+    try {
+      window.history.replaceState({}, '', '/spectator/replays/00000000-0000-4000-8000-000000000001?bundle=bundle-from-url');
+      render(<SpectatorReplayPage matchId={matchId} />);
+      expect(await screen.findByRole('region', { name: /trình phát replay/i })).toBeTruthy();
+      expect(fetchMock).toHaveBeenCalledWith(`/api/v1/public/result-bundles/bundle-from-url/replays/${matchId}`, { credentials: 'omit' });
+    } finally {
+      window.history.replaceState({}, '', '/');
+    }
+  });
 });

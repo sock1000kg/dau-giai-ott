@@ -14,7 +14,6 @@ export function FinalsPage({ initialSnapshot = null }: FinalsPageProps) {
   const [loading, setLoading] = useState<boolean>(!initialSnapshot);
   const [failed, setFailed] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [now, setNow] = useState<number>(Date.now());
 
   useEffect(() => {
     const controller = new AbortController();
@@ -39,7 +38,6 @@ export function FinalsPage({ initialSnapshot = null }: FinalsPageProps) {
       }
 
       if (!stopped) {
-        setNow(Date.now());
         timer = setTimeout(() => void refresh(), 30_000);
       }
     }
@@ -73,7 +71,10 @@ export function FinalsPage({ initialSnapshot = null }: FinalsPageProps) {
 
   if (!snapshot) return null;
 
-  const isStale = failed || now - Date.parse(snapshot.updatedAt) > 90_000;
+  // Per D3: Published finals bundles represent final immutable data. The stale warning only applies
+  // when a background refresh fails after data was already loaded (network/fetch failure),
+  // not based on the elapsed age of verifiedAt or updatedAt.
+  const isStale = failed;
 
   return (
     <Page title="Vòng Chung kết" description="Bảng đấu, lịch thi đấu và kết quả đã xác minh.">
@@ -107,7 +108,13 @@ export function FinalsPage({ initialSnapshot = null }: FinalsPageProps) {
       />
 
       {/* Detailed Schedule & Results with Replay Links */}
-      <FinalsSchedule bracket={snapshot.bracket} />
+      <FinalsSchedule bracket={snapshot.bracket} bundleId={snapshot.proof?.bundleId} />
+
+      {snapshot.tournamentId.startsWith('OTT_DEMO_') && (
+        <footer style={{ marginTop: '24px', textAlign: 'center', color: '#64748b', fontSize: '12px' }}>
+          * Dữ liệu chung kết mẫu
+        </footer>
+      )}
       </main>
     </Page>
   );

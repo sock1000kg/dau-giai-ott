@@ -58,6 +58,7 @@ export interface FinalsSnapshotPayload {
   readonly finalsRuleSetId: string;
   readonly stage: 'FINALS';
   readonly updatedAt: string;
+  readonly verifiedAt?: string | undefined;
   readonly proof: FinalsProofMetadata;
   readonly bracket: readonly FinalsSeriesPairing[];
   readonly standings: readonly FinalsRankingStanding[];
@@ -124,6 +125,7 @@ export function parseFinalsSnapshot(value: unknown): FinalsSnapshotPayload {
   const tournamentId = readString(value['tournamentId']);
   const finalsRuleSetId = readString(value['finalsRuleSetId']);
   const updatedAt = readString(value['updatedAt']);
+  const verifiedAt = typeof value['verifiedAt'] === 'string' ? value['verifiedAt'] : undefined;
   const proof = parseFinalsProof(value['proof']);
 
   const rawBracket = value['bracket'];
@@ -229,6 +231,7 @@ export function parseFinalsSnapshot(value: unknown): FinalsSnapshotPayload {
     finalsRuleSetId,
     stage: 'FINALS',
     updatedAt,
+    verifiedAt,
     proof,
     bracket,
     standings,
