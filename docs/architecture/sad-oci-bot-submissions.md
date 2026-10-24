@@ -72,7 +72,7 @@ Validation order:
 2. A validator reads the tar defensively: no traversal paths, links, device files, duplicate conflicting paths, foreign layers or file-size expansion above limits.
 3. Validate OCI layout/index/manifest/config digests, require exactly `linux/amd64`, a non-empty OCI `Entrypoint`, and an image/config size inside the published policy.
 4. Promote the original archive to private storage under an isolated unique key (`submissions/<sha256-hex>/<uuid>.oci.tar`) only after structural validation. Store the derived identity transactionally.
-5. In an isolated sandbox, run the preflight fixture against Bot Protocol v1. Only a bot that starts and responds with a valid `ACTION` becomes `VALID`.
+5. In an isolated sandbox, run the preflight fixture against Bot Protocol v2 (see [Bot Protocol v2](../contracts/bot-protocol-v2.md); v1 is deprecated). Only a bot that starts and responds with a valid `ACTION` becomes `VALID`.
 
 `INVALID` exposes a stable, team-actionable code but never host paths, security profile details, credentials or raw worker logs. `ACTIVE` is immutable and a cutoff pins its derived digest.
 
@@ -108,7 +108,7 @@ OCI manifest/config digests and derived entrypoint. After `/images/load`, Docker
 must equal the validated entrypoint. The worker runs by that immutable image ID
 and overrides `User`, entrypoint, command, and all sandbox HostConfig fields.
 The BotPort decodes Docker's multiplexed attach stream and passes only bounded
-stdout NDJSON through the canonical Bot Protocol v1 schema validator; stderr is
+stdout NDJSON through the canonical Bot Protocol v2 schema validator; stderr is
 counted but never logged or parsed as protocol.
 
 The trusted worker owns the Docker Engine adapter in local development. Bot containers receive none of the Docker socket, PostgreSQL/Redis/SeaweedFS credentials, host mounts or browser-facing ports. Local S3 credentials are available only to the control/execution plane through environment configuration, never to bot containers. A production runtime may replace the adapter behind the same `OciRuntime` interface only through a later ADR.
@@ -191,4 +191,4 @@ The corpus includes good images for both Python bots plus Node.js and native she
 | `P2-T15` | Benchmark quota and registration gate | corpus evidence locks the published profile before team submissions open |
 | `P2-T11` | finalization persists log/result against pinned OCI identity | retry cannot create a second official result |
 
-No language expansion changes Bot Protocol v1. A non-Python bot is only accepted after its OCI fixture proves the same transcript and sandbox policy.
+No language expansion changes Bot Protocol v2. A non-Python bot is only accepted after its OCI fixture proves the same transcript and sandbox policy.

@@ -44,3 +44,7 @@ Không chọn vì game có thể thay đổi và UI sẽ trở thành nguồn lu
 - `P3-L01` phải phát hành schema/types/fixtures v2 và giữ validator v1 độc lập.
 - `P3-L02` thực thi clock bằng fake/monotonic clock và ghi timing decision vào replay.
 - Finals contract pin adapter id/version và tiêu chí score; đổi tiêu chí chỉ có hiệu lực với rule set mới.
+
+## Update 2026-10-24 — Protocol v1 deprecated
+
+Protocol v1 is **deprecated and must not be used**. The "regression/replay Phase 1–2" reason above no longer applies at the dev stage: all official matches, preflight and test runs use Protocol v2, and bots (including every sample and fixture published to teams) must answer with the incoming `protocolVersion` (`2`). The v1 documents stay in the repository as history only; no new code, fixture or doc may depend on v1.

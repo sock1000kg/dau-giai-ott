@@ -5,7 +5,9 @@
 > [`fixtures/bot-protocol-v2-valid.ndjson`](fixtures/bot-protocol-v2-valid.ndjson) and
 > [`fixtures/bot-protocol-v2-invalid-cases.json`](fixtures/bot-protocol-v2-invalid-cases.json).
 >
-> **Compatibility:** v1 remains immutable for Phase 1–2 regression. A match pins exactly one protocol version.
+> **Protocol policy:** v2 is the only supported Bot Protocol. [Bot Protocol v1](bot-protocol-v1.md) is deprecated and must not be used by bots, samples, fixtures, preflight or test runs. Every bot reply echoes the `protocolVersion` of the message it answers (`2`); a reply with another value is a `SCHEMA_VIOLATION`.
+>
+> **Implementation status (2026-10-24):** official qualification matches already run v2. Preflight and test runs are being moved from the old v1 smoke path to v2 (tracked as "v2-a"); until that lands, treat any v1 behaviour there as a defect, not as a contract.
 
 ## Scope
 
