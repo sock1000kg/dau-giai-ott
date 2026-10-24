@@ -53,7 +53,7 @@ export function FinalsSchedule({ bracket, bundleId }: FinalsScheduleProps) {
   return (
     <section aria-label="Lịch thi đấu và Kết quả chi tiết Vòng Chung kết" className="finals-schedule-section" style={{ marginTop: '36px' }}>
       <h2>Lịch thi đấu & Kết quả chi tiết (BO3)</h2>
-      <p style={{ color: '#a8b8c8', fontSize: '13px', marginBottom: '20px' }}>
+      <p style={{ color: 'var(--ui-text-muted)', fontSize: '13px', marginBottom: '20px' }}>
         Tất cả các trận đấu vòng chung kết diễn ra theo thể thức BO3 với đổi bên xen kẽ và map pool không lặp lại.
       </p>
 
@@ -66,16 +66,16 @@ export function FinalsSchedule({ bracket, bundleId }: FinalsScheduleProps) {
             aria-label={`Trận đấu ${pairing.roundName}`}
           >
             {/* Header: Round & Status */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(177, 204, 224, 0.12)', paddingBottom: '10px', marginBottom: '12px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--ui-border)', paddingBottom: '10px', marginBottom: '12px' }}>
               <div>
-                <span className="eyebrow" style={{ color: '#8ea4b7', fontSize: '11px', textTransform: 'uppercase' }}>
+                <span className="eyebrow" style={{ color: 'var(--ui-text-muted)', fontSize: '11px', textTransform: 'uppercase' }}>
                   {pairing.pairingId} · BO{pairing.bestOf}
                 </span>
                 <h3 style={{ margin: '4px 0 0', fontSize: '16px' }}>{pairing.roundName}</h3>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span className="result-status">{pairing.status}</span>
-                <span style={{ fontSize: '16px', fontWeight: 'bold', color: '#80e4d0' }}>
+                <span style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--ui-accent)' }}>
                   {pairing.score.winsA} - {pairing.score.winsB}
                 </span>
               </div>
@@ -83,16 +83,16 @@ export function FinalsSchedule({ bracket, bundleId }: FinalsScheduleProps) {
 
             {/* Teams Matchup */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '16px' }}>
-              <div style={{ padding: '10px 14px', borderRadius: '8px', background: pairing.winnerTeamId === pairing.teamA?.teamId ? 'rgba(128, 228, 208, 0.08)' : 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(177, 204, 224, 0.1)' }}>
-                <div style={{ fontSize: '11px', color: '#8ea4b7' }}>Hạt giống #{pairing.teamA?.seedOrdinal ?? 'TBD'}</div>
-                <div style={{ fontSize: '15px', fontWeight: 'bold', marginTop: '2px', color: pairing.winnerTeamId === pairing.teamA?.teamId ? '#80e4d0' : '#f3f6fb' }}>
+              <div style={{ padding: '10px 14px', borderRadius: '8px', background: pairing.winnerTeamId === pairing.teamA?.teamId ? 'var(--ui-row-hover)' : 'var(--ui-table-stripe)', border: '1px solid var(--ui-border)' }}>
+                <div style={{ fontSize: '11px', color: 'var(--ui-text-muted)' }}>Hạt giống #{pairing.teamA?.seedOrdinal ?? 'TBD'}</div>
+                <div style={{ fontSize: '15px', fontWeight: 'bold', marginTop: '2px', color: pairing.winnerTeamId === pairing.teamA?.teamId ? 'var(--ui-accent)' : 'var(--ui-text)' }}>
                   {pairing.teamA?.teamName ?? 'Chưa xác định'}
                 </div>
               </div>
 
-              <div style={{ padding: '10px 14px', borderRadius: '8px', background: pairing.winnerTeamId === pairing.teamB?.teamId ? 'rgba(128, 228, 208, 0.08)' : 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(177, 204, 224, 0.1)' }}>
-                <div style={{ fontSize: '11px', color: '#8ea4b7' }}>Hạt giống #{pairing.teamB?.seedOrdinal ?? 'TBD'}</div>
-                <div style={{ fontSize: '15px', fontWeight: 'bold', marginTop: '2px', color: pairing.winnerTeamId === pairing.teamB?.teamId ? '#80e4d0' : '#f3f6fb' }}>
+              <div style={{ padding: '10px 14px', borderRadius: '8px', background: pairing.winnerTeamId === pairing.teamB?.teamId ? 'var(--ui-row-hover)' : 'var(--ui-table-stripe)', border: '1px solid var(--ui-border)' }}>
+                <div style={{ fontSize: '11px', color: 'var(--ui-text-muted)' }}>Hạt giống #{pairing.teamB?.seedOrdinal ?? 'TBD'}</div>
+                <div style={{ fontSize: '15px', fontWeight: 'bold', marginTop: '2px', color: pairing.winnerTeamId === pairing.teamB?.teamId ? 'var(--ui-accent)' : 'var(--ui-text)' }}>
                   {pairing.teamB?.teamName ?? 'Chưa xác định'}
                 </div>
               </div>
