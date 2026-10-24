@@ -299,7 +299,7 @@ do và lịch sử.
 - Sau mỗi vòng, tạo một gói kết quả có chữ ký điện tử rồi chuyển lên hệ thống online.
 
 Hệ thống online kiểm tra chữ ký và toàn bộ file trước khi công bố. Nếu một file bị thiếu hoặc bị sửa, cả gói
-kết quả sẽ bị từ chối.
+kết quả sẽ bị từ chối. Chức nâng này sẽ không có trên website demo public do đặc thù của luồng vận hành.
 
 **Trên giao diện:** `/finals` là màn hình công khai để xem dữ liệu đã được xác thực. Frontend hiện chưa có
 màn hình BTC riêng cho việc tạo hoặc nhập gói kết quả chung kết.
