@@ -1,10 +1,10 @@
 import type { RoundSummary, RuleSetSummary } from './api.ts';
 
-/** The round whose locked rule set is "current": highest `roundNumber` with a rule set that left DRAFT_RULES. */
+/** The round whose locked rule set is "current": highest `roundNumber` with a rule set that left DRAFT_RULES and was not cancelled. */
 export function selectCurrentLockedRound(rounds: readonly RoundSummary[]): RoundSummary | null {
   let best: RoundSummary | null = null;
   for (const round of rounds) {
-    if (round.ruleSetId === null || round.status === 'DRAFT_RULES') continue;
+    if (round.ruleSetId === null || round.status === 'DRAFT_RULES' || round.status === 'CANCELLED') continue;
     if (best === null || round.roundNumber > best.roundNumber) best = round;
   }
   return best;

@@ -9,9 +9,10 @@ export type RoundStatus =
   | 'RUNNING'
   | 'SETTLING'
   | 'RATED'
-  | 'PUBLISHED';
+  | 'PUBLISHED'
+  | 'CANCELLED';
 
-export type RoundActionType = 'open' | 'close' | 'start' | 'pause' | 'resume' | 'reconcile' | 'publish';
+export type RoundActionType = 'open' | 'close' | 'start' | 'pause' | 'resume' | 'reconcile' | 'publish' | 'cancel';
 
 export interface RuleSetSummary {
   readonly id: string;
@@ -62,10 +63,10 @@ export class RoundAdminApiError extends Error {
 }
 
 const ROUND_STATUSES: readonly string[] = [
-  'DRAFT_RULES', 'SUBMISSION_OPEN', 'SUBMISSION_CLOSED', 'RUNNING', 'SETTLING', 'RATED', 'PUBLISHED',
+  'DRAFT_RULES', 'SUBMISSION_OPEN', 'SUBMISSION_CLOSED', 'RUNNING', 'SETTLING', 'RATED', 'PUBLISHED', 'CANCELLED',
 ];
 
-const ROUND_ACTIONS: readonly string[] = ['open', 'close', 'start', 'pause', 'resume', 'reconcile', 'publish'];
+const ROUND_ACTIONS: readonly string[] = ['open', 'close', 'start', 'pause', 'resume', 'reconcile', 'publish', 'cancel'];
 
 function object(value: unknown, message: string): Record<string, unknown> {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) throw new Error(message);

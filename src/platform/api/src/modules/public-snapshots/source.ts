@@ -40,7 +40,7 @@ export async function collectQualificationSnapshot(database: Database, editorial
       version: number; rules: RoundRuleSetRulesV1; rules_sha256: string;
     }>(`SELECT q.round_number, q.status, q.schedule_round_id, r.version, r.rules, r.rules_sha256
       FROM qualification_rounds q JOIN round_rule_sets r ON r.id = q.rule_set_id
-      WHERE q.tournament_stage = 'QUALIFICATION' AND q.status <> 'DRAFT_RULES'
+      WHERE q.tournament_stage = 'QUALIFICATION' AND q.status NOT IN ('DRAFT_RULES', 'CANCELLED')
       ORDER BY q.round_number DESC LIMIT 1`);
     const round = selected.rows[0];
     if (!round) throw new NoValidAnnouncedRulesError('NO_ROUND');

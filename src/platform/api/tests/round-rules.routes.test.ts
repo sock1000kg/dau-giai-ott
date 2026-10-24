@@ -384,7 +384,7 @@ describe('P3-D01 round-rules routes', () => {
     const app = createApp(btcPrincipal(), query);
     const response = await app.inject({ method: 'GET', url: '/api/v1/admin/rounds?tournamentStage=QUALIFICATION' });
     expect(response.statusCode).toBe(200);
-    expect(response.json().data.items[0].allowedActions).toEqual(['open']);
+    expect(response.json().data.items[0].allowedActions).toEqual(['open', 'cancel']);
     await app.close();
   });
 
@@ -475,5 +475,48 @@ describe('P3-D01 round-rules routes', () => {
     expect(response.json().data.status).toBe('RUNNING');
     expect(response.json().data.pausedAt).not.toBeNull();
     await app.close();
+  });
+  describe('POST /rounds/:roundId/cancel', () => {
+    const roundId = '00000000-0000-4000-8000-000000000001';
+    const cancelQuery = (status: string) => vi.fn(async (sql: string) => {
+      if (sql.includes('FOR UPDATE')) return { rows: [mockRoundRow({ status })] };
+      if (sql.includes('round_number')) {
+        return { rows: [{ id: roundId, tournament_stage: 'QUALIFICATION', round_number: 1, status: 'CANCELLED', rule_set_id: null, schedule_round_id: null, paused_at: null, created_at: new Date('2026-10-14T00:00:00.000Z') }] };
+      }
+      return { rows: [] };
+    });
+
+    it('cancels a SUBMISSION_OPEN round', async () => {
+      const query = cancelQuery('SUBMISSION_OPEN');
+      const app = createApp(btcPrincipal(), query);
+      const response = await app.inject({ method: 'POST', url: `/api/v1/admin/rounds/${roundId}/cancel`, payload: { reason: 'mở nhầm vòng' } });
+      expect(response.statusCode).toBe(200);
+      expect(response.json().data).toMatchObject({ status: 'CANCELLED', allowedActions: [] });
+      expect(query.mock.calls.some(([sql]) => String(sql).includes("status = 'CANCELLED'"))).toBe(true);
+      await app.close();
+    });
+
+    it('returns 409 ROUND_NOT_CANCELLABLE with the current status for a RUNNING round', async () => {
+      const app = createApp(btcPrincipal(), cancelQuery('RUNNING'));
+      const response = await app.inject({ method: 'POST', url: `/api/v1/admin/rounds/${roundId}/cancel`, payload: { reason: 'quá muộn' } });
+      expect(response.statusCode).toBe(409);
+      expect(response.json().error).toMatchObject({ code: 'ROUND_NOT_CANCELLABLE', details: { status: 'RUNNING' } });
+      await app.close();
+    });
+
+    it('returns 400 INVALID_REASON when the reason is shorter than 3 characters', async () => {
+      const app = createApp(btcPrincipal(), cancelQuery('SUBMISSION_OPEN'));
+      const response = await app.inject({ method: 'POST', url: `/api/v1/admin/rounds/${roundId}/cancel`, payload: { reason: 'ab' } });
+      expect(response.statusCode).toBe(400);
+      expect(response.json().error.code).toBe('INVALID_REASON');
+      await app.close();
+    });
+
+    it('requires BTC_ADMIN', async () => {
+      const app = createApp(teamPrincipal(), cancelQuery('SUBMISSION_OPEN'));
+      const response = await app.inject({ method: 'POST', url: `/api/v1/admin/rounds/${roundId}/cancel`, payload: { reason: 'mở nhầm vòng' } });
+      expect(response.statusCode).toBe(403);
+      await app.close();
+    });
   });
 });

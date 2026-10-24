@@ -26,15 +26,22 @@ const STATUS_LABELS: Record<RoundStatus, string> = {
   SETTLING: 'Đang quyết toán',
   RATED: 'Đã xếp hạng',
   PUBLISHED: 'Đã công bố',
+  CANCELLED: 'Đã hủy',
 };
 
-const ACTION_LABELS: Record<Exclude<RoundActionType, 'reconcile'>, string> = {
+// Qualification rounds publish themselves when rated, so `publish` is never offered as a button.
+type DialogAction = Exclude<RoundActionType, 'reconcile' | 'publish'>;
+
+const MIN_CANCEL_REASON_LENGTH = 3;
+const CANCEL_WARNING = 'Vòng sẽ bị hủy. Các bản nộp của đội được giữ nguyên.';
+
+const ACTION_LABELS: Record<DialogAction, string> = {
   open: 'Mở nộp bài',
   close: 'Đóng nộp bài',
   start: 'Bắt đầu round',
   pause: 'Tạm dừng',
   resume: 'Tiếp tục',
-  publish: 'Công bố',
+  cancel: 'Hủy vòng',
 };
 
 const RECONCILE_HELP = 'Nếu mọi series đã kết thúc: chuyển round sang chốt kết quả và áp dụng Elo. Không có tác dụng nếu round chưa xong; an toàn khi bấm lại.';
@@ -57,6 +64,9 @@ function failureMessage(error: unknown): string {
   if (error instanceof RoundAdminApiError && error.code === 'ROUND_RULE_SET_MISSING') {
     return 'Không thể đóng nộp bài: round chưa khóa bộ luật hợp lệ.';
   }
+  if (error instanceof RoundAdminApiError && error.code === 'ROUND_NOT_CANCELLABLE') {
+    return 'Không thể hủy vòng: vòng đã bắt đầu hoặc đã kết thúc. Chỉ hủy được trước khi bắt đầu chạy.';
+  }
   if (error instanceof RoundAdminApiError && error.code === 'ROUND_TRANSITION_INVALID') {
     return 'Thao tác không còn hợp lệ ở trạng thái hiện tại.';
   }
@@ -74,7 +84,7 @@ export function RoundOperations({ stage }: Readonly<{ stage: string }>) {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busyRound, setBusyRound] = useState<string | null>(null);
-  const [pending, setPending] = useState<{ readonly round: RoundSummary; readonly action: Exclude<RoundActionType, 'reconcile'> } | null>(null);
+  const [pending, setPending] = useState<{ readonly round: RoundSummary; readonly action: DialogAction } | null>(null);
   const [reason, setReason] = useState('');
   const [chosenRuleSetId, setChosenRuleSetId] = useState('');
   const [typedNumber, setTypedNumber] = useState('');
@@ -150,7 +160,7 @@ export function RoundOperations({ stage }: Readonly<{ stage: string }>) {
     }
   }
 
-  function openActionDialog(round: RoundSummary, action: Exclude<RoundActionType, 'reconcile'>) {
+  function openActionDialog(round: RoundSummary, action: DialogAction) {
     setPending({ round, action });
     setReason('');
     setTypedNumber('');
@@ -190,6 +200,7 @@ export function RoundOperations({ stage }: Readonly<{ stage: string }>) {
     if (pending === null || submitting) return;
     const trimmedReason = reason.trim();
     if (trimmedReason.length < 1 || trimmedReason.length > 500) return;
+    if (pending.action === 'cancel' && trimmedReason.length < MIN_CANCEL_REASON_LENGTH) return;
     if (pending.action === 'open' && chosenRuleSetId.length === 0) return;
     if (pending.action === 'start') {
       if (typedNumber.trim() !== String(pending.round.roundNumber) || idempotencyKey.length === 0) return;
@@ -289,7 +300,7 @@ export function RoundOperations({ stage }: Readonly<{ stage: string }>) {
               <p>{ruleSetLabel(round.ruleSetId)}</p>
               {round.pausedAt !== null && <p>Tạm dừng</p>}
               <div>
-                {round.allowedActions.map((action) => action === 'reconcile' ? (
+                {round.allowedActions.filter((action): action is DialogAction | 'reconcile' => action !== 'publish').map((action) => action === 'reconcile' ? (
                   <span key={action} className="round-reconcile">
                     <button type="button" disabled={busyRound !== null} aria-describedby={`round-reconcile-help-${round.id}`} title={RECONCILE_HELP} onClick={() => void submitReconcile(round)}>
                       Kiểm tra và chốt kết quả round
@@ -337,6 +348,7 @@ export function RoundOperations({ stage }: Readonly<{ stage: string }>) {
               <input id="round-start-number" type="text" inputMode="numeric" autoComplete="off" value={typedNumber} onChange={(event) => setTypedNumber(event.target.value)} />
             </>
           )}
+          {pending.action === 'cancel' && <p role="note">{CANCEL_WARNING}</p>}
           {pending.action === 'open' && (
             <>
               <label htmlFor="round-open-ruleset">Phiên bản bộ luật</label>
@@ -354,6 +366,7 @@ export function RoundOperations({ stage }: Readonly<{ stage: string }>) {
           <button
             type="submit"
             disabled={submitting || busyRound !== null || reason.trim().length === 0
+              || (pending.action === 'cancel' && reason.trim().length < MIN_CANCEL_REASON_LENGTH)
               || (pending.action === 'open' && chosenRuleSetId.length === 0)
               || (pending.action === 'start' && (typedNumber.trim() !== String(pending.round.roundNumber) || idempotencyKey.length === 0))}
           >

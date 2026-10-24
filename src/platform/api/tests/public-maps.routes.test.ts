@@ -65,6 +65,14 @@ describe('Public Maps Routes', () => {
       });
     });
 
+    it('selects the latest round that is neither DRAFT_RULES nor CANCELLED', async () => {
+      const query = vi.fn().mockResolvedValue({ rows: [] });
+      const app = createApp(query);
+
+      await app.inject({ method: 'GET', url: '/api/v1/public/rounds/current/maps' });
+      expect(String(query.mock.calls[0]?.[0])).toContain("q.status NOT IN ('DRAFT_RULES', 'CANCELLED')");
+    });
+
     it('returns 200 with round and maps for an open round', async () => {
       const rules = sampleRules();
       const rulesSha256 = computeRulesSha256(rules);

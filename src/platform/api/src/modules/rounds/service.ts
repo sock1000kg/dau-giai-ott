@@ -38,7 +38,7 @@ export class RoundCloseError extends Error {
   public readonly details: Readonly<Record<string, string | number>>;
 
   public constructor(
-    code: 'ROUND_NOT_OPEN' | 'ROUND_RULE_SET_MISSING' | 'ROUND_GRACE_NOT_ENDED',
+    code: 'ROUND_NOT_OPEN' | 'ROUND_RULE_SET_MISSING' | 'ROUND_GRACE_NOT_ENDED' | 'ROUND_NOT_CANCELLABLE',
     details: Readonly<Record<string, string | number>> = {},
   ) {
     super(code);
@@ -208,7 +208,7 @@ export async function createRound(
 
   return database.transaction(async (tx) => {
     const existingActive = await tx.query<{ readonly id: string }>(
-      "SELECT id FROM qualification_rounds WHERE tournament_stage = $1 AND status <> 'PUBLISHED' LIMIT 1",
+      "SELECT id FROM qualification_rounds WHERE tournament_stage = $1 AND status NOT IN ('PUBLISHED','CANCELLED') LIMIT 1",
       [input.tournamentStage],
     );
     if (existingActive.rows.length > 0) {
@@ -323,6 +323,25 @@ function writeAudit(
     'INSERT INTO audit_events (id, actor_account_id, action, target_type, target_id, reason, correlation_id, details, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
     [randomUUID(), actorAccountId, action, 'ROUND', targetId, reason, null, JSON.stringify(details), now],
   );
+}
+
+const AUTO_PUBLISH_REASON = 'auto-published after rating';
+const MIN_CANCEL_REASON_LENGTH = 3;
+
+/** RATED -> PUBLISHED inside the caller's transaction (round row already locked): hash, timestamps and one audit event. */
+async function publishRatedRound(
+  tx: Database,
+  round: { readonly id: string; readonly schedule_round_id: string | null },
+  actorAccountId: string,
+  reason: string,
+  now: Date,
+): Promise<void> {
+  const resultsHash = await computeRoundResultsHash(tx, round.schedule_round_id);
+  await tx.query(
+    "UPDATE qualification_rounds SET status = 'PUBLISHED', published_at = $2, results_hash = $3 WHERE id = $1",
+    [round.id, now, resultsHash],
+  );
+  await writeAudit(tx, actorAccountId, 'ROUND_PUBLISHED', round.id, reason, { resultsHash }, now);
 }
 
 function startRequestHash(roundId: string, ruleSetId: string): string {
@@ -456,7 +475,13 @@ async function executeReconcile(
       return { kind: 'rate' as const, scheduleRoundId: round.schedule_round_id };
     }
 
+    if (round.status === 'PUBLISHED') {
+      return { kind: 'current' as const };
+    }
+
     if (round.status === 'RATED') {
+      // Legacy row left at RATED before auto-publish existed; the row lock makes this publish happen once.
+      await publishRatedRound(tx, round, input.actorAccountId, AUTO_PUBLISH_REASON, now);
       return { kind: 'current' as const };
     }
 
@@ -481,6 +506,7 @@ async function executeReconcile(
       [input.roundId, now],
     );
     await writeAudit(tx, input.actorAccountId, 'ROUND_RATED', input.roundId, reason, { scheduleRoundId: round.schedule_round_id, ratingsResult }, now);
+    await publishRatedRound(tx, round, input.actorAccountId, AUTO_PUBLISH_REASON, now);
     return getRoundFromTx(tx, input.roundId) as Promise<RoundSummary>;
   });
 }
@@ -493,6 +519,7 @@ export async function executeTransition(
   const now = options?.now?.() ?? new Date();
   const needsReason = !['reconcile'].includes(input.action.type);
   const reason = needsReason ? validateReason(input.reason) : validateOptionalReason(input.reason);
+  if (input.action.type === 'cancel' && reason.length < MIN_CANCEL_REASON_LENGTH) throw new Error('INVALID_REASON');
 
   if (input.action.type === 'start') {
     return executeStart(database, input, reason, now, options);
@@ -508,6 +535,19 @@ export async function executeTransition(
 
     if (input.action.type === 'close' && round.status !== 'SUBMISSION_OPEN') {
       throw new RoundCloseError('ROUND_NOT_OPEN', { status: round.status });
+    }
+
+    if (input.action.type === 'publish' && round.status === 'PUBLISHED') {
+      const existing = await getRoundFromTx(tx, input.roundId) as RoundSummary;
+      return { ...existing, replayed: true };
+    }
+
+    if (input.action.type === 'cancel') {
+      const cancellable = (ALLOWED_TRANSITIONS[round.status] ?? []).includes('cancel');
+      // A started-but-unscheduled round (start_idempotency_key set) may already own series being created.
+      if (!cancellable || round.start_idempotency_key !== null) {
+        throw new RoundCloseError('ROUND_NOT_CANCELLABLE', { status: round.status });
+      }
     }
 
     const allowedEdges = ALLOWED_TRANSITIONS[round.status] ?? [];
@@ -578,12 +618,16 @@ export async function executeTransition(
 
       case 'publish': {
         if (round.status !== 'RATED') throw new Error('ROUND_TRANSITION_INVALID');
-        const resultsHash = await computeRoundResultsHash(tx, round.schedule_round_id);
+        await publishRatedRound(tx, round, input.actorAccountId, reason, now);
+        return getRoundFromTx(tx, input.roundId) as Promise<RoundSummary>;
+      }
+
+      case 'cancel': {
         await tx.query(
-          "UPDATE qualification_rounds SET status = 'PUBLISHED', published_at = $2, results_hash = $3 WHERE id = $1",
-          [input.roundId, now, resultsHash],
+          "UPDATE qualification_rounds SET status = 'CANCELLED', cancelled_at = $2, cancel_reason = $3 WHERE id = $1",
+          [input.roundId, now, reason],
         );
-        await writeAudit(tx, input.actorAccountId, 'ROUND_PUBLISHED', input.roundId, reason, { resultsHash }, now);
+        await writeAudit(tx, input.actorAccountId, 'ROUND_CANCELLED', input.roundId, reason, { previousStatus: round.status }, now);
         return getRoundFromTx(tx, input.roundId) as Promise<RoundSummary>;
       }
 
@@ -626,5 +670,7 @@ export function getAllowedActions(status: RoundStatus, pausedAt: Date | null): r
   if (status === 'RUNNING') {
     return pausedAt === null ? ['pause', 'reconcile'] : ['resume', 'reconcile'];
   }
+  // Legacy RATED rows are published by the next "check results" (reconcile), so the UI never offers `publish`.
+  if (status === 'RATED') return ['reconcile'];
   return [...(ALLOWED_TRANSITIONS[status] ?? [])];
 }

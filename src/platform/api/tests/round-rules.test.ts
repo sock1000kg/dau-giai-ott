@@ -288,6 +288,9 @@ describe('P3-D01 round-rules unit', () => {
       ['RUNNING', 'reconcile'],
       ['SETTLING', 'reconcile'],
       ['RATED', 'publish'],
+      ['DRAFT_RULES', 'cancel'],
+      ['SUBMISSION_OPEN', 'cancel'],
+      ['SUBMISSION_CLOSED', 'cancel'],
     ];
     for (const [from, action] of validEdges) {
       const actionObj: RoundAction = action === 'open'
@@ -312,6 +315,12 @@ describe('P3-D01 round-rules unit', () => {
       ['SETTLING', 'publish'],
       ['RATED', 'pause'],
       ['PUBLISHED', 'open'],
+      ['RUNNING', 'cancel'],
+      ['SETTLING', 'cancel'],
+      ['RATED', 'cancel'],
+      ['PUBLISHED', 'cancel'],
+      ['CANCELLED', 'open'],
+      ['CANCELLED', 'cancel'],
     ];
     for (const [from, action] of invalidEdges) {
       const actionObj: RoundAction = action === 'open'
@@ -335,12 +344,13 @@ describe('P3-D01 round-rules unit', () => {
   });
 
   it('ALLOWED_TRANSITIONS matches expected edges', () => {
-    expect(ALLOWED_TRANSITIONS.DRAFT_RULES).toEqual(['open']);
-    expect(ALLOWED_TRANSITIONS.SUBMISSION_OPEN).toEqual(['close']);
-    expect(ALLOWED_TRANSITIONS.SUBMISSION_CLOSED).toEqual(['start']);
+    expect(ALLOWED_TRANSITIONS.DRAFT_RULES).toEqual(['open', 'cancel']);
+    expect(ALLOWED_TRANSITIONS.SUBMISSION_OPEN).toEqual(['close', 'cancel']);
+    expect(ALLOWED_TRANSITIONS.SUBMISSION_CLOSED).toEqual(['start', 'cancel']);
     expect(ALLOWED_TRANSITIONS.RUNNING).toEqual(['pause', 'resume', 'reconcile']);
     expect(ALLOWED_TRANSITIONS.SETTLING).toEqual(['reconcile']);
     expect(ALLOWED_TRANSITIONS.RATED).toEqual(['publish']);
     expect(ALLOWED_TRANSITIONS.PUBLISHED).toEqual([]);
+    expect(ALLOWED_TRANSITIONS.CANCELLED).toEqual([]);
   });
 });

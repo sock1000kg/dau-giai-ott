@@ -123,12 +123,12 @@ lệ; không còn job treo; số match phù hợp format qualification đổi ph
 
 **Evidence:** ảnh danh sách match/series và output status.
 
-## MAN-QUAL-012 — Reconcile/rating/publish round
+## MAN-QUAL-012 — Reconcile/rating round (tự công bố)
 
-**Bước:** BTC dùng action hợp lệ để reconcile/finalize rating rồi publish round; nhập reason; refresh trang.
+**Bước:** BTC bấm "Kiểm tra và chốt kết quả round" (reconcile) cho tới khi round hết `SETTLING`; refresh trang. Không còn nút "Công bố".
 
-**Mong đợi:** round lần lượt đạt trạng thái rating/published theo state machine; leaderboard có cả hai đội;
-rating/played-series thay đổi đúng một lần; publish lại hoặc double-click không nhân đôi dữ liệu.
+**Mong đợi:** round tự đạt `PUBLISHED` ("Đã công bố") ngay sau khi xếp hạng; leaderboard có cả hai đội;
+rating/played-series thay đổi đúng một lần; bấm lại hoặc double-click không nhân đôi dữ liệu; có thể tạo round mới ngay.
 
 **Evidence:** ảnh status cuối và leaderboard với hai đội.
 

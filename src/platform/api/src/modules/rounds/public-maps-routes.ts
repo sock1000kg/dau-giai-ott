@@ -17,7 +17,7 @@ export function registerPublicMapRoutes(app: FastifyInstance, options: PublicMap
     }>(`SELECT q.round_number, q.status, r.rules, r.rules_sha256
         FROM qualification_rounds q
         JOIN round_rule_sets r ON r.id = q.rule_set_id
-        WHERE q.tournament_stage = 'QUALIFICATION' AND q.status <> 'DRAFT_RULES'
+        WHERE q.tournament_stage = 'QUALIFICATION' AND q.status NOT IN ('DRAFT_RULES', 'CANCELLED')
         ORDER BY q.round_number DESC LIMIT 1`);
     const round = selected.rows[0];
     if (!round) {

@@ -32,8 +32,8 @@ under `/opt/ott/`, then run `cd /opt/ott && python3 scripts/seed-sample-data.py`
 To add a second sample round without removing the first, use
 `python3 scripts/seed-sample-data.py --append --sample samples/qualification-demo-extra.json`
 after copying the extra two OCI archives. The loader checks that the new teams
-have no prior submissions, reconciles and publishes the completed previous
-round, then creates the new round through the API.
+have no prior submissions, reconciles the completed previous round (rating
+auto-publishes it), then creates the new round through the API.
 
 Those original OCI canaries speak Bot Protocol v1. Qualification rules on the
 current demo stack pin Protocol v2, so their ACTION responses are rejected as

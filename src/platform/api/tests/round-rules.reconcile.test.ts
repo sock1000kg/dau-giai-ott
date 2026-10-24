@@ -43,6 +43,11 @@ class FakeReconcileDatabase {
       this.round.status = 'RATED';
       return { rows: [] };
     }
+    if (text.includes("status = 'PUBLISHED'")) {
+      this.round.status = 'PUBLISHED';
+      return { rows: [] };
+    }
+    if (text.includes('FROM matches m') || text.includes('FROM rating_ledger')) return { rows: [] };
     if (text.startsWith('INSERT INTO audit_events')) {
       this.audits.push(values[2] as string);
       return { rows: [] };
@@ -86,10 +91,10 @@ describe('P3-D01 round-rules reconcile orchestration', () => {
       },
     );
 
-    expect(result.status).toBe('RATED');
+    expect(result.status).toBe('PUBLISHED');
     expect(ratingsCalls).toBe(1);
-    expect(database.audits).toEqual(['ROUND_RATED']);
-    expect(database.round.status).toBe('RATED');
+    expect(database.audits).toEqual(['ROUND_RATED', 'ROUND_PUBLISHED']);
+    expect(database.round.status).toBe('PUBLISHED');
   });
 
   it('stays RUNNING while a series is non-terminal', async () => {
@@ -122,9 +127,9 @@ describe('P3-D01 round-rules reconcile orchestration', () => {
     expect(database.audits).toEqual(['ROUND_SETTLING']);
   });
 
-  it('re-running reconcile after RATED is idempotent (no extra audit or ratings)', async () => {
+  it('re-running reconcile after PUBLISHED is idempotent (no extra audit or ratings)', async () => {
     const database = new FakeReconcileDatabase();
-    database.round.status = 'RATED';
+    database.round.status = 'PUBLISHED';
     let ratingsCalls = 0;
 
     const result = await executeTransition(
@@ -133,7 +138,7 @@ describe('P3-D01 round-rules reconcile orchestration', () => {
       { applyRoundRatings: async () => { ratingsCalls += 1; return { applied: true }; } },
     );
 
-    expect(result.status).toBe('RATED');
+    expect(result.status).toBe('PUBLISHED');
     expect(ratingsCalls).toBe(0);
     expect(database.audits).toEqual([]);
   });

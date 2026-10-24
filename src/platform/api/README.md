@@ -147,8 +147,12 @@ keys, `NONE`/30s per-turn modes and out-of-bounds values are rejected).
 
 `qualification_rounds` drives the lifecycle state machine
 `DRAFT_RULES → SUBMISSION_OPEN → SUBMISSION_CLOSED → RUNNING → SETTLING →
-RATED → PUBLISHED`. `POST /api/v1/admin/rounds` creates the draft; `POST
-/api/v1/admin/rounds/:id/{open|close|start|pause|resume|reconcile|publish}`
+RATED → PUBLISHED`, plus the terminal `CANCELLED` (see below). `RATED` is
+transient: the rate transaction also writes `PUBLISHED` (`published_at`,
+`results_hash`) and a second audit row `ROUND_PUBLISHED` ("auto-published after
+rating"), so a rated qualification round is public immediately and the next
+round can be created right away. `POST /api/v1/admin/rounds` creates the draft; `POST
+/api/v1/admin/rounds/:id/{open|close|start|pause|resume|reconcile|publish|cancel}`
 applies one transition per request with a 1–500 char `reason` (except
 `reconcile`). Every transition locks the round row `FOR UPDATE`, re-checks
 the edge in service and in a DB trigger, and writes exactly one audit row
@@ -163,7 +167,26 @@ schedule or audit); same key + different hash → `IDEMPOTENCY_KEY_REUSED`.
 `start` freezes the schedule snapshot by calling `scheduleRound`, which
 keeps its own Phase 2 transaction (AC2). `reconcile` moves `RUNNING →
 SETTLING` only when every linked series is terminal, then applies
-`applyRoundRatings` exactly once before `SETTLING → RATED` (AC3).
+`applyRoundRatings` exactly once before `SETTLING → RATED → PUBLISHED` (AC3).
+A legacy row left at `RATED` (before auto-publish existed) is published by the next
+`reconcile` (idempotent, one audit row). `publish` remains only for such legacy
+`RATED` rows; on a `PUBLISHED` round it is a no-op returning `replayed: true`, on any
+other status `409 ROUND_TRANSITION_INVALID`. `reconcile` on a `PUBLISHED` round
+returns it unchanged. Round JSON never offers `publish` in `allowedActions`
+(`RATED` offers `reconcile`).
+
+`cancel` (migration `0021_round_cancel.sql`) moves `DRAFT_RULES`,
+`SUBMISSION_OPEN` or `SUBMISSION_CLOSED` to the terminal `CANCELLED` status. Body
+`{reason}` with a 3–500 char reason; the audit row `ROUND_CANCELLED` stores
+`details.previousStatus`, and `qualification_rounds.cancelled_at`/`cancel_reason`
+are set. From any other status — including a `SUBMISSION_CLOSED` round whose
+`start` was already initiated, because its series may be being created — the
+answer is `409 ROUND_NOT_CANCELLABLE` with `details.status`. A cancelled round
+does not count as the active round of its stage (the one-active-round unique
+index and `createRound` ignore `PUBLISHED` and `CANCELLED`), round numbers are
+not reused, rule sets and team submissions are untouched, and the public
+snapshot / `GET /api/v1/public/rounds/current/maps` skip `CANCELLED` rounds
+(latest round that is neither `DRAFT_RULES` nor `CANCELLED`).
 
 Routes are BTC-admin only (`requireRole(requireAuthenticated(...),
 'BTC_ADMIN')`) and registered in `createAuthApp` with no storage
@@ -173,7 +196,7 @@ dependency. Stable error codes: `ROUND_TRANSITION_INVALID` (409),
 (`details.graceEndsAt` ISO, `details.retryAfterSeconds`; close is only allowed
 once `schedule.graceEndsAt` has passed),
 `RULE_SET_NOT_FOUND` (404), `RULE_SET_STAGE_MISMATCH` (409),
-`ROUND_ALREADY_EXISTS_IN_STAGE` (409), `IDEMPOTENCY_KEY_INVALID` (400),
+`ROUND_ALREADY_EXISTS_IN_STAGE` (409), `ROUND_NOT_CANCELLABLE` (409, `cancel` only), `IDEMPOTENCY_KEY_INVALID` (400),
 `IDEMPOTENCY_KEY_REUSED` (409), `INVALID_REASON`/`RULE_SET_INVALID`/
 `TOURNAMENT_STAGE_INVALID` (400), `ROUND_NOT_FOUND` (404).
 
@@ -507,7 +530,7 @@ any nesting depth) is dropped.
 
 ### Round results hash
 
-At `publish` the round's `results_hash` is stored (column added in 0013, settable only once and only with
+When the round is published (automatically at the end of the rate transaction, or via the legacy `publish`) its `results_hash` is stored (column added in 0013, settable only once and only with
 `status = 'PUBLISHED'`), written to the `ROUND_PUBLISHED` audit `details.resultsHash` and returned as
 `resultsHash` by `GET /api/v1/admin/rounds/:roundId` and the publish response. It is
 `sha256(canonicalJson(document))` with `canonicalJson` from `rounds/types.ts` (sorted keys, no whitespace) and
@@ -519,7 +542,7 @@ At `publish` the round's `results_hash` is stored (column added in 0013, settabl
 ```
 
 `matches` are the schedule round's `FINALIZED` matches with a result ordered by match id; `ratings` are its
-`rating_ledger` rows ordered by `(series_id, team_id)`. A second publish is `409 ROUND_TRANSITION_INVALID`
+`rating_ledger` rows ordered by `(series_id, team_id)`. A second publish is a `replayed` no-op
 and cannot change the stored hash.
 
 ### Verification
