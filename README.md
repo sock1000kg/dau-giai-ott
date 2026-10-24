@@ -1,42 +1,35 @@
-# OTT Tournament — Phase 1 local
+# OTT Tournament
 
-Phase 1 chạy một trận Rock–Paper–Scissors trên bàn 9×9 giữa hai bot qua Bot Protocol v1.
-`main` là nhánh tích hợp/deploy; hướng dẫn bàn giao local chi tiết ở
-[docs/runbooks/phase-1-local.md](docs/runbooks/phase-1-local.md).
+Nền tảng tổ chức giải đấu cho bot: đội nộp bot dạng OCI image, hệ thống tự kiểm tra, xếp lịch, chạy trận trong sandbox, tính Elo và công bố bảng xếp hạng, replay. Vòng chung kết chạy offline trên LAN rồi đồng bộ lên web bằng ResultBundle có chữ ký.
 
-## Yêu cầu
+**Demo công khai:** <https://ott-frontend.d-thuand.party/public>
 
-- Node.js `^22.12.0` và npm (lockfile root).
-- Python 3 để chạy các bot mẫu và E2E.
-- Không cần Docker, PostgreSQL, Redis hay SeaweedFS cho Phase 1.
+## Thông tin về dự án
 
-## Chạy từ clean checkout
+- [demo/01-tong-quan.md](demo/01-tong-quan.md): tổng quan cuộc thi, các khái niệm, vòng loại và chung kết.
+- [demo/02-hardening.md](demo/02-hardening.md): cách hệ thống phòng tránh sự cố và gian lận.
+- [demo/03-kien-truc.md](demo/03-kien-truc.md): kiến trúc hệ thống, bản đơn giản.
+- [demo/04-ban-do-chuc-nang-ui.md](demo/04-ban-do-chuc-nang-ui.md): mỗi việc nằm ở đâu trên giao diện.
+
+## Chạy thử local
+
+Cần Node.js `^22.12.0`, Docker Engine ≥ 24 với Compose v2.
+
+```bash
+./scripts/demo.sh up        # build, migrate, seed tài khoản demo, in URL và nơi lưu mật khẩu
+./scripts/demo.sh status    # kiểm tra
+./scripts/demo.sh reset     # xóa stack demo
+```
+
+Hướng dẫn đầy đủ: [docs/runbooks/local-demo.md](docs/runbooks/local-demo.md). Dựng bản công khai sau Cloudflare tunnel: [docs/runbooks/public-demo-hosting.md](docs/runbooks/public-demo-hosting.md).
+
+## Phát triển
 
 ```bash
 npm ci
 npm run typecheck
 npm test
 npm run build
-python3 -m unittest discover -s src/bots/python/tests
 ```
 
-Chạy trận mẫu và tạo event log:
-
-```bash
-npm --workspace @ott/match-runner run --silent match -- \
-  --bot-x python3 --bot-x-arg -I --bot-x-arg -B --bot-x-arg -u --bot-x-arg "$PWD/src/bots/python/first_legal_bot.py" \
-  --bot-o python3 --bot-o-arg -I --bot-o-arg -B --bot-o-arg -u --bot-o-arg "$PWD/src/bots/python/capture_first_bot.py" \
-  --max-turns 4 --out /tmp/ott-phase-1-match.json
-```
-
-Lệnh in đúng một JSON result lên stdout và ghi artifact replayable vào đường dẫn `--out`.
-
-## Phạm vi
-
-Phase 1 chỉ gồm game core thuần, Bot Protocol v1, MatchRunner/CLI, event log và Python bots.
-Phase 2 bắt đầu với local services PostgreSQL, Redis và SeaweedFS tại `infra/local/`.
-Các API, worker và web package vẫn theo dependency trong task `P2-*`; xem
-[`docs/runbooks/local-services.md`](docs/runbooks/local-services.md) trước khi dựng stack.
-
-Nguồn sự thật về task/status là [tasks/todo.md](tasks/todo.md); contract là
-[docs/contracts/](docs/contracts/).
+Bot dùng **Bot Protocol v2** ([hợp đồng](docs/contracts/bot-protocol-v2.md)); v1 đã deprecated. Task và trạng thái nằm ở [tasks/todo.md](tasks/todo.md), tài liệu theo loại ở [docs/README.md](docs/README.md), ranh giới module ở [src/README.md](src/README.md).
