@@ -31,8 +31,8 @@ import {
 } from '../src/index.ts';
 
 const repoRoot = fileURLToPath(new URL('../../../../', import.meta.url));
-const firstLegalFixturePath = join(repoRoot, 'src/bots/sandbox-corpus/artifacts/oci-fixtures/first-legal.oci.tar');
-const captureFirstFixturePath = join(repoRoot, 'src/bots/sandbox-corpus/artifacts/oci-fixtures/capture-first.oci.tar');
+const firstLegalFixturePath = join(repoRoot, 'src/bots/sandbox-corpus/artifacts/oci-fixtures/v2-first-legal.oci.tar');
+const captureFirstFixturePath = join(repoRoot, 'src/bots/sandbox-corpus/artifacts/oci-fixtures/v2-capture-first.oci.tar');
 const fixturesPresent = fsSync.existsSync(firstLegalFixturePath) && fsSync.existsSync(captureFirstFixturePath);
 // The bad-socket test uploads a *different* archive than the e2e test: object keys are content-addressed
 // (`submissions/<sha256>.oci.tar`, UNIQUE in the database), so a second upload of identical bytes — in the same
@@ -274,7 +274,7 @@ integration('Coordinator Integration (P2-T32 - Reviewer Run)', () => {
   });
 
   it.skipIf(!fixturesPresent)(
-    'runs a real round through the coordinator end-to-end without manual dispatch or settle calls (requires src/bots/sandbox-corpus/artifacts/oci-fixtures/{first-legal,capture-first}.oci.tar; run npm run build:corpus --workspace @ott/sandbox-corpus)',
+    'runs a real round through the coordinator end-to-end without manual dispatch or settle calls (requires src/bots/sandbox-corpus/artifacts/oci-fixtures/{v2-first-legal,v2-capture-first}.oci.tar; run npm run build:corpus --workspace @ott/sandbox-corpus)',
     async () => {
       const firstLegalBytes = await fs.readFile(firstLegalFixturePath);
       const captureFirstBytes = await fs.readFile(captureFirstFixturePath);
@@ -286,8 +286,8 @@ integration('Coordinator Integration (P2-T32 - Reviewer Run)', () => {
       expect(val2.ok).toBe(true);
 
       const fixtures = [
-        { name: 'first-legal', bytes: firstLegalBytes },
-        { name: 'capture-first', bytes: captureFirstBytes },
+        { name: 'v2-first-legal', bytes: firstLegalBytes },
+        { name: 'v2-capture-first', bytes: captureFirstBytes },
       ];
 
       let createdRound: any;

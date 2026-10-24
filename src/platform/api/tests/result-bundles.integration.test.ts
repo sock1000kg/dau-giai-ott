@@ -5,6 +5,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createDatabase, runMigrations, type Database } from '../src/db/client.ts';
 import { canonicalizeJson, sha256HexOf } from '../src/modules/result-bundles/canonical.ts';
 import { buildSignedResultBundle, type BuildResultBundleInput } from '../src/modules/result-bundles/exporter.ts';
+import { createSyntheticDemoTournament } from '../src/modules/result-bundles/demo-bundle.ts';
+import { buildFinalsBundleArtifacts } from '../src/modules/result-bundles/artifacts.ts';
 import {
   getPublishedResultBundleProof,
   importResultBundle,
@@ -35,6 +37,8 @@ integration('P3-D09 signed ResultBundle import (PostgreSQL)', () => {
   const otherKeyPair = generateKeyPairSync('ed25519');
   const otherPrivateKeyPem = otherKeyPair.privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
 
+  let validArtifacts: BuildResultBundleInput['artifacts'] = [];
+
   function buildInput(bundleId: string, bundleVersion: number): BuildResultBundleInput {
     return {
       bundleId,
@@ -43,10 +47,9 @@ integration('P3-D09 signed ResultBundle import (PostgreSQL)', () => {
       finalsRuleSetId: randomUUID(),
       keyId: KEY_ID,
       createdAt: new Date().toISOString(),
-      artifacts: [
-        { path: 'bracket.json', mediaType: 'application/json', payload: Buffer.from('{"bracket":true}') },
-        { path: 'results/m1.json', mediaType: 'application/json', payload: Buffer.from('{"score":2}') },
-      ],
+      // The importer validates artifacts against the finals artifact schema, so the fixtures must be a
+      // real (small, deterministic) finals artifact set, not placeholder JSON.
+      artifacts: validArtifacts,
     };
   }
 
@@ -62,6 +65,7 @@ integration('P3-D09 signed ResultBundle import (PostgreSQL)', () => {
   }
 
   beforeAll(async () => {
+    validArtifacts = buildFinalsBundleArtifacts(await createSyntheticDemoTournament());
     database = createDatabase({ connectionString: databaseUrl! });
     await runMigrations(database);
     await database.query("INSERT INTO accounts (id, username, password_hash, role) VALUES ($1,$2,'x','BTC_ADMIN')", [
@@ -170,13 +174,7 @@ integration('P3-D09 signed ResultBundle import (PostgreSQL)', () => {
     await importResultBundle(database, payload, { actorAccountId: actorId });
 
     const different = buildSignedResultBundle(
-      {
-        ...buildInput(bundleId, 1),
-        artifacts: [
-          { path: 'bracket.json', mediaType: 'application/json', payload: Buffer.from('{"bracket":"changed"}') },
-          { path: 'results/m1.json', mediaType: 'application/json', payload: Buffer.from('{"score":2}') },
-        ],
-      },
+      { ...buildInput(bundleId, 1), createdAt: '2020-01-01T00:00:00.000Z' },
       privateKeyPem,
     );
     await expect(
