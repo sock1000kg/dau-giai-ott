@@ -88,6 +88,7 @@ reconciling; it does not treat older finalized series as completion evidence.
 ./scripts/demo.sh round status
 
 # 5. Open round submissions (creates round and rule set if needed)
+# Note: rounds already opened with an older rule set template keep their locked rules, so self-play stays unavailable until BTC opens a new round or rule set allowing own submissions.
 ./scripts/demo.sh round open
 
 # 6. Close submissions and schedule round matches
@@ -112,7 +113,10 @@ reconciling; it does not treat older finalized series as completion evidence.
 # 10. Stop the running containers (data volumes preserved)
 ./scripts/demo.sh stop
 
-# 11. Full clean reset (destroys containers, volumes, demo.env, and accounts.csv)
+# 11. Print editorial path and example announcement
+./scripts/demo.sh editorial
+
+# 12. Full clean reset (destroys containers, volumes, demo.env, and accounts.csv; keeps editorial/public.json)
 ./scripts/demo.sh reset [--yes]
 ```
 

@@ -125,6 +125,7 @@ export function installRouteFetch(role: TestRole): RouteApi {
         return json(200, { data: {
         roundId: 'round-current', quota: { limit: 2, consumed: 0, reserved: 0, remaining: 2, resetsAt: '2026-10-19T00:00:00.000Z' },
         admissionPaused: false, opponents: { referenceBots: noReferenceBot ? [] : [{ id: 'FIRST_LEGAL', displayName: 'Bot tham chiếu — đi hợp lệ đầu tiên' }], ownSubmissionAllowed: true },
+        maps: [{ mapId: 'default', version: 1, checksum: 'a'.repeat(64), name: 'Bản đồ tiêu chuẩn' }],
       } });
       }
       if (pathname === '/api/v1/test-runs') return json(200, { data: testRuns, pagination: { page: 1, pageSize: 20, totalItems: testRuns.length, totalPages: testRuns.length === 0 ? 0 : 1 } });

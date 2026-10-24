@@ -1,6 +1,9 @@
 import { createHash, randomUUID } from 'node:crypto';
+import { DEFAULT_MAP } from '@ott/game-core';
 import type { Database } from '../../db/client.ts';
 import { QUEUE_PRIORITY, type MatchJobV1 } from '@ott/job-contract';
+import { findMap } from '../rounds/catalog.ts';
+import type { RoundRuleSetRulesV1 } from '../rounds/types.ts';
 
 export type TestRunStatus = 'QUEUED' | 'RUNNING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
 export type TestRunOpponentType = 'BTC_REFERENCE' | 'OWN_SUBMISSION';
@@ -49,6 +52,7 @@ export interface CreateTestRunInput {
   readonly opponentSubmissionId?: string | undefined;
   readonly opponentReferenceBot?: string | undefined;
   readonly roundId?: string | undefined;
+  readonly mapId?: string | undefined;
   readonly mapChecksum?: string | undefined;
   readonly now?: Date | undefined;
   readonly idempotencyKey: string;
@@ -69,6 +73,7 @@ export interface TestRunPolicy {
     referenceBots: readonly Readonly<{ id: string; displayName: string }>[];
     ownSubmissionAllowed: boolean;
   }>;
+  readonly maps: readonly Readonly<{ mapId: string; version: number; checksum: string; name?: string }>[];
 }
 
 export interface CompleteTestRunInput {
@@ -147,7 +152,7 @@ interface TestRunPolicyRow {
   readonly id: string;
   readonly status: string;
   readonly paused_at: Date | string | null;
-  readonly rules: { testRun?: { quotaPerTeamPerDay?: number } } | null;
+  readonly rules: RoundRuleSetRulesV1 | null;
 }
 
 /** Team portal policy. Quota is the consumed count plus queued reservations for today. */
@@ -208,27 +213,45 @@ export async function getTestRunPolicy(
   const consumed = Number(quota?.consumed ?? 0);
   const reserved = Number(quota?.reserved ?? 0);
   const limit = round?.rules?.testRun?.quotaPerTeamPerDay ?? 2;
+  const allowedOpponents = round?.rules?.testRun?.opponents ?? ['BTC_REFERENCE', 'OWN_SUBMISSION'];
+  const referenceBotsAllowed = allowedOpponents.includes('BTC_REFERENCE');
+  const ownSubmissionPolicyAllowed = allowedOpponents.includes('OWN_SUBMISSION');
+
+  const maps = (round?.rules?.mapSet && round.rules.mapSet.length > 0)
+    ? round.rules.mapSet.map((entry) => {
+        const registered = findMap(entry.mapId, entry.checksum);
+        return {
+          mapId: entry.mapId,
+          version: registered?.version ?? 1,
+          checksum: entry.checksum,
+        };
+      })
+    : [{ mapId: DEFAULT_MAP.mapId, version: DEFAULT_MAP.version, checksum: DEFAULT_MAP.checksum }];
+
   return {
-    roundId: round?.id ?? null,
-    quota: {
-      limit,
-      consumed,
-      reserved,
-      remaining: Math.max(0, limit - consumed - reserved),
-      resetsAt: new Date(startOfDay.getTime() + 86_400_000).toISOString(),
-    },
-    admissionPaused: admissionPaused || Boolean(round?.paused_at) || (round !== undefined && round.status !== 'SUBMISSION_OPEN'),
-    submissions: submissionsResult.rows.map((row) => ({
-      id: row.id,
-      status: row.status,
-      createdAt: new Date(row.created_at).toISOString(),
-    })),
-    opponents: {
-      referenceBots: referencesResult.rows.map(({ id, display_name }) => ({ id, displayName: display_name })),
-      ownSubmissionAllowed: submissionsResult.rows.length > 1,
-    },
-  };
-}
+      roundId: round?.id ?? null,
+      quota: {
+        limit,
+        consumed,
+        reserved,
+        remaining: Math.max(0, limit - consumed - reserved),
+        resetsAt: new Date(startOfDay.getTime() + 86_400_000).toISOString(),
+      },
+      admissionPaused: admissionPaused || Boolean(round?.paused_at) || (round !== undefined && round.status !== 'SUBMISSION_OPEN'),
+      submissions: submissionsResult.rows.map((row) => ({
+        id: row.id,
+        status: row.status,
+        createdAt: new Date(row.created_at).toISOString(),
+      })),
+      opponents: {
+        referenceBots: referenceBotsAllowed
+          ? referencesResult.rows.map(({ id, display_name }) => ({ id, displayName: display_name }))
+          : [],
+        ownSubmissionAllowed: ownSubmissionPolicyAllowed && submissionsResult.rows.length >= 1,
+      },
+      maps,
+    };
+  }
 
 function testRunRequestHash(input: CreateTestRunInput): string {
   const canonical = JSON.stringify({
@@ -238,6 +261,7 @@ function testRunRequestHash(input: CreateTestRunInput): string {
     opponentSubmissionId: input.opponentSubmissionId ?? null,
     opponentReferenceBot: input.opponentReferenceBot ?? null,
     roundId: input.roundId ?? null,
+    mapId: input.mapId ?? null,
     mapChecksum: input.mapChecksum ?? null,
   });
   return createHash('sha256').update(canonical).digest('hex');
@@ -280,13 +304,18 @@ export async function createTestRun(
     }
 
     const activeRound = input.roundId
-      ? await transaction.query<{ id: string; status: string; paused_at: Date | string | null }>(
-        `SELECT id, status, paused_at FROM qualification_rounds WHERE id = $1 FOR SHARE`, [input.roundId],
+      ? await transaction.query<{ id: string; status: string; paused_at: Date | string | null; rules: RoundRuleSetRulesV1 | null }>(
+        `SELECT qr.id, qr.status, qr.paused_at, rrs.rules
+         FROM qualification_rounds qr
+         LEFT JOIN round_rule_sets rrs ON rrs.id = qr.rule_set_id
+         WHERE qr.id = $1 FOR SHARE OF qr`, [input.roundId],
       )
-      : await transaction.query<{ id: string; status: string; paused_at: Date | string | null }>(
-        `SELECT id, status, paused_at FROM qualification_rounds
-         ORDER BY CASE status WHEN 'SUBMISSION_OPEN' THEN 0 ELSE 1 END,
-           created_at DESC, id DESC LIMIT 1 FOR SHARE`,
+      : await transaction.query<{ id: string; status: string; paused_at: Date | string | null; rules: RoundRuleSetRulesV1 | null }>(
+        `SELECT qr.id, qr.status, qr.paused_at, rrs.rules
+         FROM qualification_rounds qr
+         LEFT JOIN round_rule_sets rrs ON rrs.id = qr.rule_set_id
+         ORDER BY CASE qr.status WHEN 'SUBMISSION_OPEN' THEN 0 ELSE 1 END,
+           qr.created_at DESC, qr.id DESC LIMIT 1 FOR SHARE OF qr`,
       );
     const round = activeRound.rows[0];
     if (input.roundId && !round) throw new TestRunError(404, 'ROUND_NOT_FOUND', 'Round not found');
@@ -294,6 +323,11 @@ export async function createTestRun(
       throw new TestRunError(503, 'TEST_RUN_ADMISSION_PAUSED', 'Test-run admission is closed for this round');
     }
     const roundId = round?.id ?? null;
+
+    const roundAllowedOpponents = round?.rules?.testRun?.opponents ?? ['BTC_REFERENCE', 'OWN_SUBMISSION'];
+    if (!roundAllowedOpponents.includes(input.opponentType)) {
+      throw new TestRunError(400, 'INVALID_TEST_RUN_OPPONENT', `Opponent type ${input.opponentType} is not permitted for this round`);
+    }
     // 1. Quota admission counts both started runs and queued reservations.
     const maxQuota = await getRoundTestRunQuota(transaction, roundId ?? undefined);
     const quotaResult = await transaction.query<{ consumed: string | number; reserved: string | number }>(
@@ -366,9 +400,6 @@ export async function createTestRun(
       if (oppSubmission.team_id !== input.teamId) {
         throw new TestRunError(403, 'OPPONENT_SUBMISSION_NOT_OWNED', 'Opponent submission does not belong to team');
       }
-      if (oppSubmission.id === input.submissionId) {
-        throw new TestRunError(400, 'INVALID_TEST_RUN_OPPONENT', 'A submission cannot test against itself');
-      }
       if (oppSubmission.status !== 'ACTIVE' && oppSubmission.status !== 'VALID') {
         const isInvalid = oppSubmission.status === 'INVALID';
         throw new TestRunError(400, isInvalid ? 'OPPONENT_SUBMISSION_INVALID' : 'OPPONENT_SUBMISSION_NOT_ELIGIBLE', 'Opponent submission is not eligible for test runs');
@@ -378,9 +409,30 @@ export async function createTestRun(
       throw new TestRunError(400, 'INVALID_TEST_RUN_OPPONENT', 'Unsupported opponentType');
     }
 
+    const hasMapId = Boolean(input.mapId);
+    const hasMapChecksum = Boolean(input.mapChecksum);
+    if ((hasMapId && !hasMapChecksum) || (!hasMapId && hasMapChecksum)) {
+      throw new TestRunError(400, 'BAD_REQUEST', 'mapId and mapChecksum must both be provided or both omitted');
+    }
+
+    const roundMapSet = round?.rules?.mapSet && round.rules.mapSet.length > 0
+      ? round.rules.mapSet
+      : [{ mapId: DEFAULT_MAP.mapId, checksum: DEFAULT_MAP.checksum }];
+
+    let selectedMapChecksum: string;
+    if (hasMapId && hasMapChecksum) {
+      const found = roundMapSet.find((m) => m.mapId === input.mapId && m.checksum === input.mapChecksum);
+      if (!found) {
+        throw new TestRunError(422, 'MAP_NOT_IN_ROUND', 'Requested map is not in the round mapSet');
+      }
+      selectedMapChecksum = found.checksum;
+    } else {
+      selectedMapChecksum = roundMapSet[0]!.checksum;
+    }
+
     // 4. Create the queued run and its durable queue payload in one transaction.
     const testRunId = randomUUID();
-    const mapChecksum = input.mapChecksum ?? 'test_map_default';
+    const mapChecksum = selectedMapChecksum;
     const seed = randomUUID();
 
     const insertRes = await transaction.query<Record<string, unknown>>(

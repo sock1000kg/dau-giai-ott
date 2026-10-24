@@ -25,6 +25,8 @@ interface CreateTestRunBody {
   readonly opponentSubmissionId?: string;
   readonly opponentReferenceBot?: string;
   readonly roundId?: string;
+  readonly mapId?: string;
+  readonly mapChecksum?: string;
   readonly teamId?: string; // BTC_ADMIN override
 }
 
@@ -83,7 +85,7 @@ export function registerTestRunRoutes(
         return reply.status(403).send({ error: { code: 'FORBIDDEN', message: 'Unauthorized role' } });
       }
 
-      const { submissionId, opponentType, opponentSubmissionId, opponentReferenceBot, roundId } = request.body ?? {};
+      const { submissionId, opponentType, opponentSubmissionId, opponentReferenceBot, roundId, mapId, mapChecksum } = request.body ?? {};
       const idempotencyKey = request.headers['idempotency-key'];
       if (principal.role === 'BTC_ADMIN' && !request.body?.teamId) {
         return reply.status(400).send({ error: { code: 'BAD_REQUEST', message: 'teamId is required for BTC_ADMIN' } });
@@ -106,6 +108,8 @@ export function registerTestRunRoutes(
           opponentSubmissionId: opponentSubmissionId ?? undefined,
           opponentReferenceBot: opponentReferenceBot ?? undefined,
           roundId: roundId ?? undefined,
+          mapId: mapId ?? undefined,
+          mapChecksum: mapChecksum ?? undefined,
           idempotencyKey,
         });
 

@@ -3,6 +3,7 @@ import { loadPublicSnapshot, type PublicSnapshot } from './snapshot.ts';
 import { Alert, Badge, Card, LinkButton, Page } from '../../ui/index.ts';
 import { ExpandableList } from './ExpandableList.tsx';
 import { RulesPage } from './RulesPage.tsx';
+import { RoundMapsCard } from './RoundMapsCard.tsx';
 import { formatScheduleValue, orderSchedule, scheduleLabel } from './schedule.ts';
 import { formatWait } from './format-wait.ts';
 import './public.css';
@@ -15,7 +16,7 @@ function BotResources() {
     <Card as="div" title="Tài nguyên làm bot" className="pub-resources">
       <div>
         <p id="bot-resources-description">Gói ZIP gồm Bot Protocol v1/v2, JSON Schema, bot Python mẫu và hướng dẫn đóng gói bot bằng Python, Node.js hoặc Go.</p>
-        <p className="pub-muted">Giới hạn thời gian, bộ nhớ và dung lượng có thể thay đổi theo round. Hãy xem phần Luật hiện tại trên trang này trước khi nộp bot.</p>
+        <p className="pub-muted">Giới hạn thời gian, bộ nhớ và dung lượng có thể thay đổi theo round. Bản đồ thi đấu của vòng hiện tại có thể xem và tải về tại mục Bản đồ của vòng bên dưới.</p>
       </div>
       <a
         aria-describedby="bot-resources-description"
@@ -71,12 +72,10 @@ export function PublicTournamentPage() {
     <BotResources />
     {stale && <Alert tone="warning">Dữ liệu có thể đã cũ. Đang giữ bản cập nhật cuối cùng.</Alert>}
     <div className="pub-grid pub-grid--panels">
-      <div className="pub-stack"><section aria-label="Trạng thái"><Card as="div" title="Trạng thái"><p>{snapshot.status.message}</p>
-        <p>Dự kiến khắc phục: {snapshot.status.incidentEta ?? 'Chưa có ước tính sự cố'}</p></Card></section>
       <section aria-label="Hàng đợi" className="pub-panel-section"><Card as="div" title="Hàng đợi" className="pub-panel"><ExpandableList listTag="ol" label="Danh sách hàng đợi" items={snapshot.queue} initial={10} step={20} fill
         summary={`${snapshot.queue.length} trận đang chờ`} emptyText="Hàng đợi trống." renderItem={(row, i) =>
         <li key={i}><Badge accent>#{row.position}</Badge><span className="pub-list-main">{row.teams}</span>
-          <span className="pub-list-meta">{formatWait(row.etaSeconds)}</span></li>} /></Card></section></div>
+          <span className="pub-list-meta">{formatWait(row.etaSeconds)}</span></li>} /></Card></section>
       <section aria-label="Kết quả" className="pub-panel-section"><Card as="div" title="Kết quả" className="pub-panel"><ExpandableList listTag="ul" label="Danh sách kết quả" items={newestFirst} initial={20} step={20} fill
         summary={`${newestFirst.length} kết quả`} emptyText="Chưa có kết quả." renderItem={(row) =>
         <li key={row.matchId}><span className="pub-list-main">{row.teams}</span><span className="pub-score">{row.score}</span>
@@ -93,6 +92,7 @@ export function PublicTournamentPage() {
           <td>{row.eligible ? <Badge accent>Đủ điều kiện</Badge> : <Badge>Chưa đủ series</Badge>}</td></tr>)}</tbody></table></div>
       {snapshot.leaderboard.length > LEADERBOARD_LIMIT && <p className="pub-muted pub-list-summary">Hiển thị {LEADERBOARD_LIMIT} / {snapshot.leaderboard.length} đội</p>}</Card></section>
     <RulesPage rules={snapshot.rules} />
+    <RoundMapsCard rules={snapshot.rules} />
     <div className={`pub-grid ${snapshot.faq.length > 0 ? 'pub-grid--thirds' : 'pub-grid--halves'}`}>
       <section aria-label="Lịch"><Card as="div" title="Lịch"><div className="pub-entries">{orderSchedule(snapshot.schedule).map((row, i) =>
         <article className="pub-entry" key={i}><h3>{scheduleLabel(row.title)}</h3><p>{formatScheduleValue(row.body)}</p></article>)}</div></Card></section>

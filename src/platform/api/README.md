@@ -184,6 +184,23 @@ this lifecycle (`P3-D03`). Deadline extension ("gia hạn") is not part of
 
 ## Rule-set catalog and match snapshot wiring (`P3-D25`)
 
+- **Map registry**: In-memory catalog (`src/modules/rounds/catalog.ts`) holds
+  known map definitions (`DEFAULT_MAP`). `findMap(mapId, checksum)` and
+  `findMapByChecksum(checksum)` resolve definitions by ID and checksum.
+- **Public map endpoints**:
+  - `GET /api/v1/public/rounds/current/maps`: Anonymous endpoint returning the current
+    published/running qualification round's map set with full definitions.
+  - `GET /api/v1/public/maps/:mapId?checksum=<hex64>`: Anonymous download route delivering
+    the map definition JSON as an attachment (`Content-Disposition: attachment; filename="..."`).
+- **Team test-runs** (`P3-N03`, Loop 88):
+  - **Self-play**: Teams may test their submissions against themselves (`submissionId === opponentSubmissionId`).
+    Self-play is strictly permitted for private test runs; official rounds never pair a team against itself.
+  - **Map choice**: `GET /api/v1/test-run-policy` returns the active round's `maps`. `POST /api/v1/test-runs`
+    accepts `mapId` and `mapChecksum` (must match an entry in the round's `mapSet`, otherwise `422 MAP_NOT_IN_ROUND`).
+  - **Worker execution**: The worker resolves `tr.map_checksum` via `findMapByChecksum` (or falls back to `DEFAULT_MAP`
+    for `test_map_default`), runs match with the resolved map, and persists `{ ...result, mapId, mapChecksum }`.
+    Unresolvable checksums fail fast with `MAP_UNKNOWN`.
+
 The locked `RoundRuleSet` now drives the matches that `start` schedules.
 What the existing `matches` columns can carry is wired: `engine_version`,
 `map_definition` + `map_checksum`, `max_turns` and `turn_timeout_ms`. Full

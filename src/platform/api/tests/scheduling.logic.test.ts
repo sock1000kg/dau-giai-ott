@@ -23,6 +23,28 @@ describe('P2-T12 deterministic scheduling rules', () => {
     expect(new Set(first.pairings.flatMap(({ x, o }) => [x.teamId, o.teamId])).size).toBe(4);
   });
 
+  it('guard: no scheduling pairing ever contains the same team twice (self-play strictly forbidden in official scheduling)', () => {
+    // Generate pairings across multiple participant configurations and previous pairings
+    const testCases: PairingParticipant[][] = [
+      teams.slice(0, 2),
+      teams.slice(0, 4),
+      teams,
+      [
+        { teamId: 't1', submissionId: 's1', rating: 1500 },
+        { teamId: 't2', submissionId: 's2', rating: 1500 },
+        { teamId: 't3', submissionId: 's3', rating: 1200 },
+        { teamId: 't4', submissionId: 's4', rating: 1200 },
+      ],
+    ];
+
+    for (const participants of testCases) {
+      const plan = createPairingPlan(participants);
+      for (const pairing of plan.pairings) {
+        expect(pairing.x.teamId).not.toBe(pairing.o.teamId);
+      }
+    }
+  });
+
   it('expands Elo band deterministically and avoids a recent rematch when possible', () => {
     const participants = teams.slice(0, 4);
     const plan = createPairingPlan(participants, {

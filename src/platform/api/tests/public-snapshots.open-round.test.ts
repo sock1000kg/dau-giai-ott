@@ -15,10 +15,11 @@ function rules(overrides: Partial<RoundRuleSetRulesV1['schedule']> = {}): RoundR
   };
 }
 
-function fakeDatabase(selectedRows: readonly unknown[]): Database {
+function fakeDatabase(selectedRows: readonly unknown[], matchRows: readonly unknown[] = []): Database {
   const tx = {
     query: async (sql: string) => {
       if (sql.includes('FROM qualification_rounds q')) return { rows: selectedRows };
+      if (sql.includes('FROM matches m')) return { rows: matchRows };
       return { rows: [] };
     },
   };
@@ -34,6 +35,28 @@ describe('collectQualificationSnapshot for a freshly opened round (loop 87)', ()
     const snapshot = await collectQualificationSnapshot(fakeDatabase([roundRow('SUBMISSION_OPEN', rules())]), editorial, []);
     expect(snapshot.round).toEqual({ name: 'Round 2', status: 'SUBMISSION_OPEN' });
     expect(snapshot.rules.version).toMatch(/^3 · sha256:/);
+
+    // Loop 88: "Bàn cờ đã khóa" is non-empty even with 0 matches, and "Thay đổi" is not emitted
+    const lockedMapsSection = snapshot.rules.sections.find((s) => s.title === 'Bàn cờ đã khóa');
+    expect(lockedMapsSection).toBeDefined();
+    const parsedMaps = JSON.parse(lockedMapsSection!.body) as Array<{ mapId: string; error?: string }>;
+    expect(parsedMaps).toHaveLength(1);
+    expect(parsedMaps[0]?.mapId).toBe('map-v1');
+    expect(parsedMaps[0]?.error).toBe('không có định nghĩa trong danh mục');
+
+    const changelogSection = snapshot.rules.sections.find((s) => s.title === 'Thay đổi');
+    expect(changelogSection).toBeUndefined();
+  });
+
+  it('resolves registered maps into definition in "Bàn cờ đã khóa"', async () => {
+    const defaultMapRules = rules();
+    // 'default' map is in MAP_REGISTRY
+    (defaultMapRules.mapSet as any) = [{ mapId: 'default', checksum: 'a'.repeat(64) }];
+    const snapshot = await collectQualificationSnapshot(fakeDatabase([roundRow('SUBMISSION_OPEN', defaultMapRules)]), editorial, []);
+    const lockedMapsSection = snapshot.rules.sections.find((s) => s.title === 'Bàn cờ đã khóa');
+    const parsedMaps = JSON.parse(lockedMapsSection!.body) as Array<{ mapId: string; width: number }>;
+    expect(parsedMaps[0]?.mapId).toBe('default');
+    expect(parsedMaps[0]?.width).toBe(9);
   });
 
   it('reports NO_ROUND when no non-draft round exists', async () => {
@@ -54,5 +77,44 @@ describe('collectQualificationSnapshot for a freshly opened round (loop 87)', ()
     await expect(collectQualificationSnapshot(fakeDatabase([roundRow('SUBMISSION_OPEN', rules(), 'f'.repeat(64))]), editorial, [])).rejects.toMatchObject({
       reason: 'RULES_HASH_MISMATCH', roundNumber: 2,
     });
+  });
+
+  it('deduplicates map definitions by mapId:checksum even when match jsonb carries keys in different order', async () => {
+    const defaultMapRules = rules();
+    (defaultMapRules.mapSet as any) = [{ mapId: 'default', checksum: 'a'.repeat(64) }];
+
+    const reorderedMatchMap = {
+      checksum: 'a'.repeat(64),
+      height: 9,
+      width: 9,
+      mapId: 'default',
+      obstacles: [],
+      spawns: [],
+      goals: {},
+      version: 1,
+      schemaVersion: 1,
+    };
+
+    const matchRows = [
+      {
+        id: 'match-1',
+        teams: 'A / B',
+        status: 'FINALIZED',
+        winner_side: 'X',
+        map_definition: reorderedMatchMap,
+      },
+    ];
+
+    const snapshot = await collectQualificationSnapshot(
+      fakeDatabase([roundRow('SUBMISSION_OPEN', defaultMapRules)], matchRows),
+      editorial,
+      [],
+    );
+
+    const lockedMapsSection = snapshot.rules.sections.find((s) => s.title === 'Bàn cờ đã khóa');
+    const parsedMaps = JSON.parse(lockedMapsSection!.body) as Array<{ mapId: string; checksum: string }>;
+    expect(parsedMaps).toHaveLength(1);
+    expect(parsedMaps[0]?.mapId).toBe('default');
+    expect(parsedMaps[0]?.checksum).toBe('a'.repeat(64));
   });
 });

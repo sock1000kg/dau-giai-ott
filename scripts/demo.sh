@@ -260,6 +260,7 @@ Subcommands:
   round     Manage qualification round lifecycle as BTC administrator
   stop      Stop running containers without destroying data volumes
   reset     Confirm and remove demo containers, volumes, env, and CSV
+  editorial Print editorial path and example announcement structure
 
 Run 'demo.sh <subcommand> --help' for details on each subcommand.
 EOF
@@ -379,6 +380,17 @@ fixed Compose project. Requires confirmation matching the project name.
 
 Options:
   --yes          Bypass confirmation prompt (for automated testing)
+  --help, -h     Show this help message
+EOF
+}
+
+editorial_help() {
+  cat <<EOF
+Usage: demo.sh editorial [options]
+
+Print the public editorial JSON file path and example announcement structure.
+
+Options:
   --help, -h     Show this help message
 EOF
 }
@@ -622,6 +634,28 @@ EOF
   OTT_DEMO_ACCOUNTS_DIR="$(cd "$(dirname "${ACCOUNTS_CSV}")" && pwd)"
   OTT_DEMO_ACCOUNTS_BASENAME="$(basename "${ACCOUNTS_CSV}")"
   export OTT_DEMO_ACCOUNTS_DIR OTT_DEMO_ACCOUNTS_BASENAME
+
+  # Initialize public editorial JSON only if missing (mounts into coordinator at /editorial)
+  local editorial_dir="${OTT_DEMO_EDITORIAL_HOST_DIR:-${REPO_ROOT}/.local/demo/editorial}"
+  mkdir -p -m 700 "${editorial_dir}"
+  chmod 700 "${editorial_dir}"
+  export OTT_DEMO_EDITORIAL_HOST_DIR="$(cd "${editorial_dir}" && pwd)"
+  local editorial_file="${editorial_dir}/public.json"
+  if [[ ! -f "${editorial_file}" ]]; then
+    cat > "${editorial_file}" << 'EOF'
+{
+  "announcements": [],
+  "faq": [],
+  "status": {
+    "message": "Hệ thống hoạt động bình thường",
+    "incidentEta": null
+  },
+  "changelog": "",
+  "minimumSeries": 5
+}
+EOF
+    chmod 0600 "${editorial_file}"
+  fi
 
   echo "Bringing up Docker Compose project '${COMPOSE_PROJECT}'..."
   docker compose -p "${COMPOSE_PROJECT}" -f "${COMPOSE_FILE}" --env-file "${DEMO_ENV_FILE}" up ${build_flag:+"$build_flag"} --wait
@@ -1004,6 +1038,29 @@ sub_reset() {
 }
 
 # ------------------------------------------------------------------------------
+# Subcommand: editorial
+# ------------------------------------------------------------------------------
+sub_editorial() {
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --help|-h)
+        editorial_help
+        exit 0
+        ;;
+      *)
+        echo "Error: Unknown option '$1' for editorial." >&2
+        exit 2
+        ;;
+    esac
+  done
+
+  local editorial_dir="${OTT_DEMO_EDITORIAL_HOST_DIR:-${REPO_ROOT}/.local/demo/editorial}"
+  local editorial_file="${editorial_dir}/public.json"
+  echo "Editorial file: ${editorial_file}"
+  echo 'Example announcement: {"title": "Bảo trì hệ thống", "body": "Hệ thống sẽ bảo trì từ 22:00 đến 23:00."}'
+}
+
+# ------------------------------------------------------------------------------
 # Subcommand: round
 # ------------------------------------------------------------------------------
 sub_round() {
@@ -1372,6 +1429,9 @@ case "${COMMAND}" in
     ;;
   reset)
     sub_reset "$@"
+    ;;
+  editorial)
+    sub_editorial "$@"
     ;;
   --help|-h)
     main_help

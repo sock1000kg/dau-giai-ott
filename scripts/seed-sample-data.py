@@ -158,7 +158,7 @@ def main():
         "schedule": {"submissionOpensAt": iso(now - 3600), "submissionDeadlineAt": iso(deadline),
                      "graceEndsAt": iso(grace), "runStartsAt": iso(grace),
                      "runMaxHours": 24, "appealEndsAt": iso(now + 86400)},
-        "testRun": {"quotaPerTeamPerDay": 5, "opponents": ["BTC_REFERENCE"]}
+        "testRun": {"quotaPerTeamPerDay": 5, "opponents": ["OWN_SUBMISSION", "BTC_REFERENCE"]}
     }
     rule_id = data(request(args.base_url, "/api/v1/admin/round-rule-sets", "POST", {
         "tournamentStage": "QUALIFICATION", "reason": "Sample qualification data", "rules": rules

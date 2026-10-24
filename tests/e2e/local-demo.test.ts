@@ -313,7 +313,7 @@ describe('Clean-checkout local demo qualification E2E (P2-T37 API-level)', () =>
         schedule: demoSchedule.schedule,
         testRun: {
           quotaPerTeamPerDay: 5,
-          opponents: ['BTC_REFERENCE'],
+          opponents: ['OWN_SUBMISSION', 'BTC_REFERENCE'],
         },
       },
     };
@@ -386,6 +386,26 @@ describe('Clean-checkout local demo qualification E2E (P2-T37 API-level)', () =>
     expect(targetRound, `Round ${roundId} must exist`).toBeTruthy();
     expect(targetRound?.status, `Round ${roundId} status must be SUBMISSION_OPEN`).toBe('SUBMISSION_OPEN');
     expect(targetRound?.ruleSetId, `Round ${roundId} must bind to rule set ${ruleSetId}`).toBe(ruleSetId);
+
+    // Assertion (a): anonymous public maps endpoint returns current round map, and download equals definition
+    const publicMapsRes = await apiRequest(baseUrl, '/api/v1/public/rounds/current/maps');
+    const publicMapsText = await assertStatus(publicMapsRes, 200, 'GET /api/v1/public/rounds/current/maps');
+    const publicMapsJson = JSON.parse(publicMapsText) as {
+      round?: { name: string; status: string };
+      maps?: Array<{ mapId: string; checksum: string; definition: Record<string, unknown> }>;
+    };
+    expect(publicMapsJson.maps?.length, 'Public maps must contain at least one map').toBeGreaterThanOrEqual(1);
+    const pubMap = publicMapsJson.maps![0]!;
+    expect(pubMap.mapId).toBe(mapId);
+    expect(pubMap.checksum).toBe(mapChecksum);
+
+    const downloadRes = await apiRequest(
+      baseUrl,
+      `/api/v1/public/maps/${encodeURIComponent(pubMap.mapId)}?checksum=${encodeURIComponent(pubMap.checksum)}`,
+    );
+    const downloadText = await assertStatus(downloadRes, 200, `Download map ${pubMap.mapId}`);
+    const downloadJson = JSON.parse(downloadText);
+    expect(downloadJson).toEqual(pubMap.definition);
   });
 
   // ---------------------------------------------------------------------------
@@ -549,6 +569,54 @@ describe('Clean-checkout local demo qualification E2E (P2-T37 API-level)', () =>
       const flaggedJson = JSON.parse(flaggedText) as { data?: unknown[]; total?: number };
       expect(flaggedJson.total, 'Demo fixtures should produce zero duplicate flags').toBe(0);
       expect(flaggedJson.data, 'Flagged submissions list should be empty').toEqual([]);
+
+      // Assertion (b): team runs a self-play test run on default map and polls until terminal status (<= 120s)
+      const policyRes = await apiRequest(baseUrl, '/api/v1/test-run-policy', { jar: team01Jar });
+      const policyText = await assertStatus(policyRes, 200, 'GET /api/v1/test-run-policy');
+      const policyJson = JSON.parse(policyText) as {
+        data?: {
+          maps?: Array<{ mapId: string; checksum: string }>;
+          opponents?: { ownSubmissionAllowed: boolean };
+        };
+      };
+      expect(policyJson.data?.opponents?.ownSubmissionAllowed, 'ownSubmissionAllowed must be true for test run').toBe(true);
+      const testMap = policyJson.data?.maps?.[0];
+      expect(testMap, 'Test run policy must provide maps').toBeTruthy();
+
+      const createTestRunRes = await apiRequest(baseUrl, '/api/v1/test-runs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': `e2e-self-play-${Date.now()}`,
+        },
+        body: JSON.stringify({
+          submissionId: submission01Id,
+          opponentType: 'OWN_SUBMISSION',
+          opponentSubmissionId: submission01Id,
+          mapId: testMap!.mapId,
+          mapChecksum: testMap!.checksum,
+        }),
+        jar: team01Jar,
+      });
+      const createTestRunText = await assertStatus(createTestRunRes, [200, 201], 'POST /api/v1/test-runs (self-play)');
+      const createTestRunJson = JSON.parse(createTestRunText) as { data?: { id: string; status: string } };
+      const testRunId = createTestRunJson.data?.id;
+      expect(testRunId, 'Test run ID must be returned').toBeTruthy();
+
+      const testRunDeadline = Date.now() + 120_000;
+      let finalTestRunStatus = createTestRunJson.data?.status ?? 'QUEUED';
+      while (Date.now() < testRunDeadline) {
+        if (finalTestRunStatus === 'COMPLETED' || finalTestRunStatus === 'FAILED' || finalTestRunStatus === 'CANCELLED') {
+          break;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        const pollRes = await apiRequest(baseUrl, `/api/v1/test-runs/${testRunId}`, { jar: team01Jar });
+        if (pollRes.status === 200) {
+          const pollJson = (await pollRes.json()) as { data?: { status: string } };
+          finalTestRunStatus = pollJson.data?.status ?? finalTestRunStatus;
+        }
+      }
+      expect(['COMPLETED', 'FAILED'], `Test run ${testRunId} must reach terminal status`).toContain(finalTestRunStatus);
     },
   );
 

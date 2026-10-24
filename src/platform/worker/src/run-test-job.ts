@@ -5,7 +5,7 @@ import type { OciArtifactReference } from '@ott/job-contract';
 import type { BotPort } from '@ott/match-runner';
 import { CoreGameAdapter, runMatch, serializeEventLog, verifyReplay } from '@ott/match-runner';
 import type { Database, ObjectStorage } from '@ott/platform-api';
-import { completeTestRun, failTestRun, type TestRunRecord } from '@ott/platform-api';
+import { completeTestRun, failTestRun, findMapByChecksum, type TestRunRecord } from '@ott/platform-api';
 import { SANDBOX_POLICY_V1, resolveSandboxPolicy, type SandboxPolicy } from './sandbox/policy.ts';
 import { SandboxOciBotPort } from './sandbox/oci-bot-port.ts';
 import { defaultWorkerMetrics, type WorkerMetrics } from './metrics.ts';
@@ -58,6 +58,7 @@ interface TestRunJoinedRow {
   readonly opponent_submission_id: string | null;
   readonly opponent_reference_bot: string | null;
   readonly seed: string;
+  readonly map_checksum?: string;
   readonly sub_object_key: string;
   readonly sub_archive_sha256: string;
   readonly sub_manifest_digest: string;
@@ -78,6 +79,7 @@ export async function runTestJob(options: RunTestJobOptions): Promise<RunTestJob
   const queryRes = await database.query<TestRunJoinedRow>(
     `SELECT tr.id, tr.team_id, tr.status, tr.submission_id, tr.opponent_type,
             tr.opponent_submission_id, tr.opponent_reference_bot, tr.seed,
+            tr.map_checksum,
             s.object_key as sub_object_key,
             s.archive_sha256 as sub_archive_sha256,
             s.oci_manifest_digest as sub_manifest_digest,
@@ -190,6 +192,18 @@ export async function runTestJob(options: RunTestJobOptions): Promise<RunTestJob
       };
     }
 
+    // 4b. Resolve map definition from map_checksum
+    let effectiveMap: import('@ott/game-core').MapDefinition;
+    if (!testRun.map_checksum || testRun.map_checksum === 'test_map_default') {
+      effectiveMap = DEFAULT_MAP;
+    } else {
+      const registered = findMapByChecksum(testRun.map_checksum);
+      if (!registered) {
+        throw new Error('MAP_UNKNOWN');
+      }
+      effectiveMap = registered.definition;
+    }
+
     // 5. Instantiate bot ports
     const [botX, botO] = await Promise.all([
       factory(archiveX, refX, entrypointX, effectivePolicy),
@@ -204,7 +218,7 @@ export async function runTestJob(options: RunTestJobOptions): Promise<RunTestJob
         game: {
           gameId: `test-game-${testRun.id}`,
           engineVersion: '1.0.0',
-          map: DEFAULT_MAP,
+          map: effectiveMap,
           maxTurns: 100,
         },
         limits: { ...DEFAULT_LIMITS, maxTurns: 100 },
@@ -226,7 +240,11 @@ export async function runTestJob(options: RunTestJobOptions): Promise<RunTestJob
     // 8. Complete test run in database
     await completeTestRun(database, {
       testRunId: testRun.id,
-      result: report.result as unknown as Record<string, unknown>,
+      result: {
+        ...(report.result as unknown as Record<string, unknown>),
+        mapId: effectiveMap.mapId,
+        mapChecksum: effectiveMap.checksum,
+      },
       replayKey,
       replaySha256,
       finalStateHash: report.log.footer.result.finalStateHash,

@@ -582,6 +582,220 @@ describe('P3-N03: Test-Run Quota, Opponent Policy & Private Artifacts', () => {
       expect(failedWith).toBe('OPPONENT_ARCHIVE_CHECKSUM_MISMATCH');
       expect(storedObjects.has(`replays/test-runs/${testRunId}.json`)).toBe(false);
     });
+
+    it('executes self-play test runs and records the resolved map metadata', async () => {
+      const testRunId = randomUUID();
+      const teamId = randomUUID();
+      const subId = randomUUID();
+      const subKey = `submissions/${teamId}/${subId}.tar`;
+      const dummyArchive = new TextEncoder().encode('dummy-self-play-bot');
+      const dummySha = 'sha256:' + createHash('sha256').update(dummyArchive).digest('hex');
+      storedObjects.set(subKey, dummyArchive);
+
+      let completedResult: Record<string, unknown> | null = null;
+      let completedReplayKey: string | null = null;
+
+      const mockDb = {
+        query: vi.fn().mockImplementation(async (sql: string, params?: readonly unknown[]) => {
+          if (sql.includes('FROM test_runs tr')) {
+            return {
+              rows: [{
+                id: testRunId,
+                team_id: teamId,
+                status: 'QUEUED',
+                submission_id: subId,
+                opponent_type: 'OWN_SUBMISSION',
+                opponent_submission_id: subId, // Self-play
+                opponent_reference_bot: null,
+                seed: 'seed-self-play',
+                map_checksum: 'a'.repeat(64), // DEFAULT_MAP
+                sub_object_key: subKey,
+                sub_archive_sha256: dummySha,
+                sub_manifest_digest: 'sha256:' + '1'.repeat(64),
+                sub_config_digest: 'sha256:' + '2'.repeat(64),
+                sub_entrypoint: JSON.stringify(['/bot']),
+                sub_policy_version: 'P2_BASELINE_V1',
+              }],
+            };
+          }
+          if (sql.includes('FROM submissions')) {
+            return {
+              rows: [{
+                object_key: subKey,
+                archive_sha256: dummySha,
+                oci_manifest_digest: 'sha256:' + '1'.repeat(64),
+                oci_config_digest: 'sha256:' + '2'.repeat(64),
+                entrypoint: JSON.stringify(['/bot']),
+              }],
+            };
+          }
+          if (sql.includes("status = 'RUNNING'")) {
+            return { rows: [{ id: testRunId }] };
+          }
+          if (sql.includes("status = 'COMPLETED'")) {
+            completedResult = JSON.parse(params?.[0] as string);
+            completedReplayKey = params?.[1] as string;
+            return { rows: [] };
+          }
+          return { rows: [] };
+        }),
+      } as unknown as Database;
+
+      const result = await runTestJob({
+        testRunId,
+        database: mockDb,
+        storage: mockStorage,
+        createBotPort: async () =>
+          new ScriptedBot({
+            replies: [{ kind: 'error', code: 'BOT_TIMEOUT' }],
+          }),
+      });
+
+      expect(result.alreadyFinished).toBe(false);
+      expect(result.replayKey).toBe(`replays/test-runs/${testRunId}.json`);
+      expect(completedReplayKey).toBe(`replays/test-runs/${testRunId}.json`);
+      const res = completedResult as Record<string, unknown> | null;
+      expect(res).not.toBeNull();
+      expect(res?.mapId).toBe('default');
+      expect(res?.mapChecksum).toBe('a'.repeat(64));
+    });
+
+    it('falls back to DEFAULT_MAP when map_checksum is test_map_default', async () => {
+      const testRunId = randomUUID();
+      const teamId = randomUUID();
+      const subId = randomUUID();
+      const subKey = `submissions/${teamId}/${subId}.tar`;
+      const dummyArchive = new TextEncoder().encode('dummy-legacy-bot');
+      const dummySha = 'sha256:' + createHash('sha256').update(dummyArchive).digest('hex');
+      storedObjects.set(subKey, dummyArchive);
+
+      let completedResult: Record<string, unknown> | null = null;
+
+      const mockDb = {
+        query: vi.fn().mockImplementation(async (sql: string, params?: readonly unknown[]) => {
+          if (sql.includes('FROM test_runs tr')) {
+            return {
+              rows: [{
+                id: testRunId,
+                team_id: teamId,
+                status: 'QUEUED',
+                submission_id: subId,
+                opponent_type: 'OWN_SUBMISSION',
+                opponent_submission_id: subId,
+                opponent_reference_bot: null,
+                seed: 'seed-legacy',
+                map_checksum: 'test_map_default',
+                sub_object_key: subKey,
+                sub_archive_sha256: dummySha,
+                sub_manifest_digest: 'sha256:' + '1'.repeat(64),
+                sub_config_digest: 'sha256:' + '2'.repeat(64),
+                sub_entrypoint: JSON.stringify(['/bot']),
+                sub_policy_version: 'P2_BASELINE_V1',
+              }],
+            };
+          }
+          if (sql.includes('FROM submissions')) {
+            return {
+              rows: [{
+                object_key: subKey,
+                archive_sha256: dummySha,
+                oci_manifest_digest: 'sha256:' + '1'.repeat(64),
+                oci_config_digest: 'sha256:' + '2'.repeat(64),
+                entrypoint: JSON.stringify(['/bot']),
+              }],
+            };
+          }
+          if (sql.includes("status = 'RUNNING'")) {
+            return { rows: [{ id: testRunId }] };
+          }
+          if (sql.includes("status = 'COMPLETED'")) {
+            completedResult = JSON.parse(params?.[0] as string);
+            return { rows: [] };
+          }
+          return { rows: [] };
+        }),
+      } as unknown as Database;
+
+      const result = await runTestJob({
+        testRunId,
+        database: mockDb,
+        storage: mockStorage,
+        createBotPort: async () =>
+          new ScriptedBot({
+            replies: [{ kind: 'error', code: 'BOT_TIMEOUT' }],
+          }),
+      });
+
+      expect(result.alreadyFinished).toBe(false);
+      const res = completedResult as Record<string, unknown> | null;
+      expect(res?.mapId).toBe('default');
+      expect(res?.mapChecksum).toBe('a'.repeat(64));
+    });
+
+    it('fails test run with MAP_UNKNOWN when map checksum is not found in catalog', async () => {
+      const testRunId = randomUUID();
+      const teamId = randomUUID();
+      const subId = randomUUID();
+      const subKey = `submissions/${teamId}/${subId}.tar`;
+      const dummyArchive = new TextEncoder().encode('dummy-bot');
+      const dummySha = 'sha256:' + createHash('sha256').update(dummyArchive).digest('hex');
+      storedObjects.set(subKey, dummyArchive);
+
+      let failedWith: string | null = null;
+      const mockDb = {
+        query: vi.fn().mockImplementation(async (sql: string, params?: readonly unknown[]) => {
+          if (sql.includes('FROM test_runs tr')) {
+            return {
+              rows: [{
+                id: testRunId,
+                team_id: teamId,
+                status: 'QUEUED',
+                submission_id: subId,
+                opponent_type: 'OWN_SUBMISSION',
+                opponent_submission_id: subId,
+                opponent_reference_bot: null,
+                seed: 'seed-unknown-map',
+                map_checksum: 'non_existent_map_checksum',
+                sub_object_key: subKey,
+                sub_archive_sha256: dummySha,
+                sub_manifest_digest: 'sha256:' + '1'.repeat(64),
+                sub_config_digest: 'sha256:' + '2'.repeat(64),
+                sub_entrypoint: JSON.stringify(['/bot']),
+                sub_policy_version: 'P2_BASELINE_V1',
+              }],
+            };
+          }
+          if (sql.includes('FROM submissions')) {
+            return {
+              rows: [{
+                object_key: subKey,
+                archive_sha256: dummySha,
+                oci_manifest_digest: 'sha256:' + '1'.repeat(64),
+                oci_config_digest: 'sha256:' + '2'.repeat(64),
+                entrypoint: JSON.stringify(['/bot']),
+              }],
+            };
+          }
+          if (sql.includes("status = 'RUNNING'")) {
+            return { rows: [{ id: testRunId }] };
+          }
+          if (sql.includes("status = 'FAILED'")) {
+            failedWith = String(params?.[0]);
+            return { rows: [] };
+          }
+          return { rows: [] };
+        }),
+      } as unknown as Database;
+
+      const result = await runTestJob({
+        testRunId,
+        database: mockDb,
+        storage: mockStorage,
+      });
+
+      expect(result.alreadyFinished).toBe(false);
+      expect(failedWith).toBe('MAP_UNKNOWN');
+    });
   });
 });
 

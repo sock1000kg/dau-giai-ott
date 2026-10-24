@@ -295,6 +295,7 @@ services:
     volumes:
       - "${DOCKER_SOCKET:-/var/run/docker.sock}:/var/run/docker.sock"
       - snapshots:/snapshots
+      - "${OTT_DEMO_EDITORIAL_HOST_DIR:-../../.local/demo/editorial}:/editorial:ro"
     group_add:
       - "${DOCKER_GID:?set DOCKER_GID (stat -c %g /var/run/docker.sock)}"
     cap_drop:
@@ -321,7 +322,7 @@ services:
       OTT_COORD_SNAPSHOT_INTERVAL_MS: ${OTT_COORD_SNAPSHOT_INTERVAL_MS:-5000}
       OTT_SNAPSHOT_DIR: /snapshots
       OTT_SNAPSHOT_KEEP: ${OTT_SNAPSHOT_KEEP:-24}
-      OTT_EDITORIAL_FILE: ${OTT_EDITORIAL_FILE:-}
+      OTT_EDITORIAL_FILE: ${OTT_EDITORIAL_FILE:-/editorial/public.json}
       OTT_COORD_RETENTION: ${OTT_COORD_RETENTION:-off}
       OTT_COORD_RETENTION_INTERVAL_MS: ${OTT_COORD_RETENTION_INTERVAL_MS:-3600000}
       OTT_COORD_METRICS_HOST: "0.0.0.0"

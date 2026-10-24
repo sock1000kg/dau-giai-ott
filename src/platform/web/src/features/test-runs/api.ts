@@ -41,6 +41,12 @@ export interface TestRunPolicy {
     readonly referenceBots: readonly { readonly id: string; readonly displayName: string }[];
     readonly ownSubmissionAllowed: boolean;
   };
+  readonly maps: readonly {
+    readonly mapId: string;
+    readonly version: number;
+    readonly checksum: string;
+    readonly name?: string;
+  }[];
 }
 
 export interface CreateTestRunInput {
@@ -49,6 +55,8 @@ export interface CreateTestRunInput {
   readonly opponentReferenceBot?: string;
   readonly opponentSubmissionId?: string;
   readonly roundId?: string | null;
+  readonly mapId?: string;
+  readonly mapChecksum?: string;
 }
 
 interface ErrorEnvelope { readonly error?: { readonly code?: unknown } }
@@ -156,12 +164,26 @@ export async function getTestRunPolicy(): Promise<TestRunPolicy> {
     if (typeof bot.id !== 'string' || typeof bot.displayName !== 'string') throw new Error('Invalid test run policy');
     return { id: bot.id, displayName: bot.displayName };
   });
+  const rawMaps = Array.isArray(data.maps) ? data.maps : [];
+  const maps = rawMaps.map((item) => {
+    const m = object(item);
+    if (typeof m.mapId !== 'string' || typeof m.version !== 'number' || typeof m.checksum !== 'string') {
+      throw new Error('Invalid test run policy');
+    }
+    return {
+      mapId: m.mapId,
+      version: m.version,
+      checksum: m.checksum,
+      ...(typeof m.name === 'string' ? { name: m.name } : {}),
+    };
+  });
   const roundId = nullableString(data.roundId);
   return {
     roundId,
     quota: { limit: Number(quota.limit), consumed: Number(quota.consumed), reserved: Number(quota.reserved), remaining: Number(quota.remaining), resetsAt: quota.resetsAt },
     admissionPaused: data.admissionPaused,
     opponents: { referenceBots, ownSubmissionAllowed: opponents.ownSubmissionAllowed },
+    maps,
   };
 }
 

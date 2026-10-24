@@ -19,9 +19,7 @@ The DTO is `PublicSnapshot`, exported by `@ott/platform-api`. See the runnable
 [example](fixtures/public-snapshot-v1.json) for all fields. It includes round
 status, ordered queue positions and estimated seconds (null means unknown),
 official results/ratings/eligibility, rule version and engine, rule sections,
-schedule, announcements, FAQ and incident status/ETA. Rules sections must contain
-the locked round's map IDs/checksums/layout, changelog, time control, maxTurns,
-fault policy and resource limits. Text is displayed as plain text, never HTML.
+schedule, announcements, FAQ and incident status/ETA. Rules sections contain the locked round's map IDs/checksums ("Map set"), time control, maxTurns, fault policy and resource limits. The "Bàn cờ đã khóa" section remains in the snapshot for fallback/compatibility but is not rendered in the rules card (the "Bản đồ của vòng" card is the single dedicated place maps are displayed). The "Thay đổi" rules section is no longer emitted and the "Trạng thái" card is removed from the `/public` UI; `status` and `changelog` fields remain in snapshot JSON for schema compatibility. Text is displayed as plain text, never HTML.
 
 The producer reads announced locked qualification rules and current results in a
 read-only repeatable-read PostgreSQL transaction. It reuses the official leaderboard

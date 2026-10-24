@@ -128,7 +128,7 @@ run_guard_tests() {
   assert_eq "0" "${TEST_CODE}" "demo.sh --help exits 0"
 
   local sub
-  for sub in up status accounts refresh logs round stop reset; do
+  for sub in up status accounts refresh logs round stop reset editorial; do
     run_cmd bash "${DEMO_SCRIPT}" "${sub}" --help
     assert_eq "0" "${TEST_CODE}" "demo.sh ${sub} --help exits 0"
   done
@@ -1505,7 +1505,7 @@ EOF
   # ----------------------------------------------------------------------------
   # 20. Local Demo Schedule Builder Unit Tests (Docker-free vitest)
   # ----------------------------------------------------------------------------
-  echo "[20/20] Testing demo schedule builder contract (Docker-free vitest)..."
+  echo "[20/21] Testing demo schedule builder contract (Docker-free vitest)..."
   local sched_test_out
   local sched_rc=0
   sched_test_out="$(npx vitest run tests/e2e/local-demo-schedule.test.ts --config tests/e2e/local-demo.config.ts 2>&1)" || sched_rc=$?
@@ -1516,6 +1516,53 @@ EOF
     FAILED_TESTS=$((FAILED_TESTS + 1))
     echo "  FAIL: local-demo-schedule.test.ts failed (exit ${sched_rc}):" >&2
     echo "${sched_test_out}" >&2
+  fi
+
+  # ----------------------------------------------------------------------------
+  # 21. Editorial File Lifecycle & demo.sh editorial (Docker-free)
+  # ----------------------------------------------------------------------------
+  echo "[21/21] Testing demo editorial file lifecycle and demo.sh editorial..."
+  local editorial_tmp="${tmp_dir}/custom_editorial"
+  run_cmd env OTT_DEMO_EDITORIAL_HOST_DIR="${editorial_tmp}" bash "${DEMO_SCRIPT}" editorial
+  assert_eq "0" "${TEST_CODE}" "demo.sh editorial exits 0"
+  assert_contains "Editorial file: ${editorial_tmp}/public.json" "${TEST_OUT}" "editorial prints expected path"
+  assert_contains "Example announcement:" "${TEST_OUT}" "editorial prints example announcement"
+
+  # Test that up creates the file if missing
+  local edit_test_env="${tmp_dir}/edit_demo.env"
+  run_cmd env PATH="${mock_bin}:${PATH}" \
+    OTT_DEMO_PROJECT="${disposable_project}" \
+    OTT_DEMO_ENV_FILE="${edit_test_env}" \
+    OTT_DEMO_EDITORIAL_HOST_DIR="${editorial_tmp}" \
+    DOCKER_SOCKET="${fake_socket}" \
+    bash "${DEMO_SCRIPT}" up --no-build --port 19997
+
+  assert_eq "0" "${TEST_CODE}" "up with custom editorial dir succeeds"
+  if [[ -f "${editorial_tmp}/public.json" ]]; then
+    PASSED_TESTS=$((PASSED_TESTS + 1))
+    echo "  PASS: public.json created by demo.sh up"
+  else
+    FAILED_TESTS=$((FAILED_TESTS + 1))
+    echo "  FAIL: public.json was not created by demo.sh up" >&2
+  fi
+
+  local edit_content
+  edit_content="$(cat "${editorial_tmp}/public.json")"
+  assert_contains '"announcements": []' "${edit_content}" "public.json contains empty announcements array"
+  assert_contains '"minimumSeries": 5' "${edit_content}" "public.json contains minimumSeries default"
+
+  # Reset preserves public.json
+  run_cmd env PATH="${mock_bin}:${PATH}" \
+    OTT_DEMO_PROJECT="${disposable_project}" \
+    OTT_DEMO_ENV_FILE="${edit_test_env}" \
+    OTT_DEMO_EDITORIAL_HOST_DIR="${editorial_tmp}" \
+    bash "${DEMO_SCRIPT}" reset --yes
+  if [[ -f "${editorial_tmp}/public.json" ]]; then
+    PASSED_TESTS=$((PASSED_TESTS + 1))
+    echo "  PASS: public.json preserved across demo.sh reset"
+  else
+    FAILED_TESTS=$((FAILED_TESTS + 1))
+    echo "  FAIL: public.json was unexpectedly wiped by demo.sh reset" >&2
   fi
 
   echo "================================================================="

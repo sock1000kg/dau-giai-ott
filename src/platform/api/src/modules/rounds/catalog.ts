@@ -32,6 +32,10 @@ export function findMap(mapId: string, checksum: string): RegisteredMap | undefi
   return MAP_REGISTRY.find((entry) => entry.mapId === mapId && entry.checksum === checksum);
 }
 
+export function findMapByChecksum(checksum: string): RegisteredMap | undefined {
+  return MAP_REGISTRY.find((entry) => entry.checksum === checksum);
+}
+
 export function isKnownEngine(engineVersion: string): boolean {
   return ENGINE_VERSIONS.includes(engineVersion);
 }
