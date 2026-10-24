@@ -31,7 +31,9 @@ import type { LockedSeeding } from '../finals/seeding.ts';
  */
 
 export const FINALS_ARTIFACT_MEDIA_TYPE = 'application/json';
-export const FINALS_REPLAY_MEDIA_TYPE = 'application/vnd.ott.spectator-replay+json;version=1';
+export const FINALS_REPLAY_MEDIA_TYPE_V1 = 'application/vnd.ott.spectator-replay+json;version=1';
+export const FINALS_REPLAY_MEDIA_TYPE_V2 = 'application/vnd.ott.spectator-replay+json;version=2';
+export const FINALS_REPLAY_MEDIA_TYPE = FINALS_REPLAY_MEDIA_TYPE_V2;
 export const MAX_FINALS_ARTIFACT_BYTES = 256 * 1024;
 export const MAX_FINALS_REPLAY_BYTES = 2 * 1024 * 1024;
 
@@ -178,7 +180,7 @@ export interface MatchArtifact {
 
 export interface ReplayArtifactEnvelope {
   readonly schema: 'ott.spectator-replay';
-  readonly schemaVersion: 1;
+  readonly schemaVersion: 1 | 2;
   readonly matchId: string;
 }
 
@@ -264,9 +266,9 @@ function list(value: unknown, max: number): readonly unknown[] {
   return value;
 }
 
-function header(value: unknown, schema: string): Record<string, unknown> {
+function header(value: unknown, schema: string, allowedVersions: readonly number[] = [1]): Record<string, unknown> {
   if (!isRecord(value) || value['schema'] !== schema) return invalid();
-  if (value['schemaVersion'] !== 1) {
+  if (typeof value['schemaVersion'] !== 'number' || !allowedVersions.includes(value['schemaVersion'])) {
     if (Number.isSafeInteger(value['schemaVersion'])) throw new ArtifactParseError('ARTIFACT_VERSION_UNSUPPORTED');
     return invalid();
   }
@@ -430,10 +432,10 @@ export function parseMatchArtifact(value: unknown): MatchArtifact {
  * with the replay module / web parser, so nothing beyond identity is duplicated here.
  */
 export function parseReplayArtifactEnvelope(value: unknown): ReplayArtifactEnvelope {
-  const raw = header(value, 'ott.spectator-replay');
+  const raw = header(value, 'ott.spectator-replay', [1, 2]);
   return {
     schema: 'ott.spectator-replay',
-    schemaVersion: 1,
+    schemaVersion: raw['schemaVersion'] === 2 ? 2 : 1,
     matchId: pattern(raw['matchId'], ID_PATTERN),
   };
 }
@@ -654,7 +656,9 @@ export function validateBundleArtifacts(
     if (kind.kind === 'bracket') bracketCount += 1;
 
     const isReplay = kind.kind === 'replay';
-    if (artifact.mediaType !== (isReplay ? FINALS_REPLAY_MEDIA_TYPE : FINALS_ARTIFACT_MEDIA_TYPE)) {
+    const isReplayMediaType =
+      artifact.mediaType === FINALS_REPLAY_MEDIA_TYPE_V1 || artifact.mediaType === FINALS_REPLAY_MEDIA_TYPE_V2;
+    if (artifact.mediaType !== (isReplay ? (isReplayMediaType ? artifact.mediaType : FINALS_REPLAY_MEDIA_TYPE) : FINALS_ARTIFACT_MEDIA_TYPE)) {
       add(path, 'ARTIFACT_MEDIATYPE_INVALID');
       continue;
     }
@@ -1008,7 +1012,12 @@ export function buildFinalsBundleArtifacts(input: FinalsBundleBuildInput): Built
         const payload = jsonBuffer(finalized.replay);
         const path = `replays/${finalized.matchId}.json`;
         replay = { path, sha256: sha256HexOf(payload) };
-        replayOut.push({ path, mediaType: FINALS_REPLAY_MEDIA_TYPE, payload });
+        const isV2 = isRecord(finalized.replay) && finalized.replay['schemaVersion'] === 2;
+        replayOut.push({
+          path,
+          mediaType: isV2 ? FINALS_REPLAY_MEDIA_TYPE_V2 : FINALS_REPLAY_MEDIA_TYPE_V1,
+          payload,
+        });
       }
       const match: MatchArtifact = {
         schema: 'ott.finals.match',

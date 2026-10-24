@@ -170,8 +170,8 @@ describe('Clean-checkout local demo qualification E2E (P2-T37 API-level)', () =>
   let submission01Status = '';
   let submission02Status = '';
 
-  const fixture1Path = path.resolve(process.cwd(), 'src/bots/sandbox-corpus/artifacts/oci-fixtures/first-legal.oci.tar');
-  const fixture2Path = path.resolve(process.cwd(), 'src/bots/sandbox-corpus/artifacts/oci-fixtures/node-action.oci.tar');
+  const fixture1Path = path.resolve(process.cwd(), 'src/bots/sandbox-corpus/artifacts/oci-fixtures/v2-first-legal.oci.tar');
+  const fixture2Path = path.resolve(process.cwd(), 'src/bots/sandbox-corpus/artifacts/oci-fixtures/v2-capture-first.oci.tar');
   const hasFixtures = fs.existsSync(fixture1Path) && fs.existsSync(fixture2Path);
 
   beforeAll(() => {

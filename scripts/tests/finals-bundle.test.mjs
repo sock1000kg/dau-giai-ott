@@ -15,6 +15,7 @@ import {
 } from '../finals-bundle.mjs';
 import { createSyntheticDemoTournament } from '../../src/platform/api/src/modules/result-bundles/demo-bundle.ts';
 import { sha256HexOf } from '../../src/platform/api/src/modules/result-bundles/canonical.ts';
+import { parseSpectatorReplay } from '../../src/platform/web/src/features/spectator/replay-schema.ts';
 import { DEFAULT_LIMITS } from '@ott/bot-protocol';
 import { DEFAULT_MAP } from '@ott/game-core';
 import { CoreGameAdapter, ScriptedBot, runMatch, serializeEventLog } from '@ott/match-runner';
@@ -211,6 +212,12 @@ describe('finals-bundle CLI unit tests', () => {
           expect(replay.result.finalStateHash).toBe(match.result.finalStateHash);
           expect(replay.result.reason).toBe(match.result.reason);
           expect(replay.result.turnCount).toBe(match.result.turnCount);
+          expect(replay.header.protocolVersion).toBe(2);
+          expect(replay.header.formatVersion).toBe(2);
+          expect(Array.isArray(replay.timing)).toBe(true);
+          expect(replay.timing.length).toBeGreaterThan(0);
+          const parsed = parseSpectatorReplay(replay);
+          expect(parsed.schemaVersion).toBe(2);
 
           // Direct winner in the match artifact equals the replay's real winner (null = draw).
           expect(match.adapter.directWinnerSide).toBe(replay.result.winnerSide);

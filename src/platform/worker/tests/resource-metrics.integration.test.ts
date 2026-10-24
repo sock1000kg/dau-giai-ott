@@ -78,7 +78,7 @@ class ScriptedFakeBot implements BotPort {
       ok: true,
       message: {
         type: 'ACTION',
-        protocolVersion: 1,
+        protocolVersion: update.protocolVersion as any,
         matchId: this.init.matchId,
         turnId: update.turnId,
         action,

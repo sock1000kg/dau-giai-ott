@@ -1,5 +1,11 @@
-import { createHash, randomUUID } from 'node:crypto';
-import { DEFAULT_LIMITS } from '@ott/bot-protocol';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import {
+  DEFAULT_LIMITS,
+  type InitMessageV2,
+  type LimitsV2,
+  type StateUpdateMessageV2,
+  type TimeControlV2,
+} from '@ott/bot-protocol';
 import { DEFAULT_MAP } from '@ott/game-core';
 import type { OciArtifactReference } from '@ott/job-contract';
 import { CoreGameAdapter } from '@ott/match-runner';
@@ -15,6 +21,18 @@ import { SandboxOciBotPort } from './sandbox/oci-bot-port.ts';
 import { SANDBOX_POLICY_V1 } from './sandbox/policy.ts';
 
 const PLATFORM_POLICY_VERSION = 'P2_BASELINE_V1';
+
+/**
+ * Bot Protocol v2 time control policy for preflight smoke testing.
+ * Allocates 5000 ms startup, 60000 ms total bot budget, 150000 ms match wall-clock cap,
+ * and FIXED DEFAULT_LIMITS.turnTimeoutMs (3000 ms) per turn.
+ */
+export const PREFLIGHT_TIME_CONTROL = {
+  startupMs: 5000,
+  totalBotBudgetMs: 60000,
+  matchWallClockMs: 150000,
+  perTurn: { mode: 'FIXED', fixedMs: DEFAULT_LIMITS.turnTimeoutMs },
+} as const satisfies TimeControlV2;
 
 interface SubmissionRow {
   readonly id: string;
@@ -132,11 +150,25 @@ async function executeProtocolSmokeTest(
   const maxTurns = 2;
   const game = new CoreGameAdapter();
   const state = game.create({ gameId: matchId, engineVersion: '1.0.0', map: DEFAULT_MAP, maxTurns });
+  const limits: LimitsV2 = {
+    maxTurns,
+    maxMessageBytes: DEFAULT_LIMITS.maxMessageBytes,
+    maxStderrBytes: DEFAULT_LIMITS.maxStderrBytes,
+    maxConsecutiveFaults: DEFAULT_LIMITS.maxConsecutiveFaults,
+    maxTotalFaults: DEFAULT_LIMITS.maxTotalFaults,
+    timeControl: PREFLIGHT_TIME_CONTROL,
+  };
   try {
     const started = await bot.start({
-      type: 'INIT', protocolVersion: 1, matchId, engineVersion: '1.0.0', side: 'X', seed: randomUUID(),
-      map: DEFAULT_MAP, limits: { ...DEFAULT_LIMITS, maxTurns },
-    });
+      type: 'INIT',
+      protocolVersion: 2,
+      matchId,
+      engineVersion: '1.0.0',
+      side: 'X',
+      botSeed: randomBytes(32).toString('hex'),
+      map: DEFAULT_MAP,
+      limits,
+    } satisfies InitMessageV2);
     if (!started.ok) {
       if (started.code === 'BOT_SPAWN_FAILED') {
         const dockerStillReachable = await checkDocker().catch(() => false);
@@ -149,9 +181,17 @@ async function executeProtocolSmokeTest(
     const actions = game.listLegalActions(state, 'X');
     if (actions.length === 0) throw new Error('PREFLIGHT_NO_LEGAL_ACTION');
     const reply = await bot.requestAction({
-      type: 'STATE_UPDATE', protocolVersion: 1, matchId, turnId: 1,
-      state: publicState(state), legalActions: actions,
-    }, DEFAULT_LIMITS.turnTimeoutMs);
+      type: 'STATE_UPDATE',
+      protocolVersion: 2,
+      matchId,
+      turnId: 1,
+      state: publicState(state),
+      legalActions: actions,
+      timeBudget: {
+        turnLimitMs: PREFLIGHT_TIME_CONTROL.perTurn.fixedMs,
+        remainingBotBudgetMs: PREFLIGHT_TIME_CONTROL.totalBotBudgetMs,
+      },
+    } satisfies StateUpdateMessageV2, DEFAULT_LIMITS.turnTimeoutMs);
     if (!reply.ok) throw new Error(`PREFLIGHT_ACTION_${reply.code}`);
   } finally {
     await bot.stop();

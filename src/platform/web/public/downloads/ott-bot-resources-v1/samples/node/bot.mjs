@@ -21,12 +21,15 @@ process.stdin.on('data', (chunk) => {
     buffer = buffer.slice(newline + 1);
     let message;
     try { message = JSON.parse(line); } catch { continue; }
-    if (message.type !== 'STATE_UPDATE' || ![1, 2].includes(message.protocolVersion)) continue;
+    if (message.type !== 'STATE_UPDATE' || message.protocolVersion !== 2) continue;
     const action = chooseAction(message);
     if (action === null) continue;
     process.stdout.write(`${JSON.stringify({
-      type: 'ACTION', protocolVersion: message.protocolVersion, matchId: message.matchId,
-      turnId: message.turnId, action,
+      type: 'ACTION',
+      protocolVersion: 2,
+      matchId: message.matchId,
+      turnId: message.turnId,
+      action,
     })}\n`);
   }
 });

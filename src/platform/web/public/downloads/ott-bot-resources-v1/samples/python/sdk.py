@@ -8,7 +8,7 @@ class BotSDK:
         self.on_state_update: Optional[Callable[[Dict[str, Any]], Optional[Dict[str, Any]]]] = None
         self.on_turn_result: Optional[Callable[[Dict[str, Any]], None]] = None
         self.on_match_result: Optional[Callable[[Dict[str, Any]], None]] = None
-        self.protocol_version: int = 1
+        self.protocol_version: int = 2
 
     def send_action(
         self,

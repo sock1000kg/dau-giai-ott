@@ -5,7 +5,7 @@ export {
   type MatchWorkerOptions,
 } from './worker.ts';
 export { runMatchJob, type MatchAttemptContext, type RunMatchJobOptions, type RunMatchJobResult } from './run-match-job.ts';
-export { preflightSubmission, type PreflightSubmissionOptions, type PreflightSubmissionResult } from './preflight-submission.ts';
+export { preflightSubmission, PREFLIGHT_TIME_CONTROL, type PreflightSubmissionOptions, type PreflightSubmissionResult } from './preflight-submission.ts';
 export { finalizeMatchResult, type FinalizeMatchResultOptions } from './finalize-result.ts';
 export { claimMatch, markAttemptFailed, persistFinalizedResult, type ClaimedMatch, type MatchAttemptLease, type MatchJobConfig, type PinnedSubmission } from './result-repository.ts';
 export { SandboxOciBotPort, type SandboxOciBotPortOptions } from './sandbox/oci-bot-port.ts';

@@ -76,6 +76,10 @@ pinned time control and a monotonic clock. Finalization verifies and stores both
 deadline. V2 startup timeout also cleans up a container that starts late. Archive loading is outside the
 spawn/INIT startup window; OS isolation and resource quotas are unchanged.
 
+Preflight smoke tests execute via `executeProtocolSmokeTest` using Bot Protocol v2 schemas (`INIT` with `botSeed` and `PREFLIGHT_TIME_CONTROL`, followed by `STATE_UPDATE` with `timeBudget`). Action replies violating v2 schema fail preflight with `PREFLIGHT_ACTION_SCHEMA_VIOLATION` marking the submission `INVALID`.
+
+Test-run jobs (`runTestJob`) execute using Bot Protocol v2 with the round rule set's time control (`limits.timeControl` matching `round_rule_sets.rules.timeControl`). Missing or invalid round rules raise refundable infra error `TEST_RUN_ROUND_RULES_UNAVAILABLE`.
+
 Checks: `npm test --workspace @ott/platform-worker -- sandbox-v2` (Docker transport double), and with an isolated
 `DATABASE_URL`, `npm test --workspace @ott/platform-worker -- timing-worker` (real PostgreSQL + two Node bot
 processes, timing mutation rejection, exactly-once finalization). The latter does not replace the real Docker

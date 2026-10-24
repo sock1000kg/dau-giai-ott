@@ -16,7 +16,7 @@ function BotResources() {
   return <section aria-label="Tài nguyên làm bot">
     <Card as="div" title="Tài nguyên làm bot" className="pub-resources">
       <div>
-        <p id="bot-resources-description">Gói ZIP gồm Bot Protocol v1/v2, JSON Schema, bot Python mẫu và hướng dẫn đóng gói bot bằng Python, Node.js hoặc Go.</p>
+        <p id="bot-resources-description">Gói ZIP gồm Bot Protocol v2, JSON Schema, bot Python mẫu và hướng dẫn đóng gói bot bằng Python, Node.js hoặc Go.</p>
         <p id="demo-bot-description">Bot mẫu Go đã build sẵn (.oci.tar, ~810 KB) sẵn sàng nộp hoặc dùng thử luồng test run ngay.</p>
         <p className="pub-muted">Giới hạn thời gian, bộ nhớ và dung lượng có thể thay đổi theo round. Bản đồ thi đấu của vòng hiện tại có thể xem và tải về tại mục Bản đồ của vòng bên dưới.</p>
       </div>

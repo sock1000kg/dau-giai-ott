@@ -8,9 +8,8 @@
 
 The copied files come from these authoritative project paths:
 
-- `docs/contracts/bot-protocol-v1.{md,schema.json}`
 - `docs/contracts/bot-protocol-v2.{md,schema.json}`
-- `docs/contracts/fixtures/bot-protocol-v{1,2}-valid.ndjson`
+- `docs/contracts/fixtures/bot-protocol-v2-valid.ndjson`
 - `docs/contracts/oci-submission-v1.md`
 - `src/bots/python/`
 - `src/bots/oci-fixtures/{v2-action,native-action}/`

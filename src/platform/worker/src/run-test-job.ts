@@ -1,9 +1,9 @@
-import { createHash } from 'node:crypto';
-import { DEFAULT_LIMITS } from '@ott/bot-protocol';
+import { createHash, randomBytes } from 'node:crypto';
+import { DEFAULT_LIMITS, validateTimeControlV2 } from '@ott/bot-protocol';
 import { DEFAULT_MAP } from '@ott/game-core';
 import type { OciArtifactReference } from '@ott/job-contract';
 import type { BotPort } from '@ott/match-runner';
-import { CoreGameAdapter, runMatch, serializeEventLog, verifyReplay } from '@ott/match-runner';
+import { CoreGameAdapter, monotonicClock, runMatch, serializeEventLog, verifyReplay } from '@ott/match-runner';
 import type { Database, ObjectStorage } from '@ott/platform-api';
 import { completeTestRun, failTestRun, findMapByChecksum, type TestRunRecord } from '@ott/platform-api';
 import { SANDBOX_POLICY_V1, resolveSandboxPolicy, type SandboxPolicy } from './sandbox/policy.ts';
@@ -65,6 +65,8 @@ interface TestRunJoinedRow {
   readonly sub_config_digest: string;
   readonly sub_entrypoint: string | readonly string[];
   readonly sub_policy_version: string;
+  readonly round_id?: string | null;
+  readonly round_rules?: unknown;
 }
 
 /**
@@ -79,15 +81,18 @@ export async function runTestJob(options: RunTestJobOptions): Promise<RunTestJob
   const queryRes = await database.query<TestRunJoinedRow>(
     `SELECT tr.id, tr.team_id, tr.status, tr.submission_id, tr.opponent_type,
             tr.opponent_submission_id, tr.opponent_reference_bot, tr.seed,
-            tr.map_checksum,
+            tr.map_checksum, tr.round_id,
             s.object_key as sub_object_key,
             s.archive_sha256 as sub_archive_sha256,
             s.oci_manifest_digest as sub_manifest_digest,
             s.oci_config_digest as sub_config_digest,
             s.entrypoint as sub_entrypoint,
-            s.policy_version as sub_policy_version
+            s.policy_version as sub_policy_version,
+            rrs.rules as round_rules
      FROM test_runs tr
      JOIN submissions s ON s.id = tr.submission_id
+     LEFT JOIN qualification_rounds qr ON qr.id = tr.round_id
+     LEFT JOIN round_rule_sets rrs ON rrs.id = qr.rule_set_id
      WHERE tr.id = $1`,
     [testRunId],
   );
@@ -119,6 +124,50 @@ export async function runTestJob(options: RunTestJobOptions): Promise<RunTestJob
   const metrics = options.metrics ?? defaultWorkerMetrics;
 
   try {
+    // 2b. Validate and load round rules for Bot Protocol v2
+    const rawRules = testRun.round_rules;
+    let rules: {
+      engineVersion?: string;
+      maxTurns?: number;
+      timeControl?: import('@ott/bot-protocol').TimeControlV2;
+    } | null = null;
+    try {
+      rules = (typeof rawRules === 'string'
+        ? JSON.parse(rawRules)
+        : rawRules) as {
+          engineVersion?: string;
+          maxTurns?: number;
+          timeControl?: import('@ott/bot-protocol').TimeControlV2;
+        } | null;
+    } catch {
+      throw new Error('TEST_RUN_ROUND_RULES_UNAVAILABLE');
+    }
+
+    if (
+      !rules ||
+      typeof rules !== 'object' ||
+      typeof rules.engineVersion !== 'string' ||
+      rules.engineVersion.trim().length === 0 ||
+      typeof rules.maxTurns !== 'number' ||
+      !Number.isSafeInteger(rules.maxTurns) ||
+      rules.maxTurns <= 0 ||
+      !rules.timeControl ||
+      typeof rules.timeControl !== 'object' ||
+      typeof rules.timeControl.startupMs !== 'number' ||
+      rules.timeControl.startupMs <= 0 ||
+      typeof rules.timeControl.totalBotBudgetMs !== 'number' ||
+      rules.timeControl.totalBotBudgetMs <= 0 ||
+      typeof rules.timeControl.matchWallClockMs !== 'number' ||
+      rules.timeControl.matchWallClockMs <= 0 ||
+      !rules.timeControl.perTurn ||
+      typeof rules.timeControl.perTurn !== 'object' ||
+      (rules.timeControl.perTurn.mode === 'FIXED' &&
+        (typeof rules.timeControl.perTurn.fixedMs !== 'number' || rules.timeControl.perTurn.fixedMs <= 0)) ||
+      !validateTimeControlV2(rules.timeControl).ok
+    ) {
+      throw new Error('TEST_RUN_ROUND_RULES_UNAVAILABLE');
+    }
+
     // 3. Load primary submission archive
     const archiveX = await storage.get(testRun.sub_object_key);
     if (archiveChecksum(archiveX) !== testRun.sub_archive_sha256) {
@@ -269,15 +318,23 @@ export async function runTestJob(options: RunTestJobOptions): Promise<RunTestJob
         seed: testRun.seed,
         game: {
           gameId: testRun.id,
-          engineVersion: '1.0.0',
+          engineVersion: rules.engineVersion,
           map: effectiveMap,
-          maxTurns: 100,
+          maxTurns: rules.maxTurns,
         },
-        limits: { ...DEFAULT_LIMITS, maxTurns: 100 },
+        limits: { ...DEFAULT_LIMITS, maxTurns: rules.maxTurns },
+        protocolV2: {
+          timeControl: rules.timeControl,
+          botSeeds: {
+            X: randomBytes(32).toString('hex'),
+            O: randomBytes(32).toString('hex'),
+          },
+        },
       },
       {
         game: new CoreGameAdapter(),
         bots: { X: botX, O: botO },
+        clock: monotonicClock,
       },
     );
 
@@ -350,6 +407,7 @@ function isInfrastructureFailure(message: string): boolean {
     'REFERENCE_BOT_UNAVAILABLE',
     'REFERENCE_BOT_POLICY_MISMATCH',
     'REPLAY_INTEGRITY_FAILED',
+    'TEST_RUN_ROUND_RULES_UNAVAILABLE',
   ];
   return infraErrors.some((code) => message.includes(code));
 }
