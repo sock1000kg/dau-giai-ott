@@ -1,6 +1,6 @@
-# Python Bot SDK và Bộ Bot Kiểm thử (Phase 1)
+# Python Bot SDK và Bộ Bot Kiểm thử
 
-Module này do **Đỗ Khôi Nguyên** phụ trách trong Phase 1, cung cấp Bot SDK tối thiểu cùng các bot kiểm thử hợp lệ và bot gây lỗi có chủ đích theo đặc tả **Bot Protocol v1** (`docs/contracts/bot-protocol-v1.md`).
+Module này cung cấp Bot SDK tối thiểu cùng các bot kiểm thử theo đặc tả **Bot Protocol v2** (`protocol/bot-protocol-v2.md`).
 
 Module hoạt động hoàn toàn độc lập, sử dụng thư viện chuẩn của Python 3, không phụ thuộc và không import bất kỳ mã nguồn TypeScript nào từ `game-core` hay `match-runner`.
 
@@ -35,7 +35,7 @@ src/bots/python/
 - **Transport:** Standard Streams (STDIN / STDOUT), mã hóa UTF-8, mỗi message đúng một dòng (NDJSON).
 - **STDOUT:** Chỉ xuất duy nhất các thông điệp giao thức hợp lệ (`ACTION`), luôn gọi `flush=True`. Tuyệt đối không xuất debug banner, logging hoặc ký tự thừa ra stdout.
 - **STDERR:** Dành riêng cho log, debug và chẩn đoán lỗi. Không ảnh hưởng đến luồng giao thức của MatchRunner.
-- **Message Protocol v1:**
+- **Message Protocol v2:**
   - `INIT`: Server gửi thông tin trận đấu, bản đồ và giới hạn.
   - `STATE_UPDATE`: Server gửi trạng thái bàn cờ và danh sách `legalActions`.
   - `ACTION`: Bot phản hồi nước đi hợp lệ (`{"pieceId": ..., "to": {"col": ..., "row": ...}}`).
@@ -50,16 +50,16 @@ src/bots/python/
 Bot chọn nước đi đầu tiên (`legalActions[0]`). Đảm bảo hành vi deterministic và thoát sạch khi nhận `MATCH_RESULT` hoặc EOF.
 ```bash
 # Chạy trực tiếp qua pipe dữ liệu mẫu
-python src/bots/python/first_legal_bot.py < docs/contracts/fixtures/bot-protocol-v1-valid.ndjson
+python samples/python/first_legal_bot.py < protocol/bot-protocol-v2-valid.ndjson
 
 # Trên PowerShell:
-Get-Content docs\contracts\fixtures\bot-protocol-v1-valid.ndjson | python src\bots\python\first_legal_bot.py
+Get-Content protocol\bot-protocol-v2-valid.ndjson | python samples\python\first_legal_bot.py
 ```
 
 ### 3.2. CaptureFirstBot (Tactical Path)
 Bot duyệt danh sách quân cờ đối thủ (`owner != turn`) trong `state.pieces`. Nếu có nước đi trong `legalActions` di chuyển đến vị trí quân cờ đối thủ, bot ưu tiên chọn nước đi đó; nếu không có, bot fallback chọn nước đi đầu tiên.
 ```bash
-python src/bots/python/capture_first_bot.py < docs/contracts/fixtures/bot-protocol-v1-valid.ndjson
+python samples/python/capture_first_bot.py < protocol/bot-protocol-v2-valid.ndjson
 ```
 
 ### 3.3. InvalidBot (Protocol Fault Injection)

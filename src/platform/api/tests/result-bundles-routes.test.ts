@@ -525,6 +525,10 @@ describe('ResultBundle API routes', () => {
       const parsed = parseSpectatorReplay(body);
       expect(parsed.matchId).toBe(matchId);
       expect(parsed.schema).toBe('ott.spectator-replay');
+      expect(parsed.schemaVersion).toBe(2);
+      expect(parsed.header.protocolVersion).toBe(2);
+      expect(parsed.header.formatVersion).toBe(2);
+      expect((parsed as any).timing?.length).toBeGreaterThan(0);
       expect(parsed.result).toBeDefined();
       await app.close();
     });

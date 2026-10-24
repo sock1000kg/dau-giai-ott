@@ -1,5 +1,7 @@
 import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { compileProtocolValidator, validateTimeControlV2 } from '@ott/bot-protocol';
 
 const mockBotStart = vi.fn();
 const mockBotStop = vi.fn();
@@ -19,7 +21,10 @@ vi.mock('../src/sandbox/oci-bot-port.ts', () => {
   };
 });
 
-import { preflightSubmission } from '../src/preflight-submission.ts';
+import { preflightSubmission, PREFLIGHT_TIME_CONTROL } from '../src/preflight-submission.ts';
+
+const v2Schema = JSON.parse(readFileSync(new URL('../../../../docs/contracts/bot-protocol-v2.schema.json', import.meta.url), 'utf8'));
+const v2Validator = compileProtocolValidator(v2Schema);
 
 describe('preflightSubmission infra handling and fault classification', () => {
   const dummyArchive = new Uint8Array([1, 2, 3, 4]);
@@ -235,6 +240,80 @@ describe('preflightSubmission infra handling and fault classification', () => {
     expect(result.status).toBe('ACTIVE');
     expect(customCreateBotPort).toHaveBeenCalledTimes(1);
     expect(capturedOptions[0].dockerSocketPath).toBe('/seam/docker.sock');
+  });
+
+  it('7. sends Bot Protocol v2 INIT and STATE_UPDATE passing v2 validator', async () => {
+    const dockerReachable = vi.fn().mockResolvedValue(true);
+    let capturedInit: any;
+    let capturedUpdate: any;
+
+    mockBotStart.mockImplementation(async (init) => {
+      capturedInit = init;
+      return { ok: true };
+    });
+    mockBotRequestAction.mockImplementation(async (update) => {
+      capturedUpdate = update;
+      return {
+        ok: true,
+        action: { type: 'MOVE', pieceId: 0, to: { row: 0, col: 0 } },
+      };
+    });
+
+    const result = await preflightSubmission({
+      submissionId: 'sub-test-123',
+      database: mockDb,
+      storage: mockStorage,
+      dockerReachable,
+    });
+
+    expect(result.status).toBe('ACTIVE');
+
+    // Assert INIT is valid v2
+    expect(capturedInit).toBeDefined();
+    expect(capturedInit.type).toBe('INIT');
+    expect(capturedInit.protocolVersion).toBe(2);
+    expect(typeof capturedInit.botSeed).toBe('string');
+    expect(capturedInit.botSeed).toHaveLength(64);
+    expect(/^[0-9a-f]{64}$/.test(capturedInit.botSeed)).toBe(true);
+    expect(capturedInit.limits.timeControl).toEqual(PREFLIGHT_TIME_CONTROL);
+    expect(validateTimeControlV2(capturedInit.limits.timeControl).ok).toBe(true);
+    expect(v2Validator.isProtocolMessage(capturedInit)).toBe(true);
+
+    // Assert STATE_UPDATE is valid v2
+    expect(capturedUpdate).toBeDefined();
+    expect(capturedUpdate.type).toBe('STATE_UPDATE');
+    expect(capturedUpdate.protocolVersion).toBe(2);
+    expect(capturedUpdate.timeBudget).toEqual({
+      turnLimitMs: PREFLIGHT_TIME_CONTROL.perTurn.fixedMs,
+      remainingBotBudgetMs: PREFLIGHT_TIME_CONTROL.totalBotBudgetMs,
+    });
+    expect(v2Validator.isProtocolMessage(capturedUpdate)).toBe(true);
+  });
+
+  it('8. marks submission INVALID with PREFLIGHT_ACTION_SCHEMA_VIOLATION when bot replies with protocolVersion 1', async () => {
+    const dockerReachable = vi.fn().mockResolvedValue(true);
+
+    // When a bot replies with protocolVersion 1 against a v2 session,
+    // SandboxOciBotPort returns { ok: false, code: 'SCHEMA_VIOLATION' }
+    mockBotRequestAction.mockResolvedValue({
+      ok: false,
+      code: 'SCHEMA_VIOLATION',
+    });
+
+    await expect(
+      preflightSubmission({
+        submissionId: 'sub-test-123',
+        database: mockDb,
+        storage: mockStorage,
+        dockerReachable,
+      }),
+    ).rejects.toThrow('PREFLIGHT_ACTION_SCHEMA_VIOLATION');
+
+    expect(submissionUpdates.length).toBe(1);
+    expect(submissionUpdates[0].status).toBe('INVALID');
+    expect(auditEvents.length).toBe(1);
+    expect(auditEvents[0].sql).toContain('SUBMISSION_PREFLIGHT_FAILED');
+    expect(auditEvents[0].params).toContain('PREFLIGHT_ACTION_SCHEMA_VIOLATION');
   });
 
   describe('AC-22: OCI layer recording and duplicate check wiring in preflight', () => {

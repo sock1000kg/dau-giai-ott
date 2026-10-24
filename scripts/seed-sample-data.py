@@ -75,7 +75,12 @@ def main():
     parser.add_argument("--base-url", default="http://127.0.0.1:8080")
     parser.add_argument("--accounts", type=Path, default=ROOT / ".local/demo/accounts.csv")
     parser.add_argument("--env-file", type=Path, default=ROOT / ".local/demo/demo.env")
-    parser.add_argument("--sample", type=Path, default=ROOT / "samples/qualification-demo.json")
+    parser.add_argument(
+        "--sample",
+        type=Path,
+        default=ROOT / "samples/qualification-demo-all-v2.json",
+        help="Path to sample round JSON (default: samples/qualification-demo-all-v2.json). Note: samples referencing v1 bots (first-legal, node-action, native-action, capture-first) are deprecated v1 bots: replays contain no moves — do not use.",
+    )
     parser.add_argument("--append", action="store_true", help="Publish a completed prior round and add another")
     args = parser.parse_args()
 
