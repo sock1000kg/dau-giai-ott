@@ -82,6 +82,8 @@ def main():
         help="Path to sample round JSON (default: samples/qualification-demo-all-v2.json). Note: samples referencing v1 bots (first-legal, node-action, native-action, capture-first) are deprecated v1 bots: replays contain no moves — do not use.",
     )
     parser.add_argument("--append", action="store_true", help="Publish a completed prior round and add another")
+    parser.add_argument("--skip-if-exists", action="store_true",
+                        help="Exit 0 without changes when a qualification round already exists (used by demo.sh)")
     args = parser.parse_args()
 
     env = dict(line.split("=", 1) for line in args.env_file.read_text().splitlines() if "=" in line)
@@ -91,6 +93,9 @@ def main():
         accounts = {row["username"]: row for row in csv.DictReader(stream)}
     sample = json.loads(args.sample.read_text())
     teams = sample["teams"]
+    if sample.get("optionalTeams") is True:
+        # Smaller stacks (e.g. the 2-team local demo) seed only the teams that have an account.
+        teams = [team for team in teams if team["username"] in accounts]
     if len(teams) < 2 or sample["stage"] != "QUALIFICATION":
         raise RuntimeError("Sample must contain at least two qualification teams")
     replace_existing = sample.get("replaceExistingSubmissions", False)
@@ -108,6 +113,9 @@ def main():
     existing = data(request(args.base_url, "/api/v1/admin/rounds?tournamentStage=QUALIFICATION", cookie=btc)[0])
     rounds = existing.get("items", [])
     if rounds and not args.append:
+        if args.skip_if_exists:
+            print("Qualification rounds already exist; skipping sample data.", flush=True)
+            return
         raise RuntimeError("Qualification rounds already exist; use --append with a new sample")
     if args.append:
         if not rounds:

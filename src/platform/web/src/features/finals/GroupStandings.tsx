@@ -56,35 +56,35 @@ export function GroupStandings({ standings, bracket, isStale }: GroupStandingsPr
       {/* Finals 8-Team Single Elimination Bracket Tree (AC-1) */}
       <div style={{ marginTop: '32px' }} aria-label="Sơ đồ Nhánh đấu Vòng Chung kết">
         <h2>Sơ đồ Nhánh đấu (Finals Bracket)</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', marginTop: '16px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', marginTop: '16px', alignItems: 'stretch' }}>
           {/* Tứ kết */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <h3 style={{ fontSize: '14px', textTransform: 'uppercase', color: '#8ea4b7' }}>Tứ kết (BO3)</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '12px' }}>
+            <h3 style={{ fontSize: '14px', textTransform: 'uppercase', color: '#8ea4b7', textAlign: 'center', margin: 0 }}>Tứ kết (BO3)</h3>
             {qfPairings.map((pairing) => (
               <PairingCard key={pairing.pairingId} pairing={pairing} />
             ))}
           </div>
 
           {/* Bán kết */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <h3 style={{ fontSize: '14px', textTransform: 'uppercase', color: '#8ea4b7' }}>Bán kết (BO3)</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '12px' }}>
+            <h3 style={{ fontSize: '14px', textTransform: 'uppercase', color: '#8ea4b7', textAlign: 'center', margin: 0 }}>Bán kết (BO3)</h3>
             {sfPairings.map((pairing) => (
               <PairingCard key={pairing.pairingId} pairing={pairing} />
             ))}
           </div>
 
           {/* Chung kết & Tranh hạng ba */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <h3 style={{ fontSize: '14px', textTransform: 'uppercase', color: '#8ea4b7' }}>Chung kết & Hạng 3</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '12px' }}>
+            <h3 style={{ fontSize: '14px', textTransform: 'uppercase', color: '#8ea4b7', textAlign: 'center', margin: 0 }}>Chung kết & Hạng 3</h3>
             {finalPairing && (
               <div>
-                <span style={{ fontSize: '11px', color: '#ffd59a', fontWeight: 'bold' }}>TRANH VÔ ĐỊCH</span>
+                <div style={{ fontSize: '11px', color: '#ffd59a', fontWeight: 'bold', textAlign: 'center', marginBottom: '4px' }}>TRANH VÔ ĐỊCH</div>
                 <PairingCard pairing={finalPairing} isChampMatch />
               </div>
             )}
             {bronzePairing && (
               <div style={{ marginTop: '8px' }}>
-                <span style={{ fontSize: '11px', color: '#8ea4b7' }}>TRANH HẠNG BA</span>
+                <div style={{ fontSize: '11px', color: '#8ea4b7', textAlign: 'center', marginBottom: '4px' }}>TRANH HẠNG BA</div>
                 <PairingCard pairing={bronzePairing} />
               </div>
             )}
