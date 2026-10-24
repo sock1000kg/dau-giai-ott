@@ -11,7 +11,7 @@
 * { box-sizing: border-box; }
 
 body {
-  font-size: 15px;
+  font-size: 13px;
   min-width: 320px;
   min-height: 100vh;
   margin: 0;
@@ -56,7 +56,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
   align-items: center;
   gap: 11px;
   color: var(--ui-text);
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.02em;
   text-decoration: none;
