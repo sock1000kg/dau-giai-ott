@@ -11,6 +11,7 @@
 * { box-sizing: border-box; }
 
 body {
+  font-size: 15px;
   min-width: 320px;
   min-height: 100vh;
   margin: 0;

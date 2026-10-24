@@ -1,4 +1,48 @@
-import type { FinalsSeriesPairing } from './api.ts';
+import { Badge, LinkButton, Table, type TableColumn } from '../../ui/index.ts';
+import type { FinalsGameDetail, FinalsSeriesPairing } from './api.ts';
+import '../results/results.css';
+
+function teamNameOf(pairing: FinalsSeriesPairing, teamId: string | null | undefined): string {
+  if (teamId === pairing.teamA?.teamId) return pairing.teamA?.teamName ?? 'Đội A';
+  if (teamId === pairing.teamB?.teamId) return pairing.teamB?.teamName ?? 'Đội B';
+  return 'Chưa xác định';
+}
+
+function gameColumns(pairing: FinalsSeriesPairing, bundleId: string | undefined): readonly TableColumn<FinalsGameDetail>[] {
+  const nameA = pairing.teamA?.teamName ?? 'Đội A';
+  const nameB = pairing.teamB?.teamName ?? 'Đội B';
+  return [
+    { key: 'game', header: 'Ván', render: (game) => `Ván ${game.gameNumber} · ${game.mapName}` },
+    {
+      key: 'teams',
+      header: 'Đội X vs Đội O',
+      render: (game) => <strong>{game.sideA === 'X' ? `${nameA} vs ${nameB}` : `${nameB} vs ${nameA}`}</strong>,
+    },
+    {
+      key: 'outcome',
+      header: 'Kết quả',
+      render: (game) => <div className="results-cell">
+        {game.winnerTeamId ? <Badge accent>Thắng: {teamNameOf(pairing, game.winnerTeamId)}</Badge> : <span>Đang thi đấu</span>}
+        {game.scoreBreakdown && game.scoreBreakdown.length > 0
+          ? <span className="results-muted">Phân xử: {game.scoreBreakdown.map((crit) => `${crit.label} ${crit.valueA}–${crit.valueB}`).join(' · ')}</span>
+          : null}
+      </div>,
+    },
+    {
+      key: 'replay',
+      header: 'Replay',
+      render: (game) => game.replayPublished && game.replayMatchId
+        ? <LinkButton
+            variant="secondary"
+            href={bundleId
+              ? `/spectator/replays/${game.replayMatchId}?bundle=${encodeURIComponent(bundleId)}`
+              : `/spectator/replays/${game.replayMatchId}`}
+            aria-label={`Phát replay ván ${game.gameNumber} trận ${pairing.roundName}`}
+          >Phát</LinkButton>
+        : <span className="results-muted" aria-label={`Replay ván ${game.gameNumber} chưa công bố`}>Chưa công bố</span>,
+    },
+  ];
+}
 
 export interface FinalsScheduleProps {
   readonly bracket: readonly FinalsSeriesPairing[];
@@ -54,88 +98,16 @@ export function FinalsSchedule({ bracket, bundleId }: FinalsScheduleProps) {
               </div>
             </div>
 
-            {/* Individual Games List & Replay Links (AC-3) */}
+            {/* Game list: same table UI as "Kết quả từng trận" on the results page */}
             {pairing.games.length > 0 && (
-              <div style={{ borderTop: '1px solid rgba(177, 204, 224, 0.08)', paddingTop: '12px' }}>
-                <h4 style={{ fontSize: '12px', textTransform: 'uppercase', color: '#8ea4b7', marginBottom: '8px' }}>
-                  Chi tiết từng ván đấu:
-                </h4>
-                <div style={{ display: 'grid', gap: '8px' }}>
-                  {pairing.games.map((game) => (
-                    <div
-                      key={game.gameNumber}
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        flexWrap: 'wrap',
-                        gap: '8px',
-                        padding: '8px 12px',
-                        background: 'rgba(0, 0, 0, 0.2)',
-                        borderRadius: '6px',
-                        fontSize: '13px',
-                      }}
-                    >
-                      <div>
-                        <strong>Ván {game.gameNumber}:</strong> Map <code>{game.mapName}</code> (Side: {pairing.teamA?.teamName ?? 'A'} [{game.sideA}] vs {pairing.teamB?.teamName ?? 'B'} [{game.sideB}])
-                      </div>
-
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        {/* Winner */}
-                        <span style={{ fontSize: '12px' }}>
-                          {game.winnerTeamId ? (
-                            <span style={{ color: '#80e4d0' }}>
-                              Thắng: {game.winnerTeamId === pairing.teamA?.teamId ? pairing.teamA?.teamName : pairing.teamB?.teamName}
-                            </span>
-                          ) : (
-                            <span style={{ color: '#8ea4b7' }}>Đang thi đấu</span>
-                          )}
-                        </span>
-
-                        {/* AC-3: Replay link ONLY when verified import and published */}
-                        {game.replayPublished && game.replayMatchId ? (
-                          <a
-                            href={
-                              bundleId
-                                ? `/spectator/replays/${game.replayMatchId}?bundle=${encodeURIComponent(bundleId)}`
-                                : `/spectator/replays/${game.replayMatchId}`
-                            }
-                            className="submission-status"
-                            style={{
-                              borderColor: '#80e4d0',
-                              color: '#80e4d0',
-                              textDecoration: 'none',
-                              padding: '3px 8px',
-                              fontSize: '11px',
-                            }}
-                            aria-label={`Xem replay ván ${game.gameNumber} trận ${pairing.roundName}`}
-                          >
-                            ▶ Xem Replay
-                          </a>
-                        ) : (
-                          <span
-                            style={{ fontSize: '11px', color: '#8ea4b7' }}
-                            aria-label={`Replay ván ${game.gameNumber} chưa công bố`}
-                          >
-                            Chưa công bố
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Score Breakdown (if adapter criteria present) */}
-                      {game.scoreBreakdown && game.scoreBreakdown.length > 0 && (
-                        <div style={{ width: '100%', fontSize: '11px', color: '#a8b8c8', marginTop: '4px', borderTop: '1px dashed rgba(255, 255, 255, 0.1)', paddingTop: '4px' }}>
-                          <span>Chỉ số phân xử: </span>
-                          {game.scoreBreakdown.map((crit) => (
-                            <span key={crit.criterionId} style={{ marginRight: '12px' }}>
-                              {crit.label}: {crit.valueA} - {crit.valueB}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
+              <div className="results-table">
+                <Table
+                  caption={`Kết quả từng ván · ${pairing.roundName}`}
+                  columns={gameColumns(pairing, bundleId)}
+                  rows={pairing.games}
+                  rowKey={(game) => String(game.gameNumber)}
+                  emptyMessage="Chưa có ván đấu."
+                />
               </div>
             )}
           </article>
