@@ -11,6 +11,13 @@ Nền tảng tổ chức giải đấu cho bot: đội nộp bot dạng OCI imag
 - [demo/03-kien-truc.md](demo/03-kien-truc.md): kiến trúc hệ thống, bản đơn giản.
 - [demo/04-ban-do-chuc-nang-ui.md](demo/04-ban-do-chuc-nang-ui.md): mỗi việc nằm ở đâu trên giao diện.
 
+## Thành viên
+
+- Đinh Đức Thuận
+- Đỗ Khôi Nguyên
+- Phạm Tất Đạt
+- Trần Hoàng Long
+
 ## Chạy thử local
 
 Cần Node.js `^22.12.0`, Docker Engine ≥ 24 với Compose v2.
