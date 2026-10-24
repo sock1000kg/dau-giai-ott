@@ -384,6 +384,71 @@ EOF
     echo "  FAIL: Tester password contains invalid or ambiguous characters: ${pub_team_pass}" >&2
   fi
 
+  # 5c-2. Public accounts are fixed and public: they come from demo/accounts.csv (single source of truth)
+  local csv_btc_pass csv_team_pass csv_team_count
+  csv_btc_pass="$(awk -F',' '$1=="btc"{print $2}' "${REPO_ROOT}/demo/accounts.csv" | tr -d '\r')"
+  csv_team_pass="$(awk -F',' '$1=="team01"{print $2}' "${REPO_ROOT}/demo/accounts.csv" | tr -d '\r')"
+  csv_team_count="$(awk -F',' '$1 ~ /^team[0-9][0-9]$/{n++} END{print n}' "${REPO_ROOT}/demo/accounts.csv")"
+  assert_eq "${csv_btc_pass}" "${pub_btc_pass}" "public demo.env btc password equals demo/accounts.csv"
+  assert_eq "${csv_team_pass}" "${pub_team_pass}" "public demo.env tester password equals demo/accounts.csv"
+  assert_contains "OTT_DEMO_TEAM_COUNT=${csv_team_count}" "${pub_content}" "public demo.env team count equals the number of team rows in demo/accounts.csv"
+  local pub_pg_pass
+  pub_pg_pass="$(grep '^POSTGRES_PASSWORD=' "${pub_env_file}" | cut -d= -f2-)"
+  if [[ "${pub_pg_pass}" != "${csv_btc_pass}" && "${pub_pg_pass}" != "${csv_team_pass}" ]]; then
+    PASSED_TESTS=$((PASSED_TESTS + 1))
+    echo "  PASS: infrastructure passwords stay random (POSTGRES_PASSWORD differs from the public accounts)"
+  else
+    FAILED_TESTS=$((FAILED_TESTS + 1))
+    echo "  FAIL: POSTGRES_PASSWORD equals a public account password" >&2
+  fi
+
+  # 5c-3. demo/accounts.csv validation: clear error, exit 1, no password echoed, no env file created
+  local bad_name bad_csv bad_env
+  local -a bad_cases=(
+    "header|username,pass,role,team\nbtc,Secret1Secret1,BTC_ADMIN,\nteam01,Secret2Secret2,TEAM_ACCOUNT,Team 01\n|header must be exactly"
+    "nobtc|username,password,role,team\nteam01,Secret2Secret2,TEAM_ACCOUNT,Team 01\n|exactly one btc row"
+    "mixedpw|username,password,role,team\nbtc,Secret1Secret1,BTC_ADMIN,\nteam01,Secret2Secret2,TEAM_ACCOUNT,Team 01\nteam02,Secret3Secret3,TEAM_ACCOUNT,Team 02\n|share one password"
+    "dup|username,password,role,team\nbtc,Secret1Secret1,BTC_ADMIN,\nteam01,Secret2Secret2,TEAM_ACCOUNT,Team 01\nteam01,Secret2Secret2,TEAM_ACCOUNT,Team 01\n|duplicate username"
+    "gap|username,password,role,team\nbtc,Secret1Secret1,BTC_ADMIN,\nteam01,Secret2Secret2,TEAM_ACCOUNT,Team 01\nteam03,Secret2Secret2,TEAM_ACCOUNT,Team 03\n|consecutive from team01"
+    "short|username,password,role,team\nbtc,abc,BTC_ADMIN,\nteam01,Secret2Secret2,TEAM_ACCOUNT,Team 01\n|invalid password"
+    "teamname|username,password,role,team\nbtc,Secret1Secret1,BTC_ADMIN,\nteam01,Secret2Secret2,TEAM_ACCOUNT,Wrong\n|team name must be"
+  )
+  local bad_entry
+  for bad_entry in "${bad_cases[@]}"; do
+    bad_name="${bad_entry%%|*}"
+    local rest="${bad_entry#*|}"
+    local bad_content="${rest%|*}"
+    local bad_expect="${rest##*|}"
+    bad_csv="${tmp_dir}/bad_accounts_${bad_name}.csv"
+    bad_env="${tmp_dir}/bad_pub_${bad_name}.env"
+    printf '%b' "${bad_content}" > "${bad_csv}"
+    run_cmd env PATH="${mock_bin}:${PATH}" \
+      OTT_DEMO_PROJECT="${disposable_project}" \
+      OTT_DEMO_ENV_FILE="${bad_env}" \
+      OTT_DEMO_PUBLIC_ACCOUNTS_CSV="${bad_csv}" \
+      DOCKER_SOCKET="${fake_socket}" \
+      bash "${DEMO_SCRIPT}" up --public --no-build --port 19997 --bind 127.0.0.1
+    assert_eq "1" "${TEST_CODE}" "up --public with bad accounts CSV (${bad_name}) exits 1"
+    assert_contains "${bad_expect}" "${TEST_OUT}" "bad accounts CSV (${bad_name}) reports: ${bad_expect}"
+    assert_not_contains "Secret1Secret1" "${TEST_OUT}" "bad accounts CSV (${bad_name}) output never echoes a password"
+    assert_not_contains "Secret2Secret2" "${TEST_OUT}" "bad accounts CSV (${bad_name}) output never echoes a team password"
+    if [[ ! -e "${bad_env}" ]]; then
+      PASSED_TESTS=$((PASSED_TESTS + 1))
+      echo "  PASS: bad accounts CSV (${bad_name}) creates no demo.env"
+    else
+      FAILED_TESTS=$((FAILED_TESTS + 1))
+      echo "  FAIL: bad accounts CSV (${bad_name}) created ${bad_env}" >&2
+    fi
+  done
+  run_cmd env PATH="${mock_bin}:${PATH}" \
+    OTT_DEMO_PROJECT="${disposable_project}" \
+    OTT_DEMO_ENV_FILE="${tmp_dir}/missing_csv.env" \
+    OTT_DEMO_PUBLIC_ACCOUNTS_CSV="${tmp_dir}/does-not-exist.csv" \
+    DOCKER_SOCKET="${fake_socket}" \
+    bash "${DEMO_SCRIPT}" up --public --no-build --port 19997 --bind 127.0.0.1
+  assert_eq "1" "${TEST_CODE}" "up --public with a missing accounts CSV exits 1"
+  assert_contains "public demo accounts file not found" "${TEST_OUT}" "missing accounts CSV reports a clear error"
+
   # Second run: public env not overwritten
   local pub_sha
   pub_sha="$(sha256sum "${pub_env_file}" | awk '{print $1}')"
@@ -471,6 +536,56 @@ EOF
 
   kill "${bg_flock_pid}" 2>/dev/null || true
   wait "${bg_flock_pid}" 2>/dev/null || true
+
+  # Public refresh re-reads demo/accounts.csv: env is rewritten with the CSV credentials before docker runs
+  local sync_env="${tmp_dir}/sync_public.env"
+  local sync_csv="${tmp_dir}/sync_accounts.csv"
+  printf 'username,password,role,team\nbtc,BtcSecretNew1,BTC_ADMIN,\nteam01,TeamSecretNew1,TEAM_ACCOUNT,Team 01\nteam02,TeamSecretNew1,TEAM_ACCOUNT,Team 02\nteam03,TeamSecretNew1,TEAM_ACCOUNT,Team 03\n' > "${sync_csv}"
+  cat > "${sync_env}" <<EOF_SYNC
+POSTGRES_PASSWORD=infra-pg-keep
+OTT_BOOTSTRAP_BTC_PASSWORD=oldbtc
+OTT_DEMO_BTC_PASSWORD=oldbtc
+OTT_DEMO_TEAM_COUNT=10
+OTT_DEMO_TEAM_PASSWORD=oldteam
+DEMO_PUBLIC=true
+EOF_SYNC
+  chmod 600 "${sync_env}"
+  > "${docker_log}"
+  run_cmd env PATH="${mock_bin}:${PATH}" \
+    OTT_DEMO_PROJECT="${disposable_project}" \
+    OTT_DEMO_ENV_FILE="${sync_env}" \
+    OTT_DEMO_PUBLIC_ACCOUNTS_CSV="${sync_csv}" \
+    DOCKER_SOCKET="${fake_socket}" \
+    bash "${DEMO_SCRIPT}" refresh --yes
+  local sync_content
+  sync_content="$(cat "${sync_env}")"
+  assert_contains "OTT_BOOTSTRAP_BTC_PASSWORD=BtcSecretNew1" "${sync_content}" "public refresh rewrites the bootstrap btc password from the CSV"
+  assert_contains "OTT_DEMO_BTC_PASSWORD=BtcSecretNew1" "${sync_content}" "public refresh rewrites the demo btc password from the CSV"
+  assert_contains "OTT_DEMO_TEAM_PASSWORD=TeamSecretNew1" "${sync_content}" "public refresh rewrites the team password from the CSV"
+  assert_contains "OTT_DEMO_TEAM_COUNT=3" "${sync_content}" "public refresh rewrites the team count from the CSV"
+  assert_contains "POSTGRES_PASSWORD=infra-pg-keep" "${sync_content}" "public refresh leaves infrastructure passwords untouched"
+  assert_not_contains "oldbtc" "${sync_content}" "public refresh leaves no stale btc password"
+  local sync_mode
+  sync_mode="$(stat -c %a "${sync_env}" 2>/dev/null || stat -f %Lp "${sync_env}" 2>/dev/null || echo "")"
+  assert_eq "600" "${sync_mode}" "public refresh keeps demo.env at mode 0600"
+  assert_contains "down --volumes --remove-orphans" "$(cat "${docker_log}")" "public refresh still wipes the data volumes after syncing"
+
+  # Public refresh with an invalid CSV: exit 1 before any docker action, env untouched, no password echoed
+  printf 'username,password,role,team\nteam01,TeamSecretNew1,TEAM_ACCOUNT,Team 01\n' > "${sync_csv}"
+  local sync_before
+  sync_before="$(cat "${sync_env}")"
+  > "${docker_log}"
+  run_cmd env PATH="${mock_bin}:${PATH}" \
+    OTT_DEMO_PROJECT="${disposable_project}" \
+    OTT_DEMO_ENV_FILE="${sync_env}" \
+    OTT_DEMO_PUBLIC_ACCOUNTS_CSV="${sync_csv}" \
+    DOCKER_SOCKET="${fake_socket}" \
+    bash "${DEMO_SCRIPT}" refresh --yes
+  assert_eq "1" "${TEST_CODE}" "public refresh with an invalid accounts CSV exits 1"
+  assert_contains "exactly one btc row" "${TEST_OUT}" "public refresh reports the CSV problem"
+  assert_not_contains "TeamSecretNew1" "${TEST_OUT}" "public refresh never echoes a password"
+  assert_eq "" "$(cat "${docker_log}")" "invalid accounts CSV stops refresh before any docker action"
+  assert_eq "${sync_before}" "$(cat "${sync_env}")" "invalid accounts CSV leaves demo.env untouched"
 
   # Refresh with missing demo.env exits 1, prints error, stub docker log empty, no env created
   local missing_refresh_env="${tmp_dir}/missing_refresh.env"

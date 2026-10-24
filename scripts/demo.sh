@@ -83,6 +83,73 @@ validate_ipv4() {
   return 1
 }
 
+# Public demo accounts are fixed and public on purpose (the data is reset and re-seeded on a schedule).
+# Single source of truth: demo/accounts.csv (override with OTT_DEMO_PUBLIC_ACCOUNTS_CSV for tests).
+# Prints "<btc password>\t<shared team password>\t<team count>" or an error (never a password) and fails.
+load_public_accounts() {
+  local file="${OTT_DEMO_PUBLIC_ACCOUNTS_CSV:-${REPO_ROOT}/demo/accounts.csv}"
+  if [[ ! -f "${file}" ]]; then
+    echo "Error: public demo accounts file not found at ${file}" >&2
+    return 1
+  fi
+  LC_ALL=C awk -F',' -v file="${file}" '
+    function fail(msg) { print "Error: " msg " in " file > "/dev/stderr"; err = 1; exit 1 }
+    BEGIN { err = 0 }
+    NR == 1 {
+      sub(/\r$/, "")
+      if ($0 != "username,password,role,team") fail("header must be exactly username,password,role,team")
+      next
+    }
+    { sub(/\r$/, "") }
+    $0 == "" { next }
+    {
+      if (NF != 4) fail("line " NR " must have 4 columns")
+      u = $1; p = $2; r = $3; t = $4
+      if (u in seen) fail("duplicate username on line " NR)
+      seen[u] = 1
+      if (length(p) < 6 || length(p) > 128 || p ~ /["\047[:cntrl:]]/) fail("invalid password on line " NR)
+      if (u == "btc") {
+        if (r != "BTC_ADMIN" || t != "") fail("btc row must be BTC_ADMIN with an empty team (line " NR ")")
+        btc = p; nb++
+      } else if (u ~ /^team[0-9][0-9]$/) {
+        idx = substr(u, 5) + 0
+        if (r != "TEAM_ACCOUNT") fail("team row must be TEAM_ACCOUNT (line " NR ")")
+        if (t != sprintf("Team %02d", idx)) fail("team name must be Team NN matching the username (line " NR ")")
+        if (team == "") team = p; else if (team != p) fail("all team rows must share one password (line " NR ")")
+        present[idx] = 1; nt++
+        if (idx > maxidx) maxidx = idx
+      } else fail("unexpected username on line " NR)
+    }
+    END {
+      if (err) exit 1
+      if (nb != 1) fail("exactly one btc row is required")
+      if (nt < 1 || nt > 50) fail("between 1 and 50 team rows are required")
+      if (maxidx != nt) fail("team usernames must be consecutive from team01")
+      for (i = 1; i <= nt; i++) if (!(i in present)) fail("team usernames must be consecutive from team01")
+      printf "%s\t%s\t%d\n", btc, team, nt
+    }
+  ' "${file}"
+}
+
+# Rewrites the public-account keys of an existing public demo.env from demo/accounts.csv so that a
+# data reset ("refresh") always re-seeds exactly the accounts listed in the CSV. Other keys are untouched.
+sync_public_accounts_into_env() {
+  local values btc_pass team_pass team_count tmp
+  values="$(load_public_accounts)" || return 1
+  IFS=$'\t' read -r btc_pass team_pass team_count <<< "${values}"
+  tmp="${DEMO_ENV_FILE}.sync.$$"
+  ( umask 077
+    OTT_SYNC_BTC="${btc_pass}" OTT_SYNC_TEAM="${team_pass}" OTT_SYNC_COUNT="${team_count}" \
+    awk -F'=' '
+      $1 == "OTT_BOOTSTRAP_BTC_PASSWORD" || $1 == "OTT_DEMO_BTC_PASSWORD" { print $1 "=" ENVIRON["OTT_SYNC_BTC"]; next }
+      $1 == "OTT_DEMO_TEAM_PASSWORD" { print $1 "=" ENVIRON["OTT_SYNC_TEAM"]; next }
+      $1 == "OTT_DEMO_TEAM_COUNT" { print $1 "=" ENVIRON["OTT_SYNC_COUNT"]; next }
+      { print }
+    ' "${DEMO_ENV_FILE}" > "${tmp}" ) || { rm -f "${tmp}"; return 1; }
+  chmod 0600 "${tmp}"
+  mv "${tmp}" "${DEMO_ENV_FILE}"
+}
+
 generate_tester_password() {
   if command -v python3 >/dev/null 2>&1; then
     python3 -c "import secrets; chars = [c for c in 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789' if c not in '0O1lI']; print(''.join(secrets.choice(chars) for _ in range(12)))"
@@ -548,9 +615,10 @@ sub_up() {
 
     local tmp_env="${DEMO_ENV_FILE}.tmp.$$"
     if (( is_public == 1 )); then
-      local btc_pass tester_pass
-      btc_pass="$(generate_secret)"
-      tester_pass="$(generate_tester_password)"
+      local btc_pass tester_pass team_count public_accounts
+      public_accounts="$(load_public_accounts)" || exit 1
+      IFS=$'\t' read -r btc_pass tester_pass team_count <<< "${public_accounts}"
+      unset public_accounts
       cat > "${tmp_env}" <<EOF
 POSTGRES_DB=ott_demo
 POSTGRES_USER=ott_demo
@@ -572,7 +640,7 @@ OTT_DEMO_MODE=true
 OTT_BOOTSTRAP_BTC_USERNAME=btc
 OTT_BOOTSTRAP_BTC_PASSWORD=${btc_pass}
 OTT_DEMO_BTC_PASSWORD=${btc_pass}
-OTT_DEMO_TEAM_COUNT=10
+OTT_DEMO_TEAM_COUNT=${team_count}
 OTT_DEMO_TEAM_PASSWORD=${tester_pass}
 DEMO_UID=$(id -u)
 DEMO_GID=$(id -g)
@@ -866,6 +934,12 @@ sub_refresh() {
     fi
     echo "$$" > "${lock_dir}/pid"
     CLEANUP_FILES+=("${lock_dir}")
+  fi
+
+  # Public demo: the reset must re-seed exactly the accounts of demo/accounts.csv (validated before any docker action).
+  if grep -q '^DEMO_PUBLIC=true' "${DEMO_ENV_FILE}" 2>/dev/null; then
+    sync_public_accounts_into_env || exit 1
+    echo "Public demo accounts re-read from demo/accounts.csv."
   fi
 
   echo "Refreshing demo stack for project '${COMPOSE_PROJECT}' (preserving demo.env and accounts.csv)..."
