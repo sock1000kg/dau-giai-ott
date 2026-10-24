@@ -107,6 +107,7 @@ services:
       OTT_DEMO_TEAM_COUNT: ${OTT_DEMO_TEAM_COUNT:-2}
       OTT_DEMO_BTC_PASSWORD: ${OTT_DEMO_BTC_PASSWORD:-ABC123}
       OTT_DEMO_TEAM_PASSWORD: ${OTT_DEMO_TEAM_PASSWORD:-ABC123}
+      OTT_DEMO_FINALS_DIR: ${OTT_DEMO_FINALS_DIR:-/demo/finals}
       OTT_REFERENCE_BOT_FILE: ${OTT_REFERENCE_BOT_FILE:-/seed/ott-demo-bot-go-v1.oci.tar}
     volumes:
       - "${OTT_DEMO_ACCOUNTS_DIR:-../../.local/demo}:/demo"

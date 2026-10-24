@@ -1596,6 +1596,15 @@ EOF
   all_negations="$(grep -E '^!.*\.oci\.tar$' "${REPO_ROOT}/.dockerignore")"
   assert_eq "!src/platform/web/public/downloads/ott-demo-bot-go-v1.oci.tar" "${all_negations}" "Exactly one .oci.tar negation exists in .dockerignore"
 
+  # ----------------------------------------------------------------------------
+  # 23. Testing finals bundle seed configuration in compose and demo.sh up/refresh
+  # ----------------------------------------------------------------------------
+  echo "[23/23] Testing finals bundle seed configuration in compose and demo.sh up/refresh..."
+  assert_contains "OTT_DEMO_FINALS_DIR:" "${compose_content}" "compose.yaml defines OTT_DEMO_FINALS_DIR for seed-demo"
+  assert_contains "/demo" "${compose_content}" "compose.yaml mounts /demo"
+  assert_contains "demo:seed-finals-bundle" "$(cat "${REPO_ROOT}/src/platform/api/package.json")" "package.json defines demo:seed-finals-bundle script"
+  assert_contains "finals-bundle" "$(cat "${REPO_ROOT}/package.json")" "root package.json defines finals-bundle script"
+
   echo "================================================================="
   echo "Guard Tests Summary: ${PASSED_TESTS} passed, ${FAILED_TESTS} failed"
   echo "================================================================="

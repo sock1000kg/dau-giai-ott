@@ -137,10 +137,11 @@ When `./scripts/demo.sh up` completes, it displays the access URLs:
 - **Local Machine**: `http://127.0.0.1:8080/`
 - **Second Device on Same LAN / Wi-Fi**: `http://<LAN_IP>:8080/` (where `<LAN_IP>` is the host's LAN IP, e.g. `http://192.168.1.50:8080/`). The web gateway binds to `0.0.0.0:8080`, allowing colleagues or spectator devices on the same Wi-Fi network to browse match results, replays, and leaderboards without additional tunneling tools.
 
-### 4. BTC Reference Bot & Pre-Built Demo Bot
+### 4. BTC Reference Bot, Demo Finals Bundle & Pre-Built Demo Bot
 
 - **BTC Baseline (`btc-baseline`)**: The demo stack automatically provisions a BTC reference bot named "BTC baseline" in the catalog (`test_run_reference_bots`). It runs a minimal Go bot compiled from `src/bots/oci-fixtures/demo-bot-go/bot.go` that plays the first available legal action on each turn and works with Protocol v1 and v2.
-- **Automatic Re-Seeding on `refresh`**: Running `./scripts/demo.sh refresh` resets database and S3 datastores to a clean state and immediately re-executes `seed-demo`, which idempotently re-uploads and re-seeds `btc-baseline`.
+- **Demo Finals ResultBundle (`demo-finals-key`)**: The demo stack automatically provisions a synthetic completed finals bundle with 8 teams (`Team 01`..`Team 08`), full playoff bracket (Quarterfinals, Semifinals, Final, Bronze match), series results, and match replays. The bundle is signed with an ephemeral demo Ed25519 key registered in `result_bundle_keys`. In the web UI at `/finals`, the bracket is fully interactive with playable match replays, labelled with the footer note `* Dữ liệu chung kết mẫu` in demo mode.
+- **Automatic Re-Seeding on `refresh`**: Running `./scripts/demo.sh refresh` resets database and S3 datastores to a clean state and immediately re-executes `seed-demo`, which idempotently re-uploads and re-seeds `btc-baseline` as well as the demo finals ResultBundle.
 - **Downloadable Demo Bot**: The gateway serves a ready-to-submit pre-built bot archive at `/downloads/ott-demo-bot-go-v1.oci.tar` (829,440 bytes, SHA-256 `80d1dd7d9fb46f3c2a4779f0a62cc7ee0d6a3ce4b741df026adbb7bf6109b4e6`, checksum file at `/downloads/ott-demo-bot-go-v1.oci.tar.sha256`). Teams can download this bot from the public tournament page and upload it immediately as their first submission or use it for test runs.
 
 ---

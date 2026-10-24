@@ -32,6 +32,7 @@
     "demo:round": "bash scripts/demo.sh round",
     "demo:stop": "bash scripts/demo.sh stop",
     "demo:reset": "bash scripts/demo.sh reset",
+    "finals-bundle": "node --experimental-strip-types scripts/finals-bundle.mjs",
     "build": "npm run build --workspaces",
     "test:e2e:finals": "bash scripts/run-finals-rehearsal.sh"
   },

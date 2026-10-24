@@ -10,6 +10,7 @@ import { createPasswordHasher } from '../modules/auth/passwords.ts';
 import type { PasswordHasher } from '../modules/auth/types.ts';
 import { createS3Storage } from '../storage/s3.ts';
 import { seedDemoReferenceBot } from './seed-reference-bot.ts';
+import { seedDemoFinalsBundle } from './seed-finals-bundle.ts';
 
 export const PUBLIC_DEMO_PASSWORD = 'ABC123';
 
@@ -305,6 +306,21 @@ export async function main(): Promise<void> {
       }
     } else {
       process.stdout.write('S3 not configured; skipping BTC reference bot seed.\n');
+    }
+
+    try {
+      const finalsResult = await seedDemoFinalsBundle({
+        database,
+        environment: env,
+      });
+      process.stdout.write(
+        `Seeded demo finals bundle ${finalsResult.bundleId} (key ${finalsResult.keyId}, replayed=${finalsResult.replayed})\n`,
+      );
+    } catch (err) {
+      process.stderr.write(
+        `Failed to seed demo finals bundle: ${err instanceof Error ? err.message : String(err)}\n`,
+      );
+      throw err;
     }
   } finally {
     await database.close();

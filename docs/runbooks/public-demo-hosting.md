@@ -83,6 +83,8 @@ Download pre-built demo bot (.oci.tar): https://<your-public-tunnel-domain>/down
 
 Testers can download the pre-built demo bot `ott-demo-bot-go-v1.oci.tar` directly from the public tournament page or the link above, upload it as their initial submission, or test against the seeded BTC baseline (`btc-baseline`) opponent on the test-run page.
 
+The public demo stack also pre-seeds a completed finals tournament ResultBundle (`demo-finals-key`), allowing testers to explore the interactive finals bracket and sample replays under `/finals` with a demo notice footer.
+
 ---
 
 ## 4. Running the Tournament

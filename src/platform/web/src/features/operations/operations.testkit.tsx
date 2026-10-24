@@ -38,6 +38,7 @@ export function install(options: Options = {}) {
     if (url.startsWith('/api/v1/admin/operations/audit')) return options.audit?.(url) ?? response(200, { data: { items: [] } });
     if (url === '/api/v1/public/queue-overrides') return response(200, { data: { items: [] } });
     if (url.startsWith('/api/v1/admin/submissions/flagged')) return response(200, { data: [], total: 0, page: 1, pageSize: 20 });
+    if (url === '/api/v1/admin/result-bundles/keys') return response(200, { data: [] });
     throw new Error(`unmocked request: ${url}`);
   });
   vi.stubGlobal('fetch', fetchMock);

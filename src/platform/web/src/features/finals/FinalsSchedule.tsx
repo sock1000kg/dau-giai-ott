@@ -2,9 +2,10 @@ import type { FinalsSeriesPairing } from './api.ts';
 
 export interface FinalsScheduleProps {
   readonly bracket: readonly FinalsSeriesPairing[];
+  readonly bundleId?: string | undefined;
 }
 
-export function FinalsSchedule({ bracket }: FinalsScheduleProps) {
+export function FinalsSchedule({ bracket, bundleId }: FinalsScheduleProps) {
   return (
     <section aria-label="Lịch thi đấu và Kết quả chi tiết Vòng Chung kết" className="finals-schedule-section" style={{ marginTop: '36px' }}>
       <h2>Lịch thi đấu & Kết quả chi tiết (BO3)</h2>
@@ -94,7 +95,11 @@ export function FinalsSchedule({ bracket }: FinalsScheduleProps) {
                         {/* AC-3: Replay link ONLY when verified import and published */}
                         {game.replayPublished && game.replayMatchId ? (
                           <a
-                            href={`/spectator/replays/${game.replayMatchId}`}
+                            href={
+                              bundleId
+                                ? `/spectator/replays/${game.replayMatchId}?bundle=${encodeURIComponent(bundleId)}`
+                                : `/spectator/replays/${game.replayMatchId}`
+                            }
                             className="submission-status"
                             style={{
                               borderColor: '#80e4d0',

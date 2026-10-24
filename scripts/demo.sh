@@ -615,6 +615,10 @@ EOF
   OTT_DEMO_ACCOUNTS_BASENAME="$(basename "${ACCOUNTS_CSV}")"
   export OTT_DEMO_ACCOUNTS_DIR OTT_DEMO_ACCOUNTS_BASENAME
 
+  local finals_dir="${OTT_DEMO_ACCOUNTS_DIR}/finals"
+  mkdir -p -m 700 "${finals_dir}"
+  chmod 700 "${finals_dir}"
+
   # Initialize public editorial JSON only if missing (mounts into coordinator at /editorial)
   local editorial_dir="${OTT_DEMO_EDITORIAL_HOST_DIR:-${REPO_ROOT}/.local/demo/editorial}"
   mkdir -p -m 700 "${editorial_dir}"
@@ -1014,6 +1018,7 @@ sub_reset() {
   fi
 
   rm -f "${ACCOUNTS_CSV}" "${DEMO_ENV_FILE}"
+  rm -rf "${REPO_ROOT}/.local/demo/finals" 2>/dev/null || true
   echo "Reset complete."
 }
 

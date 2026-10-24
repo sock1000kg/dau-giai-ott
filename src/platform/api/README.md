@@ -689,3 +689,31 @@ npm run demo:seed-reference-bot --workspace @ott/platform-api
 - **Archive Validation**: Validates the uncompressed OCI archive (`ott-demo-bot-go-v1.oci.tar`) via `validateOciSubmission` from `@ott/job-contract` and asserts against pinned SHA-256 (`80d1dd7d9fb46f3c2a4779f0a62cc7ee0d6a3ce4b741df026adbb7bf6109b4e6`).
 - **Storage & Catalog**: Uploads to object storage at `reference-bots/<sha256>.oci.tar` if not already present, and upserts a row into `test_run_reference_bots` (`id='btc-baseline'`, `display_name='BTC baseline'`). On conflict, object/digest fields are updated while preserving any administrative `enabled` state.
 - **Lifecycle Integration**: Integrated into `seed-demo` in `infra/local/compose.yaml`, so `demo.sh up` and `demo.sh refresh` automatically seed the baseline bot for test runs.
+
+## Finals ResultBundle Workflow & CLI (`P3-D09` / Loop 96)
+
+Cryptographic ResultBundle workflow for finals rounds:
+
+### Key Management Endpoints (BTC_ADMIN only)
+- `GET /api/v1/admin/result-bundles/keys`: List allowlisted and revoked keys with usage stats.
+- `POST /api/v1/admin/result-bundles/keys`: Register an Ed25519 public key. Rejects private keys (400 `RESULT_BUNDLE_KEY_PRIVATE_REJECTED`), computes fingerprint as lowercase SHA-256 hex of SPKI DER, and enforces `fingerprintConfirmation`. Emits `RESULT_BUNDLE_KEY_ALLOWLISTED` audit log.
+- `POST /api/v1/admin/result-bundles/keys/:keyId/revoke`: Revoke an existing key (`revoked_at` set). Emits `RESULT_BUNDLE_KEY_REVOKED` audit log.
+
+### ResultBundle Import & Verification
+- `POST /api/v1/admin/result-bundles`: Full publish of signed ResultBundle (body limit 257M).
+- `POST /api/v1/admin/result-bundles?dryRun=true` or `/verify`: Dry-run validation of manifest signature, per-file hashes, key allowlist, and artifact schema without persisting.
+- `GET /api/v1/public/finals/snapshot`: Latest public finals snapshot with verified cryptographic proof metadata.
+
+### Offline CLI (`scripts/finals-bundle.mjs`)
+Wrapped via `npm run finals-bundle -- <cmd>`:
+- `keygen --out-dir <dir> --key-id <id>`: Generates Ed25519 keypair (`.private.pem` mode 0600, `.public.pem` mode 0644).
+- `fingerprint --public <pem>`: Computes lowercase SHA-256 SPKI DER hex fingerprint.
+- `export --db-url <url> --competition <id> --round <round> --private-key <pem> --key-id <id> --bundle-id <id> --out <file>`: Exports finalized round artifacts and signs the manifest.
+- `verify --bundle <file> --public <pem>`: Offline validation of bundle signature and artifacts.
+- `demo-export --out <file> [--key-dir <dir>]`: Generates synthetic valid finals bundle with demo key.
+
+### Demo Finals Seeding
+```bash
+npm run demo:seed-finals-bundle --workspace @ott/platform-api
+```
+Automatically run by `seed-demo` in `infra/local/compose.yaml` during `demo.sh up` / `refresh`.

@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../../app/App.tsx';
 import { FinalsPage } from './FinalsPage.tsx';
@@ -153,16 +153,27 @@ describe('Finals UI — AC-2: Proof Metadata & Stale State', () => {
     expect(screen.getByText('✓ VERIFIED')).toBeTruthy();
   });
 
-  it('displays stale alert when snapshot age exceeds threshold', () => {
+  it('does not render stale warning for published snapshot with old verifiedAt/updatedAt', () => {
+    const oldSnapshot = {
+      ...createFinalsFixture(),
+      updatedAt: '2025-01-01T00:00:00.000Z',
+      verifiedAt: '2025-01-01T00:00:00.000Z',
+    };
+    render(<FinalsPage initialSnapshot={oldSnapshot} />);
+    expect(screen.queryByText(/Dữ liệu cũ - Đang giữ bản cập nhật cuối/i)).toBeNull();
+  });
+
+  it('renders stale warning badge when background refresh fails after data was loaded', async () => {
     const fixture = createFinalsFixture();
-    // Simulate old snapshot (> 90s)
-    const oldTimestamp = new Date(Date.now() - 120_000).toISOString();
-    const staleFixture = { ...fixture, updatedAt: oldTimestamp };
+    const fetchMock = vi.fn(async () => {
+      throw new Error('Network error');
+    });
+    vi.stubGlobal('fetch', fetchMock);
 
-    render(<FinalsPage initialSnapshot={staleFixture} />);
+    render(<FinalsPage initialSnapshot={fixture} />);
 
-    const alert = screen.getByText(/\[Dữ liệu cũ - Đang giữ bản cập nhật cuối\]/);
-    expect(alert).toBeTruthy();
+    // Initial data is rendered, and background refresh fails, setting stale warning badge
+    expect(await screen.findByText(/Dữ liệu cũ - Đang giữ bản cập nhật cuối/i)).toBeTruthy();
   });
 
   it('validates proof parser strictly and rejects tampered hash or status', () => {
@@ -191,10 +202,10 @@ describe('Finals UI — AC-3: Replay Publication Privacy & Accessibility', () =>
     const fixture = createFinalsFixture();
     render(<FinalsPage initialSnapshot={fixture} />);
 
-    // QF1 Game 1 has replayPublished: true -> link exists
+    // QF1 Game 1 has replayPublished: true -> link exists and carries bundleId
     const replayLinkGame1 = screen.getByRole('link', { name: 'Xem replay ván 1 trận Tứ kết 1' });
     expect(replayLinkGame1).toBeTruthy();
-    expect(replayLinkGame1.getAttribute('href')).toBe('/spectator/replays/00000000-0000-4000-8000-000000000001');
+    expect(replayLinkGame1.getAttribute('href')).toBe('/spectator/replays/00000000-0000-4000-8000-000000000001?bundle=bundle-finals-official-001');
 
     // QF2 Game 1 has replayPublished: false -> link MUST NOT be rendered
     expect(screen.queryByRole('link', { name: 'Xem replay ván 1 trận Tứ kết 2' })).toBeNull();
@@ -224,5 +235,23 @@ describe('Finals UI — AC-3: Replay Publication Privacy & Accessibility', () =>
     expect(screen.getByRole('heading', { level: 2, name: 'Nhánh đấu chính thức' })).toBeTruthy();
     expect(screen.getByRole('region', { name: 'Bảng xếp hạng và Nhánh đấu Chung kết' })).toBeTruthy();
     expect(screen.getByRole('region', { name: 'Lịch thi đấu và Kết quả chi tiết Vòng Chung kết' })).toBeTruthy();
+  });
+
+  it('renders demo footer label when tournamentId starts with OTT_DEMO_', () => {
+    const demoFixture = {
+      ...createFinalsFixture(),
+      tournamentId: 'OTT_DEMO_FINALS_2026',
+    };
+    render(<FinalsPage initialSnapshot={demoFixture} />);
+    expect(screen.getByText('* Dữ liệu chung kết mẫu')).toBeTruthy();
+  });
+
+  it('does not render demo footer label for standard production tournaments', () => {
+    const prodFixture = {
+      ...createFinalsFixture(),
+      tournamentId: 'tournament-prod-2026',
+    };
+    render(<FinalsPage initialSnapshot={prodFixture} />);
+    expect(screen.queryByText('* Dữ liệu chung kết mẫu')).toBeNull();
   });
 });

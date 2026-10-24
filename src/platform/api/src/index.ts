@@ -150,3 +150,72 @@ export {
   type MatchArtifact,
   type SeriesArtifact,
 } from './modules/result-bundles/artifacts.ts';
+export {
+  canonicalSha256,
+  canonicalizeJson,
+  sha256HexOf,
+} from './modules/result-bundles/canonical.ts';
+export {
+  DEMO_BUNDLE_ID,
+  DEMO_BUNDLE_VERSION,
+  DEMO_FINALS_CREATED_AT,
+  DEMO_KEY_ID,
+  DEMO_RULE_SET_ID,
+  DEMO_TOURNAMENT_ID,
+  buildSyntheticDemoBundle,
+  createSyntheticDemoTournament,
+  exportDemoFinalsBundle,
+  type DemoBundleArtifactPayload,
+  type DemoBundleJsonEnvelope,
+  type ExportDemoFinalsBundleOptions,
+  type ExportDemoFinalsBundleResult,
+} from './modules/result-bundles/demo-bundle.ts';
+export {
+  buildSignedResultBundle,
+  type BuildResultBundleInput,
+  type ResultBundleArtifactInput,
+  type SignedResultBundle,
+} from './modules/result-bundles/exporter.ts';
+export {
+  getPublishedResultBundleProof,
+  importResultBundle,
+  normalizeArtifactPath,
+  parseResultBundleManifest,
+  verifyResultBundle,
+  verifyResultBundleEnvelope,
+  verifyResultBundlePayload,
+  type ImportResultBundleOptions,
+  type PureVerifiedBundle,
+  type ResultBundleArtifactPayload,
+  type ResultBundleCorrection,
+  type ResultBundleImportInput,
+  type ResultBundleImportResult,
+  type ResultBundleManifestArtifact,
+  type ResultBundleManifestV1,
+  type ResultBundlePublicProof,
+  type ResultBundleVerifyResult,
+  type VerifyResultBundlePayloadOptions,
+} from './modules/result-bundles/importer.ts';
+export {
+  allowlistResultBundleKey,
+  computeKeyFingerprint,
+  listResultBundleKeys,
+  normalizeFingerprint,
+  revokeResultBundleKey,
+  validateKeyId,
+  validatePublicKeyPem,
+  validateReason,
+  type AllowlistKeyInput,
+  type AllowlistKeyResult,
+  type ResultBundleKeyRecord,
+  type RevokeKeyInput,
+  type RevokeKeyResult,
+} from './modules/result-bundles/keys.ts';
+export {
+  publicEventLog,
+} from './modules/replays/service.ts';
+export {
+  projectFinalsSnapshot,
+  registerResultBundleRoutes,
+  type ResultBundleRoutesOptions,
+} from './modules/result-bundles/routes.ts';
