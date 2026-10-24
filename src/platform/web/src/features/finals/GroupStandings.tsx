@@ -59,7 +59,7 @@ export function GroupStandings({ standings, bracket, isStale }: GroupStandingsPr
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', marginTop: '16px', alignItems: 'stretch' }}>
           {/* Tứ kết */}
           <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '12px' }}>
-            <h3 style={{ fontSize: '14px', textTransform: 'uppercase', color: '#8ea4b7', textAlign: 'center', margin: 0 }}>Tứ kết (BO3)</h3>
+            <h3 style={{ fontSize: '14px', textTransform: 'uppercase', color: 'var(--ui-text-muted)', textAlign: 'center', margin: 0 }}>Tứ kết (BO3)</h3>
             {qfPairings.map((pairing) => (
               <PairingCard key={pairing.pairingId} pairing={pairing} />
             ))}
@@ -67,7 +67,7 @@ export function GroupStandings({ standings, bracket, isStale }: GroupStandingsPr
 
           {/* Bán kết */}
           <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '12px' }}>
-            <h3 style={{ fontSize: '14px', textTransform: 'uppercase', color: '#8ea4b7', textAlign: 'center', margin: 0 }}>Bán kết (BO3)</h3>
+            <h3 style={{ fontSize: '14px', textTransform: 'uppercase', color: 'var(--ui-text-muted)', textAlign: 'center', margin: 0 }}>Bán kết (BO3)</h3>
             {sfPairings.map((pairing) => (
               <PairingCard key={pairing.pairingId} pairing={pairing} />
             ))}
@@ -75,16 +75,16 @@ export function GroupStandings({ standings, bracket, isStale }: GroupStandingsPr
 
           {/* Chung kết & Tranh hạng ba */}
           <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '12px' }}>
-            <h3 style={{ fontSize: '14px', textTransform: 'uppercase', color: '#8ea4b7', textAlign: 'center', margin: 0 }}>Chung kết & Hạng 3</h3>
+            <h3 style={{ fontSize: '14px', textTransform: 'uppercase', color: 'var(--ui-text-muted)', textAlign: 'center', margin: 0 }}>Chung kết & Hạng 3</h3>
             {finalPairing && (
               <div>
-                <div style={{ fontSize: '11px', color: '#ffd59a', fontWeight: 'bold', textAlign: 'center', marginBottom: '4px' }}>TRANH VÔ ĐỊCH</div>
+                <div style={{ fontSize: '11px', color: 'var(--ui-warning)', fontWeight: 'bold', textAlign: 'center', marginBottom: '4px' }}>TRANH VÔ ĐỊCH</div>
                 <PairingCard pairing={finalPairing} isChampMatch />
               </div>
             )}
             {bronzePairing && (
               <div style={{ marginTop: '8px' }}>
-                <div style={{ fontSize: '11px', color: '#8ea4b7', textAlign: 'center', marginBottom: '4px' }}>TRANH HẠNG BA</div>
+                <div style={{ fontSize: '11px', color: 'var(--ui-text-muted)', textAlign: 'center', marginBottom: '4px' }}>TRANH HẠNG BA</div>
                 <PairingCard pairing={bronzePairing} />
               </div>
             )}
@@ -104,17 +104,17 @@ function PairingCard({ pairing, isChampMatch }: { readonly pairing: FinalsSeries
       className="result-card"
       style={{
         padding: '12px 16px',
-        borderColor: isChampMatch ? 'rgba(255, 213, 154, 0.4)' : undefined,
+        borderColor: isChampMatch ? 'var(--ui-warning)' : undefined,
       }}
       aria-label={`${pairing.roundName}: ${pairing.teamA?.teamName ?? 'TBD'} vs ${pairing.teamB?.teamName ?? 'TBD'}`}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '12px', color: '#8ea4b7' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '12px', color: 'var(--ui-text-muted)' }}>
         <span>{pairing.roundName}</span>
         <span className="result-status">{pairing.status}</span>
       </div>
 
       {/* Team A */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontWeight: isAWin ? 'bold' : 'normal', color: isAWin ? '#80e4d0' : '#f3f6fb' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontWeight: isAWin ? 'bold' : 'normal', color: isAWin ? 'var(--ui-accent)' : 'var(--ui-text)' }}>
         <span>
           {pairing.teamA ? `${pairing.teamA.teamName} (#${pairing.teamA.seedOrdinal})` : 'Chờ xác định'}
         </span>
@@ -122,7 +122,7 @@ function PairingCard({ pairing, isChampMatch }: { readonly pairing: FinalsSeries
       </div>
 
       {/* Team B */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderTop: '1px solid rgba(177, 204, 224, 0.1)', fontWeight: isBWin ? 'bold' : 'normal', color: isBWin ? '#80e4d0' : '#f3f6fb' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderTop: '1px solid var(--ui-border)', fontWeight: isBWin ? 'bold' : 'normal', color: isBWin ? 'var(--ui-accent)' : 'var(--ui-text)' }}>
         <span>
           {pairing.teamB ? `${pairing.teamB.teamName} (#${pairing.teamB.seedOrdinal})` : 'Chờ xác định'}
         </span>

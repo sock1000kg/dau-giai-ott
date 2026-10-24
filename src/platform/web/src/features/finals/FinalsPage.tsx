@@ -107,7 +107,7 @@ export function FinalsPage({ initialSnapshot = null }: FinalsPageProps) {
       <FinalsSchedule bracket={snapshot.bracket} bundleId={snapshot.proof?.bundleId} />
 
       {snapshot.tournamentId.startsWith('OTT_DEMO_') && (
-        <footer style={{ marginTop: '24px', textAlign: 'center', color: '#64748b', fontSize: '12px' }}>
+        <footer style={{ marginTop: '24px', textAlign: 'center', color: 'var(--ui-text-muted)', fontSize: '12px' }}>
           * Dữ liệu chung kết mẫu
         </footer>
       )}
