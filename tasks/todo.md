@@ -1286,6 +1286,17 @@ Parent `P3-L02` chỉ hoàn tất khi mọi phần được verify; không dùng
 
 ## Phase 3 — Wave 3: submission và test run ở quy mô lớn
 
+### [ ] P3-T02 — Đồng bộ round recovery và submission window về main
+
+**Owner:** Đinh Đức Thuận
+**Mô tả:** Port behavior đã kiểm chứng từ `96082f3` và `ee9b1f4` lên `main` mới mà không cherry-pick migration/implementation cancel cũ: đóng race giữa upload và cancel/close, bổ sung CLI cancel, và tạo ruleset immutable mới khi submission window hết hạn.
+**Acceptance criteria:** (1) upload chỉ commit khi round vẫn `SUBMISSION_OPEN`; cancel/close đồng thời trả `409 SUBMISSION_NOT_OPEN`, không tạo submission, không hoàn tất reservation và dọn object mới; response upload mới/idempotent đều có `createdAt`; (2) `demo.sh round cancel` chỉ chọn round chưa chạy, yêu cầu confirmation/reason hợp lệ, giữ submissions/audit và cho phép tạo round thay thế; (3) `round open` tạo schedule đang mở với deadline tương lai, tái sử dụng ruleset còn hạn hoặc clone toàn bộ rules sang version mới và chỉ thay schedule khi hết hạn; round đang mở với deadline cũ báo recovery thay vì thành công giả.
+**Verification:** TDD regression cho upload/cancel race; `npm test --workspace @ott/platform-api -- submissions round-rules`; PostgreSQL integration fresh migrations và concurrency timeout; `python3 -B scripts/tests/test_demo_json_schedule.py`; `bash scripts/tests/demo.test.sh guards`; live demo flow cancel → open → kiểm `opensAt < now < deadlineAt < graceEndsAt`, submissions/audit giữ nguyên; root `npm test`, `npm run typecheck`, `npm run build`, `git diff --check`; browser/manual check `/team/submissions`; GitNexus impact trước edit và detect-changes trước mỗi commit.
+**Dependencies:** `P3-D01`, `P3-D03`, migration `0021_round_cancel.sql` và API/UI cancel đã merge trên `main`.
+**Files likely touched:** `src/platform/api/src/modules/submissions/routes.ts`, `src/platform/api/tests/submissions.routes.test.ts`, `scripts/demo.sh`, `scripts/lib/demo_json.py`, `scripts/tests/demo.test.sh`, `scripts/tests/test_demo_json_schedule.py`, `docs/contracts/oci-submission-v1.md`, `docs/runbooks/local-demo.md`.
+**Estimated scope:** Tách thành 3 slice M; hai commit nghiệp vụ. Không thêm migration và không sửa UI cancel hiện tại.
+**Plan:** `tasks/plan.md` mục “Integration follow-up P3-T02”.
+
 ### [x] P3-D03 — Hash reservation, upload throttling và preflight visibility
 
 **Owner:** Phạm Tất Đạt

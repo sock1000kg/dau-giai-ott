@@ -430,6 +430,7 @@ P3-D08 + P3-N07 ──► P3-D09 signed ResultBundle
 P3-D09 + P3-L05 + P3-L06 ──► P3-D10 finals public UI
 P3-D09 + P3-D10 + P3-N07 ──► P3-N08 event rehearsal ──► Checkpoint P3-F
 P3-N09 test-run API contract ──► P3-D11 team test-run portal and replay
+P3-D01 + P3-D03 + migration 0021 round cancel ──► P3-T02 round recovery reconciliation ──► Checkpoint P3-C
 ```
 
 ## 17. Phase 3 task index và checkpoint
@@ -460,6 +461,7 @@ P3-N09 test-run API contract ──► P3-D11 team test-run portal and replay
 
 ### Wave 3 — Submission và test run ở quy mô lớn
 
+- [ ] `P3-T02` — Đồng bộ round recovery, submission cancellation race và demo submission window — Đinh Đức Thuận.
 - [x] `P3-D03` — Hash reservation, upload throttling và preflight queue visibility — Phạm Tất Đạt.
 - [x] `P3-D04` — CSV team provisioning và credential file tải một lần — Phạm Tất Đạt.
 - [x] `P3-N03` — Test-run quota, opponent policy và private artifacts — Đỗ Khôi Nguyên.
@@ -522,6 +524,41 @@ P3-N09 test-run API contract ──► P3-D11 team test-run portal and replay
 - [ ] AC-09 và AC-20 pass; full event rehearsal và rollback/recovery evidence được lưu.
 - [ ] Root test/typecheck/build, security scan và docs sync pass từ clean checkout.
 - [ ] Đinh Đức Thuận duyệt; deploy chỉ thực hiện khi có yêu cầu riêng.
+
+### Integration follow-up P3-T02 — port hai commit demo về `main`
+
+Mục tiêu là tái hiện behavior đã chạy trên `jump-jits` từ `96082f3` và `ee9b1f4` trên nền `main` hiện tại. Không cherry-pick nguyên commit cũ: `main` đã có migration `0021_round_cancel.sql`, API/UI cancel và nhiều thay đổi demo mới hơn. Implementation phải giữ migration và round state machine hiện tại, chỉ port phần còn thiếu.
+
+#### Quyết định tích hợp
+
+- Không tạo migration `0021` thứ hai và không thay thế `cancel_reason`, validation hoặc UI cancel đang có trên `main`.
+- Upload chỉ được commit khi round vẫn `SUBMISSION_OPEN`; transaction giữ shared row lock để serialize với cancel/close đang giữ row lock độc quyền.
+- `round open` không tái sử dụng ruleset đã hết deadline. Nó tạo version immutable mới, chỉ thay `schedule`, giữ nguyên map, resource, time control và `testRun.opponents` hiện hành.
+- Giữ các thay đổi public demo, account sync, editorial/finals seed và sample bot hiện có trên `main`; không lấy diff xóa/revert từ branch cũ.
+
+#### Thứ tự thực hiện
+
+1. **Slice A — API submission commit atomically với lifecycle round (M, 2–3 files).** Viết regression test tái hiện cancel/close sau object upload nhưng trước DB insert; thêm kiểm tra `SUBMISSION_OPEN ... FOR SHARE` trong transaction; trả `409 SUBMISSION_NOT_OPEN`, dọn object mới và không hoàn tất reservation. Đồng bộ `createdAt` cho response upload mới/idempotent theo client contract.
+2. **Slice B — BTC CLI hủy round theo API hiện tại (M, 3–4 files).** Bổ sung `demo.sh round cancel`, selector chỉ nhận `DRAFT_RULES`/`SUBMISSION_OPEN`/`SUBMISSION_CLOSED`, confirmation và error/recovery text; dùng endpoint/reason validation đã có trên `main`. Không đổi migration/service/UI cancel.
+3. **Checkpoint A/B.** API focused tests, demo guard tests, Bash syntax và PostgreSQL integration pass; xác nhận cancel giữ submissions/audit và tạo được round thay thế.
+4. **Slice C — ruleset version mới cho submission window hết hạn (M, 3–4 files).** Sửa default schedule thành đang mở với deadline tương lai; parse timezone fail-closed; khi ruleset mới nhất hết hạn, clone rules immutable và chỉ refresh schedule. Round đang `SUBMISSION_OPEN` nhưng deadline cũ phải báo recovery rõ, không báo thành công giả.
+5. **Checkpoint C.** Clock-fixed Python tests phủ current/expired/invalid schedule và bảo toàn toàn bộ rules ngoài schedule; demo guard/live flow mở round mới có `opensAt < now < deadlineAt < graceEndsAt`.
+6. **Integration và handoff.** Chạy API/web/root tests, typecheck, build, `git diff --check`, GitNexus `detect-changes` không partial/truncated; browser/manual check trang nộp bot; review hai commit rồi mở PR target `main`. Chỉ deploy lại từ `main` sau merge và khi có yêu cầu deploy riêng.
+
+#### Hai commit dự kiến
+
+1. `fix(api): serialize submission commit with round cancellation` — Slice A + CLI cancel/docs liên quan.
+2. `fix(demo): refresh expired submission windows` — Slice C + tests/runbook.
+
+#### Rủi ro và giảm thiểu
+
+| Rủi ro | Mức độ | Giảm thiểu |
+| --- | --- | --- |
+| Migration `0021` trùng tên/schema | Cao | Không port migration cũ; test registry và fresh PostgreSQL migrations từ `main` |
+| Cherry-pick làm mất thay đổi demo mới | Cao | Port theo behavior/file hunk; review `main...branch`, cấm diff xóa account/editorial/finals/sample bot ngoài scope |
+| Deadlock cancel/upload | Cao | Khóa cùng row theo thứ tự xác định; concurrency integration test có timeout |
+| Clone ruleset làm mất `OWN_SUBMISSION` hoặc policy mới | Cao | Deep-copy toàn bộ rules, thay đúng `schedule`; equality assertion cho mọi field còn lại |
+| Main và server demo khác release | Trung bình | Sau merge mới build/deploy từ commit `main`; kiểm migration, container health, deadline DB và route domain |
 
 ## 18. Parallelization và ownership coordination
 
