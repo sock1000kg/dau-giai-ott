@@ -4,6 +4,8 @@ A team uploads exactly one `application/octet-stream` OCI Image Spec 1.1 image i
 
 The server quarantines then structurally validates the archive using the locked OCI validator. A successful upload records immutable archive, manifest and config digests with policy `P2_BASELINE_V1` and status `PREFLIGHT`. Worker `preflightSubmission` reloads the pinned object, checks its checksum/OCI identity/entrypoint, and requires the isolated `OTT_SANDBOX_V1` bot to start and return a valid Bot Protocol v2 `ACTION`. It then atomically supersedes the prior active version, marks the new one `VALID` then `ACTIVE`, and writes an activation audit event. Failed checks move a still-`PREFLIGHT` submission to `INVALID` with a stable audit reason. Repeating preflight for an already active identity returns idempotently without launching another bot.
 
+`POST /api/v1/submissions` returns the created submission in `{ data: { id, status, archiveSha256, ociManifestDigest, ociConfigDigest, policyVersion, createdAt, reservationId? } }`. `createdAt` is an ISO-8601 UTC timestamp and is also returned for an idempotent retry of a completed reservation. The server locks the round row in the insert transaction and returns `409 SUBMISSION_NOT_OPEN` if the round stopped accepting submissions before the submission could be committed; the uploaded object is removed on this failure.
+
 ### Preflight failure reasons (`status: 'INVALID'`)
 
 When preflight smoke testing rejects a submission, an audit event `SUBMISSION_PREFLIGHT_FAILED` records a stable error code:

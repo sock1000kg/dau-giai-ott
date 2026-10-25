@@ -415,10 +415,11 @@ Subcommands:
   status         Show current tournament stage, round status, and active series
   open           Open round submissions (creates round & rule set if needed)
   close          Close submissions and schedule matches for the round
+  cancel         Cancel an unstarted round and retain its submissions
   results        Display current tournament leaderboard and series results
 
 Options:
-  --yes          Skip confirmation prompt for open / close actions
+  --yes          Skip confirmation prompt for open / close / cancel actions
   --stage <NAME> Target tournament stage (default: QUALIFICATION)
   --help, -h     Show this help message
 
@@ -1165,7 +1166,7 @@ sub_round() {
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      status|open|close|results)
+      status|open|close|cancel|results)
         sub="$1"
         shift
         ;;
@@ -1195,7 +1196,7 @@ sub_round() {
   done
 
   if [[ -z "${sub}" ]]; then
-    echo "Error: Missing round subcommand. Usage: demo.sh round <status|open|close|results> [--yes] [--stage STAGE]" >&2
+    echo "Error: Missing round subcommand. Usage: demo.sh round <status|open|close|cancel|results> [--yes] [--stage STAGE]" >&2
     exit 2
   fi
 
@@ -1254,6 +1255,9 @@ sub_round() {
       ;;
     close)
       round_close "${stage}" "${yes}" "${force}"
+      ;;
+    cancel)
+      round_cancel "${stage}" "${yes}" "${force}"
       ;;
     results)
       round_results "${stage}"
@@ -1338,10 +1342,29 @@ round_open() {
 
   api_call GET "/api/v1/admin/rounds?tournamentStage=${stage}" > "${rounds_file}" || exit 1
 
-  local open_id
-  open_id="$(python3 -B "${DEMO_JSON_PY}" round-find --action open "${rounds_file}" || true)"
-  if [[ -n "${open_id}" ]]; then
-    echo "Round ${open_id} is already SUBMISSION_OPEN."
+  local open_info
+  open_info="$(python3 -B "${DEMO_JSON_PY}" round-find --action open "${rounds_file}" || true)"
+  if [[ -n "${open_info}" ]]; then
+    local open_id open_ruleset_id open_ruleset_file open_window_state
+    open_id="$(echo "${open_info}" | cut -d: -f1)"
+    open_ruleset_id="$(echo "${open_info}" | cut -d: -f2)"
+    if [[ -z "${open_ruleset_id}" ]]; then
+      echo "Error: Round ${open_id} is SUBMISSION_OPEN but has no rule set. Inspect round status and repair it before retrying." >&2
+      exit 1
+    fi
+    open_ruleset_file="$(mktemp "${TMPDIR:-/tmp}/ott-open-ruleset.XXXXXX")"
+    CLEANUP_FILES+=("${open_ruleset_file}")
+    api_call GET "/api/v1/admin/round-rule-sets/${open_ruleset_id}" > "${open_ruleset_file}" || exit 1
+    open_window_state="$(python3 -B "${DEMO_JSON_PY}" ruleset-window-state "${open_ruleset_file}")" || {
+      echo "Error: Could not validate the schedule for open round ${open_id}." >&2
+      exit 1
+    }
+    if [[ "${open_window_state}" != "open" ]]; then
+      echo "Error: Round ${open_id} is SUBMISSION_OPEN but its schedule is ${open_window_state}; refusing to report success." >&2
+      echo "Recovery: run 'demo.sh round cancel --yes', then 'demo.sh round open --yes' to create a fresh submission window." >&2
+      exit 1
+    fi
+    echo "Round ${open_id} is already SUBMISSION_OPEN with a current submission window."
     return 0
   fi
 
@@ -1369,7 +1392,24 @@ round_open() {
     ruleset_id="$(printf '%s' "${rs_resp}" | python3 -B "${DEMO_JSON_PY}" field data.id)" || exit 1
     echo "Created rule set: ${ruleset_id}"
   else
-    echo "Using existing rule set: ${ruleset_id}"
+    local selected_ruleset_file selected_window_state
+    selected_ruleset_file="$(mktemp "${TMPDIR:-/tmp}/ott-ruleset-detail.XXXXXX")"
+    CLEANUP_FILES+=("${selected_ruleset_file}")
+    api_call GET "/api/v1/admin/round-rule-sets/${ruleset_id}" > "${selected_ruleset_file}" || exit 1
+    selected_window_state="$(python3 -B "${DEMO_JSON_PY}" ruleset-window-state "${selected_ruleset_file}")" || {
+      echo "Error: Existing rule set ${ruleset_id} has an invalid schedule; refusing to create a round." >&2
+      exit 1
+    }
+    if [[ "${selected_window_state}" != "open" ]]; then
+      echo "Existing rule set ${ruleset_id} submission window is ${selected_window_state}; creating an immutable refreshed version..."
+      local refresh_payload refresh_response
+      refresh_payload="$(python3 -B "${DEMO_JSON_PY}" ruleset-refresh --stage "${stage}" "${selected_ruleset_file}")" || exit 1
+      refresh_response="$(printf '%s' "${refresh_payload}" | api_call POST "/api/v1/admin/round-rule-sets" -)" || exit 1
+      ruleset_id="$(printf '%s' "${refresh_response}" | python3 -B "${DEMO_JSON_PY}" field data.id)" || exit 1
+      echo "Created refreshed rule set: ${ruleset_id}"
+    else
+      echo "Using existing rule set with an active submission window: ${ruleset_id}"
+    fi
   fi
 
   # Step B: Create qualification round
@@ -1469,6 +1509,40 @@ round_close() {
     echo "Recovery hint: Run 'demo.sh round status' to check state; retry with 'demo.sh round close'." >&2
     exit 1
   fi
+}
+
+round_cancel() {
+  local stage="$1"
+  local yes="${2:-0}"
+  local force="${3:-0}"
+
+  round_check_in_flight "${stage}" "${force}" || exit 1
+  round_confirm "cancel" "${yes}"
+
+  local rounds_file
+  rounds_file="$(mktemp "${TMPDIR:-/tmp}/ott-rounds-cancel.XXXXXX")"
+  CLEANUP_FILES+=("${rounds_file}")
+  api_call GET "/api/v1/admin/rounds?tournamentStage=${stage}" > "${rounds_file}" || exit 1
+
+  local target_round_info
+  target_round_info="$(python3 -B "${DEMO_JSON_PY}" round-find --action cancel "${rounds_file}" || true)"
+  if [[ -z "${target_round_info}" ]]; then
+    echo "Error: No cancellable, unstarted round found for stage ${stage}. RUNNING or later rounds cannot be cancelled." >&2
+    exit 1
+  fi
+
+  local target_round_id target_round_status
+  target_round_id="$(echo "${target_round_info}" | cut -d: -f1)"
+  target_round_status="$(echo "${target_round_info}" | cut -d: -f2)"
+  local cancel_body='{"reason":"Cancel unstarted round via demo.sh recovery"}'
+  echo "Cancelling unstarted round ${target_round_id} (${target_round_status})..."
+  if ! printf '%s' "${cancel_body}" | api_call POST "/api/v1/admin/rounds/${target_round_id}/cancel" - >/dev/null; then
+    echo "Error: Failed to cancel round ${target_round_id}. A closed round with a start attempt may no longer be cancellable." >&2
+    echo "Round ID: ${target_round_id}" >&2
+    echo "Recovery hint: Run 'demo.sh round status' and inspect the round's start/idempotency state." >&2
+    exit 1
+  fi
+  echo "Round ${target_round_id} is now CANCELLED. Existing submissions and results are retained."
 }
 
 round_results() {

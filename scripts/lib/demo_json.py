@@ -8,6 +8,7 @@ All input data is accepted via stdin or explicit file paths to prevent shell int
 from __future__ import annotations
 
 import argparse
+import copy
 from datetime import datetime, timedelta, timezone
 import json
 import os
@@ -115,13 +116,16 @@ def cmd_login_body(_args: argparse.Namespace) -> int:
     return 0
 
 
-def compute_relative_schedule() -> dict[str, Any]:
+def compute_relative_schedule(now: datetime | None = None) -> dict[str, Any]:
     """Compute relative schedule dates matching types.ts constraints."""
-    now = datetime.now(timezone.utc)
-    t_opens = now - timedelta(hours=2)
-    t_deadline = now - timedelta(hours=1)
-    t_grace = now - timedelta(minutes=5)
-    t_run_starts = now
+    now = now or datetime.now(timezone.utc)
+    if now.tzinfo is None:
+        raise ValueError("now must include a timezone")
+    now = now.astimezone(timezone.utc).replace(microsecond=0)
+    t_opens = now - timedelta(minutes=5)
+    t_deadline = now + timedelta(hours=1)
+    t_grace = t_deadline + timedelta(minutes=5)
+    t_run_starts = t_grace
     t_appeal = now + timedelta(days=2)
 
     def fmt(dt: datetime) -> str:
@@ -135,6 +139,71 @@ def compute_relative_schedule() -> dict[str, Any]:
         "runMaxHours": 24,
         "appealEndsAt": fmt(t_appeal),
     }
+
+
+def parse_schedule_time(value: Any) -> datetime:
+    if not isinstance(value, str):
+        raise ValueError("schedule timestamp is missing")
+    parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    if parsed.tzinfo is None:
+        raise ValueError("schedule timestamp must include a timezone")
+    return parsed.astimezone(timezone.utc)
+
+
+def ruleset_window_state(rules: Any, now: datetime | None = None) -> str:
+    if not isinstance(rules, dict) or not isinstance(rules.get("schedule"), dict):
+        raise ValueError("rule set does not contain a schedule")
+    schedule = rules["schedule"]
+    opens = parse_schedule_time(schedule.get("submissionOpensAt"))
+    deadline = parse_schedule_time(schedule.get("submissionDeadlineAt"))
+    grace = parse_schedule_time(schedule.get("graceEndsAt"))
+    if not opens < deadline < grace:
+        raise ValueError("schedule timestamps are not ordered")
+    now = now or datetime.now(timezone.utc)
+    if now.tzinfo is None:
+        raise ValueError("now must include a timezone")
+    now = now.astimezone(timezone.utc)
+    if deadline <= now:
+        return "expired"
+    if opens > now:
+        return "upcoming"
+    return "open"
+
+
+def build_ruleset_refresh_payload(data: Any, stage: str, now: datetime | None = None) -> dict[str, Any]:
+    root = data.get("data") if isinstance(data, dict) else None
+    rules = root.get("rules") if isinstance(root, dict) else None
+    if not isinstance(rules, dict):
+        raise ValueError("rule set response does not contain a rules object")
+    cloned = copy.deepcopy(rules)
+    cloned["schedule"] = compute_relative_schedule(now)
+    return {
+        "tournamentStage": stage,
+        "reason": f"Refresh expired demo submission window for stage {stage}",
+        "rules": cloned,
+    }
+
+
+def cmd_ruleset_refresh(args: argparse.Namespace) -> int:
+    try:
+        payload = build_ruleset_refresh_payload(load_input(args.file), args.stage)
+    except Exception as e:
+        sys.stderr.write(f"Error refreshing rule set: {e}\n")
+        return 1
+    print(json.dumps(payload))
+    return 0
+
+
+def cmd_ruleset_window_state(args: argparse.Namespace) -> int:
+    try:
+        root = load_input(args.file)
+        data = root.get("data", root) if isinstance(root, dict) else root
+        rules = data.get("rules", data) if isinstance(data, dict) else None
+        print(ruleset_window_state(rules))
+    except Exception as e:
+        sys.stderr.write(f"Error checking rule set schedule: {e}\n")
+        return 2
+    return 0
 
 
 def cmd_schedule(_args: argparse.Namespace) -> int:
@@ -225,9 +294,12 @@ def cmd_round_find(args: argparse.Namespace) -> int:
         rid = r.get("id")
         ruleset_id = r.get("ruleSetId") or ""
         if action == "open" and status == "SUBMISSION_OPEN":
-            print(rid)
+            print(f"{rid}:{ruleset_id}")
             return 0
         if action == "close" and status in ("SUBMISSION_OPEN", "SUBMISSION_CLOSED"):
+            print(f"{rid}:{status}:{ruleset_id}")
+            return 0
+        if action == "cancel" and status in ("DRAFT_RULES", "SUBMISSION_OPEN", "SUBMISSION_CLOSED"):
             print(f"{rid}:{status}:{ruleset_id}")
             return 0
         if action == "any" and rid:
@@ -444,9 +516,19 @@ def main() -> int:
     p_cat.add_argument("file", nargs="?", default=None, help="Input catalog file (defaults to stdin)")
     p_cat.set_defaults(func=cmd_catalog_ruleset)
 
+    # Immutable rule-set recovery helpers
+    p_refresh = subparsers.add_parser("ruleset-refresh")
+    p_refresh.add_argument("--stage", default="QUALIFICATION")
+    p_refresh.add_argument("file", nargs="?", default=None, help="Rule set JSON file (defaults to stdin)")
+    p_refresh.set_defaults(func=cmd_ruleset_refresh)
+
+    p_window = subparsers.add_parser("ruleset-window-state")
+    p_window.add_argument("file", nargs="?", default=None, help="Rule set JSON file (defaults to stdin)")
+    p_window.set_defaults(func=cmd_ruleset_window_state)
+
     # round-find
     p_find = subparsers.add_parser("round-find")
-    p_find.add_argument("--action", choices=["open", "close", "any"], default="any", help="Search criteria")
+    p_find.add_argument("--action", choices=["open", "close", "cancel", "any"], default="any", help="Search criteria")
     p_find.add_argument("file", nargs="?", default=None, help="Input rounds file (defaults to stdin)")
     p_find.set_defaults(func=cmd_round_find)
 

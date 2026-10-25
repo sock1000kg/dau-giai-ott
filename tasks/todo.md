@@ -1286,6 +1286,18 @@ Parent `P3-L02` chỉ hoàn tất khi mọi phần được verify; không dùng
 
 ## Phase 3 — Wave 3: submission và test run ở quy mô lớn
 
+### [ ] P3-T02 — Đồng bộ round recovery và submission window về main
+
+**Owner:** Đinh Đức Thuận
+**Mô tả:** Port behavior đã kiểm chứng từ `96082f3` và `ee9b1f4` lên `main` mới mà không cherry-pick migration/implementation cancel cũ: đóng race giữa upload và cancel/close, bổ sung CLI cancel, và tạo ruleset immutable mới khi submission window hết hạn.
+**Acceptance criteria:** (1) upload chỉ commit khi round vẫn `SUBMISSION_OPEN`; cancel/close đồng thời trả `409 SUBMISSION_NOT_OPEN`, không tạo submission, không hoàn tất reservation và dọn object mới; response upload mới/idempotent đều có `createdAt`; (2) `demo.sh round cancel` chỉ chọn round chưa chạy, yêu cầu confirmation/reason hợp lệ, giữ submissions/audit và cho phép tạo round thay thế; (3) `round open` tạo schedule đang mở với deadline tương lai, tái sử dụng ruleset còn hạn hoặc clone toàn bộ rules sang version mới và chỉ thay schedule khi hết hạn; round đang mở với deadline cũ báo recovery thay vì thành công giả.
+**Verification:** TDD regression cho upload/cancel race; `npm test --workspace @ott/platform-api -- submissions round-rules`; PostgreSQL integration fresh migrations và concurrency timeout; `python3 -B scripts/tests/test_demo_json_schedule.py`; `bash scripts/tests/demo.test.sh guards`; live demo flow cancel → open → kiểm `opensAt < now < deadlineAt < graceEndsAt`, submissions/audit giữ nguyên; root `npm test`, `npm run typecheck`, `npm run build`, `git diff --check`; browser/manual check `/team/submissions`; GitNexus impact trước edit và detect-changes trước mỗi commit.
+**Dependencies:** `P3-D01`, `P3-D03`, migration `0021_round_cancel.sql` và API/UI cancel đã merge trên `main`.
+**Files likely touched:** `src/platform/api/src/modules/submissions/routes.ts`, `src/platform/api/tests/submissions.routes.test.ts`, `scripts/demo.sh`, `scripts/lib/demo_json.py`, `scripts/tests/demo.test.sh`, `scripts/tests/test_demo_json_schedule.py`, `docs/contracts/oci-submission-v1.md`, `docs/runbooks/local-demo.md`.
+**Estimated scope:** Tách thành 3 slice M; hai commit nghiệp vụ. Không thêm migration và không sửa UI cancel hiện tại.
+**Plan:** `tasks/plan.md` mục “Integration follow-up P3-T02”.
+**Implementation/verification trên branch `thuandd/fix-p3-t02-round-recovery-main` (2026-10-25):** API upload khóa round `SUBMISSION_OPEN` trong transaction, trả `409 SUBMISSION_NOT_OPEN` và dọn object khi round đã bị cancel; response mới/idempotent có `createdAt`. CLI thêm `round cancel`; round mở bằng ruleset hết hạn được cấp version immutable với schedule mới, còn round đang mở bị hết hạn báo recovery. Xác nhận live trên stack cô lập: upload OCI qua API và browser, cancel giữ submission/audit, mở round thay thế, kiểm tra cửa sổ thời gian. Verification: API focused 36/36; PostgreSQL migrations + round cancel 3/3 và lock ordering 1/1; Python 6/6; demo guards 275/275; browser `/team/submissions` upload 201, `createdAt` hiển thị, 0 runtime exception; root `npm test`, `npm run typecheck`, `npm run build`, `git diff --check` pass. Root API integration cần `DATABASE_URL` được bỏ qua trong `npm test`; các integration liên quan đã chạy riêng trên PostgreSQL tạm. Chưa đánh dấu hoàn tất vì thay đổi chưa merge vào `main`.
+
 ### [x] P3-D03 — Hash reservation, upload throttling và preflight visibility
 
 **Owner:** Phạm Tất Đạt

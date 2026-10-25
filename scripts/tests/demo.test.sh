@@ -813,8 +813,9 @@ emit() {
   exit 0
 }
 
+request_body=""
 if [[ ! -t 0 ]]; then
-  cat > /dev/null
+  request_body="$(cat)"
 fi
 
 url=""
@@ -823,7 +824,6 @@ for arg in "$@"; do
     url="${arg}"
   fi
 done
-
 if [[ "${url}" == *"health/live"* ]]; then
   emit "200" '{"status":"ok"}'
 fi
@@ -833,11 +833,41 @@ if [[ "${url}" == *"auth/login"* ]]; then
 fi
 
 if [[ "${url}" == *"admin/rounds?tournamentStage="* ]]; then
+  if [[ "${CANNED_OPEN_MODE:-}" == "refresh" ]]; then
+    emit "200" '{"data":{"items":[]}}'
+  elif [[ "${CANNED_OPEN_MODE:-}" == "active-expired" ]]; then
+    emit "200" '{"data":{"items":[{"id":"already-open-round","status":"SUBMISSION_OPEN","ruleSetId":"expired-ruleset"}]}}'
+  fi
   state="SUBMISSION_OPEN"
   if [[ -f "${CANNED_STATE_FILE:-}" ]]; then
     state="$(cat "${CANNED_STATE_FILE}")"
   fi
   emit "200" "{\"data\":{\"items\":[{\"id\":\"canned-round-123\",\"roundNumber\":1,\"status\":\"${state}\",\"ruleSetId\":\"canned-ruleset-abc\",\"createdAt\":\"2026-10-19T00:00:00Z\"}]}}"
+fi
+
+if [[ "${url}" == *"admin/round-rule-sets?tournamentStage="* ]]; then
+  if [[ "${CANNED_OPEN_MODE:-}" == "refresh" ]]; then
+    emit "200" '{"data":{"items":[{"id":"expired-ruleset"}]}}'
+  fi
+fi
+
+if [[ "${url}" == *"admin/round-rule-sets/expired-ruleset" ]]; then
+  emit "200" '{"data":{"id":"expired-ruleset","rules":{"schemaVersion":"ott.round-rules.v1","engineVersion":"2.1.0","mapSet":[{"mapId":"m1","checksum":"abc"}],"testRun":{"quotaPerTeamPerDay":5,"opponents":["OWN_SUBMISSION","BTC_REFERENCE"]},"schedule":{"submissionOpensAt":"2020-01-01T00:00:00Z","submissionDeadlineAt":"2020-01-02T00:00:00Z","graceEndsAt":"2020-01-02T00:05:00Z"}}}}'
+fi
+
+if [[ "${url}" == *"admin/round-rule-sets" && "${request_body}" == *"Refresh expired demo submission window"* ]]; then
+  if [[ -n "${CANNED_RULESET_BODY_FILE:-}" ]]; then
+    printf '%s' "${request_body}" > "${CANNED_RULESET_BODY_FILE}"
+  fi
+  emit "201" '{"data":{"id":"refreshed-ruleset"}}'
+fi
+
+if [[ "${url}" == *"admin/rounds" && "${request_body}" == *"Demo qualification round via demo.sh"* ]]; then
+  emit "201" '{"data":{"id":"fresh-round-123"}}'
+fi
+
+if [[ "${url}" == *"admin/rounds/fresh-round-123/open" ]]; then
+  emit "200" '{"data":{"id":"fresh-round-123","status":"SUBMISSION_OPEN"}}'
 fi
 
 if [[ "${url}" == *"results/series?stage="* ]]; then
@@ -853,6 +883,13 @@ if [[ "${url}" == *"admin/rounds/canned-round-123/close"* ]]; then
     echo "SUBMISSION_CLOSED" > "${CANNED_STATE_FILE}"
   fi
   emit "200" '{"data":{"id":"canned-round-123","status":"SUBMISSION_CLOSED"}}'
+fi
+
+if [[ "${url}" == *"admin/rounds/canned-round-123/cancel"* ]]; then
+  if [[ -f "${CANNED_STATE_FILE:-}" ]]; then
+    echo "CANCELLED" > "${CANNED_STATE_FILE}"
+  fi
+  emit "200" '{"data":{"id":"canned-round-123","status":"CANCELLED"}}'
 fi
 
 if [[ "${url}" == *"admin/rounds/canned-round-123/start"* ]]; then
@@ -895,6 +932,38 @@ EOF
     bash "${DEMO_SCRIPT}" round close --yes
   assert_eq "0" "${TEST_CODE}" "canned round close exits 0"
   assert_contains "Round canned-round-123 is now RUNNING." "${TEST_OUT}" "round close completes transition to RUNNING"
+
+  # Test cancellation of an unstarted round.
+  echo "SUBMISSION_OPEN" > "${canned_curl_state}"
+  run_cmd env PATH="${canned_bin}:${PATH}" \
+    CANNED_STATE_FILE="${canned_curl_state}" \
+    OTT_DEMO_ACCOUNTS_CSV="${mock_csv}" \
+    OTT_DEMO_PROJECT="${disposable_project}" \
+    bash "${DEMO_SCRIPT}" round cancel --yes
+  assert_eq "0" "${TEST_CODE}" "canned round cancel exits 0"
+  assert_contains "Round canned-round-123 is now CANCELLED." "${TEST_OUT}" "round cancel reports retained round state"
+  assert_eq "CANCELLED" "$(cat "${canned_curl_state}")" "round cancel calls the cancel endpoint"
+
+  # Opening with an expired ruleset must clone it, refresh only its schedule, and use the new version.
+  local refreshed_ruleset_body="${tmp_dir}/refreshed-ruleset.json"
+  run_cmd env PATH="${canned_bin}:${PATH}" \
+    CANNED_OPEN_MODE="refresh" CANNED_RULESET_BODY_FILE="${refreshed_ruleset_body}" \
+    OTT_DEMO_ACCOUNTS_CSV="${mock_csv}" \
+    OTT_DEMO_PROJECT="${disposable_project}" \
+    bash "${DEMO_SCRIPT}" round open --yes
+  assert_eq "0" "${TEST_CODE}" "round open refreshes an expired ruleset and creates a round"
+  assert_contains "Created refreshed rule set: refreshed-ruleset" "${TEST_OUT}" "round open reports the immutable refreshed ruleset"
+  assert_contains "Round fresh-round-123 is now open" "${TEST_OUT}" "round open transitions the replacement round"
+  run_cmd python3 -c 'import json,sys,datetime; p=json.load(open(sys.argv[1])); r=p["rules"]; s=r["schedule"]; now=datetime.datetime.now(datetime.timezone.utc); opens=datetime.datetime.fromisoformat(s["submissionOpensAt"].replace("Z","+00:00")); deadline=datetime.datetime.fromisoformat(s["submissionDeadlineAt"].replace("Z","+00:00")); grace=datetime.datetime.fromisoformat(s["graceEndsAt"].replace("Z","+00:00")); assert opens < now < deadline < grace; assert r["testRun"]["opponents"] == ["OWN_SUBMISSION","BTC_REFERENCE"]; assert r["engineVersion"] == "2.1.0"' "${refreshed_ruleset_body}"
+  assert_eq "0" "${TEST_CODE}" "refreshed ruleset preserves policy and has a live future deadline"
+
+  run_cmd env PATH="${canned_bin}:${PATH}" CANNED_OPEN_MODE="active-expired" \
+    OTT_DEMO_ACCOUNTS_CSV="${mock_csv}" \
+    OTT_DEMO_PROJECT="${disposable_project}" \
+    bash "${DEMO_SCRIPT}" round open --yes
+  assert_eq "1" "${TEST_CODE}" "round open rejects an already-open round with an expired schedule"
+  assert_contains "Round already-open-round is SUBMISSION_OPEN but its schedule is expired" "${TEST_OUT}" "round open explains expired active round"
+  assert_contains "demo.sh round cancel --yes" "${TEST_OUT}" "round open prints actionable cancel/reopen recovery"
 
   # ----------------------------------------------------------------------------
   # 10. In-Flight Guard Fail-Closed Safety Tests

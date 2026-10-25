@@ -88,8 +88,12 @@ reconciling; it does not treat older finalized series as completion evidence.
 ./scripts/demo.sh round status
 
 # 5. Open round submissions (creates round and rule set if needed)
-# Note: rounds already opened with an older rule set template keep their locked rules, so self-play stays unavailable until BTC opens a new round or rule set allowing own submissions.
 ./scripts/demo.sh round open
+
+# Recovery: cancel an unstarted round whose submission deadline has passed, then open a replacement.
+# Cancellation retains submissions and audit history. It is unavailable after round execution starts.
+# ./scripts/demo.sh round cancel --yes
+# ./scripts/demo.sh round open --yes
 
 # 6. Close submissions and schedule round matches
 # NOTE: Starting round matches requires at least 2 teams with ACTIVE (gate-passed) submissions.
@@ -222,7 +226,8 @@ To manually verify the web gateway and UI across machines on the same local netw
 | `Error: Port 8080 is already in use` | Another service is using port 8080 on the host. | Run `./scripts/demo.sh up --port 8081` (or another free port). |
 | `DOCKER_GID` permission error / socket access denied | Worker/coordinator cannot communicate with Docker daemon socket. | Verify socket permissions: `ls -l /var/run/docker.sock`. Check that your host user belongs to the `docker` group (`getent group docker`). On Linux, `stat -c %g /var/run/docker.sock` detects the GID automatically. |
 | Healthcheck timeout waiting for `/api/v1/health/ready` | A service failed to initialize or migrate within 180s. | Run `./scripts/demo.sh logs` to inspect recent errors across all services, or `./scripts/demo.sh logs api` / `migrate` specifically. |
-| `demo.sh round open/close` refused with in-flight error | A tournament round is currently in `RUNNING` or `SETTLING` status, or is paused. | Round transitions fail-closed to prevent corrupting active match runs. Wait until the round settles, resume if paused, or check status with `./scripts/demo.sh round status`. (Note: `/api/v1/results/series` only returns terminal statuses `FINALIZED`/`CANCELLED`; in-flight protection checks round read models fail-closed). |
+| `demo.sh round open/close/cancel` refused with in-flight error | A tournament round is currently in `RUNNING` or `SETTLING` status, or is paused. | Round transitions fail-closed to prevent corrupting active match runs. Wait until the round settles, resume if paused, or check status with `./scripts/demo.sh round status`. (Note: `/api/v1/results/series` only returns terminal statuses `FINALIZED`/`CANCELLED`; in-flight protection checks round read models fail-closed). |
+| `demo.sh round open` reports an expired submission window | An existing rule set has a deadline in the past, or the current open round is already bound to such a rule set. | For an unstarted round, run `./scripts/demo.sh round cancel --yes` and then `./scripts/demo.sh round open --yes`. Opening creates an immutable rule-set version with a fresh schedule while preserving its game, map, resource, and test-run rules. An already open round is never silently rewritten. |
 | `round close` fails starting round with 500 / `insufficient teams` | Round start requires ≥2 teams with `ACTIVE` submissions (`SCHEDULING_INSUFFICIENT_TEAMS`). | Have `team01` and `team02` log in at `http://127.0.0.1:8080/`, upload bot archives, and wait for preflight gate PASS (status `ACTIVE`). Then rerun `./scripts/demo.sh round close`. |
 | Cannot login with demo accounts | Database seeding did not run or volume was corrupted. | Run `./scripts/demo.sh status` to verify `accounts.csv`. If necessary, run `./scripts/demo.sh reset` followed by `./scripts/demo.sh up`. |
 | Corrupted tournament state / resetting between test sessions | Old round or submission data needs to be cleared without regenerating credentials. | Run `./scripts/demo.sh refresh --yes` to wipe database and object storage volumes while preserving `demo.env` and `accounts.csv`. |
