@@ -301,6 +301,14 @@ export function registerSubmissionRoutes(app: FastifyInstance, options: Submissi
         createdNewObject = true;
 
         const result = await options.database.transaction(async (tx) => {
+          const openRound = await tx.query<{ readonly id: string }>(
+            "SELECT id FROM qualification_rounds WHERE id = $1 AND status = 'SUBMISSION_OPEN' FOR SHARE",
+            [uploadDecision.round.id],
+          );
+          if (!openRound.rows[0]) {
+            throw new SubmissionReservationError(409, 'SUBMISSION_NOT_OPEN', 'Submission round is no longer open');
+          }
+
           if (uploadDecision.reservation !== null) {
             const lockedRes = await tx.query<SubmissionReservationRow>(
               'SELECT id, status, submission_id FROM submission_reservations WHERE id = $1 FOR UPDATE',
@@ -315,8 +323,9 @@ export function registerSubmissionRoutes(app: FastifyInstance, options: Submissi
                 readonly oci_manifest_digest: string;
                 readonly oci_config_digest: string;
                 readonly policy_version: string;
+                readonly created_at: Date;
               }>(
-                'SELECT id, status, archive_sha256, oci_manifest_digest, oci_config_digest, policy_version FROM submissions WHERE id = $1',
+                'SELECT id, status, archive_sha256, oci_manifest_digest, oci_config_digest, policy_version, created_at FROM submissions WHERE id = $1',
                 [currentRes.submission_id]
               );
               const s = existingSub.rows[0];
@@ -331,6 +340,7 @@ export function registerSubmissionRoutes(app: FastifyInstance, options: Submissi
                     ociManifestDigest: s.oci_manifest_digest,
                     ociConfigDigest: s.oci_config_digest,
                     policyVersion: s.policy_version,
+                    createdAt: s.created_at.toISOString(),
                     reservationId: uploadDecision.reservation.id,
                   },
                 };
@@ -338,11 +348,12 @@ export function registerSubmissionRoutes(app: FastifyInstance, options: Submissi
             }
 
             const submissionId = randomUUID();
+            const createdAt = getNow();
             await tx.query(
               `INSERT INTO submissions (
                  id, team_id, qualification_round_id, archive_sha256, oci_manifest_digest,
-                 oci_config_digest, entrypoint, platform, object_key, policy_version, status
-               ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'PREFLIGHT')`,
+                 oci_config_digest, entrypoint, platform, object_key, policy_version, status, created_at
+               ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'PREFLIGHT',$11)`,
               [
                 submissionId,
                 principal.teamId,
@@ -354,13 +365,13 @@ export function registerSubmissionRoutes(app: FastifyInstance, options: Submissi
                 checked.value.platform,
                 objectKey,
                 'P2_BASELINE_V1',
+                createdAt,
               ]
             );
 
-            const completedAt = getNow();
             await tx.query(
               'UPDATE submission_reservations SET status = $1, submission_id = $2, completed_at = $3 WHERE id = $4',
-              ['COMPLETED', submissionId, completedAt, uploadDecision.reservation.id]
+              ['COMPLETED', submissionId, createdAt, uploadDecision.reservation.id]
             );
 
             return {
@@ -373,16 +384,18 @@ export function registerSubmissionRoutes(app: FastifyInstance, options: Submissi
                 ociManifestDigest: checked.value.ociManifestDigest,
                 ociConfigDigest: checked.value.ociConfigDigest,
                 policyVersion: 'P2_BASELINE_V1',
+                createdAt: createdAt.toISOString(),
                 reservationId: uploadDecision.reservation.id,
               },
             };
           } else {
             const submissionId = randomUUID();
+            const createdAt = getNow();
             await tx.query(
               `INSERT INTO submissions (
                  id, team_id, qualification_round_id, archive_sha256, oci_manifest_digest,
-                 oci_config_digest, entrypoint, platform, object_key, policy_version, status
-               ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'PREFLIGHT')`,
+                 oci_config_digest, entrypoint, platform, object_key, policy_version, status, created_at
+               ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'PREFLIGHT',$11)`,
               [
                 submissionId,
                 principal.teamId,
@@ -394,6 +407,7 @@ export function registerSubmissionRoutes(app: FastifyInstance, options: Submissi
                 checked.value.platform,
                 objectKey,
                 'P2_BASELINE_V1',
+                createdAt,
               ]
             );
 
@@ -407,6 +421,7 @@ export function registerSubmissionRoutes(app: FastifyInstance, options: Submissi
                 ociManifestDigest: checked.value.ociManifestDigest,
                 ociConfigDigest: checked.value.ociConfigDigest,
                 policyVersion: 'P2_BASELINE_V1',
+                createdAt: createdAt.toISOString(),
               },
             };
           }
@@ -418,6 +433,9 @@ export function registerSubmissionRoutes(app: FastifyInstance, options: Submissi
 
         return reply.status(result.statusCode).send({ data: result.data });
       } catch (error) {
+        if (error instanceof SubmissionReservationError) {
+          return reply.status(error.status).send({ error: { code: error.code, message: error.message } });
+        }
         throw error;
       } finally {
         if (createdNewObject && !keepObject) {

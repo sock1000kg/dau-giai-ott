@@ -76,7 +76,7 @@ const makeArchive = (tag = 'default') => {
   return Buffer.from(fileBytes);
 };
 
-function createMockStorage() {
+function createMockStorage(onCopy?: () => void) {
   const store = new Map<string, Buffer>();
   return {
     store,
@@ -92,6 +92,7 @@ function createMockStorage() {
       const b = store.get(sourceKey);
       if (!b) throw new Error(`Object not found: ${sourceKey}`);
       store.set(destKey, Buffer.from(b));
+      onCopy?.();
     }),
     remove: vi.fn(async (key: string) => {
       store.delete(key);
@@ -104,7 +105,14 @@ function createMockDb() {
   const reservations = new Map<string, any>();
   const submissions = new Map<string, any>();
 
-  const roundRow = {
+  const roundRow: {
+    id: string;
+    tournament_stage: string;
+    round_number: number;
+    status: string;
+    rule_set_id: string;
+    rules: { schedule: { submissionOpensAt: string; submissionDeadlineAt: string; graceEndsAt: string } };
+  } = {
     id: 'round-1',
     tournament_stage: 'QUALIFICATION',
     round_number: 1,
@@ -123,6 +131,7 @@ function createMockDb() {
 
   const query = vi.fn(async (sql: string, params: any[] = []) => {
     if (sql.includes('qualification_rounds')) {
+      if (sql.includes('FOR SHARE') && roundRow.status !== 'SUBMISSION_OPEN') return { rows: [] };
       return { rows: [roundRow] };
     }
     if (sql.includes('submission_reservations') && sql.includes('WHERE id = $1')) {
@@ -138,6 +147,9 @@ function createMockDb() {
     }
     const tx = {
       query: vi.fn(async (sql: string, params: any[] = []) => {
+        if (sql.includes('qualification_rounds') && sql.includes('FOR SHARE')) {
+          return { rows: roundRow.status === 'SUBMISSION_OPEN' ? [{ id: roundRow.id }] : [] };
+        }
         if (sql.includes('submission_reservations') && sql.includes('FOR UPDATE')) {
           const res = reservations.get(params[0]);
           return { rows: res ? [res] : [] };
@@ -159,6 +171,7 @@ function createMockDb() {
             platform,
             object_key,
             policy_version,
+            created_at: new Date('2026-10-10T12:00:00.000Z'),
             status: 'PREFLIGHT',
           };
           insertedSubmissions.push(row);
@@ -186,6 +199,7 @@ function createMockDb() {
     insertedSubmissions,
     reservations,
     submissions,
+    setRoundStatus: (status: string) => { roundRow.status = status; },
     setFailTransaction: (fail: boolean) => {
       failTransaction = fail;
     },
@@ -282,6 +296,43 @@ describe('GET /api/v1/submissions', () => {
 });
 
 describe('POST /api/v1/submissions (object key collision & cleanup)', () => {
+  it('rejects an upload when the round is cancelled after object copy but before submission commit', async () => {
+    const db = createMockDb();
+    const storage = createMockStorage(() => db.setRoundStatus('CANCELLED'));
+    const archive = makeArchive('round-cancel-race');
+    const reservationId = randomUUID();
+    db.reservations.set(reservationId, {
+      id: reservationId,
+      team_id: 'team-1',
+      qualification_round_id: 'round-1',
+      archive_sha256: `sha256:${createHash('sha256').update(archive).digest('hex')}`,
+      reserved_at: new Date('2026-10-10T10:00:00.000Z'),
+      grace_ends_at: new Date('2026-10-26T00:00:00.000Z'),
+      status: 'RESERVED',
+      submission_id: null,
+      completed_at: null,
+    });
+    const app = createUploadApp({
+      database: db as unknown as Database,
+      storage: storage as unknown as ObjectStorage,
+      getPrincipal: () => ({ accountId: 'acc-1', role: 'TEAM_ACCOUNT', teamId: 'team-1' }),
+    });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/submissions',
+      headers: { 'content-type': 'application/octet-stream', 'x-reservation-id': reservationId },
+      payload: archive,
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json().error.code).toBe('SUBMISSION_NOT_OPEN');
+    expect(db.insertedSubmissions).toHaveLength(0);
+    expect(db.reservations.get(reservationId)).toMatchObject({ status: 'RESERVED', submission_id: null, completed_at: null });
+    expect(storage.store).toHaveProperty('size', 0);
+    await app.close();
+  });
+
   it('allows two teams to upload identical bytes: both return 201, receive distinct object keys, and both objects remain in storage', async () => {
     const storage = createMockStorage();
     const db = createMockDb();
@@ -299,6 +350,7 @@ describe('POST /api/v1/submissions (object key collision & cleanup)', () => {
       payload: archive,
     });
     expect(res1.statusCode).toBe(201);
+    expect(res1.json().data.createdAt).toBe('2026-10-10T12:00:00.000Z');
     expect(db.insertedSubmissions).toHaveLength(1);
     const key1 = db.insertedSubmissions[0].object_key;
     expect(key1).toMatch(new RegExp(`^submissions\\/${expectedShaHex}\\/[0-9a-f-]{36}\\.oci\\.tar$`));
@@ -313,6 +365,7 @@ describe('POST /api/v1/submissions (object key collision & cleanup)', () => {
       payload: archive,
     });
     expect(res2.statusCode).toBe(201);
+    expect(res2.json().data.createdAt).toBe('2026-10-10T12:00:00.000Z');
     expect(db.insertedSubmissions).toHaveLength(2);
     const key2 = db.insertedSubmissions[1].object_key;
     expect(key2).toMatch(new RegExp(`^submissions\\/${expectedShaHex}\\/[0-9a-f-]{36}\\.oci\\.tar$`));
@@ -382,6 +435,7 @@ describe('POST /api/v1/submissions (object key collision & cleanup)', () => {
     });
     expect(res2.statusCode).toBe(200);
     expect(res2.json().data.id).toBe(subId);
+    expect(res2.json().data.createdAt).toBe('2026-10-10T12:00:00.000Z');
 
     // Storage still contains only the initial object, no extra orphan
     expect(storage.store.has(initialKey)).toBe(true);
