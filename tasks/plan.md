@@ -547,8 +547,8 @@ Mục tiêu là tái hiện behavior đã chạy trên `jump-jits` từ `96082f3
 
 #### Hai commit dự kiến
 
-1. `fix(api): serialize submission commit with round cancellation` — Slice A + CLI cancel/docs liên quan.
-2. `fix(demo): refresh expired submission windows` — Slice C + tests/runbook.
+1. `fix(api): serialize submission commit with round cancellation` — Slice A, API contract và PostgreSQL lock regression.
+2. `fix(demo): recover unstarted rounds and expired submission windows` — Slice B + C. Hai slice cùng sửa `demo.sh`, `demo_json.py` và canned shell harness nên được review cùng nhau; commit chứa cancel CLI, immutable ruleset refresh, tests và runbook.
 
 #### Rủi ro và giảm thiểu
 
