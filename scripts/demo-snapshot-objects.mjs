@@ -89,14 +89,18 @@ async function exportObjects() {
     entry.sha256 = digest(bytes);
   }
   const referenceCount = await verifyReferences(entries, root);
-  const manifest = { format: 'ott-demo-s3-objects-v1', bucket, objectCount: entries.length, referenceCount, objects: entries };
+  const manifest = { format: 'ott-demo-s3-objects-v1', sourceBucket: bucket, objectCount: entries.length, referenceCount, objects: entries };
   await writeFile(path.join(root, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`, { mode: 0o600 });
   process.stdout.write(JSON.stringify({ objectCount: entries.length, referenceCount }));
 }
 
 async function importObjects() {
   const manifest = JSON.parse(await readFile(path.join(root, 'manifest.json'), 'utf8'));
-  if (manifest.format !== 'ott-demo-s3-objects-v1' || manifest.bucket !== bucket || !Array.isArray(manifest.objects)) {
+  // Buckets are deployment configuration. Preserve the source bucket as
+  // provenance, but import object keys into the target stack's configured bucket.
+  if (manifest.format !== 'ott-demo-s3-objects-v1'
+    || typeof (manifest.sourceBucket ?? manifest.bucket) !== 'string'
+    || !Array.isArray(manifest.objects)) {
     throw new Error('object archive manifest is invalid');
   }
   if (manifest.objectCount !== manifest.objects.length) throw new Error('object archive count is invalid');
