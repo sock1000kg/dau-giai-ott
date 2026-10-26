@@ -1172,7 +1172,7 @@ Task `P2-T42`–`P2-T53` là đợt giao diện riêng, không tự đóng `P2-C
 **Files:** `src/platform/web/public/downloads/`, `src/platform/web/src/features/public/PublicTournamentPage.tsx`, `src/platform/web/src/features/public/public-site.test.tsx`, `src/platform/web/src/features/public/public.css`, `demo/`.
 **Implementation/test:** 2026-10-23 — Gói ZIP version `v1`, public download card, bot samples và manual E2E overview đã có trên `main`; public-site 6/6, full web 432/432, typecheck/build và ZIP integrity pass. Task còn mở chờ human browser smoke.
 
-### [ ] P2-T67 — E2E demo: bước e. chờ đúng series của round do test tạo
+### [x] P2-T67 — E2E demo: bước e. chờ đúng series của round do test tạo
 
 **Owner:** Đinh Đức Thuận
 **Mô tả:** Bước h. của `npm run test:e2e:demo` thỉnh thoảng fail ("Leaderboard entries must be identical post-restart") vì bảng xếp hạng đổi trong lúc restart. Nguyên nhân: `/api/v1/results/series` chỉ trả series đã `FINALIZED`/`CANCELLED`, nên series mẫu do `demo.sh up` seed làm điều kiện chờ của bước e. đúng ngay lần poll đầu, trước khi series của test hoàn tất. Sửa test để bước e. ghi lại series có sẵn trước khi start và chỉ chờ series mới; không đổi code sản phẩm.
@@ -1181,6 +1181,7 @@ Task `P2-T42`–`P2-T53` là đợt giao diện riêng, không tự đóng `P2-C
 **Dependencies:** `cd9813f` (sample round seeding); độc lập với `P2-T66` nhưng cả hai cần merge để E2E demo pass ổn định.
 **Files:** `tests/e2e/local-demo.test.ts`, `tasks/todo.md`.
 **Ước lượng:** XS.
+**Hoàn tất (2026-10-27):** Kiểm tra trên commit nháp gộp `P2-T67` + `P2-T66` (cần cả hai để E2E qua bước d.): `npm run test:e2e:demo -- --clean-checkout` pass 13/13 cả 5/5 lần liên tiếp. Lỗi gốc chỉ xuất hiện khoảng 1/5 lần nên 5 lần pass chưa phải bằng chứng tuyệt đối; bằng chứng chính là cơ chế đã xác định (series mẫu làm điều kiện chờ đúng ngay) và đã bị loại bỏ.
 
 ## Phase 3 — Gate P3-0: decision và contract approval
 
