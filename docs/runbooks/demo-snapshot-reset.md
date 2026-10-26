@@ -5,7 +5,8 @@ This runbook is for a separate `ott-demo-reset` dev/test stack. The public
 replaces PostgreSQL, SeaweedFS artifacts (including replay and OCI objects),
 and public snapshots with one verified baseline. It clears Redis sessions and
 queues, resets `team01`–`team04` through the existing allowlisted password
-command, and checks readiness before reporting success. BTC credentials stay
+command, and checks readiness and the anonymous public finals snapshot before
+reporting success. BTC credentials stay
 owned by the private demo environment file.
 
 Never install this workflow while `DEMO_PUBLIC=true`, hosted PoC or finals mode
@@ -35,15 +36,22 @@ to create a baseline if a database reference is absent or its object digest
 does not match. The object manifest records its source bucket as provenance;
 restore writes those keys into the target stack's configured bucket, which may
 have a different name. The bundle manifest records the source commit, account/team/match/replay
-row counts, S3 object/reference counts, and public snapshot file count. It does
-not contain Redis, environment files, or the credentials CSV. Keep the bundle
+row counts, active ResultBundle signing-key count, VERIFIED bundle count, and
+artifact count, S3 object/reference counts, and public snapshot file count.
+Snapshot creation and verification reject a baseline if any ResultBundle
+count is missing or zero. Restore compares these database counts with the
+manifest before starting application writers, then probes
+`/api/v1/public/finals/snapshot` after the stack is ready. The bundle does not
+contain Redis, environment files, or the credentials CSV. Keep the bundle
 root-only and create an independent recovery backup before the first restore
 against a live demo server.
 
-For an audience-facing baseline, include at least one `FINALS` replay in
-`PUBLISHED` state and open its anonymous replay URL before accepting the
-bundle. A replay row and its S3 object can be intact while the public endpoint
-still returns 404 when the series is not in the public finals stage.
+The ResultBundle metrics ensure the source state includes signed finals data;
+the post-start endpoint probe verifies it is readable by anonymous clients.
+The existing `demo:seed-finals-bundle` command can populate that data. Seed
+public `ott-demo` directly through that command and verify its endpoint; never
+point snapshot restore at the public project. Seed `ott-demo-reset`
+independently before creating its replacement baseline.
 
 ## Restore once by hand
 
@@ -123,6 +131,6 @@ bash scripts/install-demo-reset-cron.sh uninstall
   reference resolves to an object whose SHA-256 matches the database record.
 - `team01`–`team04` authenticate with the public team test password; their old
   sessions are revoked. BTC still authenticates with its private credential.
-- Leaderboard, match history and replay load through the web gateway after
-  restore; `/api/v1/health/ready` is healthy.
+- Leaderboard, match history, finals snapshot and representative replay load
+  through the web gateway after restore; `/api/v1/health/ready` is healthy.
 - Only after this drill passes should the current user's crontab be installed.

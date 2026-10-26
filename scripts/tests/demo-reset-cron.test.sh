@@ -35,7 +35,7 @@ tar -czf "${TMP_DIR}/bundle/data/snapshots.tar.gz" -C "${TMP_DIR}/snapshots" .
 python3 - "${TMP_DIR}/bundle/manifest.json" <<'PY'
 import json, sys
 with open(sys.argv[1], "w", encoding="utf-8") as output:
-    json.dump({"format":"ott-demo-snapshot-v2", "source":{"commit":"fixture","composeProject":"ott-demo-test"}, "metrics":{}, "payloads":{"database.dump":{}, "seaweedfs-objects.tar.gz":{}, "snapshots.tar.gz":{}}}, output)
+    json.dump({"format":"ott-demo-snapshot-v2", "source":{"commit":"fixture","composeProject":"ott-demo-test"}, "metrics":{"resultBundleKeys":1,"verifiedResultBundles":1,"resultBundleArtifacts":1}, "payloads":{"database.dump":{}, "seaweedfs-objects.tar.gz":{}, "snapshots.tar.gz":{}}}, output)
 PY
 (cd "${TMP_DIR}/bundle" && sha256sum data/database.dump data/seaweedfs-objects.tar.gz data/snapshots.tar.gz > checksums.sha256)
 

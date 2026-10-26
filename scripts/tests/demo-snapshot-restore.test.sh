@@ -30,4 +30,14 @@ if ! rg -q 'public/hosted/finals' "${TMP_DIR}/out"; then
 fi
 printf 'PASS: restore refuses public mode\n'
 
+if ! rg -q "resultBundleKeys.*verifiedResultBundles.*resultBundleArtifacts" "${RESTORE_SCRIPT}"; then
+  printf 'FAIL: restore compares all finals ResultBundle metrics\n' >&2
+  exit 1
+fi
+if ! rg -q '/api/v1/public/finals/snapshot' "${RESTORE_SCRIPT}"; then
+  printf 'FAIL: restore probes the public finals snapshot after startup\n' >&2
+  exit 1
+fi
+printf 'PASS: restore compares finals metrics and probes the public snapshot\n'
+
 printf 'Snapshot restore guard tests passed.\n'

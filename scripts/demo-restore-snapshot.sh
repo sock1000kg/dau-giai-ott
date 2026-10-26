@@ -195,18 +195,21 @@ compose --profile demo-password-reset run --rm --no-deps \
   -e OTT_DEMO_ACCOUNTS_CSV=/demo/reset-credentials.csv \
   --entrypoint npm demo-password-reset-scheduler run demo:reset-passwords --workspace @ott/platform-api
 
-metrics_query="SELECT json_build_object('teams',(SELECT count(*) FROM teams),'accounts',(SELECT count(*) FROM accounts),'demo_accounts',(SELECT count(*) FROM accounts WHERE username IN ('btc','team01','team02','team03','team04')),'matches',(SELECT count(*) FROM matches),'replays',(SELECT count(*) FROM replay_publications))::text"
+metrics_query="SELECT json_build_object('teams',(SELECT count(*) FROM teams),'accounts',(SELECT count(*) FROM accounts),'demo_accounts',(SELECT count(*) FROM accounts WHERE username IN ('btc','team01','team02','team03','team04')),'matches',(SELECT count(*) FROM matches),'replays',(SELECT count(*) FROM replay_publications),'resultBundleKeys',(SELECT count(*) FROM result_bundle_keys WHERE revoked_at IS NULL),'verifiedResultBundles',(SELECT count(*) FROM result_bundles WHERE status = 'VERIFIED'),'resultBundleArtifacts',(SELECT count(*) FROM result_bundle_artifacts))::text"
 restored_metrics="$(compose exec -T postgres sh -c 'export PGPASSWORD="$POSTGRES_PASSWORD"; exec psql -X -A -t -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "$1"' sh "${metrics_query}")"
 python3 - "${bundle}/manifest.json" "${restored_metrics}" <<'PY'
 import json, sys
 with open(sys.argv[1], encoding="utf-8") as source:
     expected = json.load(source)["metrics"]
 actual = json.loads(sys.argv[2])
-for key in ("teams", "accounts", "demo_accounts", "matches", "replays"):
+for key in ("teams", "accounts", "demo_accounts", "matches", "replays", "resultBundleKeys", "verifiedResultBundles", "resultBundleArtifacts"):
     if expected.get(key) != actual.get(key):
         raise SystemExit(f"demo-restore-snapshot: restored database invariant failed for {key}")
 if actual.get("demo_accounts") != 5 or actual.get("matches", 0) < 1 or actual.get("replays", 0) < 1:
     raise SystemExit("demo-restore-snapshot: required demo accounts/match/replay history is absent")
+for key in ("resultBundleKeys", "verifiedResultBundles", "resultBundleArtifacts"):
+    if not isinstance(expected.get(key), int) or expected[key] < 1 or actual.get(key, 0) < 1:
+        raise SystemExit(f"demo-restore-snapshot: required finals ResultBundle data is absent ({key})")
 PY
 
 printf 'Starting the demo application after restore invariants pass.\n'
@@ -214,4 +217,5 @@ compose up -d --wait
 port="$(read_env_value APP_PORT)"
 [[ "${port}" =~ ^[0-9]{1,5}$ ]] || fail "APP_PORT is missing or invalid"
 curl --fail --silent --show-error --max-time 15 "http://127.0.0.1:${port}/api/v1/health/ready" >/dev/null || fail "demo readiness check failed after restore"
+curl --fail --silent --show-error --max-time 15 "http://127.0.0.1:${port}/api/v1/public/finals/snapshot" >/dev/null || fail "public finals snapshot check failed after restore"
 printf 'Demo snapshot restore completed and readiness is healthy.\n'
