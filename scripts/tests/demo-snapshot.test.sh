@@ -46,12 +46,24 @@ printf 'replay-object\n' > "${TMP_DIR}/objects/replay.blob"
 printf 'public-snapshot\n' > "${TMP_DIR}/snapshots/latest.json"
 tar -czf "${TMP_DIR}/valid/data/seaweedfs-objects.tar.gz" -C "${TMP_DIR}/objects" .
 tar -czf "${TMP_DIR}/valid/data/snapshots.tar.gz" -C "${TMP_DIR}/snapshots" .
-python3 - "${TMP_DIR}/valid/manifest.json" <<'PY'
+write_manifest() {
+  python3 - "${TMP_DIR}/valid/manifest.json" "$@" <<'PY'
 import json, sys
-with open(sys.argv[1], "w", encoding="utf-8") as output:
-    json.dump({"format":"ott-demo-snapshot-v2", "source":{"commit":"fixture","composeProject":"ott-demo-test"}, "metrics":{}, "payloads":{"database.dump":{}, "seaweedfs-objects.tar.gz":{}, "snapshots.tar.gz":{}}}, output)
+path, *metrics = sys.argv[1:]
+with open(path, "w", encoding="utf-8") as output:
+    json.dump({"format":"ott-demo-snapshot-v2", "source":{"commit":"fixture","composeProject":"ott-demo-test"}, "metrics":dict(zip(("teams", "accounts", "demo_accounts", "matches", "replays", "resultBundleKeys", "verifiedResultBundles", "resultBundleArtifacts"), map(int, metrics))), "payloads":{"database.dump":{}, "seaweedfs-objects.tar.gz":{}, "snapshots.tar.gz":{}}}, output)
 PY
-(cd "${TMP_DIR}/valid" && sha256sum data/database.dump data/seaweedfs-objects.tar.gz data/snapshots.tar.gz > checksums.sha256)
+  (cd "${TMP_DIR}/valid" && sha256sum data/database.dump data/seaweedfs-objects.tar.gz data/snapshots.tar.gz > checksums.sha256)
+}
+
+write_manifest 8 11 5 7 7 0 0 0
+if bash "${SNAPSHOT_SCRIPT}" verify "${TMP_DIR}/valid" >"${TMP_DIR}/out" 2>&1; then
+  fail "verification rejects a checksum-valid baseline without finals data"
+fi
+if ! rg -q 'finals|ResultBundle' "${TMP_DIR}/out"; then fail "missing finals data is explained"; fi
+pass "verification rejects a checksum-valid baseline without finals data"
+
+write_manifest 8 11 5 7 7 1 1 1
 if ! bash "${SNAPSHOT_SCRIPT}" verify "${TMP_DIR}/valid" >"${TMP_DIR}/out" 2>&1; then
   fail "verification accepts intact snapshot bundle ($(tr '\n' ' ' < "${TMP_DIR}/out"))"
 fi

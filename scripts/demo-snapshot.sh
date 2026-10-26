@@ -59,6 +59,11 @@ if set(manifest.get("payloads", {})) != expected:
     raise SystemExit("demo-snapshot: manifest payload list does not match required bundle")
 if not isinstance(manifest.get("metrics"), dict) or not isinstance(manifest.get("source"), dict):
     raise SystemExit("demo-snapshot: manifest metrics/source metadata is invalid")
+metrics = manifest["metrics"]
+for key in ("resultBundleKeys", "verifiedResultBundles", "resultBundleArtifacts"):
+    value = metrics.get(key)
+    if not isinstance(value, int) or isinstance(value, bool) or value < 1:
+        raise SystemExit(f"demo-snapshot: baseline is missing required finals ResultBundle data ({key})")
 PY
   (cd "${bundle}" && sha256sum --check --strict checksums.sha256 >/dev/null) || fail "bundle checksum verification failed"
   local entries
@@ -127,7 +132,7 @@ create_bundle() {
   database_user="$(read_env_value POSTGRES_USER)"
   [[ -n "${database_name}" && -n "${database_user}" ]] || fail "PostgreSQL database/user configuration is missing"
 
-  local metrics_query="SELECT json_build_object('teams',(SELECT count(*) FROM teams),'accounts',(SELECT count(*) FROM accounts),'demo_accounts',(SELECT count(*) FROM accounts WHERE username IN ('btc','team01','team02','team03','team04')),'matches',(SELECT count(*) FROM matches),'replays',(SELECT count(*) FROM replay_publications))::text"
+  local metrics_query="SELECT json_build_object('teams',(SELECT count(*) FROM teams),'accounts',(SELECT count(*) FROM accounts),'demo_accounts',(SELECT count(*) FROM accounts WHERE username IN ('btc','team01','team02','team03','team04')),'matches',(SELECT count(*) FROM matches),'replays',(SELECT count(*) FROM replay_publications),'resultBundleKeys',(SELECT count(*) FROM result_bundle_keys WHERE revoked_at IS NULL),'verifiedResultBundles',(SELECT count(*) FROM result_bundles WHERE status = 'VERIFIED'),'resultBundleArtifacts',(SELECT count(*) FROM result_bundle_artifacts))::text"
   metrics="$(compose exec -T postgres sh -c 'export PGPASSWORD="$POSTGRES_PASSWORD"; exec psql -X -A -t -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "$1"' sh "${metrics_query}")"
   python3 - "${metrics}" <<'PY'
 import json, sys
@@ -137,6 +142,9 @@ except Exception as exc:
     raise SystemExit("demo-snapshot: could not read baseline database counts") from exc
 if counts.get("demo_accounts", 0) != 5 or counts.get("matches", 0) < 1 or counts.get("replays", 0) < 1:
     raise SystemExit("demo-snapshot: baseline must contain btc, team01-team04 and historical match/replay data")
+for key in ("resultBundleKeys", "verifiedResultBundles", "resultBundleArtifacts"):
+    if not isinstance(counts.get(key), int) or counts[key] < 1:
+        raise SystemExit(f"demo-snapshot: baseline is missing required finals ResultBundle data ({key})")
 PY
   mkdir -m 0700 "${STAGING_DIR}/objects"
   # The exporter reads the private root-only staging mount; keep host files
