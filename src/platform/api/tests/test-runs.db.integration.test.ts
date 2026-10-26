@@ -66,8 +66,8 @@ integration('test-run real PostgreSQL integration (FOR SHARE OF qr guard)', () =
 
     // 5. Seed reference bot in test_run_reference_bots
     await database.query(
-      `INSERT INTO test_run_reference_bots (id, display_name, object_key, archive_sha256, manifest_digest, config_digest, entrypoint, policy_version, enabled)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true)`,
+      `INSERT INTO test_run_reference_bots (id, display_name, object_key, archive_sha256, manifest_digest, config_digest, entrypoint, policy_version, enabled, enabled_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, now())`,
       [
         refBotId,
         'BTC Reference Bot',

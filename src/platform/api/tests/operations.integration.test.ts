@@ -444,8 +444,10 @@ enabled('P3-D07 privileged operations integration', () => {
       expect(read.json().data.resultsHash).toBe(expected);
 
       const again = await app.inject({ method: 'POST', url: `/api/v1/admin/rounds/${r.qualificationRoundId}/publish`, headers: { cookie: adminCookie }, payload: { reason: 'again' } });
-      expect(again.statusCode).toBe(409);
+      expect(again.statusCode).toBe(200);
+      expect(again.json().data.replayed).toBe(true);
       expect((await db.query<{ results_hash: string }>('SELECT results_hash FROM qualification_rounds WHERE id = $1', [r.qualificationRoundId])).rows[0]!.results_hash).toBe(expected);
+      expect((await db.query("SELECT id FROM audit_events WHERE action = 'ROUND_PUBLISHED'")).rows).toHaveLength(1);
       await expect(db.query("UPDATE qualification_rounds SET results_hash = $2 WHERE id = $1", [r.qualificationRoundId, hex('f')])).rejects.toThrow(/immutable once set/);
       expect(await computeRoundResultsHash(db, r.roundId)).toBe(expected);
     });

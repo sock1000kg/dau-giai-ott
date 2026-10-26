@@ -105,6 +105,9 @@ export {
   type TestRunPage,
 } from './modules/test-runs/service.ts';
 export { registerTestRunRoutes, type TestRunRoutesOptions } from './modules/test-runs/routes.ts';
+export { registerReferenceBotRoutes, type ReferenceBotRoutesOptions } from './modules/reference-bots/routes.ts';
+export { listReferenceBots, uploadReferenceBot, setReferenceBotEnabled, ReferenceBotServiceError } from './modules/reference-bots/service.ts';
+export { validateReferenceBotArchive, REFERENCE_BOT_ARCHIVE_LIMITS, REFERENCE_BOT_POLICY_VERSION } from './modules/reference-bots/archive.ts';
 export { getTestRunReplayArtifact, type PublicReplayArtifact } from './modules/replays/service.ts';
 export {
   loadRuntimeConfig,

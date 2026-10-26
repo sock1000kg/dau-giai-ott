@@ -430,6 +430,7 @@ P3-D08 + P3-N07 ──► P3-D09 signed ResultBundle
 P3-D09 + P3-L05 + P3-L06 ──► P3-D10 finals public UI
 P3-D09 + P3-D10 + P3-N07 ──► P3-N08 event rehearsal ──► Checkpoint P3-F
 P3-N09 test-run API contract ──► P3-D11 team test-run portal and replay
+P3-N09 ──► P3-N10 BTC reference bot catalog API ──► P3-D12 BTC reference bot management portal
 P3-D01 + P3-D03 + migration 0021 round cancel ──► P3-T02 round recovery reconciliation ──► Checkpoint P3-C
 ```
 
@@ -466,6 +467,8 @@ P3-D01 + P3-D03 + migration 0021 round cancel ──► P3-T02 round recovery re
 - [x] `P3-D04` — CSV team provisioning và credential file tải một lần — Phạm Tất Đạt.
 - [x] `P3-N03` — Test-run quota, opponent policy và private artifacts — Đỗ Khôi Nguyên.
 - [ ] `P3-N09` — Team portal test-run policy, admission atomicity và verified replay — Đỗ Khôi Nguyên.
+- [x] `P3-N10` — BTC reference bot catalog API và OCI lifecycle — Đinh Đức Thuận.
+- [x] `P3-D12` — BTC reference bot management portal — Đinh Đức Thuận.
 
 ### Checkpoint P3-C — Participant workflows
 

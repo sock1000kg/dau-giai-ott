@@ -13,7 +13,7 @@ describe('AppNav', () => {
     render(<AppNav role="BTC_ADMIN" pathname="/" onLogout={noop} />);
     expect(links().map((link) => [link.textContent, link.getAttribute('href')])).toEqual([
       ['Tổng quan', '/'], ['Đội thi', '/admin/teams'], ['Round', '/admin/rounds'],
-      ['Đặc quyền', '/admin/operations'], ['Kết quả', '/admin/results'], ['Replay', '/admin/replays'],
+      ['Đặc quyền', '/admin/operations'], ['Kết quả', '/admin/results'], ['Replay', '/admin/replays'], ['Bot chạy thử', '/admin/reference-bots'],
     ]);
   });
 
@@ -37,6 +37,7 @@ describe('AppNav', () => {
     expect(current('BTC_ADMIN', '/admin/rounds')).toEqual(['Round']);
     expect(current('BTC_ADMIN', '/admin/replays')).toEqual(['Replay']);
     expect(current('BTC_ADMIN', '/admin/replays/m1/view')).toEqual(['Replay']);
+    expect(current('BTC_ADMIN', '/admin/reference-bots')).toEqual(['Bot chạy thử']);
     expect(current('TEAM_ACCOUNT', '/team/replays/m1')).toEqual(['Kết quả']);
     expect(current('TEAM_ACCOUNT', '/team/submissions')).toEqual(['Nộp bot']);
     expect(current('TEAM_ACCOUNT', '/team/test-runs')).toEqual(['Chạy thử bot']);

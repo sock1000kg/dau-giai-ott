@@ -28,6 +28,7 @@ const MATRIX: readonly Case[] = [
   { role: 'BTC_ADMIN', path: '/admin/operations', h1: 'Vận hành đặc quyền', nav: 'Đặc quyền', ready: 'Chưa có sự kiện audit nào' },
   { role: 'BTC_ADMIN', path: '/admin/results', h1: /kết quả/i, nav: 'Kết quả', ready: 'Đã chốt' },
   { role: 'BTC_ADMIN', path: '/admin/replays', h1: /replay/i, nav: 'Replay', ready: /Alpha Team/ },
+  { role: 'BTC_ADMIN', path: '/admin/reference-bots', h1: 'Bot chạy thử', nav: 'Bot chạy thử', ready: 'Chưa có bot tham chiếu nào.' },
   { role: 'BTC_ADMIN', path: `/admin/replays/${ids.match}/view`, h1: 'Xem lại trận', nav: 'Replay', ready: /REPLAY ĐÃ XÁC MINH/ },
   { role: 'TEAM_ACCOUNT', path: `/team/replays/${ids.match}`, h1: 'Xem lại trận', ready: /REPLAY ĐÃ XÁC MINH/ },
   { role: 'ANONYMOUS', path: `/spectator/replays/${ids.match}`, h1: 'Xem lại trận', ready: /REPLAY ĐÃ XÁC MINH/ },
@@ -40,6 +41,8 @@ const MATRIX: readonly Case[] = [
   { role: 'TEAM_ACCOUNT', path: '/admin/rounds', h1: 'Không có quyền truy cập', denied: true },
   { role: 'BTC_ADMIN', path: '/team/submissions', h1: 'Không có quyền truy cập', denied: true },
   { role: 'BTC_ADMIN', path: '/team/test-runs', h1: 'Không có quyền truy cập', denied: true },
+  { role: 'TEAM_ACCOUNT', path: '/admin/reference-bots', h1: 'Không có quyền truy cập', denied: true },
+  { role: 'ANONYMOUS', path: '/admin/reference-bots', h1: /đăng nhập/i },
 ];
 
 let errors: ReturnType<typeof vi.spyOn>[] = [];

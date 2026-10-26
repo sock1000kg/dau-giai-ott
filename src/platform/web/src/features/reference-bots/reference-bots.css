@@ -1,0 +1,27 @@
+.reference-bots-eyebrow { margin: 0 0 var(--ui-space-3); color: var(--ui-accent); font-size: 12px; font-weight: 700; letter-spacing: .06em; }
+.reference-bots-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--ui-space-4); align-items: start; }
+.reference-bots-layout > * { min-width: 0; }
+@media (min-width: 900px) { .reference-bots-layout { grid-template-columns: minmax(18rem, .8fr) minmax(0, 1.2fr); } }
+.reference-bots-upload > p, .reference-bots-empty { color: var(--ui-text-muted); }
+.reference-bots-form { display: grid; gap: var(--ui-space-2); }
+.reference-bots-form > label { margin-block-start: var(--ui-space-2); font-weight: 600; }
+.reference-bots-form > .ui-button { justify-self: start; margin-block-start: var(--ui-space-2); }
+.reference-bots-file-meta { margin: 0; color: var(--ui-text-muted); font-size: 13px; overflow-wrap: anywhere; }
+.reference-bots-list { display: grid; gap: var(--ui-space-3); margin: 0; padding: 0; list-style: none; }
+.reference-bots-item { display: grid; gap: var(--ui-space-3); min-width: 0; padding: var(--ui-space-3); border: 1px solid var(--ui-border); border-radius: var(--ui-radius-md); }
+.reference-bots-item-heading { display: flex; flex-wrap: wrap; align-items: start; justify-content: space-between; gap: var(--ui-space-2); }
+.reference-bots-item-heading > div { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ui-space-2); }
+.reference-bots-item-heading h3 { margin: 0; font-size: 1rem; }
+.reference-bots-item-heading time { color: var(--ui-text-muted); font-size: 13px; }
+.reference-bots-digests { display: grid; gap: var(--ui-space-2); margin: 0; }
+.reference-bots-digests > div { display: grid; gap: var(--ui-space-1); min-width: 0; }
+.reference-bots-digests dt { color: var(--ui-text-muted); font-size: 13px; }
+.reference-bots-digests dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.reference-bots-digests code { font-size: 12px; }
+.reference-bots-actions { display: flex; flex-wrap: wrap; gap: var(--ui-space-2); }
+.reference-bots-confirm { margin-block-start: var(--ui-space-4); }
+.reference-bots-alert { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--ui-space-3); }
+.reference-bots-alert p { margin: 0; }
+@media (max-width: 520px) {
+  .reference-bots-form > .ui-button, .reference-bots-actions > .ui-button { width: 100%; }
+}

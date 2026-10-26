@@ -20,6 +20,7 @@ const BTC_ITEMS: readonly NavItem[] = [
   { label: 'Đặc quyền', href: '/admin/operations' },
   { label: 'Kết quả', href: '/admin/results' },
   { label: 'Replay', href: '/admin/replays' },
+  { label: 'Bot chạy thử', href: '/admin/reference-bots' },
 ];
 
 const TEAM_ITEMS: readonly NavItem[] = [
