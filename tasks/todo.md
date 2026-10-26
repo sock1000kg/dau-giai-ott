@@ -1115,32 +1115,32 @@ Task `P2-T42`–`P2-T53` là đợt giao diện riêng, không tự đóng `P2-C
 
 > Đây là extension của demo reset. Mỗi giờ hệ thống quay về một baseline có lịch sử trận, replay/artifact và public snapshots, sau đó đặt mật khẩu `team01`–`team04` về default. Baseline không chứa credential plaintext; BTC giữ credential riêng. Profile scheduler container tại `P2-T59` phải disabled khi OS cron được bật.
 
-### [ ] P2-T61 — Tạo và kiểm định baseline snapshot demo
+### [x] P2-T61 — Tạo và kiểm định baseline snapshot demo
 
 **Owner:** Đinh Đức Thuận
-**Mô tả:** Tạo command xuất bundle baseline bất biến từ demo stack gồm PostgreSQL, SeaweedFS và public snapshots, kèm manifest để dùng làm nguồn khôi phục định kỳ.
-**Acceptance criteria:** (1) command chỉ chạy cho Compose project `ott-demo*`, yêu cầu đường dẫn đích tuyệt đối ngoài Git và fail nếu thiếu `pg_dump`, container/volume hoặc payload; không tạo placeholder; (2) bundle gồm DB dump, SeaweedFS data, public snapshots, version/commit, row counts, object counts và SHA-256; không gồm Redis, `.env`, CSV credential, plaintext password/token; file/dir lần lượt mode `0600`/`0700`; (3) baseline có đúng account `btc`, `team01`–`team04` trong allowlist demo, có dữ liệu mẫu lịch sử match/result/replay và replay object tham chiếu từ DB tồn tại trong storage.
+**Mô tả:** Tạo command xuất bundle baseline bất biến từ demo stack gồm PostgreSQL, S3 objects của SeaweedFS và public snapshots, kèm manifest để dùng làm nguồn khôi phục định kỳ.
+**Acceptance criteria:** (1) command chỉ chạy cho Compose project `ott-demo*`, yêu cầu đường dẫn đích tuyệt đối ngoài Git và fail nếu thiếu `pg_dump`, container/volume hoặc payload; không tạo placeholder; (2) bundle gồm DB dump, object-level S3 export, public snapshots, version/commit, row counts, object/reference counts và SHA-256; không gồm Redis, `.env`, CSV credential, plaintext password/token; file/dir lần lượt mode `0600`/`0700`; (3) baseline có đúng account `btc`, `team01`–`team04` trong allowlist demo, có dữ liệu mẫu lịch sử match/result/replay và mọi DB object reference resolve tới object có checksum đúng.
 **Verification:** Shell tests cho guard/fail-fast/permission/checksum/redaction; tạo bundle từ stack cách ly rồi verify manifest, DB counts và DB→object reference; `bash -n`, `git diff --check` và GitNexus change review pass.
 **Dependencies:** `P2-T35`, `P2-T38`, `P2-T58`.
 **Files:** `scripts/demo-snapshot.sh`, `scripts/tests/demo-snapshot.test.sh`, `docs/runbooks/local-demo.md`, `docs/runbooks/demo-snapshot-reset.md`.
 **Ước lượng:** M (4 file).
 
-### [ ] P2-T62 — Khôi phục baseline qua demo.sh
+### [x] P2-T62 — Khôi phục baseline qua demo.sh
 
 **Owner:** Đinh Đức Thuận
 **Mô tả:** Thêm lệnh `demo.sh restore-demo` để thay toàn bộ state biến đổi bằng baseline đã kiểm định, rồi reset mật khẩu đội và đưa stack trở lại trạng thái ready.
-**Acceptance criteria:** (1) yêu cầu opt-in demo dev/test, project/path tuyệt đối và confirmation hoặc `--yes`; lấy exclusive lock, verify manifest/checksum trước khi dừng writer, từ chối public/hosted/finals/production; (2) dừng API/worker/coordinator/scheduler, restore sạch PostgreSQL + SeaweedFS + public snapshots, flush Redis session/queue, chạy migrate tương thích rồi gọi `P2-T58` đúng allowlist `team01`–`team04`; không đổi credential BTC; (3) post-restore kiểm row/object/reference counts, health/readiness, account set và idempotency; lỗi giữ log rõ, không lộ secret, không báo thành công hoặc mở writer nếu invariant chưa đạt.
+**Acceptance criteria:** (1) yêu cầu opt-in demo dev/test, project/path tuyệt đối và confirmation hoặc `--yes`; lấy exclusive lock, verify manifest/checksum trước khi dừng writer, từ chối public/hosted/finals/production; (2) dừng API/worker/coordinator/scheduler, restore sạch PostgreSQL + S3 objects qua API + public snapshots, flush Redis session/queue, chạy migrate tương thích rồi gọi `P2-T58` đúng allowlist `team01`–`team04`; không đổi credential BTC; (3) trước khi mở API/worker/coordinator phải kiểm row/object/reference counts và reset password; chỉ mở writers sau khi invariant qua rồi kiểm health/readiness/account set/idempotency; lỗi giữ log rõ, không lộ secret, không báo thành công hoặc mở writer nếu invariant chưa đạt.
 **Verification:** Shell tests với fixture bundle hợp lệ/tampered/missing, duplicate lock và injected failure; hai lần restore liên tiếp trên disposable Compose stack cho cùng checksum/count; API login default của bốn đội pass, session cũ fail; `bash -n`, Compose config, focused API tests và `git diff --check` pass.
 **Dependencies:** `P2-T61`, `P2-T58`.
-**Files:** `scripts/demo.sh`, `scripts/lib/demo_snapshot.sh`, `scripts/tests/demo-snapshot-restore.test.sh`, `docs/runbooks/demo-snapshot-reset.md`, `package.json`.
+**Files:** `scripts/demo.sh`, `scripts/demo-restore-snapshot.sh`, `scripts/tests/demo-snapshot-restore.test.sh`, `docs/runbooks/demo-snapshot-reset.md`, `package.json`.
 **Ước lượng:** M (5 file).
 
-### [ ] P2-T63 — Cài OS crontab khôi phục demo mỗi giờ
+### [x] P2-T63 — Cài OS crontab khôi phục demo mỗi giờ
 
 **Owner:** Đinh Đức Thuận
 **Mô tả:** Cung cấp installer idempotent cho OS crontab gọi `demo.sh restore-demo` mỗi giờ bằng cấu hình root-only; không dùng scheduler container cho full restore.
 **Acceptance criteria:** (1) installer có `install`, `status`, `run-now`, `uninstall`, quản lý đúng một marker block và mặc định lịch `0 * * * *` theo `Asia/Ho_Chi_Minh`; path repo/release, env, bundle và log đều tuyệt đối, được validate trước khi ghi crontab; (2) cron dùng `flock`, timeout dài hữu hạn, `umask 077`, PATH rõ và log rotation; concurrent/manual trigger không chồng nhau, exit code phản ánh kết quả và output không chứa credential; (3) install refuse khi bundle chưa verify, stack không phải demo dev/test, `OTT_DEMO_PUBLIC=true`, scheduler profile `P2-T59` đang bật hoặc target accounts khác `team01`–`team04`.
-**Verification:** Shell tests trên crontab spool giả cho install/reinstall/status/uninstall, injection/path guards, timezone, lock và redaction; manual `run-now` trên disposable stack; `bash -n`, `shellcheck` nếu có và `git diff --check` pass.
+**Verification:** Shell tests trên crontab spool giả cho install/reinstall/status/uninstall, injection/path guards, public/hosted/finals refusal, timezone, lock và redaction; manual `run-now` trên disposable stack; `bash -n`, `shellcheck` nếu có và `git diff --check` pass.
 **Dependencies:** `P2-T62`; `P2-T59` implementation có thể tồn tại nhưng profile phải disabled.
 **Files:** `scripts/install-demo-reset-cron.sh`, `scripts/tests/demo-reset-cron.test.sh`, `config/demo-reset-cron.example.env`, `docs/runbooks/demo-snapshot-reset.md`.
 **Ước lượng:** M (4 file).

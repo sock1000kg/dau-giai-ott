@@ -114,6 +114,9 @@ reconciling; it does not treat older finalized series as completion evidence.
 # 9. Non-destructive refresh: reset database/volumes while preserving credentials and env
 ./scripts/demo.sh refresh [--yes]
 
+# 9b. Restore a verified demo baseline bundle, including match/replay history
+./scripts/demo.sh restore-demo /absolute/path/to/baseline --yes
+
 # 10. Stop the running containers (data volumes preserved)
 ./scripts/demo.sh stop
 
@@ -129,6 +132,7 @@ Or run via root npm workspace shortcuts:
 npm run demo:up
 npm run demo:status
 npm run demo:accounts
+npm run demo:restore -- /absolute/path/to/baseline --yes
 npm run demo:logs
 npm run demo:round -- status
 npm run demo:stop
@@ -216,6 +220,13 @@ To manually verify the web gateway and UI across machines on the same local netw
 > 1. **Public Credentials**: All demo accounts share the well-known password `ABC123`. Never run demo mode on shared, internet-facing, or production servers.
 > 2. **Docker Socket Mount**: The worker and coordinator containers mount `/var/run/docker.sock` to execute sandbox runner containers. Mounting the Docker daemon socket is root-equivalent on the host. Do not run untrusted third-party code outside the sandbox corpus.
 > 3. **Throw-Away Environment**: The demo environment file `.local/demo/demo.env` and credential export `.local/demo/accounts.csv` are git-ignored and intended solely for ephemeral local testing.
+
+The tracked `demo/team-accounts.csv` is a stable public demo test-account list.
+Its passwords are intentionally public test credentials; never reuse them for
+BTC, another environment, or any account outside the disposable demo stack.
+The hourly restore workflow is allowed only with `OTT_DEMO_MODE=true`,
+`OTT_DEPLOYMENT_MODE=dev`, and `DEMO_PUBLIC=false`; public/hosted/finals mode
+continues to refuse destructive resets.
 
 ---
 
