@@ -1145,7 +1145,7 @@ Task `P2-T42`–`P2-T53` là đợt giao diện riêng, không tự đóng `P2-C
 **Files:** `scripts/install-demo-reset-cron.sh`, `scripts/tests/demo-reset-cron.test.sh`, `config/demo-reset-cron.example.env`, `docs/runbooks/demo-snapshot-reset.md`.
 **Ước lượng:** M (4 file).
 
-### [ ] P2-T64 — Deploy baseline và nghiệm thu hai chu kỳ restore
+### [x] P2-T64 — Deploy baseline và nghiệm thu hai chu kỳ restore
 
 **Owner:** Đinh Đức Thuận
 **Mô tả:** Tạo recovery backup, phát hành code từ `main`, chụp baseline demo đã duyệt trên `jump-jits`, bật OS cron và chứng minh dữ liệu/lịch sử/replay/account quay lại đúng sau thay đổi.
