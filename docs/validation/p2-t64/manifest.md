@@ -2,6 +2,8 @@
 
 **State:** accepted after two scheduled hourly cycles passed on `jump-jits`.
 
+**Owner approval:** Đinh Đức Thuận approved the P2-F server and browser evidence on 2026-10-26.
+
 ## Release and isolation
 
 - Host: `jump-jits` (OS cron user `root`; host timezone `Asia/Bangkok`).
