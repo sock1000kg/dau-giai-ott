@@ -1172,7 +1172,7 @@ Task `P2-T42`–`P2-T53` là đợt giao diện riêng, không tự đóng `P2-C
 **Files:** `src/platform/web/public/downloads/`, `src/platform/web/src/features/public/PublicTournamentPage.tsx`, `src/platform/web/src/features/public/public-site.test.tsx`, `src/platform/web/src/features/public/public.css`, `demo/`.
 **Implementation/test:** 2026-10-23 — Gói ZIP version `v1`, public download card, bot samples và manual E2E overview đã có trên `main`; public-site 6/6, full web 432/432, typecheck/build và ZIP integrity pass. Task còn mở chờ human browser smoke.
 
-### [ ] P2-T66 — E2E demo: giới hạn kiểm tra cờ trùng vào submission của test
+### [x] P2-T66 — E2E demo: giới hạn kiểm tra cờ trùng vào submission của test
 
 **Owner:** Đinh Đức Thuận
 **Mô tả:** `npm run test:e2e:demo` fail trên `main` vì bước d. đòi danh sách cờ trùng của BTC phải rỗng, trong khi `demo.sh up` seed bot mẫu `samples/bots/demo-*.oci.tar` dùng chung một non-base layer nên Team 02 bị gắn cờ `NON_BASE_LAYERS` đúng theo AC-22. Sửa test để chỉ kiểm hai submission do chính test upload; không đổi code sản phẩm hoặc dữ liệu mẫu.
@@ -1182,6 +1182,7 @@ Task `P2-T42`–`P2-T53` là đợt giao diện riêng, không tự đóng `P2-C
 **Files:** `tests/e2e/local-demo.test.ts`, `tasks/todo.md`.
 **Ước lượng:** XS.
 **Ngoài phạm vi:** Bot mẫu dùng chung layer vẫn tạo cờ "Có thể trùng" cho Team 02 trên mỗi stack demo; sửa dữ liệu mẫu cần task riêng.
+**Hoàn tất (2026-10-27):** Nguyên nhân xác nhận trên stack thật: cờ duy nhất là Team 02 `NON_BASE_LAYERS` khớp Team 01, từ bot mẫu. `npm run test:e2e:demo -- --clean-checkout` tại `638680d`: bước d. pass 5/5 lần; toàn bộ 13/13 pass 4/5 lần, gồm 3 lần liên tiếp. Lần còn lại fail ở bước h. (leaderboard trước/sau restart khác nhau vì series của test chỉ FINALIZED trong lúc bước h chạy, tức bước e. kết thúc chờ sớm). Lỗi chập chờn này không liên quan thay đổi và chưa rõ nguyên nhân; cần task riêng.
 
 ## Phase 3 — Gate P3-0: decision và contract approval
 
