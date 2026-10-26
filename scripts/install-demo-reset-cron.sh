@@ -133,8 +133,8 @@ case "${command}" in
     load_config "${config_file}"
     verify_runtime "${CONFIG[OTT_DEMO_PROJECT]}" "${CONFIG[OTT_DEMO_ENV_FILE]}" "${CONFIG[OTT_DEMO_COMPOSE_FILE]}" "${CONFIG[OTT_DEMO_SNAPSHOT_BUNDLE]}" "${CONFIG[REPO_ROOT]}"
     current="$(crontab -l 2>/dev/null || true)"
-    begin_count="$(printf '%s\n' "${current}" | rg -c -F "${BEGIN_MARKER}" || true)"
-    end_count="$(printf '%s\n' "${current}" | rg -c -F "${END_MARKER}" || true)"
+    begin_count="$(printf '%s\n' "${current}" | grep -F -c -- "${BEGIN_MARKER}" || true)"
+    end_count="$(printf '%s\n' "${current}" | grep -F -c -- "${END_MARKER}" || true)"
     [[ "${begin_count:-0}" == "${end_count:-0}" && "${begin_count:-0}" -le 1 ]] || fail "existing demo cron markers are unbalanced or duplicated"
     base="$(printf '%s\n' "${current}" | awk -v begin="${BEGIN_MARKER}" -v end="${END_MARKER}" '$0 == begin { skip=1; next } $0 == end { skip=0; next } !skip { print }')"
     {
@@ -149,7 +149,7 @@ case "${command}" in
     current="$(crontab -l 2>/dev/null || true)"
     if [[ "${current}" == *"${BEGIN_MARKER}"* && "${current}" == *"${END_MARKER}"* ]]; then
       printf 'Hourly demo snapshot restore is installed.\n'
-      printf '%s\n' "${current}" | sed -n "/^${BEGIN_MARKER}$/,/^${END_MARKER}$/p" | rg '^[0-9*]' || true
+      printf '%s\n' "${current}" | sed -n "/^${BEGIN_MARKER}$/,/^${END_MARKER}$/p" | grep -E '^[0-9*]' || true
     else
       printf 'Hourly demo snapshot restore is not installed.\n'
     fi
@@ -167,8 +167,8 @@ case "${command}" in
   uninstall)
     [[ $# == 0 ]] || { usage >&2; exit 2; }
     current="$(crontab -l 2>/dev/null || true)"
-    begin_count="$(printf '%s\n' "${current}" | rg -c -F "${BEGIN_MARKER}" || true)"
-    end_count="$(printf '%s\n' "${current}" | rg -c -F "${END_MARKER}" || true)"
+    begin_count="$(printf '%s\n' "${current}" | grep -F -c -- "${BEGIN_MARKER}" || true)"
+    end_count="$(printf '%s\n' "${current}" | grep -F -c -- "${END_MARKER}" || true)"
     [[ "${begin_count:-0}" == "${end_count:-0}" && "${begin_count:-0}" -le 1 ]] || fail "existing demo cron markers are unbalanced or duplicated"
     printf '%s\n' "${current}" | awk -v begin="${BEGIN_MARKER}" -v end="${END_MARKER}" '$0 == begin { skip=1; next } $0 == end { skip=0; next } !skip { print }' | crontab -
     printf 'Removed the managed demo snapshot restore block.\n'

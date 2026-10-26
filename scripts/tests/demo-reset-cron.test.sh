@@ -54,7 +54,15 @@ printf 'REPO_ROOT=%s\nOTT_DEMO_PROJECT=ott-demo-test\nOTT_DEMO_ENV_FILE=%s\nOTT_
   "${REPO_ROOT}" "${TMP_DIR}/demo.env" "${TMP_DIR}/compose.yaml" "${TMP_DIR}/bundle" "${TMP_DIR}/reset.log" > "${TMP_DIR}/cron.env"
 chmod 0600 "${TMP_DIR}/cron.env"
 
+cat > "${MOCK_BIN}/rg" <<MOCK
+#!/usr/bin/env bash
+: > "${TMP_DIR}/rg-was-called"
+exit 127
+MOCK
+chmod 0700 "${MOCK_BIN}/rg"
 bash "${INSTALLER}" install "${TMP_DIR}/cron.env" >/dev/null
+[[ ! -e "${TMP_DIR}/rg-was-called" ]]
+rm "${MOCK_BIN}/rg"
 bash "${INSTALLER}" install "${TMP_DIR}/cron.env" >/dev/null
 [[ "$(rg -c -F '# BEGIN OTT DEMO SNAPSHOT RESET' "${DEMO_TEST_CRONTAB_FILE}")" == 1 ]]
 rg -q '^\*/5 \* \* \* \* /usr/bin/true$' "${DEMO_TEST_CRONTAB_FILE}"
