@@ -1172,6 +1172,16 @@ Task `P2-T42`–`P2-T53` là đợt giao diện riêng, không tự đóng `P2-C
 **Files:** `src/platform/web/public/downloads/`, `src/platform/web/src/features/public/PublicTournamentPage.tsx`, `src/platform/web/src/features/public/public-site.test.tsx`, `src/platform/web/src/features/public/public.css`, `demo/`.
 **Implementation/test:** 2026-10-23 — Gói ZIP version `v1`, public download card, bot samples và manual E2E overview đã có trên `main`; public-site 6/6, full web 432/432, typecheck/build và ZIP integrity pass. Task còn mở chờ human browser smoke.
 
+### [ ] P2-T67 — E2E demo: bước e. chờ đúng series của round do test tạo
+
+**Owner:** Đinh Đức Thuận
+**Mô tả:** Bước h. của `npm run test:e2e:demo` thỉnh thoảng fail ("Leaderboard entries must be identical post-restart") vì bảng xếp hạng đổi trong lúc restart. Nguyên nhân: `/api/v1/results/series` chỉ trả series đã `FINALIZED`/`CANCELLED`, nên series mẫu do `demo.sh up` seed làm điều kiện chờ của bước e. đúng ngay lần poll đầu, trước khi series của test hoàn tất. Sửa test để bước e. ghi lại series có sẵn trước khi start và chỉ chờ series mới; không đổi code sản phẩm.
+**Acceptance criteria:** (1) bước e. chỉ coi là xong khi có ít nhất một series mới (không có trước khi start) và mọi series mới đều `FINALIZED`; (2) danh sách series trước khi start nằm trọn một trang; (3) E2E demo pass đủ 13/13, không test nào bị skip.
+**Verification:** `npm run test:e2e:demo -- --clean-checkout` pass nhiều lần liên tiếp; GitNexus detect-changes trước commit.
+**Dependencies:** `cd9813f` (sample round seeding); độc lập với `P2-T66` nhưng cả hai cần merge để E2E demo pass ổn định.
+**Files:** `tests/e2e/local-demo.test.ts`, `tasks/todo.md`.
+**Ước lượng:** XS.
+
 ## Phase 3 — Gate P3-0: decision và contract approval
 
 > `P3-T01` đã duyệt requirement/ADR/contract ngày 14/10/2026. Task implementation chỉ hoàn tất sau acceptance/verification riêng; Wave 1 có thể bắt đầu trên branch task từ `main`.
