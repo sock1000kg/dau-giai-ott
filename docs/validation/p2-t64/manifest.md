@@ -68,3 +68,20 @@ session revocation, object/database invariants, readiness and public replay.
 - `npm audit` reports a moderate transitive `fast-uri` advisory and a low
   `fastify` advisory in the existing lockfile. Dependencies were not changed by
   this demo-reset task; the deployed gateway is loopback-only.
+
+## Finals data baseline remediation (2026-10-26)
+
+The merged source release for PR [#89](https://github.com/sock1000kg/dau-giai-ott/pull/89) is `da89942a9d20c112b72e3b070bd73a82992e55cd`, deployed at `/opt/ott/releases/da89942a9d20c112b72e3b070bd73a82992e55cd`. Public `ott-demo` was seeded directly with the existing `demo:seed-finals-bundle` mechanism; no snapshot restore was run against that public project. `ott-demo-reset` was seeded independently and a new immutable baseline was created, retaining the previous `/opt/ott/.local/demo-reset/baseline` for rollback.
+
+| Stack | Accounts | Active signing keys | VERIFIED bundles | Artifacts | Readiness | Finals snapshot |
+| --- | ---: | ---: | ---: | ---: | --- | --- |
+| Public `ott-demo` | 11 | 1 | 1 | 49 | HTTP 200 | HTTP 200; 8 teams and 8 pairings |
+| Isolated `ott-demo-reset` | 11 | 1 | 1 | 49 | HTTP 200 | HTTP 200; 8 teams and 8 pairings |
+
+The representative bundle replay endpoint and spectator replay page with the `?bundle=demo-finals-bundle-2026` query returned HTTP 200 on both stacks. The public `/finals` page rendered 8 distinct standings teams; a headless Chrome DOM check found 8 standings rows, 20 replay links and VERIFIED proof, with no alert or loading state. Public and reset databases were checked independently. Health/readiness, finals snapshot, `/finals`, replay API, and spectator page routes returned HTTP 200.
+
+The active reset baseline is `/opt/ott/.local/demo-reset/baseline-da89942`; its checksums file SHA-256 is `06c19e14c034445fa5e3b60648066d81e22775423a766f480317a1688e6f4b90`. It was created at `2026-10-26 19:24:43 +07:00` from commit `da89942a9d20c112b72e3b070bd73a82992e55cd`. Verification passed with 1 active key, 1 VERIFIED bundle and 49 artifacts. Cron config now selects that release, host-specific reset Compose file and baseline. The root-only rollback copy of the former cron config is `/opt/ott/.local/demo-reset/cron.env.rollback-18ec000`; reinstall was repeated and confirmed idempotent. Controlled `run-now` completed at `2026-10-26 19:26:48 +07:00`; the reset stack remained healthy and finals counts positive afterward.
+
+| Scheduled cycle | Cron launch | Restore finished | Post-cycle invariants and probes |
+| --- | --- | --- | --- |
+| 2026-10-26 20:00 `Asia/Ho_Chi_Minh` | 20:00:01 +07:00; root crontab invoked the managed `run` command from the `da89942` release | 20:00:44 +07:00; log reports restore completed and readiness healthy | 11 accounts, 1 active key, 1 bundle, 49 artifacts; snapshot proof VERIFIED; readiness, finals snapshot, `/finals`, representative bundle replay API and spectator replay page all HTTP 200; 7 reset services healthy; baseline verification passed |
