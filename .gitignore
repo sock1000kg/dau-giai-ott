@@ -8,4 +8,3 @@ src/bots/sandbox-corpus/artifacts/
 .local/
 __pycache__/
 *.pyc
-/demo/team-accounts.csv

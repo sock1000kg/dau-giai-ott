@@ -7,10 +7,10 @@
       "expected": "ACTION",
       "archive": "oci-fixtures/first-legal.oci.tar",
       "dockerfile": "src/bots/oci-fixtures/first-legal/Dockerfile",
-      "archiveSha256": "sha256:1297c9ab0f96043e9ad228e6afe0a27eaeb9a35003ee6c9dad6cded81da5823d",
-      "imageId": "sha256:7b9555ca721dbf8afbb06fd90582884e0999e2b96ad3dd5f19d45c191510dc7f",
-      "ociManifestDigest": "sha256:06dc87edac616843a15e94b7ed47dd0c69e5decc103b66687ba07f7f7921f543",
-      "ociConfigDigest": "sha256:51a740601949fb5c4bd7dc259f91f4f1c6f71b0009431656183709f3a89ea926",
+      "archiveSha256": "sha256:2acc193d8df652b01c57090ca37a7a6ce0fdbe9fe728d4ba7a680a2e4844f74f",
+      "imageId": "sha256:7d530432dcf034ed85768c2c5c1726eef255e9ac43dd11e69bfe30e1116b1415",
+      "ociManifestDigest": "sha256:007a7850dd2e6708cdc2354a3680209fb1bdcccd6146a162a45a3510f5b3205c",
+      "ociConfigDigest": "sha256:109e1b07684489c98276bc7d6e02ff383e50f645078478e3ea6a6ad9a4e7fead",
       "entrypoint": [
         "python3",
         "/app/bot.py"
@@ -22,10 +22,10 @@
       "expected": "ACTION",
       "archive": "oci-fixtures/capture-first.oci.tar",
       "dockerfile": "src/bots/oci-fixtures/capture-first/Dockerfile",
-      "archiveSha256": "sha256:9c20d23c3c71d80306553831f2e063ad3d7eff255d94db669a719c827bd0e625",
-      "imageId": "sha256:1d5d002a7777c1c84e746003a647521b6fe949b5b50fda287ecd82a4ad55eeda",
-      "ociManifestDigest": "sha256:dcd42c21b1bf0ea1725c26d38ed8b70ca7719af7a8df40c60476b98c06bc4372",
-      "ociConfigDigest": "sha256:0e6ef6d695180fd4ae755366cc92b36bb3ef28e08c14c0758f0660f94c1884cb",
+      "archiveSha256": "sha256:2fbc56bea0ba44eeb477afacb3e6c35dddd37e0471e8b176d2063e13eaa435e9",
+      "imageId": "sha256:fb934b791af0197a6629f640ae54e9dc431f745d95ff27d12fa6ecb4c9993799",
+      "ociManifestDigest": "sha256:955db2988eb24362caf8b9c698c4208f90b90a16bbe46dcc2cbb89dbac2c53de",
+      "ociConfigDigest": "sha256:167d2db72716c40649f18eb38e067dcac5614e2e7292dada96f2b00f376bcfd5",
       "entrypoint": [
         "python3",
         "/app/bot.py"
@@ -38,7 +38,7 @@
       "archive": "oci-fixtures/node-action.oci.tar",
       "dockerfile": "src/bots/oci-fixtures/node-action/Dockerfile",
       "archiveSha256": "sha256:5a45b73b1b4091ebef3be8e5113326fe59d2848c3729204682d02fc307e98f73",
-      "imageId": "sha256:dc8949146930fae10c4e6e95dd9ceb26ee81af27daa5b417687aec7acf1bf7a7",
+      "imageId": "sha256:f30ac60048da6a47339868468e8f5850d5ec3dd5c0a52af6bd05c20a6ba58d06",
       "ociManifestDigest": "sha256:be878c1f50286cfa929bdd2d94272d4fbd198c42e27b4ef700fef044cd20f036",
       "ociConfigDigest": "sha256:82b9e1e091e01190b40d6587bdb6aba56fbef153df58dcd056c3fc355fc0aa36",
       "entrypoint": [
@@ -53,7 +53,7 @@
       "archive": "oci-fixtures/native-action.oci.tar",
       "dockerfile": "src/bots/oci-fixtures/native-action/Dockerfile",
       "archiveSha256": "sha256:621c9fe9b2702edede2a1ead34dea02922b3732faa7a2cc6bc3385f901e0354d",
-      "imageId": "sha256:5b82a7778c91e51f32abb5fa4b73e5b2d3579c72ffd7f96498be9a0b56e03b98",
+      "imageId": "sha256:3ab8d35e05a9ae6f965feee350ba8b7eb9f8cb5a934ad7c11e5affe8f7bdea79",
       "ociManifestDigest": "sha256:1b8e1ccd64730caa3e38a68568a8f6b6b97a6b65601cff1c4c2bc5a4307aefea",
       "ociConfigDigest": "sha256:a08974d70404cdbdf057ef638d0c0f0fd564c48b89a50a6e8d168e14bd8fef1d",
       "entrypoint": [
@@ -68,7 +68,7 @@
       "dockerfile": "src/bots/oci-fixtures/v2-action/Dockerfile",
       "buildArg": "STRATEGY=first",
       "archiveSha256": "sha256:0d850e8f84582e7cfec281778e1643e2e77f40ddd48b8d55dcd77b41c277a5b4",
-      "imageId": "sha256:c9c191c15591ed5f25925df41b37580142a73f062aac5606f8ffc5a371537418",
+      "imageId": "sha256:0c23abb3da5e00234778868adb9b09329a89150c65e8192e552d26dda63b68d6",
       "ociManifestDigest": "sha256:e6194a8a1cbd0d7acd9b2645e62775a7de05d5b27b32bbf28fa8bd5b102282c0",
       "ociConfigDigest": "sha256:f526bbd36ed4be154fcf6a2282099fed1b1cd16729a3aba2db5d58bca976743d",
       "entrypoint": [
@@ -84,7 +84,7 @@
       "dockerfile": "src/bots/oci-fixtures/v2-action/Dockerfile",
       "buildArg": "STRATEGY=capture",
       "archiveSha256": "sha256:9b8a6bd3346427eeadc83dd8f98d7a9172211e76c19f4fc74e3e3b4e0a845424",
-      "imageId": "sha256:954db999699e3d79aa219c5878d08c802d94d507770eaa9665be92c2e5e39cfc",
+      "imageId": "sha256:5181a48902f77aaa139786f645fab0a013b5fd2d956fd471d3f188745882a720",
       "ociManifestDigest": "sha256:42fd0cd1786338c694280b8f74892e8f8b5e1d34d7c809464bc56488d8571ae1",
       "ociConfigDigest": "sha256:6fc472450705d6df83fa0c0ba034747b259997ebd7b0714e5ad9c1780b7f9085",
       "entrypoint": [
@@ -100,7 +100,7 @@
       "dockerfile": "src/bots/oci-fixtures/v2-action/Dockerfile",
       "buildArg": "STRATEGY=first-team01",
       "archiveSha256": "sha256:a3319bf71d0cf296cdeed191fe277b86b6e8c059ac06038f2aa5e980069d4280",
-      "imageId": "sha256:189cdcbd084f5a07ba95e90dec85028d96ce58264f82699d21d56bcf5fa67d49",
+      "imageId": "sha256:7a9f0759129473ca9fc15a3cec0cb990d7d6525582ebd15a770811ce5b4d1d34",
       "ociManifestDigest": "sha256:9d7eb5b7fcd52bd6dbee534dd47192ef73c9720c15a6c8c94a9e4b324be709d8",
       "ociConfigDigest": "sha256:599702315dfedcbe275181937f57b9c2efba0a9bc8f78ae019e4f6d3f2fee84a",
       "entrypoint": [
@@ -116,7 +116,7 @@
       "dockerfile": "src/bots/oci-fixtures/v2-action/Dockerfile",
       "buildArg": "STRATEGY=capture-team02",
       "archiveSha256": "sha256:6b1e72b55daac6941b9dc6720abfc354ec8599805aaf956f0a91b5c9271da7f8",
-      "imageId": "sha256:5b7dc2956197e56f08cbf845b7927d5ecaf2a9559773af3169891c05ab933d09",
+      "imageId": "sha256:38c6915bdbdce3313cdbf77d69514e576789ccc5df0aa5dcf29cd07699f44027",
       "ociManifestDigest": "sha256:41a687381b2e7a2526ee7e3087d432895e2f679b273f009619ccd35afe43d91c",
       "ociConfigDigest": "sha256:330a26ee7ee2c2112017b599c4ce9409682269517a9e22778a3c029ea3396098",
       "entrypoint": [
@@ -132,7 +132,7 @@
       "dockerfile": "src/bots/oci-fixtures/v2-action/Dockerfile",
       "buildArg": "STRATEGY=first-team03",
       "archiveSha256": "sha256:7806d1feec70cad7c6593ab4f6bb04af286d2a67b4d463a731eb7702d01c2ad6",
-      "imageId": "sha256:0079ca0eb702110e807123ccf9aefdcc301775c553ffb5a3f7703ba85d2fb241",
+      "imageId": "sha256:0cad6d734f7f900d94dd9028332403febb1c40ae5028b960fff248bd015c78b8",
       "ociManifestDigest": "sha256:f71ba6177124b3733bba26c99d23d6a40864a3fbdefba40013eae4c9b81fa2f7",
       "ociConfigDigest": "sha256:1b0f5d7e5ddef07891c29a22596538cc532b1b08a4e4d25b848da217cbe6cbd8",
       "entrypoint": [
@@ -148,7 +148,7 @@
       "dockerfile": "src/bots/oci-fixtures/v2-action/Dockerfile",
       "buildArg": "STRATEGY=capture-team04",
       "archiveSha256": "sha256:0aa3f3603bae21389fa3a79a6816dce79c6fa3de496358133550b540fc567e4a",
-      "imageId": "sha256:1f13032ae7c6e88f122b5bed6e9adb6aa633541a6d15314f991df2d86bac1626",
+      "imageId": "sha256:b9c34ba33579d0cfc1907f6cddc834132484c74f602509801edebc9ae4078e31",
       "ociManifestDigest": "sha256:740ce47729e8b1feab3fa89c079029685a66e297fbd214b3d5bf44e5fa150ebf",
       "ociConfigDigest": "sha256:8bbf7559b9ab523cb50e282e9a0edea6c695fd0cb729ddcdf05de64cb0917a9a",
       "entrypoint": [
@@ -163,7 +163,7 @@
       "dockerfile": "src/bots/oci-fixtures/fault/Dockerfile",
       "buildArg": "MODE=timeout",
       "archiveSha256": "sha256:f5f6931a3f3f111534fc822498adf6b949ccaf4f81b0aa2341c804acb8535587",
-      "imageId": "sha256:027598a99466210330d68efd22554f0ae0a4979278445ada8e1f84b94f886525",
+      "imageId": "sha256:b1411cf08f1ca832a41d0a8fce667a74dc5c623450387610ad6812ef48931ccb",
       "ociManifestDigest": "sha256:c317c51746e99057cd0039d1377e56c5828834e145750b105330a836257d3dca",
       "ociConfigDigest": "sha256:00c454da2c9048374a20d2f608e3cbc57e1161084226d73dfe49cada8ce33566",
       "entrypoint": [
@@ -177,7 +177,7 @@
       "dockerfile": "src/bots/oci-fixtures/fault/Dockerfile",
       "buildArg": "MODE=fork",
       "archiveSha256": "sha256:fe2e04358f67c0d9aa8f83406888f450b9b46341be70a76f9edf07a9762806a1",
-      "imageId": "sha256:3346d54085737ec36f6f9bf127056f45341543bc5d3c2b62dab6188c9fba5b87",
+      "imageId": "sha256:84128dcb61ab824eb17c538641437ddfe7e31a4054b6c7de2df672bddef74558",
       "ociManifestDigest": "sha256:42918a7935b99aa6ff7741d6e0c37f89529adcf2266e6ddddaba01b3ebcdfd37",
       "ociConfigDigest": "sha256:56fd35d2fcb5f8327705ee7961d4e1ff3f92d7e982d16ec354cbecbdb186c843",
       "entrypoint": [
@@ -191,7 +191,7 @@
       "dockerfile": "src/bots/oci-fixtures/fault/Dockerfile",
       "buildArg": "MODE=write",
       "archiveSha256": "sha256:de057193b45ab99eaeba2f9d50e4907337410095b314335e1c4b4e5e235519af",
-      "imageId": "sha256:ad715ff911d0ac5f1a7074b3665a207c938f86840c996c90b60446ffbd93b3ce",
+      "imageId": "sha256:c16a5603276fad933e12d9b77dedf5270490e99e24aef54dab431517221d5c86",
       "ociManifestDigest": "sha256:19a4167efa8cb80b36965ffd8d71fc27d7d75fc8e981036ebc5d548877ccffca",
       "ociConfigDigest": "sha256:7226b4b3b77cfc4f33953de28f4d3d824209e5ec2fe57cde4f750b8005037392",
       "entrypoint": [
@@ -205,7 +205,7 @@
       "dockerfile": "src/bots/oci-fixtures/fault/Dockerfile",
       "buildArg": "MODE=network",
       "archiveSha256": "sha256:e8f14eeb7eec56854808f532bd6a2067a94d5922f91d531025a66ede6399f595",
-      "imageId": "sha256:8398b514a28380de4b8cd50ba563485083bf1dfa19d24e7c723168beeb63004d",
+      "imageId": "sha256:7a9fd6fb9455795f53f6013b907409061cba14ff889664a7979bd03f147a333a",
       "ociManifestDigest": "sha256:badf73caa2b2e23b7321c1e367f92a5cfb6682f8d4c6d160e2d98648645d3f5d",
       "ociConfigDigest": "sha256:8221e4d4a4f009ce33b16245abe3450bba1a27796d4167d4d077e63f957032f0",
       "entrypoint": [
@@ -219,7 +219,7 @@
       "dockerfile": "src/bots/oci-fixtures/fault/Dockerfile",
       "buildArg": "MODE=output",
       "archiveSha256": "sha256:23fe9082c6217261262fa466b3c04e9375e4bf813219b0f8d4e8cda79556b956",
-      "imageId": "sha256:842dba57b23b05a5e1af51e240526393fb46f00e412128edc81486d91d8760fd",
+      "imageId": "sha256:125944c231c617919c8dd2379356dd9dc3515d800cd2df74791228b28dc55540",
       "ociManifestDigest": "sha256:f5fd9edb94128f0020c37484afcd81fb94da93361f7de60621c1e16a6d19af1d",
       "ociConfigDigest": "sha256:1f00f81923c2d2ad3353167d14820d4dafbce2bca2ef1e62fbbb8343e0f8ede6",
       "entrypoint": [
@@ -233,7 +233,7 @@
       "dockerfile": "src/bots/oci-fixtures/fault/Dockerfile",
       "buildArg": "MODE=memory",
       "archiveSha256": "sha256:512b4844d6ff03533053d302f57958d51ef534eced635fc5e01a29b46effb720",
-      "imageId": "sha256:977325b409a47d7d97b025f48ede40327e8d4af22619c74394af6ed1ab585bf2",
+      "imageId": "sha256:0651972da4a23580eedacc82150558a91392e82c33d6a54638b7ec3e5f685d5b",
       "ociManifestDigest": "sha256:fe78d63f734dde71438c123fadfb29fb7cc2e6e33bde91070a233216f9b11769",
       "ociConfigDigest": "sha256:ffc33471dc78ac0beb844c9619c930903168f699f9ee5aaa2c517e86c4e311da",
       "entrypoint": [
@@ -247,7 +247,7 @@
       "dockerfile": "src/bots/oci-fixtures/fault/Dockerfile",
       "buildArg": "MODE=cpu",
       "archiveSha256": "sha256:28e663537eda8ee932f1774635d1c66fb7400223e122a255bb92d488811ff787",
-      "imageId": "sha256:5d24be1611b77a460b6a91ccedc8ade1298088fd23f4684354bee4ee444184cb",
+      "imageId": "sha256:1c2bc68374ea77e98e541b48a65c56524807e62339cea2fb07945e81b67fb23f",
       "ociManifestDigest": "sha256:789544c54b701cba92c1e2564ea81e171d294d411ba5613fc98f2d7667c9b755",
       "ociConfigDigest": "sha256:f7e3caa7b8058920a3ba08603e0288a26f0efcc69c928d2729505c12ec955efa",
       "entrypoint": [

@@ -8,6 +8,7 @@
 #   status    Check service health, ready probe, and accounts CSV
 #   accounts  Print accounts and roles from CSV without logging passwords
 #   refresh   Reset data only and bring stack up fresh with existing env
+#   restore-demo Restore a verified baseline bundle, including match/replay history
 #   logs      Tail logs from one or all stack services
 #   round     BTC operator controls for round lifecycle (status|open|close|results)
 #   stop      Stop running containers without removing volumes
@@ -323,6 +324,7 @@ Subcommands:
   status    Check container status, ready probe, and accounts CSV
   accounts  Print demo accounts and roles (never prints passwords unless --reveal)
   refresh   Reset data only (wiping volumes) and re-up stack preserving env/credentials
+  restore-demo Restore a verified baseline bundle, including match/replay history
   logs      Tail logs from one or all services (api, worker, web, postgres, ...)
   round     Manage qualification round lifecycle as BTC administrator
   stop      Stop running containers without destroying data volumes
@@ -1585,6 +1587,12 @@ case "${COMMAND}" in
     ;;
   refresh)
     sub_refresh "$@"
+    ;;
+  restore-demo)
+    OTT_DEMO_PROJECT="${COMPOSE_PROJECT}" \
+      OTT_DEMO_ENV_FILE="${DEMO_ENV_FILE}" \
+      OTT_DEMO_COMPOSE_FILE="${COMPOSE_FILE}" \
+      bash "${REPO_ROOT}/scripts/demo-restore-snapshot.sh" "$@"
     ;;
   logs)
     sub_logs "$@"

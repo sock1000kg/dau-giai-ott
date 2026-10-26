@@ -28,6 +28,8 @@
     "demo:up": "bash scripts/demo.sh up",
     "demo:status": "bash scripts/demo.sh status",
     "demo:accounts": "bash scripts/demo.sh accounts",
+    "demo:snapshot:test": "bash scripts/tests/demo-snapshot.test.sh && bash scripts/tests/demo-snapshot-restore.test.sh && bash scripts/tests/demo-reset-cron.test.sh",
+    "demo:restore": "bash scripts/demo.sh restore-demo",
     "demo:logs": "bash scripts/demo.sh logs",
     "demo:round": "bash scripts/demo.sh round",
     "demo:stop": "bash scripts/demo.sh stop",
