@@ -28,10 +28,17 @@ Deviation: the live container's original image `sha256:7762d1ec…` was no longe
 - Browser: Finals headings, bracket and BO3 sections render; 20 replay links; no `role=alert`; no console errors/warnings.
 - Screenshots: `finals-dark-1440x900.png`, `finals-light-390x844.png`.
 
+## Public domain verification (`https://ott-frontend.d-thuand.party`)
+- `/healthz`, `/finals`, `/api/v1/public/finals/snapshot` all 200; `/finals` loads `index-D_o2DNr8.js` and `index-Bs7qKj8x.css`.
+- Asset served at the domain: SHA-256 `1cd434596e8f7becaa1784fe6b2e18ab7624cae7b64515342c7898faada9d316` (matches the image).
+- Snapshot via domain: proof `VERIFIED`, 8 standings, 8 bracket entries.
+- Browser (dark 1440x900): 32 table rows, 20 replay links, no alert, no console errors.
+- Replay `/spectator/replays/00000000-0000-4000-8000-000000000101?bundle=demo-finals-bundle-2026` renders ("Xem lại trận", teams, no alert); `GET /api/v1/public/result-bundles/demo-finals-bundle-2026` and its replay endpoint return 200 via curl.
+- Caveat: several earlier browser loads from the verifying machine hung or failed with `net::ERR_NETWORK_CHANGED` (client-side network change on that machine; the stuck snapshot fetch and the replay error both cleared on reload). Repeated `curl` requests were stable (200, ~0.2-1.6 s). Not reproduced after reload, so no server fault was found, but intermittent public-path failures were not ruled out.
+
 ## Not verified
-- The public domain was not checked: it is not recorded in the repo or the host config I could read, so checks went through host port 8080. Please confirm the public domain serves `index-D_o2DNr8.js`.
-- A ResultBundle-specific replay page was not opened; replay links were counted on `/finals` only.
-- Network-request failures were not separately inspected (console only).
+- Light/mobile and dark/desktop screenshots were taken via the host port tunnel, not the public domain.
+- Network failures were checked via console and request lists only on the final passing loads.
 
 ## Rollback
 `docker tag ott-web:rollback-pre-finals-restore ott-web:local` then recreate only `web` with the same compose command.
