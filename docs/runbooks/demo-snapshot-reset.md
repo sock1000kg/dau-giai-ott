@@ -32,7 +32,9 @@ The v2 bundle contains `data/database.dump`, `data/seaweedfs-objects.tar.gz`,
 exported by key and restored through the S3 API into a fresh SeaweedFS volume;
 raw SeaweedFS volume files are not portable snapshot payloads. Export refuses
 to create a baseline if a database reference is absent or its object digest
-does not match. The manifest records the source commit, account/team/match/replay
+does not match. The object manifest records its source bucket as provenance;
+restore writes those keys into the target stack's configured bucket, which may
+have a different name. The bundle manifest records the source commit, account/team/match/replay
 row counts, S3 object/reference counts, and public snapshot file count. It does
 not contain Redis, environment files, or the credentials CSV. Keep the bundle
 root-only and create an independent recovery backup before the first restore
