@@ -173,7 +173,10 @@ with tarfile.open(archive, "r:gz") as source:
 PY
 
 printf 'Restoring and verifying S3 objects from the baseline.\n'
+# The host staging directory and payloads stay root-only; this one-shot importer
+# runs as container root solely to read that private read-only mount.
 compose run --rm --no-deps -T \
+  --user 0:0 \
   --volume "${REPO_ROOT}/scripts/demo-snapshot-objects.mjs:/app/src/platform/api/src/demo/demo-snapshot-objects.mjs:ro" \
   --volume "${OBJECT_STAGING_DIR}:/backup:ro" \
   --entrypoint node api /app/src/platform/api/src/demo/demo-snapshot-objects.mjs import /backup

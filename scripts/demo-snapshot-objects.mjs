@@ -127,8 +127,11 @@ async function importObjects() {
 
 try {
   await (action === 'export' ? exportObjects() : importObjects());
-} catch {
-  process.stderr.write('demo-snapshot-objects: object export/import integrity check failed\n');
+} catch (error) {
+  const code = error && typeof error === 'object' && 'code' in error && typeof error.code === 'string'
+    ? error.code
+    : error instanceof Error ? error.name : 'unknown';
+  process.stderr.write(`demo-snapshot-objects: object export/import integrity check failed (${code})\n`);
   process.exitCode = 1;
 } finally {
   storage.destroy();
