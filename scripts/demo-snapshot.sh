@@ -139,7 +139,10 @@ if counts.get("demo_accounts", 0) != 5 or counts.get("matches", 0) < 1 or counts
     raise SystemExit("demo-snapshot: baseline must contain btc, team01-team04 and historical match/replay data")
 PY
   mkdir -m 0700 "${STAGING_DIR}/objects"
+  # The exporter reads the private root-only staging mount; keep host files
+  # private and elevate only this one-shot container process.
   storage_metrics="$(compose run --rm --no-deps -T \
+    --user 0:0 \
     --volume "${REPO_ROOT}/scripts/demo-snapshot-objects.mjs:/app/src/platform/api/src/demo/demo-snapshot-objects.mjs:ro" \
     --volume "${STAGING_DIR}/objects:/backup" \
     --entrypoint node api /app/src/platform/api/src/demo/demo-snapshot-objects.mjs export /backup)"
