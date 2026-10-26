@@ -1157,10 +1157,10 @@ Task `P2-T42`–`P2-T53` là đợt giao diện riêng, không tự đóng `P2-C
 
 ## Checkpoint P2-F — Demo snapshot reset hourly
 
-- [ ] `P2-T61`–`P2-T64` merge vào `main`; baseline bundle PostgreSQL + SeaweedFS + public snapshots có checksum và recovery backup độc lập.
-- [ ] Manual restore và hai cron cycle liên tiếp cùng đưa DB/object/snapshot về baseline; lock, failure, rollback và scheduler-conflict guards pass.
-- [ ] `btc`, `team01`–`team04` và anonymous browser flow pass; bốn team dùng default password, BTC credential không bị đổi hoặc lộ.
-- [ ] Thuận duyệt evidence server/browser trước khi coi cron demo là hoạt động; mọi checkpoint Phase 2/3 khác giữ trạng thái riêng.
+- [x] `P2-T61`–`P2-T64` merge vào `main`; baseline bundle PostgreSQL + SeaweedFS + public snapshots có checksum và recovery backup độc lập.
+- [x] Manual restore và hai cron cycle liên tiếp cùng đưa DB/object/snapshot về baseline; lock, failure, rollback và scheduler-conflict guards pass.
+- [x] `btc`, `team01`–`team04` và anonymous browser flow pass; bốn team dùng default password, BTC credential không bị đổi hoặc lộ.
+- [x] Thuận duyệt evidence server/browser trước khi coi cron demo là hoạt động; mọi checkpoint Phase 2/3 khác giữ trạng thái riêng.
 
 ### [ ] P2-T65 — Tải bộ tài nguyên bot từ trang công khai
 
