@@ -48,6 +48,21 @@ Trước khi chạy, hệ thống kiểm tra:
 - dung lượng và số thành phần bên trong có vượt giới hạn không;
 - bot có khởi động và giao tiếp đúng quy định không.
 
+**Kiểm tra mã băm (SHA-256) của gói OCI.** Mỗi thành phần trong gói bot đều được khai báo kèm một mã băm
+`sha256` và dung lượng. Hệ thống không tin các khai báo này mà tự tính lại:
+
+1. Đọc danh sách trong gói (`index.json`) và `manifest`. Gói chỉ được có một bản cho `linux/amd64`.
+2. Với `manifest`, file cấu hình và từng **layer** (lớp nội dung của image), hệ thống lấy file tương ứng,
+   so dung lượng thực với dung lượng khai báo, rồi tính lại SHA-256 và so với mã băm khai báo.
+3. Thiếu file hoặc mã băm lệch dù chỉ một byte (`OCI_DIGEST_MISMATCH`) thì cả bản nộp bị từ chối.
+4. Layer phải nằm ngay trong gói. Layer trỏ ra đường link bên ngoài bị từ chối, nên bot không thể tải thêm
+   mã sau khi đã qua kiểm tra.
+5. Các mã băm của `manifest` và cấu hình được lưu lại và gắn cứng vào từng trận chính thức. Khi nạp image
+   vào máy chạy bot, hệ thống đối chiếu lại: image được nạp phải đúng mã băm đã lưu.
+
+Nhờ vậy bản nộp không thể bị đổi ruột sau khi qua kiểm tra, và cùng một mã băm luôn là cùng một bot. Các
+layer giống hệt nhau cũng được nhận ra qua mã băm để lưu một lần (xem 2.4) và để đánh dấu bản nộp trùng.
+
 Khi thi đấu, mỗi bot chạy trong một khu vực cách ly riêng:
 
 - không có Internet;

@@ -46,6 +46,17 @@ theo các tiêu chí phụ đã công bố trước.
 
 ## 3. Cách tính điểm vòng loại
 
+### Cách ghép trận mỗi round
+
+- Hệ thống tự ghép sau khi cổng nộp đóng; đội không được chọn đối thủ.
+- Mỗi đội đấu **đúng 1 cặp đấu = 2 ván** trong một round, với **1 đối thủ**.
+- Đối thủ được chọn theo Elo gần nhau: ưu tiên chênh lệch trong 200 điểm, nếu không ghép được thì nới thêm
+  100 điểm mỗi lần.
+- Cố gắng không để hai đội gặp lại nhau trong 3 round gần nhất.
+- Hai ván dùng cùng hai bot và cùng bản đồ, chỉ đổi bên Đỏ/Xanh.
+- Số đội lẻ thì một đội được nghỉ round đó (bye); đội nghỉ được luân phiên giữa các round.
+- Mỗi đội thi đấu bằng bản nộp hợp lệ mới nhất khi cổng đóng.
+
 Mỗi cặp đấu gồm 2 ván. Hai đội đổi bên Đỏ/Xanh sau ván đầu để giảm lợi thế đi trước.
 
 | Kết quả một ván | Điểm |
