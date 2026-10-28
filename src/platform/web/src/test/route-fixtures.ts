@@ -112,6 +112,7 @@ export function installRouteFetch(role: TestRole): RouteApi {
         return json(200, { data: role === 'BTC_ADMIN' ? { role } : { role, teamId: ids.team } });
       }
       if (pathname === '/api/v1/admin/teams') return json(200, { data: teams });
+      if (pathname === '/api/v1/admin/reference-bots') return json(200, { data: [] });
       if (pathname === '/api/v1/admin/round-rule-sets') return json(200, { data: { items: [] } });
       if (pathname === '/api/v1/admin/rounds') return json(200, { data: { items: [] } });
       if (pathname === '/api/v1/admin/rounds/catalog') return json(200, { data: { engineVersions: ['1.0.0'], maps: [], faultPolicyVersions: ['P2_BASELINE_V1'] } });

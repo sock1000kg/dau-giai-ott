@@ -11,8 +11,9 @@ describe('migration 0021_round_cancel (DB-free checks; apply-on-fresh-DB is cove
 
   it('is registered after the previous migration', () => {
     const ids = migrationFiles.map((entry) => entry.id);
-    expect(ids.at(-1)).toBe('0021_round_cancel');
-    expect(ids.at(-2)).toBe('0020_test_run_frontend_contract');
+    const roundCancelIndex = ids.indexOf('0021_round_cancel');
+    expect(ids[roundCancelIndex - 1]).toBe('0020_test_run_frontend_contract');
+    expect(ids[roundCancelIndex + 1]).toBe('0022_reference_bot_portal');
   });
 
   it('adds CANCELLED to the status CHECK while keeping every previous status', () => {

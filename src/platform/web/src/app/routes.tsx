@@ -10,6 +10,7 @@ import { OperationsConsole } from '../features/operations/OperationsConsole.tsx'
 import { FinalsPage } from '../features/finals/FinalsPage.tsx';
 import { TestRunsPage } from '../features/test-runs/TestRunsPage.tsx';
 import { TestRunReplayPage } from '../features/test-runs/TestRunReplayPage.tsx';
+import { ReferenceBotsPage } from '../features/reference-bots/ReferenceBotsPage.tsx';
 import { useAuth } from '../features/auth/AuthProvider.tsx';
 import { HomePage } from '../features/home/HomePage.tsx';
 import { AppShellLayout } from '../ui/AppShellLayout.tsx';
@@ -68,10 +69,11 @@ function renderAuthenticated(role: 'BTC_ADMIN' | 'TEAM_ACCOUNT', path: string) {
   const isReplayAdminPage = role === 'BTC_ADMIN' && path === '/admin/replays';
   const isRoundAdminPage = role === 'BTC_ADMIN' && path === '/admin/rounds';
   const isOperationsPage = role === 'BTC_ADMIN' && path === '/admin/operations';
+  const isReferenceBotsPage = role === 'BTC_ADMIN' && path === '/admin/reference-bots';
   const isResultsPage = (role === 'BTC_ADMIN' && path === '/admin/results') || (role === 'TEAM_ACCOUNT' && path === '/team/results');
   const isTeamReplayPage = role === 'TEAM_ACCOUNT' && path.startsWith('/team/replays/');
   const isAdminReplayViewPage = role === 'BTC_ADMIN' && path.startsWith('/admin/replays/') && path.endsWith('/view');
-  if (path !== '/' && path !== '/login' && path !== expectedPath && !isTeamAdminPage && !isTeamSubmissionPage && !isTeamTestRunsPage && !isTeamTestRunReplayPage && !isTeamPasswordPage && !isReplayAdminPage && !isRoundAdminPage && !isOperationsPage && !isResultsPage && !isTeamReplayPage && !isAdminReplayViewPage) return <AccessDenied />;
+  if (path !== '/' && path !== '/login' && path !== expectedPath && !isTeamAdminPage && !isTeamSubmissionPage && !isTeamTestRunsPage && !isTeamTestRunReplayPage && !isTeamPasswordPage && !isReplayAdminPage && !isRoundAdminPage && !isOperationsPage && !isReferenceBotsPage && !isResultsPage && !isTeamReplayPage && !isAdminReplayViewPage) return <AccessDenied />;
   if (isTeamPasswordPage) return <ChangePasswordPage />;
   if (isTeamAdminPage) return <TeamProvisionPage />;
   if (isTeamSubmissionPage) return <SubmissionForm />;
@@ -83,6 +85,7 @@ function renderAuthenticated(role: 'BTC_ADMIN' | 'TEAM_ACCOUNT', path: string) {
   if (isReplayAdminPage) return <ReplayCatalog />;
   if (isRoundAdminPage) return <RoundAdminPage />;
   if (isOperationsPage) return <OperationsConsole />;
+  if (isReferenceBotsPage) return <ReferenceBotsPage />;
   if (isResultsPage) return <MatchResultsPage isAdmin={role === 'BTC_ADMIN'} />;
   if (isTeamReplayPage) {
     const matchId = path.slice('/team/replays/'.length);

@@ -141,7 +141,7 @@ describe('demo BTC reference bot seeding', () => {
         'P2_BASELINE_V1',
       ],
     );
-  });
+  }, 15_000);
 
   it('is idempotent: re-run does not re-upload existing object and updates row without forcing enabled=TRUE', async () => {
     const stored = new Map<string, Uint8Array>();

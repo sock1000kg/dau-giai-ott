@@ -779,7 +779,7 @@ Phase 3 gộp hai phần nhưng nghiệm thu riêng:
 2. Xây chung kết offline qua LAN theo bracket 8 đội và đồng bộ ResultBundle có chữ ký (`P3-F`).
 
 Đinh Đức Thuận giữ vai trò Product/Technical approver: chốt decision, review pull request và duyệt checkpoint.
-Toàn bộ implementation được giao cho Long Trần, Đỗ Khôi Nguyên và Phạm Tất Đạt.
+Implementation được chia cho Long Trần, Đỗ Khôi Nguyên, Phạm Tất Đạt và các task BTC reference bot do Đinh Đức Thuận thực hiện.
 
 ## 16. Owner và ranh giới Phase 3
 
@@ -812,6 +812,7 @@ Nguyên không sửa luật game/rating/finals và không tự mở public endpo
 
 - Đã duyệt D-14–D-30 và ADR/contract tại `P3-T01`; tiếp tục review amendment nếu baseline đổi.
 - Review integration/security evidence và quyết định qua checkpoint.
+- BTC reference bot catalog API và portal (`P3-N10`, `P3-D12`) theo yêu cầu trực tiếp của BTC.
 - Là người duy nhất quyết định deploy; Phase 3 plan không tự cho phép deploy.
 
 ## 17. Task allocation Phase 3
@@ -821,7 +822,7 @@ Nguyên không sửa luật game/rating/finals và không tự mở public endpo
 | Long Trần | `P3-L01`–`P3-L06` | Protocol v2, timing, rating eligibility, replay/public snapshot UI, finals domain |
 | Đỗ Khôi Nguyên | `P3-N01`–`P3-N09` | Sandbox/metrics, single-host admission/test run, OCI lifecycle, ops/load, LAN/rehearsal, test-run portal API |
 | Phạm Tất Đạt | `P3-D01`–`P3-D11` | Round/admin/submission/auth/operations APIs and UI, finals control/result sync/presentation, team test-run portal |
-| Đinh Đức Thuận | `P3-T01`; `P3-A`, `P3-B`, `P3-C`, `P3-D`, `P3-E`, `P3-2B`, `P3-F1`, `P3-F` | Decision gate, review và acceptance |
+| Đinh Đức Thuận | `P3-T01`, `P3-N10`, `P3-D12`; `P3-A`, `P3-B`, `P3-C`, `P3-D`, `P3-E`, `P3-2B`, `P3-F1`, `P3-F` | BTC reference bot management, decision gate, review và acceptance |
 
 Chi tiết acceptance criteria, verification, dependency và file dự kiến nằm duy nhất tại
 [`tasks/todo.md`](../tasks/todo.md). Dependency graph và wave plan nằm tại

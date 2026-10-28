@@ -27,7 +27,8 @@ Nguồn đối chiếu:
 | 3 | [Kết quả, replay và public](03-results-replay-public.md) | Kết quả theo role, replay riêng tư, snapshot/public UI | 11 |
 | 4 | [Recovery, security và UX](04-recovery-security-ux.md) | Restart, dữ liệu, negative paths, mobile/keyboard | 10 |
 | 5 | [Chạy thử bot](06-test-runs.md) | Menu đội thi, quota/policy, tạo lượt, polling và replay riêng | 4 |
-| 6 | [Hosted PoC và finals có điều kiện](05-hosted-finals-conditional.md) | Host thật, LAN, restore, bundle ký và công bố | 10 |
+| 6 | [BTC quản lý bot tham chiếu](07-btc-reference-bots.md) | BTC tải OCI archive, duyệt bật/tắt; đội thấy bot trong policy | 5 |
+| 7 | [Hosted PoC và finals có điều kiện](05-hosted-finals-conditional.md) | Host thật, LAN, restore, bundle ký và công bố | 10 |
 
 Track local bắt buộc gồm `MAN-SMOKE-*`, `MAN-QUAL-*`, `MAN-VIEW-*` và `MAN-OPS-*`. Track
 `MAN-HOST-*` chỉ chạy khi có đúng hạ tầng được nêu trong từng case; không thay bằng fixture hoặc Vitest.

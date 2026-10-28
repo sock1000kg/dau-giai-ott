@@ -4,22 +4,25 @@ import * as path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { S3Client } from '@aws-sdk/client-s3';
-import { validateOciSubmission } from '@ott/job-contract';
 import { createDatabase, type Database } from '../db/client.ts';
 import { createS3Storage, type ObjectStorage } from '../storage/s3.ts';
+import {
+  isMissingReferenceBotObject,
+  REFERENCE_BOT_ARCHIVE_LIMITS,
+  REFERENCE_BOT_POLICY_VERSION,
+  ReferenceBotArchiveError,
+  validateReferenceBotArchive,
+} from '../modules/reference-bots/archive.ts';
 import { assertDemoEnvironment } from './seed-accounts.ts';
 
 export const PINNED_REFERENCE_BOT_SHA256 =
   '80d1dd7d9fb46f3c2a4779f0a62cc7ee0d6a3ce4b741df026adbb7bf6109b4e6';
 export const DEFAULT_REFERENCE_BOT_ID = 'btc-baseline';
 export const DEFAULT_REFERENCE_BOT_DISPLAY_NAME = 'BTC baseline';
-export const DEFAULT_REFERENCE_BOT_POLICY_VERSION = 'P2_BASELINE_V1';
+export const DEFAULT_REFERENCE_BOT_POLICY_VERSION = REFERENCE_BOT_POLICY_VERSION;
 export const DEFAULT_REFERENCE_BOT_CONTAINER_PATH = '/seed/ott-demo-bot-go-v1.oci.tar';
 
-export const OCI_SUBMISSION_LIMITS = {
-  maxArchiveBytes: 256 * 1024 * 1024,
-  maxUncompressedBytes: 512 * 1024 * 1024,
-} as const;
+export const OCI_SUBMISSION_LIMITS = REFERENCE_BOT_ARCHIVE_LIMITS;
 
 export interface SeedDemoReferenceBotOptions {
   readonly database: Database;
@@ -78,38 +81,37 @@ export async function seedDemoReferenceBot(
     archive = await fs.promises.readFile(resolvedPath);
   }
 
-  if (archive.byteLength === 0) {
-    throw new Error('Reference bot archive is empty');
-  }
-
-  const hexSha256 = createHash('sha256').update(archive).digest('hex');
   const expectedSha256 = options.expectedSha256 ?? PINNED_REFERENCE_BOT_SHA256;
-  if (hexSha256 !== expectedSha256) {
+  let validated;
+  try {
+    validated = validateReferenceBotArchive(archive, expectedSha256);
+  } catch (error) {
+    if (error instanceof ReferenceBotArchiveError && error.code === 'ARCHIVE_SHA256_MISMATCH') {
+      throw new Error(`Reference bot archive checksum mismatch: expected ${expectedSha256}`);
+    }
     throw new Error(
-      `Reference bot archive checksum mismatch: expected ${expectedSha256}, got ${hexSha256}`,
+      `Reference bot OCI archive invalid: ${error instanceof ReferenceBotArchiveError ? error.code : 'UNKNOWN'}`,
     );
   }
 
-  const validation = validateOciSubmission(archive, OCI_SUBMISSION_LIMITS);
-  if (!validation.ok) {
-    throw new Error(`Reference bot OCI archive invalid: ${validation.code}`);
-  }
-  const oci = validation.value;
-
   const id = DEFAULT_REFERENCE_BOT_ID;
   const displayName = DEFAULT_REFERENCE_BOT_DISPLAY_NAME;
-  const objectKey = `reference-bots/${hexSha256}.oci.tar`;
-  const archiveSha256 = `sha256:${hexSha256}`;
-  const manifestDigest = oci.ociManifestDigest;
-  const configDigest = oci.ociConfigDigest;
-  const entrypoint = JSON.stringify(oci.entrypoint);
+  const objectKey = validated.objectKey;
+  const archiveSha256 = validated.archiveSha256;
+  const manifestDigest = validated.manifestDigest;
+  const configDigest = validated.configDigest;
+  const entrypoint = JSON.stringify(validated.entrypoint);
   const policyVersion = DEFAULT_REFERENCE_BOT_POLICY_VERSION;
 
   let objectExists = false;
   try {
-    await options.storage.get(objectKey);
+    const stored = await options.storage.get(objectKey);
+    if (`sha256:${createHash('sha256').update(stored).digest('hex')}` !== archiveSha256) {
+      throw new Error('Reference bot content-addressed object checksum mismatch');
+    }
     objectExists = true;
-  } catch {
+  } catch (error) {
+    if (!isMissingReferenceBotObject(error)) throw error;
     objectExists = false;
   }
 
@@ -120,8 +122,8 @@ export async function seedDemoReferenceBot(
   await options.database.query(
     `INSERT INTO test_run_reference_bots (
        id, display_name, object_key, archive_sha256, manifest_digest,
-       config_digest, entrypoint, policy_version, enabled
-     ) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, TRUE)
+       config_digest, entrypoint, policy_version, enabled, enabled_at
+     ) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, TRUE, now())
      ON CONFLICT (id) DO UPDATE SET
        display_name = EXCLUDED.display_name,
        object_key = EXCLUDED.object_key,

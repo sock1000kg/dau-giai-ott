@@ -1341,6 +1341,17 @@ Parent `P3-L02` chỉ hoàn tất khi mọi phần được verify; không dùng
 **Files likely touched:** `src/platform/api/migrations/0020_test_run_frontend_contract.sql`, `src/platform/api/src/db/schema.ts`, `src/platform/api/src/modules/test-runs/service.ts`, `src/platform/api/src/modules/test-runs/routes.ts`, `src/platform/api/src/modules/replays/service.ts`, `src/platform/api/src/index.ts`, `src/platform/api/src/demo/seed-accounts.ts`, `src/platform/api/src/demo/seed-reference-bot.ts`, `src/platform/worker/src/run-test-job.ts`, `src/platform/worker/src/runtime/server.ts`, `src/platform/api/tests/test-runs.routes.test.ts`, `src/platform/api/tests/test-runs.outbox.integration.test.ts`, `src/platform/api/tests/demo-reference-bot.test.ts`, `src/platform/worker/tests/test-run.integration.test.ts`, `infra/local/compose.yaml`, `scripts/demo.sh`, `scripts/tests/demo.test.sh`, `docs/contracts/test-run-v1.md`.
 **Estimated scope:** M (18 files)
 
+### [x] P3-N10 — BTC reference bot catalog API và OCI lifecycle
+
+**Owner:** Đinh Đức Thuận
+**Mô tả:** Cung cấp API BTC-only để quản lý nhiều OCI reference bot, xác minh archive trước lưu trữ và audit các thao tác tải lên/kích hoạt/tắt.
+**Acceptance criteria:** (1) Chỉ `BTC_ADMIN` liệt kê/tải lên/kích hoạt/tắt; DTO không lộ object key hoặc entrypoint; (2) upload raw OCI tar giới hạn 256 MiB, validate layout/uncompressed size, lưu theo SHA-256 và bot mới mặc định disabled; (3) catalog hỗ trợ nhiều bot enabled và worker tiếp tục fail closed nếu bot bị tắt trước khi resolve; (4) mutation cần lý do, correlation ID và idempotency key, audit before/after; (5) migration mở rộng catalog an toàn và demo seeding giữ nguyên trạng thái enable/disable.
+**Verification:** API focused/full tests, migration registry/order tests, API typecheck/build và manual cases `MAN-REFBOT-01`–`05`.
+**Hoàn tất (2026-10-26):** Migration `0022_reference_bot_portal`; BTC-only list/raw OCI upload/activate/disable APIs; 256 MiB cap, OCI validation, content-addressed storage, disabled-by-default versions, reasoned idempotent audit; API portal integration and seed compatibility. Full API suite 734/734 with isolated PostgreSQL/Redis/SeaweedFS, API typecheck/build pass; live local Compose and `MAN-REFBOT-01`–`05` pass. Browser record and screenshots: [`MAN-REFBOT-E2E-2026-10-26.md`](../demo/manually-check/artifacts/MAN-REFBOT-E2E-2026-10-26.md).
+**Dependencies:** `P3-N09`.
+**Files likely touched:** `src/platform/api/migrations/0022_reference_bot_portal.sql`, `src/platform/api/src/modules/reference-bots/`, `src/platform/api/src/db/schema.ts`, `src/platform/api/src/app.ts`, `src/platform/api/src/demo/seed-reference-bot.ts`, API tests, `docs/contracts/test-run-v1.md`.
+**Estimated scope:** M (8 files)
+
 
 ## [ ] Checkpoint P3-C — Participant workflows
 
@@ -1569,6 +1580,17 @@ server-lab/CDN AC-14 evidence; finals uses the prepared public DTO interface.
 **Dependencies:** `P3-N09`.
 **Files likely touched:** `src/platform/web/src/features/test-runs/`, `src/platform/web/src/app/routes.tsx`, `src/platform/web/src/ui/AppNav.tsx`, route fixtures/tests, `demo/manually-check/`.
 **Estimated scope:** M (10 files)
+
+### [x] P3-D12 — BTC reference bot management portal
+
+**Owner:** Đinh Đức Thuận
+**Mô tả:** Thêm menu và giao diện BTC để tải OCI reference bot, xem digest/trạng thái, kích hoạt hoặc tắt bot có lý do.
+**Acceptance criteria:** (1) Chỉ BTC_ADMIN thấy menu/mở `/admin/reference-bots`; (2) upload form kiểm tra tên/lý do/file và hiển thị trạng thái xử lý; (3) catalog thể hiện digest, policy version, trạng thái và thời điểm; (4) bật/tắt có xác nhận và lý do, lỗi xác thực/duplicate/size được giải thích; (5) trang dùng được bằng bàn phím và ở viewport hẹp.
+**Verification:** focused/full web tests, web typecheck/build, API integration tests và manual cases `MAN-REFBOT-01`–`05`.
+**Hoàn tất (2026-10-26):** BTC-only menu/route, OCI upload form, version catalog, digest/status display, reasoned activation and disable confirmation, responsive layout. Full web suite 484/484, web typecheck/build pass; live Chrome checks including team RBAC/policy changes, invalid/duplicate/oversize files, 390 px layout and keyboard navigation pass. Evidence: [`MAN-REFBOT-E2E-2026-10-26.md`](../demo/manually-check/artifacts/MAN-REFBOT-E2E-2026-10-26.md).
+**Dependencies:** `P3-N10`.
+**Files likely touched:** `src/platform/web/src/features/reference-bots/`, `src/platform/web/src/app/routes.tsx`, `src/platform/web/src/ui/AppNav.tsx`, route/nav tests, `demo/manually-check/`.
+**Estimated scope:** M (9 files)
 
 ### [x] P3-N08 — Full event rehearsal, tamper/recovery và handoff
 
