@@ -861,6 +861,21 @@ describe('Clean-checkout local demo qualification E2E (P2-T37 API-level)', () =>
       });
       await assertStatus(closeRes, 200, `POST /api/v1/admin/rounds/${roundId}/close`);
 
+      // `demo.sh up` seeds a finalized sample round, and /results/series lists only finalized/cancelled series.
+      // Record the existing series so the wait below only counts series created by this round.
+      const priorSeriesRes = await apiRequest(baseUrl, '/api/v1/results/series?stage=QUALIFICATION&pageSize=100', {
+        jar: btcJar,
+      });
+      const priorSeriesText = await assertStatus(priorSeriesRes, 200, 'Pre-start series query');
+      const priorSeriesJson = JSON.parse(priorSeriesText) as {
+        data?: { items?: Array<{ seriesId: string }>; pagination?: { total?: number } };
+      };
+      const priorSeriesItems = priorSeriesJson.data?.items ?? [];
+      expect(priorSeriesItems.length, 'Pre-start series list must fit in one page').toBe(
+        priorSeriesJson.data?.pagination?.total ?? priorSeriesItems.length,
+      );
+      const priorSeriesIds = new Set(priorSeriesItems.map((s) => s.seriesId));
+
       // Start round
       const startKey = `demo-e2e-start-${roundId}-${Date.now()}`;
       const startRes = await apiRequest(baseUrl, `/api/v1/admin/rounds/${roundId}/start`, {
@@ -888,14 +903,14 @@ describe('Clean-checkout local demo qualification E2E (P2-T37 API-level)', () =>
       let leaderboardTeamsCount = 0;
 
       while (Date.now() < deadline && (!finalized || leaderboardTeamsCount < 2)) {
-        const seriesRes = await apiRequest(baseUrl, '/api/v1/results/series?stage=QUALIFICATION', {
+        const seriesRes = await apiRequest(baseUrl, '/api/v1/results/series?stage=QUALIFICATION&pageSize=100', {
           jar: btcJar,
         });
         if (seriesRes.status === 200) {
           const seriesJson = (await seriesRes.json()) as {
-            data?: { items?: Array<{ status: string }> };
+            data?: { items?: Array<{ seriesId: string; status: string }> };
           };
-          const items = seriesJson.data?.items ?? [];
+          const items = (seriesJson.data?.items ?? []).filter((s) => !priorSeriesIds.has(s.seriesId));
           if (items.length > 0 && items.every((s) => s.status === 'FINALIZED')) {
             finalized = true;
           }
