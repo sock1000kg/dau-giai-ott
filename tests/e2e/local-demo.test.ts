@@ -563,12 +563,21 @@ describe('Clean-checkout local demo qualification E2E (P2-T37 API-level)', () =>
         `team02 submission ${submission02Id} must reach ACTIVE within timeout (last status: ${submission02Status})`,
       ).toBe(true);
 
-      // AC-22: BTC queries flagged submissions endpoint; demo fixtures are distinct so total must be 0
-      const flaggedRes = await apiRequest(baseUrl, '/api/v1/admin/submissions/flagged', { jar: btcJar });
+      // AC-22: BTC queries flagged submissions endpoint; this test's fixtures are distinct so neither is flagged.
+      // Scoped to this test's submissions: `demo.sh up` seeds sample bots that share a non-base layer and are
+      // legitimately flagged.
+      const flaggedRes = await apiRequest(baseUrl, '/api/v1/admin/submissions/flagged?pageSize=100', { jar: btcJar });
       const flaggedText = await assertStatus(flaggedRes, 200, 'BTC queries flagged submissions');
-      const flaggedJson = JSON.parse(flaggedText) as { data?: unknown[]; total?: number };
-      expect(flaggedJson.total, 'Demo fixtures should produce zero duplicate flags').toBe(0);
-      expect(flaggedJson.data, 'Flagged submissions list should be empty').toEqual([]);
+      const flaggedJson = JSON.parse(flaggedText) as { data?: Array<{ submissionId: string }>; total?: number };
+      expect(Array.isArray(flaggedJson.data), 'Flagged submissions response must include a data array').toBe(true);
+      expect(
+        flaggedJson.data!.length,
+        'Flagged submissions list must fit in one page so the scoped check sees every flag',
+      ).toBe(flaggedJson.total);
+      const ownFlagged = flaggedJson.data!
+        .map((row) => row.submissionId)
+        .filter((id) => id === submission01Id || id === submission02Id);
+      expect(ownFlagged, 'Distinct demo fixtures must not be flagged as duplicates').toEqual([]);
 
       // Assertion (b): team runs a self-play test run on default map and polls until terminal status (<= 120s)
       const policyRes = await apiRequest(baseUrl, '/api/v1/test-run-policy', { jar: team01Jar });
